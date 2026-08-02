@@ -499,15 +499,42 @@ function getModifierKeys(
 Prevent Browser Event
 =========================================================*/
 
-function preventEventDefault(
-    event
-) {
+function preventEventDefault(event) {
     const nativeEvent =
-        getNativeEvent(event);
+        event?.evt ||
+        event?.nativeEvent ||
+        event;
 
-    nativeEvent
-        ?.preventDefault
-        ?.();
+    if (
+        !nativeEvent ||
+        typeof nativeEvent.preventDefault !==
+            "function"
+    ) {
+        return false;
+    }
+
+    /*
+    touchend and pointerup events can become
+    non-cancelable after browser scrolling or
+    gesture handling has already started.
+    */
+
+    if (
+        nativeEvent.cancelable ===
+        false
+    ) {
+        return false;
+    }
+
+    if (
+        nativeEvent.defaultPrevented
+    ) {
+        return true;
+    }
+
+    nativeEvent.preventDefault();
+
+    return true;
 }
 
 /*=========================================================

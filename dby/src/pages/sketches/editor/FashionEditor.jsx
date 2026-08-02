@@ -1,8 +1,8 @@
 /*
 =========================================================
 FashionVision Professional Editor
-Main Fashion Editor
-Version 1.2
+Responsive Main Fashion Editor
+Version 1.3
 =========================================================
 */
 
@@ -130,23 +130,6 @@ function numberOr(
         : fallback;
 }
 
-function clamp(
-    value,
-    minimum,
-    maximum
-) {
-    return Math.max(
-        minimum,
-        Math.min(
-            maximum,
-            numberOr(
-                value,
-                minimum
-            )
-        )
-    );
-}
-
 function createSafeFilename(
     value,
     fallback = "fashion-design"
@@ -181,7 +164,8 @@ function downloadTextFile(
         new Blob(
             [content],
             {
-                type: `${mimeType};charset=utf-8`
+                type:
+                    `${mimeType};charset=utf-8`
             }
         );
 
@@ -239,9 +223,7 @@ function downloadDataUrl(
     anchor.remove();
 }
 
-function getFirstChild(
-    node
-) {
+function getFirstChild(node) {
     const children =
         node
             ?.getChildren
@@ -274,7 +256,56 @@ function getFirstChild(
 }
 
 /*=========================================================
-Reusable Interface Components
+Media Query Hook
+=========================================================*/
+
+function useMediaQuery(query) {
+    const [
+        matches,
+        setMatches
+    ] = useState(false);
+
+    useEffect(() => {
+        if (
+            typeof window ===
+                "undefined" ||
+            typeof window.matchMedia !==
+                "function"
+        ) {
+            return undefined;
+        }
+
+        const mediaQuery =
+            window.matchMedia(
+                query
+            );
+
+        const updateMatch = () => {
+            setMatches(
+                mediaQuery.matches
+            );
+        };
+
+        updateMatch();
+
+        mediaQuery.addEventListener?.(
+            "change",
+            updateMatch
+        );
+
+        return () => {
+            mediaQuery.removeEventListener?.(
+                "change",
+                updateMatch
+            );
+        };
+    }, [query]);
+
+    return matches;
+}
+
+/*=========================================================
+Reusable Components
 =========================================================*/
 
 function HeaderButton({
@@ -282,7 +313,8 @@ function HeaderButton({
     onClick,
     disabled = false,
     active = false,
-    title = ""
+    title = "",
+    className = ""
 }) {
     return (
         <button
@@ -291,13 +323,14 @@ function HeaderButton({
             disabled={disabled}
             title={title}
             className={[
-                "inline-flex h-9 items-center justify-center rounded-lg border px-3 text-xs font-semibold transition",
+                "inline-flex h-9 shrink-0 items-center justify-center rounded-lg border px-3 text-xs font-semibold transition",
                 active
                     ? "border-violet-500 bg-violet-500 text-white"
                     : "border-slate-700 bg-slate-800 text-slate-200 hover:border-slate-500 hover:bg-slate-700",
                 disabled
                     ? "cursor-not-allowed opacity-40 hover:border-slate-700 hover:bg-slate-800"
-                    : ""
+                    : "",
+                className
             ]
                 .filter(Boolean)
                 .join(" ")}
@@ -310,7 +343,8 @@ function HeaderButton({
 function ToolButton({
     tool,
     active,
-    onClick
+    onClick,
+    horizontal = false
 }) {
     return (
         <button
@@ -319,9 +353,7 @@ function ToolButton({
                 !tool.enabled
             }
             onClick={() => {
-                if (
-                    tool.enabled
-                ) {
+                if (tool.enabled) {
                     onClick(
                         tool.id
                     );
@@ -332,8 +364,14 @@ function ToolButton({
                     ? `${tool.label} (${tool.shortcut})`
                     : `${tool.label} — coming soon`
             }
+            aria-pressed={
+                active
+            }
             className={[
-                "group flex h-14 w-14 flex-col items-center justify-center rounded-xl border transition",
+                "group shrink-0 rounded-xl border transition",
+                horizontal
+                    ? "flex h-14 min-w-[58px] flex-col items-center justify-center px-2"
+                    : "flex h-14 w-14 flex-col items-center justify-center",
                 active
                     ? "border-violet-500 bg-violet-500 text-white shadow-lg shadow-violet-950/40"
                     : "border-transparent bg-slate-900 text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white",
@@ -412,11 +450,18 @@ function SliderField({
                         )
                     );
                 }}
-                onMouseDown={onStart}
-                onTouchStart={onStart}
-                onMouseUp={onEnd}
-                onTouchEnd={onEnd}
-                onBlur={onEnd}
+                onPointerDown={
+                    onStart
+                }
+                onPointerUp={
+                    onEnd
+                }
+                onPointerCancel={
+                    onEnd
+                }
+                onBlur={
+                    onEnd
+                }
                 className="h-1.5 w-full cursor-pointer accent-violet-500"
             />
         </label>
@@ -510,6 +555,89 @@ function LayerNameField({
     );
 }
 
+function DocumentNameField({
+    documentData,
+    setDocumentName
+}) {
+    const [
+        name,
+        setName
+    ] = useState(
+        documentData.name
+    );
+
+    useEffect(() => {
+        setName(
+            documentData.name
+        );
+    }, [
+        documentData.id,
+        documentData.name
+    ]);
+
+    const commitName =
+        useCallback(() => {
+            const cleanedName =
+                name.trim();
+
+            if (!cleanedName) {
+                setName(
+                    documentData.name
+                );
+
+                return;
+            }
+
+            if (
+                cleanedName !==
+                documentData.name
+            ) {
+                setDocumentName(
+                    cleanedName
+                );
+            }
+        }, [
+            name,
+            documentData.name,
+            setDocumentName
+        ]);
+
+    return (
+        <input
+            value={name}
+            onChange={event => {
+                setName(
+                    event.target.value
+                );
+            }}
+            onBlur={
+                commitName
+            }
+            onKeyDown={event => {
+                if (
+                    event.key ===
+                    "Enter"
+                ) {
+                    event.currentTarget.blur();
+                }
+
+                if (
+                    event.key ===
+                    "Escape"
+                ) {
+                    setName(
+                        documentData.name
+                    );
+
+                    event.currentTarget.blur();
+                }
+            }}
+            className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-1 text-xs font-semibold text-slate-200 outline-none transition hover:border-slate-700 focus:border-violet-500 focus:bg-slate-900 sm:text-sm"
+            aria-label="Document name"
+        />
+    );
+}
+
 /*=========================================================
 Fashion Editor
 =========================================================*/
@@ -523,6 +651,11 @@ function FashionEditor() {
 
     const toastTimerRef =
         useRef(null);
+
+    const isDesktopPanel =
+        useMediaQuery(
+            "(min-width: 1280px)"
+        );
 
     /*=====================================================
     Store State
@@ -825,11 +958,14 @@ function FashionEditor() {
     =====================================================*/
 
     const [
-        rightPanelTab,
-        setRightPanelTab
-    ] = useState(
-        "layers"
-    );
+        panelDrawerOpen,
+        setPanelDrawerOpen
+    ] = useState(false);
+
+    const [
+        mobileMenuOpen,
+        setMobileMenuOpen
+    ] = useState(false);
 
     const [
         pointerInformation,
@@ -854,6 +990,10 @@ function FashionEditor() {
     /*=====================================================
     Derived State
     =====================================================*/
+
+    const rightPanelTab =
+        ui.rightPanelTab ||
+        "layers";
 
     const activeLayer =
         useMemo(
@@ -891,9 +1031,7 @@ function FashionEditor() {
             () => [
                 ...layers
             ].reverse(),
-            [
-                layers
-            ]
+            [layers]
         );
 
     const objectCount =
@@ -924,6 +1062,65 @@ function FashionEditor() {
                 tool.id ===
                 activeTool
         );
+
+    /*=====================================================
+    Responsive UI Effects
+    =====================================================*/
+
+    useEffect(() => {
+        if (isDesktopPanel) {
+            setPanelDrawerOpen(
+                false
+            );
+        }
+    }, [isDesktopPanel]);
+
+    useEffect(() => {
+        if (
+            !panelDrawerOpen &&
+            !mobileMenuOpen
+        ) {
+            return undefined;
+        }
+
+        const handleEscape =
+            event => {
+                if (
+                    event.key !==
+                    "Escape"
+                ) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                setPanelDrawerOpen(
+                    false
+                );
+
+                setMobileMenuOpen(
+                    false
+                );
+            };
+
+        window.addEventListener(
+            "keydown",
+            handleEscape,
+            true
+        );
+
+        return () => {
+            window.removeEventListener(
+                "keydown",
+                handleEscape,
+                true
+            );
+        };
+    }, [
+        panelDrawerOpen,
+        mobileMenuOpen
+    ]);
 
     /*=====================================================
     Toast
@@ -1038,7 +1235,7 @@ function FashionEditor() {
             fitDocumentToViewport(
                 stage.width(),
                 stage.height(),
-                56
+                48
             );
         }, [
             fitDocumentToViewport
@@ -1046,6 +1243,10 @@ function FashionEditor() {
 
     const handleNewDocument =
         useCallback(() => {
+            setMobileMenuOpen(
+                false
+            );
+
             if (
                 !confirmReplaceDocument()
             ) {
@@ -1070,6 +1271,10 @@ function FashionEditor() {
 
     const handleOpenProject =
         useCallback(() => {
+            setMobileMenuOpen(
+                false
+            );
+
             if (
                 !confirmReplaceDocument()
             ) {
@@ -1130,7 +1335,7 @@ function FashionEditor() {
                     );
 
                     showToast(
-                        "The selected project file could not be opened.",
+                        "The project file could not be opened.",
                         "error"
                     );
                 }
@@ -1148,6 +1353,10 @@ function FashionEditor() {
                 projectOverride =
                     null
             ) => {
+                setMobileMenuOpen(
+                    false
+                );
+
                 try {
                     const isProjectData =
                         projectOverride &&
@@ -1218,6 +1427,10 @@ function FashionEditor() {
 
     const handleExportPng =
         useCallback(() => {
+            setMobileMenuOpen(
+                false
+            );
+
             const stage =
                 stageRef.current;
 
@@ -1526,11 +1739,821 @@ function FashionEditor() {
         ]);
 
     /*=====================================================
+    Right Panel Content
+    =====================================================*/
+
+    const rightPanelContent = (
+        <>
+            <div className="flex h-12 shrink-0 items-center border-b border-slate-800 bg-slate-950">
+                <button
+                    type="button"
+                    onClick={() => {
+                        setUiState({
+                            rightPanelTab:
+                                "layers"
+                        });
+                    }}
+                    className={[
+                        "h-full flex-1 border-b-2 text-[10px] font-bold uppercase tracking-[0.16em] transition",
+                        rightPanelTab ===
+                        "layers"
+                            ? "border-violet-500 text-white"
+                            : "border-transparent text-slate-500 hover:text-slate-300"
+                    ].join(" ")}
+                >
+                    Layers
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => {
+                        setUiState({
+                            rightPanelTab:
+                                "properties"
+                        });
+                    }}
+                    className={[
+                        "h-full flex-1 border-b-2 text-[10px] font-bold uppercase tracking-[0.16em] transition",
+                        rightPanelTab ===
+                        "properties"
+                            ? "border-violet-500 text-white"
+                            : "border-transparent text-slate-500 hover:text-slate-300"
+                    ].join(" ")}
+                >
+                    Properties
+                </button>
+
+                {!isDesktopPanel && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setPanelDrawerOpen(
+                                false
+                            );
+                        }}
+                        title="Close panel"
+                        className="mr-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-lg text-slate-300 hover:bg-slate-800"
+                    >
+                        ×
+                    </button>
+                )}
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                {rightPanelTab ===
+                    "layers" && (
+                    <>
+                        <PanelSection
+                            title="Layers"
+                            action={
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        addLayer()
+                                    }
+                                    className="rounded-md bg-violet-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white hover:bg-violet-400"
+                                >
+                                    + Add
+                                </button>
+                            }
+                        >
+                            <div className="space-y-2">
+                                {displayedLayers.map(
+                                    layer => {
+                                        const actualIndex =
+                                            layers.findIndex(
+                                                item =>
+                                                    item.id ===
+                                                    layer.id
+                                            );
+
+                                        const active =
+                                            layer.id ===
+                                            activeLayerId;
+
+                                        return (
+                                            <div
+                                                key={
+                                                    layer.id
+                                                }
+                                                onClick={() => {
+                                                    setActiveLayer(
+                                                        layer.id
+                                                    );
+                                                }}
+                                                className={[
+                                                    "cursor-pointer rounded-xl border p-2 transition",
+                                                    active
+                                                        ? "border-violet-500 bg-violet-500/10"
+                                                        : "border-slate-800 bg-slate-900 hover:border-slate-700"
+                                                ].join(" ")}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        title={
+                                                            layer.visible
+                                                                ? "Hide layer"
+                                                                : "Show layer"
+                                                        }
+                                                        onClick={event => {
+                                                            event.stopPropagation();
+
+                                                            toggleLayerVisibility(
+                                                                layer.id
+                                                            );
+                                                        }}
+                                                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-xs text-slate-300 hover:bg-slate-700"
+                                                    >
+                                                        {layer.visible
+                                                            ? "◉"
+                                                            : "○"}
+                                                    </button>
+
+                                                    <LayerNameField
+                                                        layer={
+                                                            layer
+                                                        }
+                                                        renameLayer={
+                                                            renameLayer
+                                                        }
+                                                    />
+
+                                                    <button
+                                                        type="button"
+                                                        title={
+                                                            layer.locked
+                                                                ? "Unlock layer"
+                                                                : "Lock layer"
+                                                        }
+                                                        onClick={event => {
+                                                            event.stopPropagation();
+
+                                                            toggleLayerLock(
+                                                                layer.id
+                                                            );
+                                                        }}
+                                                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-xs text-slate-300 hover:bg-slate-700"
+                                                    >
+                                                        {layer.locked
+                                                            ? "■"
+                                                            : "□"}
+                                                    </button>
+                                                </div>
+
+                                                <div className="mt-2 flex items-center justify-between pl-11 text-[10px] text-slate-500">
+                                                    <span>
+                                                        {layer.objectIds.length} object
+                                                        {layer.objectIds.length ===
+                                                        1
+                                                            ? ""
+                                                            : "s"}
+                                                    </span>
+
+                                                    <span>
+                                                        {Math.round(
+                                                            layer.opacity *
+                                                            100
+                                                        )}
+                                                        %
+                                                    </span>
+                                                </div>
+
+                                                {active && (
+                                                    <div className="mt-3 grid grid-cols-4 gap-1.5">
+                                                        <button
+                                                            type="button"
+                                                            disabled={
+                                                                actualIndex >=
+                                                                layers.length -
+                                                                    1
+                                                            }
+                                                            onClick={event => {
+                                                                event.stopPropagation();
+
+                                                                handleMoveLayerUp(
+                                                                    layer.id
+                                                                );
+                                                            }}
+                                                            className="min-h-9 rounded-md bg-slate-800 py-1.5 text-[10px] text-slate-300 hover:bg-slate-700 disabled:opacity-30"
+                                                        >
+                                                            Up
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            disabled={
+                                                                actualIndex <=
+                                                                0
+                                                            }
+                                                            onClick={event => {
+                                                                event.stopPropagation();
+
+                                                                handleMoveLayerDown(
+                                                                    layer.id
+                                                                );
+                                                            }}
+                                                            className="min-h-9 rounded-md bg-slate-800 py-1.5 text-[10px] text-slate-300 hover:bg-slate-700 disabled:opacity-30"
+                                                        >
+                                                            Down
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            onClick={event => {
+                                                                event.stopPropagation();
+
+                                                                duplicateLayer(
+                                                                    layer.id
+                                                                );
+                                                            }}
+                                                            className="min-h-9 rounded-md bg-slate-800 py-1.5 text-[10px] text-slate-300 hover:bg-slate-700"
+                                                        >
+                                                            Copy
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            disabled={
+                                                                layers.length <=
+                                                                1
+                                                            }
+                                                            onClick={event => {
+                                                                event.stopPropagation();
+
+                                                                handleDeleteActiveLayer();
+                                                            }}
+                                                            className="min-h-9 rounded-md bg-red-950/60 py-1.5 text-[10px] text-red-300 hover:bg-red-900 disabled:opacity-30"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    }
+                                )}
+                            </div>
+                        </PanelSection>
+
+                        {activeLayer && (
+                            <PanelSection title="Layer Settings">
+                                <div className="space-y-5">
+                                    <SliderField
+                                        label="Opacity"
+                                        value={
+                                            Math.round(
+                                                activeLayer.opacity *
+                                                100
+                                            )
+                                        }
+                                        minimum={0}
+                                        maximum={100}
+                                        suffix="%"
+                                        onStart={() => {
+                                            beginHistoryTransaction(
+                                                "Change layer opacity"
+                                            );
+                                        }}
+                                        onEnd={() => {
+                                            commitHistoryTransaction();
+                                        }}
+                                        onChange={value => {
+                                            setLayerOpacity(
+                                                activeLayer.id,
+                                                value /
+                                                    100
+                                            );
+                                        }}
+                                    />
+
+                                    <label className="block">
+                                        <span className="mb-2 block text-xs font-medium text-slate-300">
+                                            Blend mode
+                                        </span>
+
+                                        <select
+                                            value={
+                                                activeLayer.blendMode
+                                            }
+                                            onChange={event => {
+                                                setLayerBlendMode(
+                                                    activeLayer.id,
+                                                    event.target.value
+                                                );
+                                            }}
+                                            className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                                        >
+                                            {BLEND_MODES.map(
+                                                blendMode => (
+                                                    <option
+                                                        key={
+                                                            blendMode
+                                                        }
+                                                        value={
+                                                            blendMode
+                                                        }
+                                                    >
+                                                        {blendMode}
+                                                    </option>
+                                                )
+                                            )}
+                                        </select>
+                                    </label>
+                                </div>
+                            </PanelSection>
+                        )}
+                    </>
+                )}
+
+                {rightPanelTab ===
+                    "properties" && (
+                    <>
+                        {activeTool ===
+                            EDITOR_TOOLS.PENCIL && (
+                            <PanelSection title="Pencil">
+                                <div className="space-y-5">
+                                    <SliderField
+                                        label="Size"
+                                        value={
+                                            brush.size
+                                        }
+                                        minimum={
+                                            0.25
+                                        }
+                                        maximum={
+                                            100
+                                        }
+                                        step={
+                                            0.25
+                                        }
+                                        suffix="px"
+                                        onChange={value => {
+                                            setBrushSettings({
+                                                size:
+                                                    value
+                                            });
+                                        }}
+                                    />
+
+                                    <SliderField
+                                        label="Opacity"
+                                        value={
+                                            Math.round(
+                                                brush.opacity *
+                                                100
+                                            )
+                                        }
+                                        minimum={1}
+                                        maximum={100}
+                                        suffix="%"
+                                        onChange={value => {
+                                            setBrushSettings({
+                                                opacity:
+                                                    value /
+                                                    100
+                                            });
+                                        }}
+                                    />
+
+                                    <SliderField
+                                        label="Smoothing"
+                                        value={
+                                            Math.round(
+                                                brush.smoothing *
+                                                100
+                                            )
+                                        }
+                                        minimum={0}
+                                        maximum={100}
+                                        suffix="%"
+                                        onChange={value => {
+                                            setBrushSettings({
+                                                smoothing:
+                                                    value /
+                                                    100
+                                            });
+                                        }}
+                                    />
+
+                                    <SliderField
+                                        label="Streamline"
+                                        value={
+                                            Math.round(
+                                                brush.streamline *
+                                                100
+                                            )
+                                        }
+                                        minimum={0}
+                                        maximum={100}
+                                        suffix="%"
+                                        onChange={value => {
+                                            setBrushSettings({
+                                                streamline:
+                                                    value /
+                                                    100
+                                            });
+                                        }}
+                                    />
+
+                                    <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-slate-300">
+                                        Pressure enabled
+
+                                        <input
+                                            type="checkbox"
+                                            checked={
+                                                brush.pressureEnabled
+                                            }
+                                            onChange={event => {
+                                                setBrushSettings({
+                                                    pressureEnabled:
+                                                        event.target
+                                                            .checked
+                                                });
+                                            }}
+                                            className="h-5 w-5 accent-violet-500"
+                                        />
+                                    </label>
+
+                                    <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-slate-300">
+                                        Simulate pressure
+
+                                        <input
+                                            type="checkbox"
+                                            checked={
+                                                brush.simulatePressure
+                                            }
+                                            onChange={event => {
+                                                setBrushSettings({
+                                                    simulatePressure:
+                                                        event.target
+                                                            .checked
+                                                });
+                                            }}
+                                            className="h-5 w-5 accent-violet-500"
+                                        />
+                                    </label>
+                                </div>
+                            </PanelSection>
+                        )}
+
+                        {activeTool ===
+                            EDITOR_TOOLS.ERASER && (
+                            <PanelSection title="Eraser">
+                                <div className="space-y-5">
+                                    <SliderField
+                                        label="Size"
+                                        value={
+                                            eraser.size
+                                        }
+                                        minimum={
+                                            eraser.minimumSize
+                                        }
+                                        maximum={
+                                            eraser.maximumSize
+                                        }
+                                        suffix="px"
+                                        onChange={
+                                            setEraserSize
+                                        }
+                                    />
+
+                                    <div>
+                                        <p className="mb-2 text-xs font-medium text-slate-300">
+                                            Eraser mode
+                                        </p>
+
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setEraserMode(
+                                                        "stroke"
+                                                    );
+                                                }}
+                                                className={[
+                                                    "min-h-11 rounded-lg border px-3 py-2 text-xs font-semibold transition",
+                                                    eraser.mode ===
+                                                    "stroke"
+                                                        ? "border-violet-500 bg-violet-500 text-white"
+                                                        : "border-slate-700 bg-slate-900 text-slate-300"
+                                                ].join(" ")}
+                                            >
+                                                Stroke
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                disabled
+                                                title="Partial eraser will be added later"
+                                                className="min-h-11 cursor-not-allowed rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-600"
+                                            >
+                                                Partial
+                                            </button>
+                                        </div>
+
+                                        <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
+                                            Stroke mode removes the complete vector stroke touched by the eraser.
+                                        </p>
+                                    </div>
+                                </div>
+                            </PanelSection>
+                        )}
+
+                        {activeTool ===
+                            EDITOR_TOOLS.SELECT && (
+                            <PanelSection title="Selection">
+                                {selectedObjects.length >
+                                0 ? (
+                                    <div className="space-y-4">
+                                        <div className="rounded-xl border border-slate-800 bg-slate-900 p-3">
+                                            <p className="text-sm font-semibold text-white">
+                                                {selectedObjects.length} selected
+                                            </p>
+
+                                            <p className="mt-1 text-[10px] text-slate-500">
+                                                Drag to move. Use the handles to resize or rotate.
+                                            </p>
+                                        </div>
+
+                                        {selectedObjects.length ===
+                                            1 && (
+                                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                                <div className="rounded-lg bg-slate-900 p-3">
+                                                    <span className="block text-[9px] uppercase tracking-wide text-slate-500">
+                                                        X
+                                                    </span>
+
+                                                    <strong>
+                                                        {Math.round(
+                                                            numberOr(
+                                                                selectedObjects[0]
+                                                                    .x
+                                                            )
+                                                        )}
+                                                    </strong>
+                                                </div>
+
+                                                <div className="rounded-lg bg-slate-900 p-3">
+                                                    <span className="block text-[9px] uppercase tracking-wide text-slate-500">
+                                                        Y
+                                                    </span>
+
+                                                    <strong>
+                                                        {Math.round(
+                                                            numberOr(
+                                                                selectedObjects[0]
+                                                                    .y
+                                                            )
+                                                        )}
+                                                    </strong>
+                                                </div>
+
+                                                <div className="rounded-lg bg-slate-900 p-3">
+                                                    <span className="block text-[9px] uppercase tracking-wide text-slate-500">
+                                                        Rotation
+                                                    </span>
+
+                                                    <strong>
+                                                        {Math.round(
+                                                            numberOr(
+                                                                selectedObjects[0]
+                                                                    .rotation
+                                                            )
+                                                        )}
+                                                        °
+                                                    </strong>
+                                                </div>
+
+                                                <div className="rounded-lg bg-slate-900 p-3">
+                                                    <span className="block text-[9px] uppercase tracking-wide text-slate-500">
+                                                        Type
+                                                    </span>
+
+                                                    <strong className="capitalize">
+                                                        {
+                                                            selectedObjects[0]
+                                                                .type
+                                                        }
+                                                    </strong>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    duplicateObjects(
+                                                        selectedObjectIds
+                                                    );
+                                                }}
+                                                className="min-h-11 rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700"
+                                            >
+                                                Duplicate
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    deleteObjects(
+                                                        selectedObjectIds
+                                                    );
+                                                }}
+                                                className="min-h-11 rounded-lg bg-red-950/60 px-3 py-2 text-xs font-semibold text-red-300 hover:bg-red-900"
+                                            >
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="text-xs leading-relaxed text-slate-500">
+                                        Click an object or drag a selection rectangle across several objects.
+                                    </p>
+                                )}
+                            </PanelSection>
+                        )}
+
+                        <PanelSection title="Colours">
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+                                    <label>
+                                        <span className="mb-1.5 block text-[10px] uppercase tracking-wide text-slate-500">
+                                            Primary
+                                        </span>
+
+                                        <input
+                                            type="color"
+                                            value={
+                                                colours.primary
+                                            }
+                                            onChange={event => {
+                                                setPrimaryColor(
+                                                    event.target.value
+                                                );
+                                            }}
+                                            className="h-11 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-1"
+                                        />
+                                    </label>
+
+                                    <button
+                                        type="button"
+                                        onClick={
+                                            swapColors
+                                        }
+                                        title="Swap colours"
+                                        className="mb-0.5 h-11 w-11 rounded-lg border border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
+                                    >
+                                        ↔
+                                    </button>
+
+                                    <label>
+                                        <span className="mb-1.5 block text-[10px] uppercase tracking-wide text-slate-500">
+                                            Secondary
+                                        </span>
+
+                                        <input
+                                            type="color"
+                                            value={
+                                                colours.secondary
+                                            }
+                                            onChange={event => {
+                                                setSecondaryColor(
+                                                    event.target.value
+                                                );
+                                            }}
+                                            className="h-11 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-1"
+                                        />
+                                    </label>
+                                </div>
+
+                                <div className="grid grid-cols-8 gap-2">
+                                    {DEFAULT_COLOURS.map(
+                                        colour => (
+                                            <button
+                                                key={
+                                                    colour
+                                                }
+                                                type="button"
+                                                title={
+                                                    colour
+                                                }
+                                                onClick={() => {
+                                                    setPrimaryColor(
+                                                        colour
+                                                    );
+                                                }}
+                                                className={[
+                                                    "aspect-square min-h-7 rounded-md border-2 transition hover:scale-110",
+                                                    colours.primary ===
+                                                    colour
+                                                        ? "border-violet-400"
+                                                        : "border-slate-700"
+                                                ].join(" ")}
+                                                style={{
+                                                    background:
+                                                        colour
+                                                }}
+                                            />
+                                        )
+                                    )}
+                                </div>
+
+                                {colours.recent.length >
+                                    0 && (
+                                    <div>
+                                        <p className="mb-2 text-[10px] uppercase tracking-wide text-slate-500">
+                                            Recent
+                                        </p>
+
+                                        <div className="flex flex-wrap gap-2">
+                                            {colours.recent
+                                                .slice(
+                                                    0,
+                                                    12
+                                                )
+                                                .map(
+                                                    colour => (
+                                                        <button
+                                                            key={
+                                                                colour
+                                                            }
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setPrimaryColor(
+                                                                    colour
+                                                                );
+                                                            }}
+                                                            className="h-8 w-8 rounded-md border border-slate-700"
+                                                            style={{
+                                                                background:
+                                                                    colour
+                                                            }}
+                                                        />
+                                                    )
+                                                )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </PanelSection>
+
+                        <PanelSection title="Document">
+                            <div className="space-y-4 text-xs">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="rounded-lg bg-slate-900 p-3">
+                                        <span className="block text-[9px] uppercase tracking-wide text-slate-500">
+                                            Width
+                                        </span>
+
+                                        <strong>
+                                            {documentData.width}px
+                                        </strong>
+                                    </div>
+
+                                    <div className="rounded-lg bg-slate-900 p-3">
+                                        <span className="block text-[9px] uppercase tracking-wide text-slate-500">
+                                            Height
+                                        </span>
+
+                                        <strong>
+                                            {documentData.height}px
+                                        </strong>
+                                    </div>
+                                </div>
+
+                                <label className="block">
+                                    <span className="mb-2 block text-xs font-medium text-slate-300">
+                                        Background
+                                    </span>
+
+                                    <input
+                                        type="color"
+                                        value={
+                                            documentData.background
+                                        }
+                                        onChange={event => {
+                                            setDocumentBackground(
+                                                event.target.value
+                                            );
+                                        }}
+                                        className="h-11 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-1"
+                                    />
+                                </label>
+                            </div>
+                        </PanelSection>
+                    </>
+                )}
+            </div>
+        </>
+    );
+
+    /*=====================================================
     Render
     =====================================================*/
 
     return (
-        <div className="flex h-screen w-full flex-col overflow-hidden bg-slate-950 text-slate-100">
+        <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-slate-950 text-slate-100">
             <input
                 ref={fileInputRef}
                 type="file"
@@ -1543,13 +2566,13 @@ function FashionEditor() {
 
             {/* Header */}
 
-            <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-slate-800 bg-slate-950 px-4">
-                <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500 text-sm font-black text-white shadow-lg shadow-violet-950/40">
+            <header className="relative z-30 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-slate-800 bg-slate-950 px-2 sm:px-4">
+                <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500 text-xs font-black text-white shadow-lg shadow-violet-950/40">
                         FV
                     </div>
 
-                    <div className="hidden shrink-0 sm:block">
+                    <div className="hidden shrink-0 lg:block">
                         <p className="text-xs font-bold tracking-wide text-white">
                             FashionVision
                         </p>
@@ -1559,27 +2582,16 @@ function FashionEditor() {
                         </p>
                     </div>
 
-                    <div className="hidden h-6 w-px bg-slate-800 sm:block" />
+                    <div className="hidden h-6 w-px bg-slate-800 lg:block" />
 
-                    <div className="flex min-w-0 items-center gap-2">
-                        <input
-                            value={
-                                documentData.name
+                    <div className="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
+                        <DocumentNameField
+                            documentData={
+                                documentData
                             }
-                            onChange={event => {
-                                const value =
-                                    event.target.value;
-
-                                if (
-                                    value.trim()
-                                ) {
-                                    setDocumentName(
-                                        value
-                                    );
-                                }
-                            }}
-                            className="min-w-0 max-w-64 rounded-md border border-transparent bg-transparent px-2 py-1 text-sm font-semibold text-slate-200 outline-none transition hover:border-slate-700 focus:border-violet-500 focus:bg-slate-900"
-                            aria-label="Document name"
+                            setDocumentName={
+                                setDocumentName
+                            }
                         />
 
                         {persistence.dirty && (
@@ -1591,8 +2603,8 @@ function FashionEditor() {
                     </div>
                 </div>
 
-                <div className="flex shrink-0 items-center gap-2">
-                    <div className="hidden items-center gap-2 md:flex">
+                <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+                    <div className="hidden items-center gap-2 lg:flex">
                         <HeaderButton
                             onClick={
                                 handleNewDocument
@@ -1631,14 +2643,13 @@ function FashionEditor() {
                         </HeaderButton>
                     </div>
 
-                    <div className="mx-1 hidden h-6 w-px bg-slate-800 md:block" />
-
                     <HeaderButton
                         onClick={undo}
                         disabled={
                             !canUndo
                         }
-                        title="Undo (Ctrl+Z)"
+                        title="Undo"
+                        className="w-9 px-0"
                     >
                         ↶
                     </HeaderButton>
@@ -1648,31 +2659,139 @@ function FashionEditor() {
                         disabled={
                             !canRedo
                         }
-                        title="Redo (Ctrl+Y)"
+                        title="Redo"
+                        className="hidden w-9 px-0 sm:inline-flex"
                     >
                         ↷
                     </HeaderButton>
 
                     <HeaderButton
                         onClick={() => {
-                            setUiState({
-                                rightPanelOpen:
-                                    !ui.rightPanelOpen
-                            });
+                            if (
+                                isDesktopPanel
+                            ) {
+                                setUiState({
+                                    rightPanelOpen:
+                                        !ui.rightPanelOpen
+                                });
+                            } else {
+                                setPanelDrawerOpen(
+                                    true
+                                );
+                            }
                         }}
                         active={
-                            ui.rightPanelOpen
+                            isDesktopPanel
+                                ? ui.rightPanelOpen
+                                : panelDrawerOpen
                         }
-                        title="Toggle right panel"
+                        title="Layers and properties"
+                        className="hidden sm:inline-flex"
                     >
                         Panel
                     </HeaderButton>
+
+                    <HeaderButton
+                        onClick={() => {
+                            setMobileMenuOpen(
+                                value =>
+                                    !value
+                            );
+                        }}
+                        active={
+                            mobileMenuOpen
+                        }
+                        title="File menu"
+                        className="lg:hidden"
+                    >
+                        Menu
+                    </HeaderButton>
                 </div>
+
+                {mobileMenuOpen && (
+                    <>
+                        <button
+                            type="button"
+                            aria-label="Close menu"
+                            onClick={() => {
+                                setMobileMenuOpen(
+                                    false
+                                );
+                            }}
+                            className="fixed inset-0 z-30 cursor-default bg-black/20 lg:hidden"
+                        />
+
+                        <div className="absolute right-2 top-[calc(100%+6px)] z-40 w-52 overflow-hidden rounded-xl border border-slate-700 bg-slate-950 p-2 shadow-2xl lg:hidden">
+                            <button
+                                type="button"
+                                onClick={
+                                    handleNewDocument
+                                }
+                                className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm text-slate-200 hover:bg-slate-800"
+                            >
+                                New project
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={
+                                    handleOpenProject
+                                }
+                                className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm text-slate-200 hover:bg-slate-800"
+                            >
+                                Open project
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    handleSaveProject()
+                                }
+                                className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm text-slate-200 hover:bg-slate-800"
+                            >
+                                Save project
+                            </button>
+
+                            <button
+                                type="button"
+                                disabled={
+                                    exporting
+                                }
+                                onClick={
+                                    handleExportPng
+                                }
+                                className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-40"
+                            >
+                                {exporting
+                                    ? "Exporting PNG…"
+                                    : "Export PNG"}
+                            </button>
+
+                            <div className="my-1 h-px bg-slate-800 sm:hidden" />
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setMobileMenuOpen(
+                                        false
+                                    );
+
+                                    setPanelDrawerOpen(
+                                        true
+                                    );
+                                }}
+                                className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm text-slate-200 hover:bg-slate-800 sm:hidden"
+                            >
+                                Layers and properties
+                            </button>
+                        </div>
+                    </>
+                )}
             </header>
 
             {/* Tool options */}
 
-            <div className="flex h-12 shrink-0 items-center gap-4 overflow-x-auto border-b border-slate-800 bg-slate-900 px-4">
+            <div className="flex h-12 shrink-0 items-center gap-3 overflow-x-auto overscroll-x-contain border-b border-slate-800 bg-slate-900 px-3 sm:gap-4 sm:px-4">
                 <div className="shrink-0 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
                     {activeToolDefinition
                         ?.label ||
@@ -1703,7 +2822,7 @@ function FashionEditor() {
                                             )
                                     });
                                 }}
-                                className="w-28 accent-violet-500"
+                                className="w-24 accent-violet-500 sm:w-28"
                             />
 
                             <span className="min-w-10 font-semibold text-slate-100">
@@ -1711,7 +2830,7 @@ function FashionEditor() {
                             </span>
                         </label>
 
-                        <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+                        <label className="hidden shrink-0 items-center gap-2 text-xs text-slate-300 sm:flex">
                             Opacity
 
                             <input
@@ -1747,7 +2866,7 @@ function FashionEditor() {
                 {activeTool ===
                     EDITOR_TOOLS.ERASER && (
                     <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
-                        Eraser size
+                        Size
 
                         <input
                             type="range"
@@ -1768,7 +2887,7 @@ function FashionEditor() {
                                     )
                                 );
                             }}
-                            className="w-40 accent-violet-500"
+                            className="w-28 accent-violet-500 sm:w-40"
                         />
 
                         <span className="min-w-12 font-semibold text-slate-100">
@@ -1779,27 +2898,22 @@ function FashionEditor() {
 
                 {activeTool ===
                     EDITOR_TOOLS.SELECT && (
-                    <span className="text-xs text-slate-400">
+                    <span className="shrink-0 text-xs text-slate-400">
                         {selectedObjectIds.length >
                         0
-                            ? `${selectedObjectIds.length} object${
-                                selectedObjectIds.length ===
-                                1
-                                    ? ""
-                                    : "s"
-                            } selected`
-                            : "Click or drag to select objects"}
+                            ? `${selectedObjectIds.length} selected`
+                            : "Tap or drag to select"}
                     </span>
                 )}
 
                 {activeTool ===
                     EDITOR_TOOLS.PAN && (
-                    <span className="text-xs text-slate-400">
-                        Drag to move the canvas. Hold Space from any tool.
+                    <span className="shrink-0 text-xs text-slate-400">
+                        Drag to move canvas
                     </span>
                 )}
 
-                <div className="ml-auto flex shrink-0 items-center gap-2">
+                <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
                     <HeaderButton
                         onClick={
                             toggleGrid
@@ -1808,6 +2922,7 @@ function FashionEditor() {
                             ui.showGrid
                         }
                         title="Toggle grid"
+                        className="hidden sm:inline-flex"
                     >
                         Grid
                     </HeaderButton>
@@ -1817,11 +2932,12 @@ function FashionEditor() {
                             zoomOut()
                         }
                         title="Zoom out"
+                        className="w-9 px-0"
                     >
                         −
                     </HeaderButton>
 
-                    <span className="min-w-12 text-center text-xs font-semibold text-slate-300">
+                    <span className="min-w-11 text-center text-xs font-semibold text-slate-300">
                         {zoomPercentage}%
                     </span>
 
@@ -1830,6 +2946,7 @@ function FashionEditor() {
                             zoomIn()
                         }
                         title="Zoom in"
+                        className="w-9 px-0"
                     >
                         +
                     </HeaderButton>
@@ -1838,7 +2955,7 @@ function FashionEditor() {
                         onClick={
                             fitCanvas
                         }
-                        title="Fit document (0)"
+                        title="Fit document"
                     >
                         Fit
                     </HeaderButton>
@@ -1848,9 +2965,11 @@ function FashionEditor() {
             {/* Workspace */}
 
             <main className="flex min-h-0 flex-1 overflow-hidden">
+                {/* Tablet/Desktop toolbar */}
+
                 {ui.leftPanelOpen !==
                     false && (
-                    <aside className="flex w-[76px] shrink-0 flex-col items-center gap-2 overflow-y-auto border-r border-slate-800 bg-slate-950 py-3">
+                    <aside className="hidden w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto border-r border-slate-800 bg-slate-950 py-3 md:flex">
                         {TOOL_DEFINITIONS.map(
                             tool => (
                                 <ToolButton
@@ -1878,11 +2997,18 @@ function FashionEditor() {
                                 type="button"
                                 title="Primary colour"
                                 onClick={() => {
-                                    globalThis.document
-                                        .getElementById(
-                                            "fashion-primary-colour"
-                                        )
-                                        ?.click();
+                                    setUiState({
+                                        rightPanelTab:
+                                            "properties"
+                                    });
+
+                                    if (
+                                        !isDesktopPanel
+                                    ) {
+                                        setPanelDrawerOpen(
+                                            true
+                                        );
+                                    }
                                 }}
                                 className="absolute left-0 top-0 h-8 w-8 rounded-lg border-2 border-slate-600 shadow"
                                 style={{
@@ -1895,11 +3021,18 @@ function FashionEditor() {
                                 type="button"
                                 title="Secondary colour"
                                 onClick={() => {
-                                    globalThis.document
-                                        .getElementById(
-                                            "fashion-secondary-colour"
-                                        )
-                                        ?.click();
+                                    setUiState({
+                                        rightPanelTab:
+                                            "properties"
+                                    });
+
+                                    if (
+                                        !isDesktopPanel
+                                    ) {
+                                        setPanelDrawerOpen(
+                                            true
+                                        );
+                                    }
                                 }}
                                 className="absolute bottom-0 right-0 h-8 w-8 rounded-lg border-2 border-slate-600 shadow"
                                 style={{
@@ -1922,7 +3055,9 @@ function FashionEditor() {
                     </aside>
                 )}
 
-                <section className="relative min-w-0 flex-1 bg-slate-800">
+                {/* Canvas */}
+
+                <section className="relative min-w-0 flex-1 overflow-hidden bg-slate-800">
                     <EditorCanvas
                         ref={stageRef}
                         className="h-full w-full"
@@ -1933,9 +3068,7 @@ function FashionEditor() {
                         onSaveRequested={
                             handleSaveProject
                         }
-                        onError={(
-                            error
-                        ) => {
+                        onError={error => {
                             console.error(
                                 error
                             );
@@ -1952,812 +3085,65 @@ function FashionEditor() {
                     />
                 </section>
 
-                {ui.rightPanelOpen !==
-                    false && (
-                    <aside className="hidden w-[320px] shrink-0 flex-col border-l border-slate-800 bg-slate-950 xl:flex">
-                        <div className="flex h-11 shrink-0 border-b border-slate-800">
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    setRightPanelTab(
-                                        "layers"
-                                    )
-                                }
-                                className={[
-                                    "flex-1 border-b-2 text-[10px] font-bold uppercase tracking-[0.16em] transition",
-                                    rightPanelTab ===
-                                    "layers"
-                                        ? "border-violet-500 text-white"
-                                        : "border-transparent text-slate-500 hover:text-slate-300"
-                                ].join(
-                                    " "
-                                )}
-                            >
-                                Layers
-                            </button>
+                {/* Desktop right panel */}
 
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    setRightPanelTab(
-                                        "properties"
-                                    )
-                                }
-                                className={[
-                                    "flex-1 border-b-2 text-[10px] font-bold uppercase tracking-[0.16em] transition",
-                                    rightPanelTab ===
-                                    "properties"
-                                        ? "border-violet-500 text-white"
-                                        : "border-transparent text-slate-500 hover:text-slate-300"
-                                ].join(
-                                    " "
-                                )}
-                            >
-                                Properties
-                            </button>
-                        </div>
-
-                        <div className="min-h-0 flex-1 overflow-y-auto">
-                            {rightPanelTab ===
-                                "layers" && (
-                                <>
-                                    <PanelSection
-                                        title="Layers"
-                                        action={
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    addLayer()
-                                                }
-                                                className="rounded-md bg-violet-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white hover:bg-violet-400"
-                                            >
-                                                + Add
-                                            </button>
-                                        }
-                                    >
-                                        <div className="space-y-2">
-                                            {displayedLayers.map(
-                                                layer => {
-                                                    const actualIndex =
-                                                        layers.findIndex(
-                                                            item =>
-                                                                item.id ===
-                                                                layer.id
-                                                        );
-
-                                                    const active =
-                                                        layer.id ===
-                                                        activeLayerId;
-
-                                                    return (
-                                                        <div
-                                                            key={
-                                                                layer.id
-                                                            }
-                                                            onClick={() => {
-                                                                setActiveLayer(
-                                                                    layer.id
-                                                                );
-                                                            }}
-                                                            className={[
-                                                                "cursor-pointer rounded-xl border p-2 transition",
-                                                                active
-                                                                    ? "border-violet-500 bg-violet-500/10"
-                                                                    : "border-slate-800 bg-slate-900 hover:border-slate-700"
-                                                            ].join(
-                                                                " "
-                                                            )}
-                                                        >
-                                                            <div className="flex items-center gap-2">
-                                                                <button
-                                                                    type="button"
-                                                                    title={
-                                                                        layer.visible
-                                                                            ? "Hide layer"
-                                                                            : "Show layer"
-                                                                    }
-                                                                    onClick={event => {
-                                                                        event.stopPropagation();
-
-                                                                        toggleLayerVisibility(
-                                                                            layer.id
-                                                                        );
-                                                                    }}
-                                                                    className="h-7 w-7 rounded-md bg-slate-800 text-xs text-slate-300 hover:bg-slate-700"
-                                                                >
-                                                                    {layer.visible
-                                                                        ? "◉"
-                                                                        : "○"}
-                                                                </button>
-
-                                                                <LayerNameField
-                                                                    layer={
-                                                                        layer
-                                                                    }
-                                                                    renameLayer={
-                                                                        renameLayer
-                                                                    }
-                                                                />
-
-                                                                <button
-                                                                    type="button"
-                                                                    title={
-                                                                        layer.locked
-                                                                            ? "Unlock layer"
-                                                                            : "Lock layer"
-                                                                    }
-                                                                    onClick={event => {
-                                                                        event.stopPropagation();
-
-                                                                        toggleLayerLock(
-                                                                            layer.id
-                                                                        );
-                                                                    }}
-                                                                    className="h-7 w-7 rounded-md bg-slate-800 text-xs text-slate-300 hover:bg-slate-700"
-                                                                >
-                                                                    {layer.locked
-                                                                        ? "■"
-                                                                        : "□"}
-                                                                </button>
-                                                            </div>
-
-                                                            <div className="mt-2 flex items-center justify-between pl-9 text-[10px] text-slate-500">
-                                                                <span>
-                                                                    {layer.objectIds.length} object
-                                                                    {layer.objectIds.length ===
-                                                                    1
-                                                                        ? ""
-                                                                        : "s"}
-                                                                </span>
-
-                                                                <span>
-                                                                    {Math.round(
-                                                                        layer.opacity *
-                                                                        100
-                                                                    )}
-                                                                    %
-                                                                </span>
-                                                            </div>
-
-                                                            {active && (
-                                                                <div className="mt-3 grid grid-cols-4 gap-1.5">
-                                                                    <button
-                                                                        type="button"
-                                                                        disabled={
-                                                                            actualIndex >=
-                                                                            layers.length -
-                                                                                1
-                                                                        }
-                                                                        onClick={event => {
-                                                                            event.stopPropagation();
-
-                                                                            handleMoveLayerUp(
-                                                                                layer.id
-                                                                            );
-                                                                        }}
-                                                                        className="rounded-md bg-slate-800 py-1.5 text-[10px] text-slate-300 hover:bg-slate-700 disabled:opacity-30"
-                                                                    >
-                                                                        Up
-                                                                    </button>
-
-                                                                    <button
-                                                                        type="button"
-                                                                        disabled={
-                                                                            actualIndex <=
-                                                                            0
-                                                                        }
-                                                                        onClick={event => {
-                                                                            event.stopPropagation();
-
-                                                                            handleMoveLayerDown(
-                                                                                layer.id
-                                                                            );
-                                                                        }}
-                                                                        className="rounded-md bg-slate-800 py-1.5 text-[10px] text-slate-300 hover:bg-slate-700 disabled:opacity-30"
-                                                                    >
-                                                                        Down
-                                                                    </button>
-
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={event => {
-                                                                            event.stopPropagation();
-
-                                                                            duplicateLayer(
-                                                                                layer.id
-                                                                            );
-                                                                        }}
-                                                                        className="rounded-md bg-slate-800 py-1.5 text-[10px] text-slate-300 hover:bg-slate-700"
-                                                                    >
-                                                                        Copy
-                                                                    </button>
-
-                                                                    <button
-                                                                        type="button"
-                                                                        disabled={
-                                                                            layers.length <=
-                                                                            1
-                                                                        }
-                                                                        onClick={event => {
-                                                                            event.stopPropagation();
-
-                                                                            handleDeleteActiveLayer();
-                                                                        }}
-                                                                        className="rounded-md bg-red-950/60 py-1.5 text-[10px] text-red-300 hover:bg-red-900 disabled:opacity-30"
-                                                                    >
-                                                                        Delete
-                                                                    </button>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                }
-                                            )}
-                                        </div>
-                                    </PanelSection>
-
-                                    {activeLayer && (
-                                        <PanelSection title="Layer Settings">
-                                            <div className="space-y-5">
-                                                <SliderField
-                                                    label="Opacity"
-                                                    value={
-                                                        Math.round(
-                                                            activeLayer.opacity *
-                                                            100
-                                                        )
-                                                    }
-                                                    minimum={0}
-                                                    maximum={100}
-                                                    suffix="%"
-                                                    onStart={() => {
-                                                        beginHistoryTransaction(
-                                                            "Change layer opacity"
-                                                        );
-                                                    }}
-                                                    onEnd={() => {
-                                                        commitHistoryTransaction();
-                                                    }}
-                                                    onChange={value => {
-                                                        setLayerOpacity(
-                                                            activeLayer.id,
-                                                            value /
-                                                                100
-                                                        );
-                                                    }}
-                                                />
-
-                                                <label className="block">
-                                                    <span className="mb-2 block text-xs font-medium text-slate-300">
-                                                        Blend mode
-                                                    </span>
-
-                                                    <select
-                                                        value={
-                                                            activeLayer.blendMode
-                                                        }
-                                                        onChange={event => {
-                                                            setLayerBlendMode(
-                                                                activeLayer.id,
-                                                                event.target.value
-                                                            );
-                                                        }}
-                                                        className="h-9 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
-                                                    >
-                                                        {BLEND_MODES.map(
-                                                            blendMode => (
-                                                                <option
-                                                                    key={
-                                                                        blendMode
-                                                                    }
-                                                                    value={
-                                                                        blendMode
-                                                                    }
-                                                                >
-                                                                    {blendMode}
-                                                                </option>
-                                                            )
-                                                        )}
-                                                    </select>
-                                                </label>
-                                            </div>
-                                        </PanelSection>
-                                    )}
-                                </>
-                            )}
-
-                            {rightPanelTab ===
-                                "properties" && (
-                                <>
-                                    {activeTool ===
-                                        EDITOR_TOOLS.PENCIL && (
-                                        <PanelSection title="Pencil">
-                                            <div className="space-y-5">
-                                                <SliderField
-                                                    label="Size"
-                                                    value={
-                                                        brush.size
-                                                    }
-                                                    minimum={
-                                                        0.25
-                                                    }
-                                                    maximum={
-                                                        100
-                                                    }
-                                                    step={
-                                                        0.25
-                                                    }
-                                                    suffix="px"
-                                                    onChange={value => {
-                                                        setBrushSettings({
-                                                            size:
-                                                                value
-                                                        });
-                                                    }}
-                                                />
-
-                                                <SliderField
-                                                    label="Opacity"
-                                                    value={
-                                                        Math.round(
-                                                            brush.opacity *
-                                                            100
-                                                        )
-                                                    }
-                                                    minimum={1}
-                                                    maximum={100}
-                                                    suffix="%"
-                                                    onChange={value => {
-                                                        setBrushSettings({
-                                                            opacity:
-                                                                value /
-                                                                100
-                                                        });
-                                                    }}
-                                                />
-
-                                                <SliderField
-                                                    label="Smoothing"
-                                                    value={
-                                                        Math.round(
-                                                            brush.smoothing *
-                                                            100
-                                                        )
-                                                    }
-                                                    minimum={0}
-                                                    maximum={100}
-                                                    suffix="%"
-                                                    onChange={value => {
-                                                        setBrushSettings({
-                                                            smoothing:
-                                                                value /
-                                                                100
-                                                        });
-                                                    }}
-                                                />
-
-                                                <SliderField
-                                                    label="Streamline"
-                                                    value={
-                                                        Math.round(
-                                                            brush.streamline *
-                                                            100
-                                                        )
-                                                    }
-                                                    minimum={0}
-                                                    maximum={100}
-                                                    suffix="%"
-                                                    onChange={value => {
-                                                        setBrushSettings({
-                                                            streamline:
-                                                                value /
-                                                                100
-                                                        });
-                                                    }}
-                                                />
-
-                                                <label className="flex items-center justify-between gap-4 text-xs text-slate-300">
-                                                    Pressure enabled
-
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={
-                                                            brush.pressureEnabled
-                                                        }
-                                                        onChange={event => {
-                                                            setBrushSettings({
-                                                                pressureEnabled:
-                                                                    event.target
-                                                                        .checked
-                                                            });
-                                                        }}
-                                                        className="h-4 w-4 accent-violet-500"
-                                                    />
-                                                </label>
-
-                                                <label className="flex items-center justify-between gap-4 text-xs text-slate-300">
-                                                    Simulate pressure
-
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={
-                                                            brush.simulatePressure
-                                                        }
-                                                        onChange={event => {
-                                                            setBrushSettings({
-                                                                simulatePressure:
-                                                                    event.target
-                                                                        .checked
-                                                            });
-                                                        }}
-                                                        className="h-4 w-4 accent-violet-500"
-                                                    />
-                                                </label>
-                                            </div>
-                                        </PanelSection>
-                                    )}
-
-                                    {activeTool ===
-                                        EDITOR_TOOLS.ERASER && (
-                                        <PanelSection title="Eraser">
-                                            <div className="space-y-5">
-                                                <SliderField
-                                                    label="Size"
-                                                    value={
-                                                        eraser.size
-                                                    }
-                                                    minimum={
-                                                        eraser.minimumSize
-                                                    }
-                                                    maximum={
-                                                        eraser.maximumSize
-                                                    }
-                                                    suffix="px"
-                                                    onChange={
-                                                        setEraserSize
-                                                    }
-                                                />
-
-                                                <div>
-                                                    <p className="mb-2 text-xs font-medium text-slate-300">
-                                                        Eraser mode
-                                                    </p>
-
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setEraserMode(
-                                                                    "stroke"
-                                                                );
-                                                            }}
-                                                            className={[
-                                                                "rounded-lg border px-3 py-2 text-xs font-semibold transition",
-                                                                eraser.mode ===
-                                                                "stroke"
-                                                                    ? "border-violet-500 bg-violet-500 text-white"
-                                                                    : "border-slate-700 bg-slate-900 text-slate-300"
-                                                            ].join(
-                                                                " "
-                                                            )}
-                                                        >
-                                                            Stroke
-                                                        </button>
-
-                                                        <button
-                                                            type="button"
-                                                            disabled
-                                                            title="Partial eraser will be added later"
-                                                            className="cursor-not-allowed rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-600"
-                                                        >
-                                                            Partial
-                                                        </button>
-                                                    </div>
-
-                                                    <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
-                                                        Stroke mode removes an entire vector stroke touched by the eraser.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </PanelSection>
-                                    )}
-
-                                    {activeTool ===
-                                        EDITOR_TOOLS.SELECT && (
-                                        <PanelSection title="Selection">
-                                            {selectedObjects.length >
-                                            0 ? (
-                                                <div className="space-y-4">
-                                                    <div className="rounded-xl border border-slate-800 bg-slate-900 p-3">
-                                                        <p className="text-sm font-semibold text-white">
-                                                            {selectedObjects.length} selected
-                                                        </p>
-
-                                                        <p className="mt-1 text-[10px] text-slate-500">
-                                                            Drag to move. Use the handles to resize or rotate.
-                                                        </p>
-                                                    </div>
-
-                                                    {selectedObjects.length ===
-                                                        1 && (
-                                                        <div className="grid grid-cols-2 gap-2 text-xs">
-                                                            <div className="rounded-lg bg-slate-900 p-3">
-                                                                <span className="block text-[9px] uppercase tracking-wide text-slate-500">
-                                                                    X
-                                                                </span>
-
-                                                                <strong>
-                                                                    {Math.round(
-                                                                        numberOr(
-                                                                            selectedObjects[0]
-                                                                                .x
-                                                                        )
-                                                                    )}
-                                                                </strong>
-                                                            </div>
-
-                                                            <div className="rounded-lg bg-slate-900 p-3">
-                                                                <span className="block text-[9px] uppercase tracking-wide text-slate-500">
-                                                                    Y
-                                                                </span>
-
-                                                                <strong>
-                                                                    {Math.round(
-                                                                        numberOr(
-                                                                            selectedObjects[0]
-                                                                                .y
-                                                                        )
-                                                                    )}
-                                                                </strong>
-                                                            </div>
-
-                                                            <div className="rounded-lg bg-slate-900 p-3">
-                                                                <span className="block text-[9px] uppercase tracking-wide text-slate-500">
-                                                                    Rotation
-                                                                </span>
-
-                                                                <strong>
-                                                                    {Math.round(
-                                                                        numberOr(
-                                                                            selectedObjects[0]
-                                                                                .rotation
-                                                                        )
-                                                                    )}
-                                                                    °
-                                                                </strong>
-                                                            </div>
-
-                                                            <div className="rounded-lg bg-slate-900 p-3">
-                                                                <span className="block text-[9px] uppercase tracking-wide text-slate-500">
-                                                                    Type
-                                                                </span>
-
-                                                                <strong className="capitalize">
-                                                                    {
-                                                                        selectedObjects[0]
-                                                                            .type
-                                                                    }
-                                                                </strong>
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                duplicateObjects(
-                                                                    selectedObjectIds
-                                                                );
-                                                            }}
-                                                            className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700"
-                                                        >
-                                                            Duplicate
-                                                        </button>
-
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                deleteObjects(
-                                                                    selectedObjectIds
-                                                                );
-                                                            }}
-                                                            className="rounded-lg bg-red-950/60 px-3 py-2 text-xs font-semibold text-red-300 hover:bg-red-900"
-                                                        >
-                                                            Delete
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <p className="text-xs leading-relaxed text-slate-500">
-                                                    Click an object or drag a selection rectangle across several objects.
-                                                </p>
-                                            )}
-                                        </PanelSection>
-                                    )}
-
-                                    <PanelSection title="Colours">
-                                        <div className="space-y-4">
-                                            <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
-                                                <label>
-                                                    <span className="mb-1.5 block text-[10px] uppercase tracking-wide text-slate-500">
-                                                        Primary
-                                                    </span>
-
-                                                    <input
-                                                        id="fashion-primary-colour"
-                                                        type="color"
-                                                        value={
-                                                            colours.primary
-                                                        }
-                                                        onChange={event => {
-                                                            setPrimaryColor(
-                                                                event.target.value
-                                                            );
-                                                        }}
-                                                        className="h-10 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-1"
-                                                    />
-                                                </label>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={
-                                                        swapColors
-                                                    }
-                                                    title="Swap colours"
-                                                    className="mb-0.5 h-9 w-9 rounded-lg border border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
-                                                >
-                                                    ↔
-                                                </button>
-
-                                                <label>
-                                                    <span className="mb-1.5 block text-[10px] uppercase tracking-wide text-slate-500">
-                                                        Secondary
-                                                    </span>
-
-                                                    <input
-                                                        id="fashion-secondary-colour"
-                                                        type="color"
-                                                        value={
-                                                            colours.secondary
-                                                        }
-                                                        onChange={event => {
-                                                            setSecondaryColor(
-                                                                event.target.value
-                                                            );
-                                                        }}
-                                                        className="h-10 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-1"
-                                                    />
-                                                </label>
-                                            </div>
-
-                                            <div className="grid grid-cols-8 gap-2">
-                                                {DEFAULT_COLOURS.map(
-                                                    colour => (
-                                                        <button
-                                                            key={
-                                                                colour
-                                                            }
-                                                            type="button"
-                                                            title={
-                                                                colour
-                                                            }
-                                                            onClick={() => {
-                                                                setPrimaryColor(
-                                                                    colour
-                                                                );
-                                                            }}
-                                                            className={[
-                                                                "aspect-square rounded-md border-2 transition hover:scale-110",
-                                                                colours.primary ===
-                                                                colour
-                                                                    ? "border-violet-400"
-                                                                    : "border-slate-700"
-                                                            ].join(
-                                                                " "
-                                                            )}
-                                                            style={{
-                                                                background:
-                                                                    colour
-                                                            }}
-                                                        />
-                                                    )
-                                                )}
-                                            </div>
-
-                                            {colours.recent.length >
-                                                0 && (
-                                                <div>
-                                                    <p className="mb-2 text-[10px] uppercase tracking-wide text-slate-500">
-                                                        Recent
-                                                    </p>
-
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {colours.recent
-                                                            .slice(
-                                                                0,
-                                                                12
-                                                            )
-                                                            .map(
-                                                                colour => (
-                                                                    <button
-                                                                        key={
-                                                                            colour
-                                                                        }
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            setPrimaryColor(
-                                                                                colour
-                                                                            );
-                                                                        }}
-                                                                        className="h-6 w-6 rounded-md border border-slate-700"
-                                                                        style={{
-                                                                            background:
-                                                                                colour
-                                                                        }}
-                                                                    />
-                                                                )
-                                                            )}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </PanelSection>
-
-                                    <PanelSection title="Document">
-                                        <div className="space-y-4 text-xs">
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div className="rounded-lg bg-slate-900 p-3">
-                                                    <span className="block text-[9px] uppercase tracking-wide text-slate-500">
-                                                        Width
-                                                    </span>
-
-                                                    <strong>
-                                                        {documentData.width}px
-                                                    </strong>
-                                                </div>
-
-                                                <div className="rounded-lg bg-slate-900 p-3">
-                                                    <span className="block text-[9px] uppercase tracking-wide text-slate-500">
-                                                        Height
-                                                    </span>
-
-                                                    <strong>
-                                                        {documentData.height}px
-                                                    </strong>
-                                                </div>
-                                            </div>
-
-                                            <label className="block">
-                                                <span className="mb-2 block text-xs font-medium text-slate-300">
-                                                    Background
-                                                </span>
-
-                                                <input
-                                                    type="color"
-                                                    value={
-                                                        documentData.background
-                                                    }
-                                                    onChange={event => {
-                                                        setDocumentBackground(
-                                                            event.target.value
-                                                        );
-                                                    }}
-                                                    className="h-10 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-1"
-                                                />
-                                            </label>
-                                        </div>
-                                    </PanelSection>
-                                </>
-                            )}
-                        </div>
+                {isDesktopPanel &&
+                    ui.rightPanelOpen !==
+                        false && (
+                    <aside className="flex w-[320px] shrink-0 flex-col border-l border-slate-800 bg-slate-950">
+                        {rightPanelContent}
                     </aside>
                 )}
             </main>
 
+            {/* Mobile bottom toolbar */}
+
+            <nav className="shrink-0 border-t border-slate-800 bg-slate-950 pb-[env(safe-area-inset-bottom)] md:hidden">
+                <div className="flex h-[68px] items-center gap-2 overflow-x-auto overscroll-x-contain px-2">
+                    {TOOL_DEFINITIONS.map(
+                        tool => (
+                            <ToolButton
+                                key={
+                                    tool.id
+                                }
+                                tool={
+                                    tool
+                                }
+                                active={
+                                    activeTool ===
+                                    tool.id
+                                }
+                                onClick={
+                                    setActiveTool
+                                }
+                                horizontal
+                            />
+                        )
+                    )}
+
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setPanelDrawerOpen(
+                                true
+                            );
+                        }}
+                        className="flex h-14 min-w-[58px] shrink-0 flex-col items-center justify-center rounded-xl border border-slate-700 bg-slate-900 px-2 text-slate-300"
+                    >
+                        <span className="text-sm font-black">
+                            ☰
+                        </span>
+
+                        <span className="mt-1 text-[9px] font-semibold uppercase tracking-wider">
+                            Panel
+                        </span>
+                    </button>
+                </div>
+            </nav>
+
             {/* Status bar */}
 
-            <footer className="flex h-7 shrink-0 items-center justify-between gap-4 overflow-hidden border-t border-slate-800 bg-slate-950 px-3 text-[10px] text-slate-500">
+            <footer className="hidden h-7 shrink-0 items-center justify-between gap-4 overflow-hidden border-t border-slate-800 bg-slate-950 px-3 text-[10px] text-slate-500 sm:flex">
                 <div className="flex min-w-0 items-center gap-4">
                     <span className="truncate">
                         Tool:{" "}
@@ -2775,7 +3161,7 @@ function FashionEditor() {
                         </strong>
                     </span>
 
-                    <span className="hidden sm:inline">
+                    <span className="hidden lg:inline">
                         Layer:{" "}
                         <strong className="text-slate-300">
                             {activeLayer
@@ -2788,7 +3174,7 @@ function FashionEditor() {
                 <div className="flex shrink-0 items-center gap-4">
                     {pointerInformation
                         ?.insideDocument && (
-                        <span>
+                        <span className="hidden lg:inline">
                             X{" "}
                             {Math.round(
                                 pointerInformation
@@ -2822,19 +3208,44 @@ function FashionEditor() {
                 </div>
             </footer>
 
+            {/* Tablet/mobile panel drawer */}
+
+            {!isDesktopPanel &&
+                panelDrawerOpen && (
+                <div className="fixed inset-0 z-50 xl:hidden">
+                    <button
+                        type="button"
+                        aria-label="Close panel"
+                        onClick={() => {
+                            setPanelDrawerOpen(
+                                false
+                            );
+                        }}
+                        className="absolute inset-0 h-full w-full bg-black/60 backdrop-blur-sm"
+                    />
+
+                    <aside
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Editor layers and properties"
+                        className="absolute inset-y-0 right-0 flex w-[min(90vw,380px)] flex-col border-l border-slate-700 bg-slate-950 shadow-2xl"
+                    >
+                        {rightPanelContent}
+                    </aside>
+                </div>
+            )}
+
             {/* Toast */}
 
             {toast && (
                 <div
                     className={[
-                        "fixed bottom-10 right-5 z-[100] max-w-sm rounded-xl border px-4 py-3 text-sm font-semibold shadow-2xl",
+                        "fixed bottom-24 right-3 z-[100] max-w-[calc(100vw-24px)] rounded-xl border px-4 py-3 text-sm font-semibold shadow-2xl sm:bottom-10 sm:right-5 sm:max-w-sm",
                         toast.type ===
                         "error"
                             ? "border-red-800 bg-red-950 text-red-200"
                             : "border-emerald-800 bg-emerald-950 text-emerald-200"
-                    ].join(
-                        " "
-                    )}
+                    ].join(" ")}
                 >
                     {toast.message}
                 </div>
@@ -2850,7 +3261,7 @@ function FashionEditor() {
                             null
                         );
                     }}
-                    className="fixed left-1/2 top-20 z-[100] max-w-lg -translate-x-1/2 rounded-xl border border-red-800 bg-red-950 px-4 py-3 text-left text-xs text-red-200 shadow-2xl"
+                    className="fixed left-3 right-3 top-20 z-[100] rounded-xl border border-red-800 bg-red-950 px-4 py-3 text-left text-xs text-red-200 shadow-2xl sm:left-1/2 sm:right-auto sm:max-w-lg sm:-translate-x-1/2"
                 >
                     <strong className="block">
                         Editor error
@@ -2864,7 +3275,7 @@ function FashionEditor() {
                     </span>
 
                     <span className="mt-2 block text-[10px] opacity-60">
-                        Click to dismiss
+                        Tap to dismiss
                     </span>
                 </button>
             )}
