@@ -29,6 +29,7 @@ import LayerRenderer from "../layers/LayerRenderer";
 import ObjectRenderer from "../objects/ObjectRenderer";
 import SelectionTool from "../tools/SelectionTool";
 import SelectionTransformer from "./SelectionTransformer";
+import EraserTool from "../tools/EraserTool";
 
 import {
     createToolManager
@@ -778,6 +779,8 @@ manager.register(
     SelectionTool
 );
 
+manager.register(EraserTool);
+
         managerRef.current =
             manager;
 
@@ -844,10 +847,11 @@ manager.register(
 
         if (Array.isArray(tools)) {
             tools.forEach(tool => {
-               if (
+      if (
     !tool?.id ||
     tool.id === PencilTool.id ||
-    tool.id === SelectionTool.id
+    tool.id === SelectionTool.id ||
+    tool.id === EraserTool.id
 ) {
     return;
 }
@@ -1731,6 +1735,19 @@ manager.register(
 
                 return;
             }
+
+            if (
+    key === "e" &&
+    !commandKey
+) {
+    event.preventDefault();
+
+    setActiveTool(
+        EDITOR_TOOLS.ERASER
+    );
+
+    return;
+}
 
             if (
                 commandKey &&

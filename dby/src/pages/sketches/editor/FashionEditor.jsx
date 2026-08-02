@@ -1,12 +1,13 @@
 /*
 =========================================================
-FashionVision Professional 2D Editor
-Main Editor Workspace
-Version 1.0
+FashionVision Professional Editor
+Main Fashion Editor
+Version 1.2
 =========================================================
 */
 
 import React, {
+    memo,
     useCallback,
     useEffect,
     useMemo,
@@ -19,8 +20,6 @@ import EditorCanvas from "./EditorCanvas";
 import {
     BLEND_MODES,
     EDITOR_TOOLS,
-    selectCanRedo,
-    selectCanUndo,
     useFashionEditorStore
 } from "../useFashionEditorStore";
 
@@ -28,126 +27,93 @@ import {
 Constants
 =========================================================*/
 
-const PROJECT_FILE_EXTENSION =
-    ".fashionvision.json";
-
-const DEFAULT_EXPORT_PIXEL_RATIO =
-    2;
-
-const WORKING_TOOLS = Object.freeze([
-    {
-        id:
-            EDITOR_TOOLS.SELECT,
-
-        label:
-            "Select",
-
-        symbol:
-            "↖",
-
-        shortcut:
-            "V"
-    },
-
-    {
-        id:
-            EDITOR_TOOLS.PENCIL,
-
-        label:
-            "Pencil",
-
-        symbol:
-            "✎",
-
-        shortcut:
-            "P"
-    },
-
-    {
-        id:
-            EDITOR_TOOLS.PAN,
-
-        label:
-            "Pan",
-
-        symbol:
-            "✋",
-
-        shortcut:
-            "H"
-    }
+const DEFAULT_COLOURS = Object.freeze([
+    "#111111",
+    "#ffffff",
+    "#ef4444",
+    "#f97316",
+    "#f59e0b",
+    "#84cc16",
+    "#22c55e",
+    "#14b8a6",
+    "#06b6d4",
+    "#3b82f6",
+    "#6366f1",
+    "#8b5cf6",
+    "#a855f7",
+    "#d946ef",
+    "#ec4899",
+    "#78716c"
 ]);
 
-const UPCOMING_TOOLS = Object.freeze([
+const TOOL_DEFINITIONS = Object.freeze([
     {
-        id:
-            EDITOR_TOOLS.BRUSH,
-
-        label:
-            "Brush",
-
-        symbol:
-            "🖌"
+        id: EDITOR_TOOLS.SELECT,
+        label: "Select",
+        shortcut: "V",
+        symbol: "V",
+        enabled: true
     },
-
     {
-        id:
-            EDITOR_TOOLS.ERASER,
-
-        label:
-            "Eraser",
-
-        symbol:
-            "◇"
+        id: EDITOR_TOOLS.PENCIL,
+        label: "Pencil",
+        shortcut: "P",
+        symbol: "P",
+        enabled: true
     },
-
     {
-        id:
-            EDITOR_TOOLS.SHAPE,
-
-        label:
-            "Shape",
-
-        symbol:
-            "▢"
+        id: EDITOR_TOOLS.ERASER,
+        label: "Eraser",
+        shortcut: "E",
+        symbol: "E",
+        enabled: true
     },
-
     {
-        id:
-            EDITOR_TOOLS.FILL,
-
-        label:
-            "Fill",
-
-        symbol:
-            "◩"
+        id: EDITOR_TOOLS.PAN,
+        label: "Pan",
+        shortcut: "H",
+        symbol: "H",
+        enabled: true
     },
-
     {
-        id:
-            EDITOR_TOOLS.TEXT,
-
-        label:
-            "Text",
-
-        symbol:
-            "T"
+        id: EDITOR_TOOLS.BRUSH,
+        label: "Brush",
+        shortcut: "B",
+        symbol: "B",
+        enabled: false
     },
-
     {
-        id:
-            EDITOR_TOOLS.PATTERN,
-
-        label:
-            "Pattern",
-
-        symbol:
-            "❖"
+        id: EDITOR_TOOLS.LINE,
+        label: "Line",
+        shortcut: "L",
+        symbol: "L",
+        enabled: false
+    },
+    {
+        id: EDITOR_TOOLS.SHAPE,
+        label: "Shape",
+        shortcut: "S",
+        symbol: "S",
+        enabled: false
+    },
+    {
+        id: EDITOR_TOOLS.FILL,
+        label: "Fill",
+        shortcut: "F",
+        symbol: "F",
+        enabled: false
+    },
+    {
+        id: EDITOR_TOOLS.TEXT,
+        label: "Text",
+        shortcut: "T",
+        symbol: "T",
+        enabled: false
     }
 ]);
 
 /*=========================================================
-General Helpers
+Helpers
 =========================================================*/
 
 function numberOr(
@@ -181,423 +147,134 @@ function clamp(
     );
 }
 
-function isFunction(
-    value
-) {
-    return typeof value ===
-        "function";
-}
-
-function sanitizeFileName(
+function createSafeFilename(
     value,
-    fallback =
-        "fashion-design"
+    fallback = "fashion-design"
 ) {
-    if (
-        typeof value !==
-            "string" ||
-        !value.trim()
-    ) {
-        return fallback;
-    }
+    const text =
+        typeof value === "string"
+            ? value.trim()
+            : "";
 
     const cleaned =
-        value
-            .trim()
+        text
+            .toLowerCase()
             .replace(
-                /[<>:"/\\|?*\u0000-\u001F]/g,
+                /[^a-z0-9]+/g,
                 "-"
             )
             .replace(
-                /\s+/g,
-                "-"
-            )
-            .replace(
-                /-+/g,
-                "-"
-            )
-            .replace(
-                /^-|-$|^\.+$/g,
+                /^-+|-+$/g,
                 ""
             );
 
-    return cleaned ||
-        fallback;
-}
-
-function formatPercentage(
-    value
-) {
-    return `${Math.round(
-        numberOr(value, 0) *
-        100
-    )}%`;
-}
-
-function formatCoordinate(
-    value
-) {
-    return Math.round(
-        numberOr(value, 0)
-    );
-}
-
-function formatObjectCount(
-    count
-) {
-    return `${count} ${
-        count === 1
-            ? "object"
-            : "objects"
-    }`;
-}
-
-function getColorInputValue(
-    color,
-    fallback = "#111111"
-) {
-    if (
-        typeof color ===
-            "string" &&
-        /^#[0-9a-f]{6}$/i.test(
-            color
-        )
-    ) {
-        return color;
-    }
-
-    if (
-        typeof color ===
-            "string" &&
-        /^#[0-9a-f]{3}$/i.test(
-            color
-        )
-    ) {
-        return (
-            "#" +
-            color
-                .slice(1)
-                .split("")
-                .map(
-                    character =>
-                        `${character}${character}`
-                )
-                .join("")
-        );
-    }
-
-    return fallback;
-}
-
-/*=========================================================
-Download Helpers
-=========================================================*/
-
-function downloadUrl(
-    url,
-    fileName
-) {
-    if (
-        typeof window ===
-            "undefined" ||
-        typeof globalThis.document ===
-            "undefined"
-    ) {
-        return;
-    }
-
-    const link =
-        globalThis.document.createElement(
-            "a"
-        );
-
-    link.href =
-        url;
-
-    link.download =
-        fileName;
-
-    link.style.display =
-        "none";
-
-    globalThis.document.body.appendChild(
-        link
-    );
-
-    link.click();
-
-    link.remove();
+    return cleaned || fallback;
 }
 
 function downloadTextFile(
+    filename,
     content,
-    fileName,
     mimeType =
         "application/json"
 ) {
     const blob =
         new Blob(
-            [
-                content
-            ],
+            [content],
             {
-                type:
-                    mimeType
+                type: `${mimeType};charset=utf-8`
             }
         );
 
-    const objectUrl =
+    const url =
         URL.createObjectURL(
             blob
         );
 
-    downloadUrl(
-        objectUrl,
-        fileName
-    );
+    const anchor =
+        globalThis.document
+            .createElement("a");
+
+    anchor.href =
+        url;
+
+    anchor.download =
+        filename;
+
+    globalThis.document
+        .body
+        .appendChild(anchor);
+
+    anchor.click();
+    anchor.remove();
 
     window.setTimeout(
         () => {
             URL.revokeObjectURL(
-                objectUrl
+                url
             );
         },
-        1000
+        100
     );
 }
 
-/*=========================================================
-Konva Export Helpers
-=========================================================*/
+function downloadDataUrl(
+    filename,
+    dataUrl
+) {
+    const anchor =
+        globalThis.document
+            .createElement("a");
 
-function readNodeTransform(
+    anchor.href =
+        dataUrl;
+
+    anchor.download =
+        filename;
+
+    globalThis.document
+        .body
+        .appendChild(anchor);
+
+    anchor.click();
+    anchor.remove();
+}
+
+function getFirstChild(
     node
 ) {
-    if (!node) {
+    const children =
+        node
+            ?.getChildren
+            ?.();
+
+    if (!children) {
         return null;
     }
 
-    return {
-        x:
-            node.x(),
-
-        y:
-            node.y(),
-
-        scaleX:
-            node.scaleX(),
-
-        scaleY:
-            node.scaleY(),
-
-        visible:
-            node.visible()
-    };
-}
-
-function restoreNodeTransform(
-    node,
-    snapshot
-) {
     if (
-        !node ||
-        !snapshot
+        typeof children.toArray ===
+        "function"
     ) {
-        return;
-    }
-
-    node.position({
-        x:
-            snapshot.x,
-
-        y:
-            snapshot.y
-    });
-
-    node.scale({
-        x:
-            snapshot.scaleX,
-
-        y:
-            snapshot.scaleY
-    });
-
-    node.visible(
-        snapshot.visible
-    );
-}
-
-/*
-Exports only the logical document area rather than the
-whole grey editor workspace.
-*/
-
-function exportDocumentFromStage(
-    stage,
-    editorDocument,
-    pixelRatio =
-        DEFAULT_EXPORT_PIXEL_RATIO
-) {
-    if (
-        !stage ||
-        !isFunction(
-            stage.toDataURL
-        )
-    ) {
-        throw new Error(
-            "The drawing canvas is unavailable."
+        return (
+            children.toArray()[0] ||
+            null
         );
     }
-
-    const backgroundLayer =
-        stage.findOne(
-            ".fashion-editor-background-layer"
-        );
-
-    const artworkLayer =
-        stage.findOne(
-            ".fashion-editor-artwork-layer"
-        );
-
-    const interactionLayer =
-        stage.findOne(
-            ".fashion-editor-interaction-layer"
-        );
-
-    const backgroundGroup =
-        backgroundLayer
-            ?.getChildren
-            ?.()
-            ?.[0] ||
-        null;
-
-    const artworkGroup =
-        artworkLayer
-            ?.getChildren
-            ?.()
-            ?.[0] ||
-        null;
-
-    const backgroundSnapshot =
-        readNodeTransform(
-            backgroundGroup
-        );
-
-    const artworkSnapshot =
-        readNodeTransform(
-            artworkGroup
-        );
-
-    const interactionVisibility =
-        interactionLayer
-            ?.visible
-            ?.();
 
     try {
-        if (backgroundGroup) {
-            backgroundGroup.position({
-                x: 0,
-                y: 0
-            });
-
-            backgroundGroup.scale({
-                x: 1,
-                y: 1
-            });
-        }
-
-        if (artworkGroup) {
-            artworkGroup.position({
-                x: 0,
-                y: 0
-            });
-
-            artworkGroup.scale({
-                x: 1,
-                y: 1
-            });
-        }
-
-        /*
-        Do not include temporary strokes or interaction
-        overlays in the final PNG.
-        */
-
-        interactionLayer?.visible(
-            false
+        return (
+            Array.from(
+                children
+            )[0] ||
+            null
         );
-
-        stage.batchDraw();
-
-        return stage.toDataURL({
-            x:
-                0,
-
-            y:
-                0,
-
-            width:
-                Math.max(
-                    1,
-                    numberOr(
-                        editorDocument
-                            ?.width,
-                        1200
-                    )
-                ),
-
-            height:
-                Math.max(
-                    1,
-                    numberOr(
-                        editorDocument
-                            ?.height,
-                        1600
-                    )
-                ),
-
-            pixelRatio:
-                Math.max(
-                    1,
-                    numberOr(
-                        pixelRatio,
-                        DEFAULT_EXPORT_PIXEL_RATIO
-                    )
-                ),
-
-            mimeType:
-                "image/png",
-
-            quality:
-                1
-        });
-    } finally {
-        restoreNodeTransform(
-            backgroundGroup,
-            backgroundSnapshot
-        );
-
-        restoreNodeTransform(
-            artworkGroup,
-            artworkSnapshot
-        );
-
-        if (
-            interactionLayer &&
-            interactionVisibility !==
-                undefined
-        ) {
-            interactionLayer.visible(
-                interactionVisibility
-            );
-        }
-
-        stage.batchDraw();
+    } catch {
+        return null;
     }
 }
 
 /*=========================================================
-Reusable UI Components
+Reusable Interface Components
 =========================================================*/
 
 function HeaderButton({
@@ -610,24 +287,16 @@ function HeaderButton({
     return (
         <button
             type="button"
-            onClick={
-                onClick
-            }
-            disabled={
-                disabled
-            }
-            title={
-                title
-            }
+            onClick={onClick}
+            disabled={disabled}
+            title={title}
             className={[
-                "inline-flex h-9 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition",
-
+                "inline-flex h-9 items-center justify-center rounded-lg border px-3 text-xs font-semibold transition",
                 active
-                    ? "border-violet-400 bg-violet-500/20 text-violet-100"
-                    : "border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-500 hover:bg-slate-800 hover:text-white",
-
+                    ? "border-violet-500 bg-violet-500 text-white"
+                    : "border-slate-700 bg-slate-800 text-slate-200 hover:border-slate-500 hover:bg-slate-700",
                 disabled
-                    ? "cursor-not-allowed opacity-40"
+                    ? "cursor-not-allowed opacity-40 hover:border-slate-700 hover:bg-slate-800"
                     : ""
             ]
                 .filter(Boolean)
@@ -641,60 +310,46 @@ function HeaderButton({
 function ToolButton({
     tool,
     active,
-    disabled = false,
     onClick
 }) {
-    const title =
-        disabled
-            ? `${tool.label} — coming later`
-            : `${tool.label}${
-                tool.shortcut
-                    ? ` (${tool.shortcut})`
-                    : ""
-            }`;
-
     return (
         <button
             type="button"
-            title={
-                title
-            }
-            aria-label={
-                tool.label
-            }
-            aria-pressed={
-                active
-            }
             disabled={
-                disabled
+                !tool.enabled
             }
-            onClick={
-                onClick
+            onClick={() => {
+                if (
+                    tool.enabled
+                ) {
+                    onClick(
+                        tool.id
+                    );
+                }
+            }}
+            title={
+                tool.enabled
+                    ? `${tool.label} (${tool.shortcut})`
+                    : `${tool.label} — coming soon`
             }
             className={[
-                "group relative flex h-11 w-11 items-center justify-center rounded-xl border text-lg transition",
-
+                "group flex h-14 w-14 flex-col items-center justify-center rounded-xl border transition",
                 active
-                    ? "border-violet-400 bg-violet-500 text-white shadow-lg shadow-violet-950/40"
-                    : "border-slate-700/80 bg-slate-900/80 text-slate-300 hover:border-slate-500 hover:bg-slate-800 hover:text-white",
-
-                disabled
-                    ? "cursor-not-allowed opacity-30"
+                    ? "border-violet-500 bg-violet-500 text-white shadow-lg shadow-violet-950/40"
+                    : "border-transparent bg-slate-900 text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white",
+                !tool.enabled
+                    ? "cursor-not-allowed opacity-35 hover:border-transparent hover:bg-slate-900 hover:text-slate-400"
                     : ""
             ]
                 .filter(Boolean)
                 .join(" ")}
         >
-            <span
-                aria-hidden="true"
-            >
+            <span className="text-sm font-black">
                 {tool.symbol}
             </span>
 
-            <span
-                className="pointer-events-none absolute left-full z-50 ml-3 hidden whitespace-nowrap rounded-md border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-xs text-slate-200 shadow-xl group-hover:block"
-            >
-                {title}
+            <span className="mt-1 text-[9px] font-semibold uppercase tracking-wider">
+                {tool.label}
             </span>
         </button>
     );
@@ -706,15 +361,9 @@ function PanelSection({
     action = null
 }) {
     return (
-        <section
-            className="border-b border-slate-800 px-4 py-4 last:border-b-0"
-        >
-            <div
-                className="mb-3 flex items-center justify-between gap-3"
-            >
-                <h3
-                    className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400"
-                >
+        <section className="border-b border-slate-800 p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
                     {title}
                 </h3>
 
@@ -726,49 +375,143 @@ function PanelSection({
     );
 }
 
-function SmallIconButton({
-    children,
-    title,
-    onClick,
-    disabled = false,
-    active = false
+function SliderField({
+    label,
+    value,
+    minimum,
+    maximum,
+    step = 1,
+    suffix = "",
+    onChange,
+    onStart = null,
+    onEnd = null
 }) {
     return (
-        <button
-            type="button"
-            title={
-                title
-            }
-            aria-label={
-                title
-            }
-            disabled={
-                disabled
-            }
-            onClick={
-                onClick
-            }
-            className={[
-                "inline-flex h-8 min-w-8 items-center justify-center rounded-md border px-2 text-xs transition",
+        <label className="block">
+            <div className="mb-2 flex items-center justify-between gap-3">
+                <span className="text-xs font-medium text-slate-300">
+                    {label}
+                </span>
 
-                active
-                    ? "border-violet-400 bg-violet-500/20 text-violet-200"
-                    : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500 hover:text-white",
+                <span className="min-w-12 text-right text-xs font-semibold text-slate-100">
+                    {value}
+                    {suffix}
+                </span>
+            </div>
 
-                disabled
-                    ? "cursor-not-allowed opacity-35"
-                    : ""
-            ]
-                .filter(Boolean)
-                .join(" ")}
-        >
-            {children}
-        </button>
+            <input
+                type="range"
+                min={minimum}
+                max={maximum}
+                step={step}
+                value={value}
+                onChange={event => {
+                    onChange(
+                        Number(
+                            event.target.value
+                        )
+                    );
+                }}
+                onMouseDown={onStart}
+                onTouchStart={onStart}
+                onMouseUp={onEnd}
+                onTouchEnd={onEnd}
+                onBlur={onEnd}
+                className="h-1.5 w-full cursor-pointer accent-violet-500"
+            />
+        </label>
+    );
+}
+
+function LayerNameField({
+    layer,
+    renameLayer
+}) {
+    const [
+        name,
+        setName
+    ] = useState(
+        layer.name
+    );
+
+    useEffect(() => {
+        setName(
+            layer.name
+        );
+    }, [
+        layer.id,
+        layer.name
+    ]);
+
+    const commitName =
+        useCallback(() => {
+            const cleanedName =
+                name.trim();
+
+            if (!cleanedName) {
+                setName(
+                    layer.name
+                );
+
+                return;
+            }
+
+            if (
+                cleanedName !==
+                layer.name
+            ) {
+                renameLayer(
+                    layer.id,
+                    cleanedName
+                );
+            }
+        }, [
+            name,
+            layer.id,
+            layer.name,
+            renameLayer
+        ]);
+
+    return (
+        <input
+            value={name}
+            onChange={event => {
+                setName(
+                    event.target.value
+                );
+            }}
+            onBlur={
+                commitName
+            }
+            onKeyDown={event => {
+                if (
+                    event.key ===
+                    "Enter"
+                ) {
+                    event.currentTarget.blur();
+                }
+
+                if (
+                    event.key ===
+                    "Escape"
+                ) {
+                    setName(
+                        layer.name
+                    );
+
+                    event.currentTarget.blur();
+                }
+            }}
+            onClick={event => {
+                event.stopPropagation();
+            }}
+            className="min-w-0 flex-1 border-none bg-transparent text-xs font-semibold text-slate-200 outline-none"
+        />
     );
 }
 
 /*=========================================================
-Fashion Editor Component
+Fashion Editor
 =========================================================*/
 
 function FashionEditor() {
@@ -778,14 +521,14 @@ function FashionEditor() {
     const fileInputRef =
         useRef(null);
 
-    const noticeTimerRef =
+    const toastTimerRef =
         useRef(null);
 
     /*=====================================================
     Store State
     =====================================================*/
 
-    const editorDocument =
+    const documentData =
         useFashionEditorStore(
             state =>
                 state.document
@@ -809,16 +552,16 @@ function FashionEditor() {
                 state.activeLayerId
         );
 
-    const activeTool =
-        useFashionEditorStore(
-            state =>
-                state.activeTool
-        );
-
     const selectedObjectIds =
         useFashionEditorStore(
             state =>
                 state.selectedObjectIds
+        );
+
+    const activeTool =
+        useFashionEditorStore(
+            state =>
+                state.activeTool
         );
 
     const brush =
@@ -827,7 +570,13 @@ function FashionEditor() {
                 state.brush
         );
 
-    const colors =
+    const eraser =
+        useFashionEditorStore(
+            state =>
+                state.eraser
+        );
+
+    const colours =
         useFashionEditorStore(
             state =>
                 state.colors
@@ -845,36 +594,32 @@ function FashionEditor() {
                 state.ui
         );
 
+    const history =
+        useFashionEditorStore(
+            state =>
+                state.history
+        );
+
     const persistence =
         useFashionEditorStore(
             state =>
                 state.persistence
         );
 
-    const canUndo =
-        useFashionEditorStore(
-            selectCanUndo
-        );
-
-    const canRedo =
-        useFashionEditorStore(
-            selectCanRedo
-        );
-
     /*=====================================================
     Store Actions
     =====================================================*/
+
+    const setActiveTool =
+        useFashionEditorStore(
+            state =>
+                state.setActiveTool
+        );
 
     const newDocument =
         useFashionEditorStore(
             state =>
                 state.newDocument
-        );
-
-    const clearDocument =
-        useFashionEditorStore(
-            state =>
-                state.clearDocument
         );
 
     const setDocumentName =
@@ -886,20 +631,19 @@ function FashionEditor() {
     const setDocumentBackground =
         useFashionEditorStore(
             state =>
-                state
-                    .setDocumentBackground
-        );
-
-    const loadProject =
-        useFashionEditorStore(
-            state =>
-                state.loadProject
+                state.setDocumentBackground
         );
 
     const getProjectData =
         useFashionEditorStore(
             state =>
                 state.getProjectData
+        );
+
+    const loadProject =
+        useFashionEditorStore(
+            state =>
+                state.loadProject
         );
 
     const markSaved =
@@ -914,16 +658,34 @@ function FashionEditor() {
                 state.setSaveError
         );
 
-    const setActiveTool =
+    const undo =
         useFashionEditorStore(
             state =>
-                state.setActiveTool
+                state.undo
+        );
+
+    const redo =
+        useFashionEditorStore(
+            state =>
+                state.redo
         );
 
     const setBrushSettings =
         useFashionEditorStore(
             state =>
                 state.setBrushSettings
+        );
+
+    const setEraserSize =
+        useFashionEditorStore(
+            state =>
+                state.setEraserSize
+        );
+
+    const setEraserMode =
+        useFashionEditorStore(
+            state =>
+                state.setEraserMode
         );
 
     const setPrimaryColor =
@@ -944,28 +706,16 @@ function FashionEditor() {
                 state.swapColors
         );
 
-    const setActiveLayer =
-        useFashionEditorStore(
-            state =>
-                state.setActiveLayer
-        );
-
     const addLayer =
         useFashionEditorStore(
             state =>
                 state.addLayer
         );
 
-    const duplicateLayer =
+    const setActiveLayer =
         useFashionEditorStore(
             state =>
-                state.duplicateLayer
-        );
-
-    const deleteLayer =
-        useFashionEditorStore(
-            state =>
-                state.deleteLayer
+                state.setActiveLayer
         );
 
     const renameLayer =
@@ -977,8 +727,7 @@ function FashionEditor() {
     const toggleLayerVisibility =
         useFashionEditorStore(
             state =>
-                state
-                    .toggleLayerVisibility
+                state.toggleLayerVisibility
         );
 
     const toggleLayerLock =
@@ -996,8 +745,7 @@ function FashionEditor() {
     const setLayerBlendMode =
         useFashionEditorStore(
             state =>
-                state
-                    .setLayerBlendMode
+                state.setLayerBlendMode
         );
 
     const moveLayer =
@@ -1006,30 +754,28 @@ function FashionEditor() {
                 state.moveLayer
         );
 
-    const beginHistoryTransaction =
+    const duplicateLayer =
         useFashionEditorStore(
             state =>
-                state
-                    .beginHistoryTransaction
+                state.duplicateLayer
         );
 
-    const commitHistoryTransaction =
+    const deleteLayer =
         useFashionEditorStore(
             state =>
-                state
-                    .commitHistoryTransaction
+                state.deleteLayer
         );
 
-    const undo =
+    const deleteObjects =
         useFashionEditorStore(
             state =>
-                state.undo
+                state.deleteObjects
         );
 
-    const redo =
+    const duplicateObjects =
         useFashionEditorStore(
             state =>
-                state.redo
+                state.duplicateObjects
         );
 
     const zoomIn =
@@ -1047,8 +793,13 @@ function FashionEditor() {
     const fitDocumentToViewport =
         useFashionEditorStore(
             state =>
-                state
-                    .fitDocumentToViewport
+                state.fitDocumentToViewport
+        );
+
+    const toggleGrid =
+        useFashionEditorStore(
+            state =>
+                state.toggleGrid
         );
 
     const setUiState =
@@ -1057,27 +808,21 @@ function FashionEditor() {
                 state.setUiState
         );
 
+    const beginHistoryTransaction =
+        useFashionEditorStore(
+            state =>
+                state.beginHistoryTransaction
+        );
+
+    const commitHistoryTransaction =
+        useFashionEditorStore(
+            state =>
+                state.commitHistoryTransaction
+        );
+
     /*=====================================================
-    Local UI State
+    Local State
     =====================================================*/
-
-    const [
-        documentName,
-        setDocumentNameInput
-    ] = useState(
-        editorDocument.name
-    );
-
-    const [
-        pointerInformation,
-        setPointerInformation
-    ] = useState({
-        documentPoint:
-            null,
-
-        insideDocument:
-            false
-    });
 
     const [
         rightPanelTab,
@@ -1087,21 +832,24 @@ function FashionEditor() {
     );
 
     const [
-        rightPanelOpen,
-        setRightPanelOpen
-    ] = useState(
-        true
-    );
-
-    const [
-        notice,
-        setNotice
+        pointerInformation,
+        setPointerInformation
     ] = useState(null);
 
     const [
-        errorMessage,
-        setErrorMessage
+        toast,
+        setToast
     ] = useState(null);
+
+    const [
+        editorError,
+        setEditorError
+    ] = useState(null);
+
+    const [
+        exporting,
+        setExporting
+    ] = useState(false);
 
     /*=====================================================
     Derived State
@@ -1114,391 +862,238 @@ function FashionEditor() {
                     layer =>
                         layer.id ===
                         activeLayerId
-                ) ||
-                null,
+                ) || null,
             [
                 layers,
                 activeLayerId
             ]
         );
 
-    const displayedLayers =
+    const selectedObjects =
         useMemo(
             () =>
-                layers
+                selectedObjectIds
                     .map(
-                        (
-                            layer,
-                            index
-                        ) => ({
-                            layer,
-                            originalIndex:
-                                index
-                        })
+                        objectId =>
+                            objects[
+                                objectId
+                            ]
                     )
-                    .reverse(),
+                    .filter(Boolean),
+            [
+                selectedObjectIds,
+                objects
+            ]
+        );
+
+    const displayedLayers =
+        useMemo(
+            () => [
+                ...layers
+            ].reverse(),
             [
                 layers
             ]
         );
 
     const objectCount =
-        useMemo(
-            () =>
-                Object.keys(
-                    objects
-                ).length,
-            [
-                objects
-            ]
+        Object.keys(
+            objects
+        ).length;
+
+    const canUndo =
+        history.past.length >
+            0 ||
+        Boolean(
+            history.transaction
         );
 
-    const projectBaseName =
-        useMemo(
-            () =>
-                sanitizeFileName(
-                    editorDocument.name
-                ),
-            [
-                editorDocument.name
-            ]
+    const canRedo =
+        history.future.length >
+        0;
+
+    const zoomPercentage =
+        Math.round(
+            viewport.zoom *
+            100
+        );
+
+    const activeToolDefinition =
+        TOOL_DEFINITIONS.find(
+            tool =>
+                tool.id ===
+                activeTool
         );
 
     /*=====================================================
-    Notice Handling
+    Toast
     =====================================================*/
 
-    const showNotice =
+    const showToast =
         useCallback(
             (
                 message,
                 type = "success"
             ) => {
                 if (
-                    noticeTimerRef.current
+                    toastTimerRef.current
                 ) {
                     window.clearTimeout(
-                        noticeTimerRef.current
+                        toastTimerRef.current
                     );
                 }
 
-                setNotice({
+                setToast({
                     message,
                     type
                 });
 
-                noticeTimerRef.current =
+                toastTimerRef.current =
                     window.setTimeout(
                         () => {
-                            setNotice(
+                            setToast(
                                 null
                             );
                         },
-                        2600
+                        2800
                     );
             },
             []
         );
 
-    useEffect(
-        () => {
-            return () => {
-                if (
-                    noticeTimerRef.current
-                ) {
-                    window.clearTimeout(
-                        noticeTimerRef.current
-                    );
-                }
-            };
-        },
-        []
-    );
-
-    /*=====================================================
-    Sync Document Name
-    =====================================================*/
-
-    useEffect(
-        () => {
-            setDocumentNameInput(
-                editorDocument.name
-            );
-        },
-        [
-            editorDocument.id,
-            editorDocument.name
-        ]
-    );
-
-    /*=====================================================
-    Unsaved Changes Protection
-    =====================================================*/
-
-    useEffect(
-        () => {
+    useEffect(() => {
+        return () => {
             if (
-                !persistence.dirty
+                toastTimerRef.current
             ) {
-                return undefined;
+                window.clearTimeout(
+                    toastTimerRef.current
+                );
             }
+        };
+    }, []);
 
-            const handleBeforeUnload =
-                event => {
-                    event.preventDefault();
+    /*=====================================================
+    Unsaved Work Protection
+    =====================================================*/
 
-                    event.returnValue =
-                        "";
-                };
+    useEffect(() => {
+        const handleBeforeUnload =
+            event => {
+                if (
+                    !persistence.dirty
+                ) {
+                    return;
+                }
 
-            window.addEventListener(
+                event.preventDefault();
+
+                event.returnValue =
+                    "";
+            };
+
+        window.addEventListener(
+            "beforeunload",
+            handleBeforeUnload
+        );
+
+        return () => {
+            window.removeEventListener(
                 "beforeunload",
                 handleBeforeUnload
             );
+        };
+    }, [
+        persistence.dirty
+    ]);
 
-            return () => {
-                window.removeEventListener(
-                    "beforeunload",
-                    handleBeforeUnload
-                );
-            };
-        },
-        [
+    /*=====================================================
+    Document Operations
+    =====================================================*/
+
+    const confirmReplaceDocument =
+        useCallback(() => {
+            if (
+                !persistence.dirty
+            ) {
+                return true;
+            }
+
+            return window.confirm(
+                "This design has unsaved changes. Continue and discard them?"
+            );
+        }, [
             persistence.dirty
-        ]
-    );
+        ]);
 
-    /*=====================================================
-    Document Name
-    =====================================================*/
+    const fitCanvas =
+        useCallback(() => {
+            const stage =
+                stageRef.current;
 
-    const commitDocumentName =
-        useCallback(
-            () => {
-                const nextName =
-                    documentName.trim();
+            if (!stage) {
+                return;
+            }
 
-                if (!nextName) {
-                    setDocumentNameInput(
-                        editorDocument.name
-                    );
-
-                    return;
-                }
-
-                if (
-                    nextName !==
-                    editorDocument.name
-                ) {
-                    setDocumentName(
-                        nextName
-                    );
-                }
-            },
-            [
-                documentName,
-                editorDocument.name,
-                setDocumentName
-            ]
-        );
-
-    const handleDocumentNameKeyDown =
-        useCallback(
-            event => {
-                if (
-                    event.key ===
-                    "Enter"
-                ) {
-                    event.currentTarget.blur();
-                }
-
-                if (
-                    event.key ===
-                    "Escape"
-                ) {
-                    setDocumentNameInput(
-                        editorDocument.name
-                    );
-
-                    event.currentTarget.blur();
-                }
-            },
-            [
-                editorDocument.name
-            ]
-        );
-
-    /*=====================================================
-    New and Clear
-    =====================================================*/
+            fitDocumentToViewport(
+                stage.width(),
+                stage.height(),
+                56
+            );
+        }, [
+            fitDocumentToViewport
+        ]);
 
     const handleNewDocument =
-        useCallback(
-            () => {
-                if (
-                    persistence.dirty &&
-                    objectCount > 0
-                ) {
-                    const confirmed =
-                        window.confirm(
-                            "Create a new document? Unsaved changes in the current design will be lost."
-                        );
+        useCallback(() => {
+            if (
+                !confirmReplaceDocument()
+            ) {
+                return;
+            }
 
-                    if (!confirmed) {
-                        return;
-                    }
-                }
+            newDocument();
 
-                newDocument();
+            window.requestAnimationFrame(
+                fitCanvas
+            );
 
-                setErrorMessage(
-                    null
-                );
+            showToast(
+                "New design created."
+            );
+        }, [
+            confirmReplaceDocument,
+            newDocument,
+            fitCanvas,
+            showToast
+        ]);
 
-                showNotice(
-                    "New document created."
-                );
-            },
-            [
-                persistence.dirty,
-                objectCount,
-                newDocument,
-                showNotice
-            ]
-        );
+    const handleOpenProject =
+        useCallback(() => {
+            if (
+                !confirmReplaceDocument()
+            ) {
+                return;
+            }
 
-    const handleClearDocument =
-        useCallback(
-            () => {
-                if (
-                    objectCount === 0
-                ) {
-                    return;
-                }
-
-                const confirmed =
-                    window.confirm(
-                        "Clear every object from this document?"
-                    );
-
-                if (!confirmed) {
-                    return;
-                }
-
-                clearDocument();
-
-                showNotice(
-                    "Document cleared."
-                );
-            },
-            [
-                objectCount,
-                clearDocument,
-                showNotice
-            ]
-        );
-
-    /*=====================================================
-    Save Project
-    =====================================================*/
-
-    const handleSaveProject =
-        useCallback(
-            projectOverride => {
-                try {
-                    const projectData =
-                        projectOverride &&
-                        typeof projectOverride ===
-                            "object"
-                            ? projectOverride
-                            : getProjectData();
-
-                    const serialized =
-                        JSON.stringify(
-                            projectData,
-                            null,
-                            2
-                        );
-
-                    downloadTextFile(
-                        serialized,
-                        `${projectBaseName}${PROJECT_FILE_EXTENSION}`,
-                        "application/json"
-                    );
-
-                    markSaved();
-
-                    setErrorMessage(
-                        null
-                    );
-
-                    showNotice(
-                        "Project file saved."
-                    );
-                } catch (error) {
-                    const message =
-                        error?.message ||
-                        "The project could not be saved.";
-
-                    setSaveError(
-                        error
-                    );
-
-                    setErrorMessage(
-                        message
-                    );
-                }
-            },
-            [
-                getProjectData,
-                projectBaseName,
-                markSaved,
-                setSaveError,
-                showNotice
-            ]
-        );
-
-    /*=====================================================
-    Open Project
-    =====================================================*/
-
-    const handleOpenProjectClick =
-        useCallback(
-            () => {
-                fileInputRef.current
-                    ?.click
-                    ?.();
-            },
-            []
-        );
+            fileInputRef.current
+                ?.click();
+        }, [
+            confirmReplaceDocument
+        ]);
 
     const handleProjectFileChange =
         useCallback(
             async event => {
                 const file =
                     event.target
-                        .files
-                        ?.[0];
+                        .files?.[0];
 
                 event.target.value =
                     "";
 
                 if (!file) {
                     return;
-                }
-
-                if (
-                    persistence.dirty &&
-                    objectCount > 0
-                ) {
-                    const confirmed =
-                        window.confirm(
-                            "Open another project? Unsaved changes in the current design will be lost."
-                        );
-
-                    if (!confirmed) {
-                        return;
-                    }
                 }
 
                 try {
@@ -1514,28 +1109,106 @@ function FashionEditor() {
                         project
                     );
 
-                    setErrorMessage(
+                    window.requestAnimationFrame(
+                        fitCanvas
+                    );
+
+                    setEditorError(
                         null
                     );
 
-                    showNotice(
-                        "Project opened."
+                    showToast(
+                        "Project opened successfully."
                     );
                 } catch (error) {
-                    const message =
-                        error?.message ||
-                        "The selected file is not a valid FashionVision project.";
+                    console.error(
+                        error
+                    );
 
-                    setErrorMessage(
-                        message
+                    setEditorError(
+                        error
+                    );
+
+                    showToast(
+                        "The selected project file could not be opened.",
+                        "error"
                     );
                 }
             },
             [
-                persistence.dirty,
-                objectCount,
                 loadProject,
-                showNotice
+                fitCanvas,
+                showToast
+            ]
+        );
+
+    const handleSaveProject =
+        useCallback(
+            (
+                projectOverride =
+                    null
+            ) => {
+                try {
+                    const isProjectData =
+                        projectOverride &&
+                        typeof projectOverride ===
+                            "object" &&
+                        projectOverride.document &&
+                        projectOverride.layers;
+
+                    const project =
+                        isProjectData
+                            ? projectOverride
+                            : getProjectData();
+
+                    const filename =
+                        `${createSafeFilename(
+                            project.document
+                                ?.name
+                        )}.fashion.json`;
+
+                    downloadTextFile(
+                        filename,
+                        JSON.stringify(
+                            project,
+                            null,
+                            2
+                        )
+                    );
+
+                    markSaved();
+
+                    setEditorError(
+                        null
+                    );
+
+                    showToast(
+                        "Project saved."
+                    );
+                } catch (error) {
+                    console.error(
+                        error
+                    );
+
+                    setSaveError(
+                        error
+                    );
+
+                    setEditorError(
+                        error
+                    );
+
+                    showToast(
+                        "Project could not be saved.",
+                        "error"
+                    );
+                }
+            },
+            [
+                getProjectData,
+                markSaved,
+                setSaveError,
+                showToast
             ]
         );
 
@@ -1544,324 +1217,402 @@ function FashionEditor() {
     =====================================================*/
 
     const handleExportPng =
-        useCallback(
-            () => {
-                try {
-                    const stage =
-                        stageRef.current;
+        useCallback(() => {
+            const stage =
+                stageRef.current;
 
-                    const dataUrl =
-                        exportDocumentFromStage(
-                            stage,
-                            editorDocument,
-                            DEFAULT_EXPORT_PIXEL_RATIO
-                        );
+            if (
+                !stage ||
+                exporting
+            ) {
+                return;
+            }
 
-                    downloadUrl(
-                        dataUrl,
-                        `${projectBaseName}.png`
-                    );
+            setExporting(
+                true
+            );
 
-                    setErrorMessage(
-                        null
-                    );
+            const backgroundLayer =
+                stage.findOne(
+                    ".fashion-editor-background-layer"
+                );
 
-                    showNotice(
-                        "High-resolution PNG exported."
-                    );
-                } catch (error) {
-                    setErrorMessage(
-                        error?.message ||
-                        "The PNG could not be exported."
-                    );
-                }
-            },
-            [
-                editorDocument,
-                projectBaseName,
-                showNotice
-            ]
-        );
+            const artworkLayer =
+                stage.findOne(
+                    ".fashion-editor-artwork-layer"
+                );
 
-    /*=====================================================
-    Fit Document
-    =====================================================*/
+            const interactionLayer =
+                stage.findOne(
+                    ".fashion-editor-interaction-layer"
+                );
 
-    const handleFitDocument =
-        useCallback(
-            () => {
-                const stage =
-                    stageRef.current;
+            const transformer =
+                stage.findOne(
+                    ".fashion-editor-selection-transformer"
+                );
 
-                if (!stage) {
-                    return;
-                }
+            const backgroundGroup =
+                getFirstChild(
+                    backgroundLayer
+                );
 
-                fitDocumentToViewport(
+            const artworkGroup =
+                getFirstChild(
+                    artworkLayer
+                );
+
+            const originalStageSize = {
+                width:
                     stage.width(),
-                    stage.height(),
-                    56
+
+                height:
+                    stage.height()
+            };
+
+            const originalBackgroundTransform =
+                backgroundGroup
+                    ? {
+                        x:
+                            backgroundGroup.x(),
+
+                        y:
+                            backgroundGroup.y(),
+
+                        scaleX:
+                            backgroundGroup.scaleX(),
+
+                        scaleY:
+                            backgroundGroup.scaleY()
+                    }
+                    : null;
+
+            const originalArtworkTransform =
+                artworkGroup
+                    ? {
+                        x:
+                            artworkGroup.x(),
+
+                        y:
+                            artworkGroup.y(),
+
+                        scaleX:
+                            artworkGroup.scaleX(),
+
+                        scaleY:
+                            artworkGroup.scaleY()
+                    }
+                    : null;
+
+            const interactionWasVisible =
+                interactionLayer
+                    ?.visible?.() ??
+                true;
+
+            const transformerWasVisible =
+                transformer
+                    ?.visible?.() ??
+                false;
+
+            try {
+                interactionLayer
+                    ?.visible(false);
+
+                transformer
+                    ?.visible(false);
+
+                backgroundGroup
+                    ?.setAttrs({
+                        x: 0,
+                        y: 0,
+                        scaleX: 1,
+                        scaleY: 1
+                    });
+
+                artworkGroup
+                    ?.setAttrs({
+                        x: 0,
+                        y: 0,
+                        scaleX: 1,
+                        scaleY: 1
+                    });
+
+                stage.size({
+                    width:
+                        documentData.width,
+
+                    height:
+                        documentData.height
+                });
+
+                stage.batchDraw();
+
+                const dataUrl =
+                    stage.toDataURL({
+                        x: 0,
+                        y: 0,
+
+                        width:
+                            documentData.width,
+
+                        height:
+                            documentData.height,
+
+                        pixelRatio:
+                            1,
+
+                        mimeType:
+                            "image/png",
+
+                        quality:
+                            1
+                    });
+
+                downloadDataUrl(
+                    `${createSafeFilename(
+                        documentData.name
+                    )}.png`,
+                    dataUrl
                 );
-            },
-            [
-                fitDocumentToViewport
-            ]
-        );
+
+                showToast(
+                    "PNG exported."
+                );
+            } catch (error) {
+                console.error(
+                    error
+                );
+
+                setEditorError(
+                    error
+                );
+
+                showToast(
+                    "PNG export failed.",
+                    "error"
+                );
+            } finally {
+                if (
+                    originalBackgroundTransform
+                ) {
+                    backgroundGroup
+                        ?.setAttrs(
+                            originalBackgroundTransform
+                        );
+                }
+
+                if (
+                    originalArtworkTransform
+                ) {
+                    artworkGroup
+                        ?.setAttrs(
+                            originalArtworkTransform
+                        );
+                }
+
+                interactionLayer
+                    ?.visible(
+                        interactionWasVisible
+                    );
+
+                transformer
+                    ?.visible(
+                        transformerWasVisible
+                    );
+
+                stage.size(
+                    originalStageSize
+                );
+
+                stage.batchDraw();
+
+                setExporting(
+                    false
+                );
+            }
+        }, [
+            exporting,
+            documentData.width,
+            documentData.height,
+            documentData.name,
+            showToast
+        ]);
 
     /*=====================================================
-    Layer Operations
+    Layer Helpers
     =====================================================*/
 
-    const handleAddLayer =
-        useCallback(
-            () => {
-                addLayer();
-
-                showNotice(
-                    "Layer added."
-                );
-            },
-            [
-                addLayer,
-                showNotice
-            ]
-        );
-
-    const handleDeleteLayer =
+    const handleMoveLayerUp =
         useCallback(
             layerId => {
-                if (
-                    layers.length <=
-                    1
-                ) {
-                    showNotice(
-                        "A document must contain at least one layer.",
-                        "warning"
-                    );
-
-                    return;
-                }
-
-                const targetLayer =
-                    layers.find(
+                const index =
+                    layers.findIndex(
                         layer =>
                             layer.id ===
                             layerId
                     );
 
-                if (!targetLayer) {
+                if (
+                    index < 0 ||
+                    index >=
+                        layers.length - 1
+                ) {
                     return;
                 }
 
-                const hasObjects =
-                    targetLayer
-                        .objectIds
-                        .length > 0;
-
-                if (hasObjects) {
-                    const confirmed =
-                        window.confirm(
-                            `Delete "${targetLayer.name}" and every object inside it?`
-                        );
-
-                    if (!confirmed) {
-                        return;
-                    }
-                }
-
-                deleteLayer(
-                    layerId
+                moveLayer(
+                    layerId,
+                    index + 1
                 );
             },
             [
                 layers,
-                deleteLayer,
-                showNotice
-            ]
-        );
-
-    const moveLayerUp =
-        useCallback(
-            (
-                layerId,
-                currentIndex
-            ) => {
-                moveLayer(
-                    layerId,
-                    Math.min(
-                        layers.length -
-                        1,
-                        currentIndex +
-                        1
-                    )
-                );
-            },
-            [
-                layers.length,
                 moveLayer
             ]
         );
 
-    const moveLayerDown =
+    const handleMoveLayerDown =
         useCallback(
-            (
-                layerId,
-                currentIndex
-            ) => {
+            layerId => {
+                const index =
+                    layers.findIndex(
+                        layer =>
+                            layer.id ===
+                            layerId
+                    );
+
+                if (
+                    index <= 0
+                ) {
+                    return;
+                }
+
                 moveLayer(
                     layerId,
-                    Math.max(
-                        0,
-                        currentIndex -
-                        1
-                    )
+                    index - 1
                 );
             },
             [
+                layers,
                 moveLayer
             ]
         );
 
-    /*=====================================================
-    Pointer Position
-    =====================================================*/
+    const handleDeleteActiveLayer =
+        useCallback(() => {
+            if (
+                !activeLayer ||
+                layers.length <= 1
+            ) {
+                return;
+            }
 
-    const handlePointerPositionChange =
-        useCallback(
-            information => {
-                setPointerInformation(
-                    information
+            const confirmed =
+                window.confirm(
+                    `Delete "${activeLayer.name}" and all objects inside it?`
                 );
-            },
-            []
-        );
+
+            if (!confirmed) {
+                return;
+            }
+
+            deleteLayer(
+                activeLayer.id
+            );
+        }, [
+            activeLayer,
+            layers.length,
+            deleteLayer
+        ]);
 
     /*=====================================================
     Render
     =====================================================*/
 
     return (
-        <div
-            className="flex h-screen w-full flex-col overflow-hidden bg-slate-950 text-slate-100"
-        >
-            {/*===========================================
-            Hidden Project Input
-            ===========================================*/}
-
+        <div className="flex h-screen w-full flex-col overflow-hidden bg-slate-950 text-slate-100">
             <input
                 ref={fileInputRef}
                 type="file"
-                accept=".json,.fashionvision.json,application/json"
+                accept=".json,.fashion.json,application/json"
                 onChange={
                     handleProjectFileChange
                 }
                 className="hidden"
             />
 
-            {/*===========================================
-            Header
-            ===========================================*/}
+            {/* Header */}
 
-            <header
-                className="relative z-30 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-slate-800 bg-slate-950/95 px-4 shadow-lg backdrop-blur-xl"
-            >
-                <div
-                    className="flex min-w-0 items-center gap-3"
-                >
-                    <div
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-cyan-400 text-lg font-black text-white shadow-lg shadow-violet-950/40"
-                    >
+            <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-slate-800 bg-slate-950 px-4">
+                <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500 text-sm font-black text-white shadow-lg shadow-violet-950/40">
                         FV
                     </div>
 
-                    <div
-                        className="hidden shrink-0 sm:block"
-                    >
-                        <p
-                            className="text-sm font-bold leading-none text-white"
-                        >
+                    <div className="hidden shrink-0 sm:block">
+                        <p className="text-xs font-bold tracking-wide text-white">
                             FashionVision
                         </p>
 
-                        <p
-                            className="mt-1 text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500"
-                        >
-                            2D Design Studio
+                        <p className="text-[9px] uppercase tracking-[0.2em] text-slate-500">
+                            2D Studio
                         </p>
                     </div>
 
-                    <div
-                        className="hidden h-8 w-px bg-slate-800 md:block"
-                    />
+                    <div className="hidden h-6 w-px bg-slate-800 sm:block" />
 
-                    <input
-                        value={
-                            documentName
-                        }
-                        onChange={
-                            event =>
-                                setDocumentNameInput(
-                                    event.target.value
-                                )
-                        }
-                        onBlur={
-                            commitDocumentName
-                        }
-                        onKeyDown={
-                            handleDocumentNameKeyDown
-                        }
-                        spellCheck={
-                            false
-                        }
-                        aria-label="Document name"
-                        className="min-w-0 max-w-[280px] flex-1 rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-sm font-medium text-slate-200 outline-none transition hover:border-slate-700 focus:border-violet-500 focus:bg-slate-900"
-                    />
+                    <div className="flex min-w-0 items-center gap-2">
+                        <input
+                            value={
+                                documentData.name
+                            }
+                            onChange={event => {
+                                const value =
+                                    event.target.value;
 
-                    <span
-                        title={
-                            persistence.dirty
-                                ? "Unsaved changes"
-                                : "Saved"
-                        }
-                        className={[
-                            "hidden h-2.5 w-2.5 shrink-0 rounded-full sm:block",
+                                if (
+                                    value.trim()
+                                ) {
+                                    setDocumentName(
+                                        value
+                                    );
+                                }
+                            }}
+                            className="min-w-0 max-w-64 rounded-md border border-transparent bg-transparent px-2 py-1 text-sm font-semibold text-slate-200 outline-none transition hover:border-slate-700 focus:border-violet-500 focus:bg-slate-900"
+                            aria-label="Document name"
+                        />
 
-                            persistence.dirty
-                                ? "bg-amber-400 shadow shadow-amber-400/50"
-                                : "bg-emerald-400 shadow shadow-emerald-400/50"
-                        ].join(" ")}
-                    />
+                        {persistence.dirty && (
+                            <span
+                                className="h-2 w-2 shrink-0 rounded-full bg-amber-400"
+                                title="Unsaved changes"
+                            />
+                        )}
+                    </div>
                 </div>
 
-                <div
-                    className="flex shrink-0 items-center gap-2"
-                >
-                    <div
-                        className="hidden items-center gap-2 xl:flex"
-                    >
+                <div className="flex shrink-0 items-center gap-2">
+                    <div className="hidden items-center gap-2 md:flex">
                         <HeaderButton
                             onClick={
                                 handleNewDocument
                             }
-                            title="Create a new document"
                         >
                             New
                         </HeaderButton>
 
                         <HeaderButton
                             onClick={
-                                handleOpenProjectClick
+                                handleOpenProject
                             }
-                            title="Open a project file"
                         >
                             Open
                         </HeaderButton>
 
                         <HeaderButton
-                            onClick={
-                                handleSaveProject
+                            onClick={() =>
+                                handleSaveProject()
                             }
-                            title="Save project as JSON — Ctrl/Cmd + S"
                         >
                             Save
                         </HeaderButton>
@@ -1870,307 +1621,411 @@ function FashionEditor() {
                             onClick={
                                 handleExportPng
                             }
-                            title="Export the document as PNG"
+                            disabled={
+                                exporting
+                            }
                         >
-                            Export PNG
+                            {exporting
+                                ? "Exporting…"
+                                : "Export PNG"}
                         </HeaderButton>
                     </div>
 
-                    <div
-                        className="hidden h-8 w-px bg-slate-800 lg:block"
-                    />
+                    <div className="mx-1 hidden h-6 w-px bg-slate-800 md:block" />
 
-                    <SmallIconButton
-                        title="Undo — Ctrl/Cmd + Z"
+                    <HeaderButton
+                        onClick={undo}
                         disabled={
                             !canUndo
                         }
-                        onClick={
-                            undo
-                        }
+                        title="Undo (Ctrl+Z)"
                     >
                         ↶
-                    </SmallIconButton>
+                    </HeaderButton>
 
-                    <SmallIconButton
-                        title="Redo — Ctrl/Cmd + Shift + Z"
+                    <HeaderButton
+                        onClick={redo}
                         disabled={
                             !canRedo
                         }
-                        onClick={
-                            redo
-                        }
+                        title="Redo (Ctrl+Y)"
                     >
                         ↷
-                    </SmallIconButton>
+                    </HeaderButton>
 
-                    <SmallIconButton
-                        title="Toggle properties panel"
+                    <HeaderButton
+                        onClick={() => {
+                            setUiState({
+                                rightPanelOpen:
+                                    !ui.rightPanelOpen
+                            });
+                        }}
                         active={
-                            rightPanelOpen
+                            ui.rightPanelOpen
                         }
-                        onClick={
-                            () =>
-                                setRightPanelOpen(
-                                    value =>
-                                        !value
-                                )
-                        }
+                        title="Toggle right panel"
                     >
-                        ◫
-                    </SmallIconButton>
+                        Panel
+                    </HeaderButton>
                 </div>
             </header>
 
-            {/*===========================================
-            Main Workspace
-            ===========================================*/}
+            {/* Tool options */}
 
-            <div
-                className="flex min-h-0 flex-1"
-            >
-                {/*---------------------------------------
-                Left Tool Bar
-                ---------------------------------------*/}
+            <div className="flex h-12 shrink-0 items-center gap-4 overflow-x-auto border-b border-slate-800 bg-slate-900 px-4">
+                <div className="shrink-0 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                    {activeToolDefinition
+                        ?.label ||
+                        activeTool}
+                </div>
 
-                <aside
-                    className="relative z-20 flex w-[68px] shrink-0 flex-col items-center gap-2 border-r border-slate-800 bg-slate-950 px-2 py-3 shadow-xl"
-                >
-                    {WORKING_TOOLS.map(
-                        tool => (
-                            <ToolButton
-                                key={
-                                    tool.id
+                <div className="h-5 w-px shrink-0 bg-slate-700" />
+
+                {activeTool ===
+                    EDITOR_TOOLS.PENCIL && (
+                    <>
+                        <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+                            Size
+
+                            <input
+                                type="range"
+                                min="0.25"
+                                max="100"
+                                step="0.25"
+                                value={
+                                    brush.size
                                 }
-                                tool={
-                                    tool
-                                }
-                                active={
-                                    activeTool ===
-                                    tool.id
-                                }
-                                onClick={
-                                    () =>
-                                        setActiveTool(
-                                            tool.id
-                                        )
-                                }
+                                onChange={event => {
+                                    setBrushSettings({
+                                        size:
+                                            Number(
+                                                event.target.value
+                                            )
+                                    });
+                                }}
+                                className="w-28 accent-violet-500"
                             />
-                        )
-                    )}
 
-                    <div
-                        className="my-1 h-px w-8 bg-slate-800"
-                    />
+                            <span className="min-w-10 font-semibold text-slate-100">
+                                {brush.size}px
+                            </span>
+                        </label>
 
-                    {UPCOMING_TOOLS.map(
-                        tool => (
-                            <ToolButton
-                                key={
-                                    tool.id
+                        <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+                            Opacity
+
+                            <input
+                                type="range"
+                                min="0.01"
+                                max="1"
+                                step="0.01"
+                                value={
+                                    brush.opacity
                                 }
-                                tool={
-                                    tool
-                                }
-                                active={
-                                    false
-                                }
-                                disabled
+                                onChange={event => {
+                                    setBrushSettings({
+                                        opacity:
+                                            Number(
+                                                event.target.value
+                                            )
+                                    });
+                                }}
+                                className="w-24 accent-violet-500"
                             />
-                        )
-                    )}
 
-                    <div
-                        className="mt-auto flex flex-col gap-2"
+                            <span className="min-w-10 font-semibold text-slate-100">
+                                {Math.round(
+                                    brush.opacity *
+                                    100
+                                )}
+                                %
+                            </span>
+                        </label>
+                    </>
+                )}
+
+                {activeTool ===
+                    EDITOR_TOOLS.ERASER && (
+                    <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+                        Eraser size
+
+                        <input
+                            type="range"
+                            min={
+                                eraser.minimumSize
+                            }
+                            max={
+                                eraser.maximumSize
+                            }
+                            step="1"
+                            value={
+                                eraser.size
+                            }
+                            onChange={event => {
+                                setEraserSize(
+                                    Number(
+                                        event.target.value
+                                    )
+                                );
+                            }}
+                            className="w-40 accent-violet-500"
+                        />
+
+                        <span className="min-w-12 font-semibold text-slate-100">
+                            {eraser.size}px
+                        </span>
+                    </label>
+                )}
+
+                {activeTool ===
+                    EDITOR_TOOLS.SELECT && (
+                    <span className="text-xs text-slate-400">
+                        {selectedObjectIds.length >
+                        0
+                            ? `${selectedObjectIds.length} object${
+                                selectedObjectIds.length ===
+                                1
+                                    ? ""
+                                    : "s"
+                            } selected`
+                            : "Click or drag to select objects"}
+                    </span>
+                )}
+
+                {activeTool ===
+                    EDITOR_TOOLS.PAN && (
+                    <span className="text-xs text-slate-400">
+                        Drag to move the canvas. Hold Space from any tool.
+                    </span>
+                )}
+
+                <div className="ml-auto flex shrink-0 items-center gap-2">
+                    <HeaderButton
+                        onClick={
+                            toggleGrid
+                        }
+                        active={
+                            ui.showGrid
+                        }
+                        title="Toggle grid"
                     >
-                        <SmallIconButton
-                            title={
-                                ui.showGrid
-                                    ? "Hide grid"
-                                    : "Show grid"
-                            }
-                            active={
-                                ui.showGrid
-                            }
-                            onClick={
-                                () =>
-                                    setUiState({
-                                        showGrid:
-                                            !ui.showGrid
-                                    })
-                            }
-                        >
-                            #
-                        </SmallIconButton>
+                        Grid
+                    </HeaderButton>
 
-                        <SmallIconButton
-                            title="Fit document to screen — 0"
-                            onClick={
-                                handleFitDocument
-                            }
-                        >
-                            ⛶
-                        </SmallIconButton>
-                    </div>
-                </aside>
+                    <HeaderButton
+                        onClick={() =>
+                            zoomOut()
+                        }
+                        title="Zoom out"
+                    >
+                        −
+                    </HeaderButton>
 
-                {/*---------------------------------------
-                Canvas Area
-                ---------------------------------------*/}
+                    <span className="min-w-12 text-center text-xs font-semibold text-slate-300">
+                        {zoomPercentage}%
+                    </span>
 
-                <main
-                    className="relative min-w-0 flex-1 overflow-hidden bg-slate-900"
-                >
+                    <HeaderButton
+                        onClick={() =>
+                            zoomIn()
+                        }
+                        title="Zoom in"
+                    >
+                        +
+                    </HeaderButton>
+
+                    <HeaderButton
+                        onClick={
+                            fitCanvas
+                        }
+                        title="Fit document (0)"
+                    >
+                        Fit
+                    </HeaderButton>
+                </div>
+            </div>
+
+            {/* Workspace */}
+
+            <main className="flex min-h-0 flex-1 overflow-hidden">
+                {ui.leftPanelOpen !==
+                    false && (
+                    <aside className="flex w-[76px] shrink-0 flex-col items-center gap-2 overflow-y-auto border-r border-slate-800 bg-slate-950 py-3">
+                        {TOOL_DEFINITIONS.map(
+                            tool => (
+                                <ToolButton
+                                    key={
+                                        tool.id
+                                    }
+                                    tool={
+                                        tool
+                                    }
+                                    active={
+                                        activeTool ===
+                                        tool.id
+                                    }
+                                    onClick={
+                                        setActiveTool
+                                    }
+                                />
+                            )
+                        )}
+
+                        <div className="my-1 h-px w-10 bg-slate-800" />
+
+                        <div className="relative h-12 w-12">
+                            <button
+                                type="button"
+                                title="Primary colour"
+                                onClick={() => {
+                                    globalThis.document
+                                        .getElementById(
+                                            "fashion-primary-colour"
+                                        )
+                                        ?.click();
+                                }}
+                                className="absolute left-0 top-0 h-8 w-8 rounded-lg border-2 border-slate-600 shadow"
+                                style={{
+                                    background:
+                                        colours.primary
+                                }}
+                            />
+
+                            <button
+                                type="button"
+                                title="Secondary colour"
+                                onClick={() => {
+                                    globalThis.document
+                                        .getElementById(
+                                            "fashion-secondary-colour"
+                                        )
+                                        ?.click();
+                                }}
+                                className="absolute bottom-0 right-0 h-8 w-8 rounded-lg border-2 border-slate-600 shadow"
+                                style={{
+                                    background:
+                                        colours.secondary
+                                }}
+                            />
+
+                            <button
+                                type="button"
+                                onClick={
+                                    swapColors
+                                }
+                                title="Swap colours"
+                                className="absolute bottom-0 left-0 text-[10px] font-bold text-slate-400 hover:text-white"
+                            >
+                                ↔
+                            </button>
+                        </div>
+                    </aside>
+                )}
+
+                <section className="relative min-w-0 flex-1 bg-slate-800">
                     <EditorCanvas
                         ref={stageRef}
-                        stageRef={
-                            stageRef
-                        }
                         className="h-full w-full"
-                        minimumHeight={
-                            0
-                        }
-                        autoFit
-                        wheelZoom
-                        clipToDocument
+                        minimumHeight={0}
                         onPointerPositionChange={
-                            handlePointerPositionChange
+                            setPointerInformation
                         }
                         onSaveRequested={
                             handleSaveProject
                         }
-                        onError={
-                            error => {
-                                setErrorMessage(
-                                    error?.message ||
-                                    "An editor error occurred."
-                                );
-                            }
-                        }
+                        onError={(
+                            error
+                        ) => {
+                            console.error(
+                                error
+                            );
+
+                            setEditorError(
+                                error
+                            );
+
+                            showToast(
+                                "An editor error occurred.",
+                                "error"
+                            );
+                        }}
                     />
+                </section>
 
-                    {/* Canvas floating controls */}
-
-                    <div
-                        className="pointer-events-none absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-slate-700/80 bg-slate-950/90 p-1.5 shadow-2xl backdrop-blur-xl"
-                    >
-                        <button
-                            type="button"
-                            onClick={
-                                zoomOut
-                            }
-                            className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-lg text-sm text-slate-300 transition hover:bg-slate-800 hover:text-white"
-                            title="Zoom out"
-                        >
-                            −
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={
-                                handleFitDocument
-                            }
-                            className="pointer-events-auto min-w-[70px] rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-800"
-                            title="Fit document to screen"
-                        >
-                            {formatPercentage(
-                                viewport.zoom
-                            )}
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={
-                                zoomIn
-                            }
-                            className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-lg text-sm text-slate-300 transition hover:bg-slate-800 hover:text-white"
-                            title="Zoom in"
-                        >
-                            +
-                        </button>
-                    </div>
-                </main>
-
-                {/*---------------------------------------
-                Right Panel
-                ---------------------------------------*/}
-
-                {rightPanelOpen && (
-                    <aside
-                        className="relative z-20 hidden w-[320px] shrink-0 flex-col border-l border-slate-800 bg-slate-950 shadow-2xl lg:flex"
-                    >
-                        <div
-                            className="flex h-12 shrink-0 border-b border-slate-800 p-1.5"
-                        >
+                {ui.rightPanelOpen !==
+                    false && (
+                    <aside className="hidden w-[320px] shrink-0 flex-col border-l border-slate-800 bg-slate-950 xl:flex">
+                        <div className="flex h-11 shrink-0 border-b border-slate-800">
                             <button
                                 type="button"
-                                onClick={
-                                    () =>
-                                        setRightPanelTab(
-                                            "layers"
-                                        )
+                                onClick={() =>
+                                    setRightPanelTab(
+                                        "layers"
+                                    )
                                 }
                                 className={[
-                                    "flex-1 rounded-lg text-xs font-semibold transition",
-
+                                    "flex-1 border-b-2 text-[10px] font-bold uppercase tracking-[0.16em] transition",
                                     rightPanelTab ===
                                     "layers"
-                                        ? "bg-slate-800 text-white"
-                                        : "text-slate-500 hover:text-slate-200"
-                                ].join(" ")}
+                                        ? "border-violet-500 text-white"
+                                        : "border-transparent text-slate-500 hover:text-slate-300"
+                                ].join(
+                                    " "
+                                )}
                             >
                                 Layers
                             </button>
 
                             <button
                                 type="button"
-                                onClick={
-                                    () =>
-                                        setRightPanelTab(
-                                            "properties"
-                                        )
+                                onClick={() =>
+                                    setRightPanelTab(
+                                        "properties"
+                                    )
                                 }
                                 className={[
-                                    "flex-1 rounded-lg text-xs font-semibold transition",
-
+                                    "flex-1 border-b-2 text-[10px] font-bold uppercase tracking-[0.16em] transition",
                                     rightPanelTab ===
                                     "properties"
-                                        ? "bg-slate-800 text-white"
-                                        : "text-slate-500 hover:text-slate-200"
-                                ].join(" ")}
+                                        ? "border-violet-500 text-white"
+                                        : "border-transparent text-slate-500 hover:text-slate-300"
+                                ].join(
+                                    " "
+                                )}
                             >
                                 Properties
                             </button>
                         </div>
 
-                        <div
-                            className="min-h-0 flex-1 overflow-y-auto"
-                        >
+                        <div className="min-h-0 flex-1 overflow-y-auto">
                             {rightPanelTab ===
-                            "layers" ? (
+                                "layers" && (
                                 <>
                                     <PanelSection
                                         title="Layers"
                                         action={
-                                            <SmallIconButton
-                                                title="Add layer"
-                                                onClick={
-                                                    handleAddLayer
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    addLayer()
                                                 }
+                                                className="rounded-md bg-violet-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white hover:bg-violet-400"
                                             >
-                                                +
-                                            </SmallIconButton>
+                                                + Add
+                                            </button>
                                         }
                                     >
-                                        <div
-                                            className="space-y-2"
-                                        >
+                                        <div className="space-y-2">
                                             {displayedLayers.map(
-                                                ({
-                                                    layer,
-                                                    originalIndex
-                                                }) => {
-                                                    const isActive =
+                                                layer => {
+                                                    const actualIndex =
+                                                        layers.findIndex(
+                                                            item =>
+                                                                item.id ===
+                                                                layer.id
+                                                        );
+
+                                                    const active =
                                                         layer.id ===
                                                         activeLayerId;
 
@@ -2179,23 +2034,21 @@ function FashionEditor() {
                                                             key={
                                                                 layer.id
                                                             }
-                                                            onClick={
-                                                                () =>
-                                                                    setActiveLayer(
-                                                                        layer.id
-                                                                    )
-                                                            }
+                                                            onClick={() => {
+                                                                setActiveLayer(
+                                                                    layer.id
+                                                                );
+                                                            }}
                                                             className={[
-                                                                "group rounded-xl border p-2 transition",
-
-                                                                isActive
-                                                                    ? "border-violet-500/70 bg-violet-500/10"
-                                                                    : "border-slate-800 bg-slate-900/60 hover:border-slate-700"
-                                                            ].join(" ")}
+                                                                "cursor-pointer rounded-xl border p-2 transition",
+                                                                active
+                                                                    ? "border-violet-500 bg-violet-500/10"
+                                                                    : "border-slate-800 bg-slate-900 hover:border-slate-700"
+                                                            ].join(
+                                                                " "
+                                                            )}
                                                         >
-                                                            <div
-                                                                className="flex items-center gap-2"
-                                                            >
+                                                            <div className="flex items-center gap-2">
                                                                 <button
                                                                     type="button"
                                                                     title={
@@ -2203,21 +2056,28 @@ function FashionEditor() {
                                                                             ? "Hide layer"
                                                                             : "Show layer"
                                                                     }
-                                                                    onClick={
-                                                                        event => {
-                                                                            event.stopPropagation();
+                                                                    onClick={event => {
+                                                                        event.stopPropagation();
 
-                                                                            toggleLayerVisibility(
-                                                                                layer.id
-                                                                            );
-                                                                        }
-                                                                    }
-                                                                    className="flex h-8 w-8 items-center justify-center rounded-md text-xs text-slate-400 hover:bg-slate-800 hover:text-white"
+                                                                        toggleLayerVisibility(
+                                                                            layer.id
+                                                                        );
+                                                                    }}
+                                                                    className="h-7 w-7 rounded-md bg-slate-800 text-xs text-slate-300 hover:bg-slate-700"
                                                                 >
                                                                     {layer.visible
                                                                         ? "◉"
                                                                         : "○"}
                                                                 </button>
+
+                                                                <LayerNameField
+                                                                    layer={
+                                                                        layer
+                                                                    }
+                                                                    renameLayer={
+                                                                        renameLayer
+                                                                    }
+                                                                />
 
                                                                 <button
                                                                     type="button"
@@ -2226,130 +2086,109 @@ function FashionEditor() {
                                                                             ? "Unlock layer"
                                                                             : "Lock layer"
                                                                     }
-                                                                    onClick={
-                                                                        event => {
-                                                                            event.stopPropagation();
+                                                                    onClick={event => {
+                                                                        event.stopPropagation();
 
-                                                                            toggleLayerLock(
-                                                                                layer.id
-                                                                            );
-                                                                        }
-                                                                    }
-                                                                    className="flex h-8 w-8 items-center justify-center rounded-md text-xs text-slate-400 hover:bg-slate-800 hover:text-white"
+                                                                        toggleLayerLock(
+                                                                            layer.id
+                                                                        );
+                                                                    }}
+                                                                    className="h-7 w-7 rounded-md bg-slate-800 text-xs text-slate-300 hover:bg-slate-700"
                                                                 >
                                                                     {layer.locked
-                                                                        ? "●"
-                                                                        : "◌"}
+                                                                        ? "■"
+                                                                        : "□"}
                                                                 </button>
+                                                            </div>
 
-                                                                <input
-                                                                    value={
-                                                                        layer.name
-                                                                    }
-                                                                    onClick={
-                                                                        event =>
-                                                                            event.stopPropagation()
-                                                                    }
-                                                                    onChange={
-                                                                        event =>
-                                                                            renameLayer(
-                                                                                layer.id,
-                                                                                event.target.value
-                                                                            )
-                                                                    }
-                                                                    className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-slate-200 outline-none focus:border-violet-500 focus:bg-slate-950"
-                                                                    aria-label="Layer name"
-                                                                />
+                                                            <div className="mt-2 flex items-center justify-between pl-9 text-[10px] text-slate-500">
+                                                                <span>
+                                                                    {layer.objectIds.length} object
+                                                                    {layer.objectIds.length ===
+                                                                    1
+                                                                        ? ""
+                                                                        : "s"}
+                                                                </span>
 
-                                                                <span
-                                                                    className="text-[10px] text-slate-500"
-                                                                >
-                                                                    {
-                                                                        layer
-                                                                            .objectIds
-                                                                            .length
-                                                                    }
+                                                                <span>
+                                                                    {Math.round(
+                                                                        layer.opacity *
+                                                                        100
+                                                                    )}
+                                                                    %
                                                                 </span>
                                                             </div>
 
-                                                            <div
-                                                                className="mt-2 flex items-center justify-end gap-1 opacity-60 transition group-hover:opacity-100"
-                                                            >
-                                                                <SmallIconButton
-                                                                    title="Move layer upward"
-                                                                    disabled={
-                                                                        originalIndex >=
-                                                                        layers.length -
-                                                                            1
-                                                                    }
-                                                                    onClick={
-                                                                        event => {
+                                                            {active && (
+                                                                <div className="mt-3 grid grid-cols-4 gap-1.5">
+                                                                    <button
+                                                                        type="button"
+                                                                        disabled={
+                                                                            actualIndex >=
+                                                                            layers.length -
+                                                                                1
+                                                                        }
+                                                                        onClick={event => {
                                                                             event.stopPropagation();
 
-                                                                            moveLayerUp(
-                                                                                layer.id,
-                                                                                originalIndex
+                                                                            handleMoveLayerUp(
+                                                                                layer.id
                                                                             );
-                                                                        }
-                                                                    }
-                                                                >
-                                                                    ↑
-                                                                </SmallIconButton>
+                                                                        }}
+                                                                        className="rounded-md bg-slate-800 py-1.5 text-[10px] text-slate-300 hover:bg-slate-700 disabled:opacity-30"
+                                                                    >
+                                                                        Up
+                                                                    </button>
 
-                                                                <SmallIconButton
-                                                                    title="Move layer downward"
-                                                                    disabled={
-                                                                        originalIndex <=
-                                                                        0
-                                                                    }
-                                                                    onClick={
-                                                                        event => {
+                                                                    <button
+                                                                        type="button"
+                                                                        disabled={
+                                                                            actualIndex <=
+                                                                            0
+                                                                        }
+                                                                        onClick={event => {
                                                                             event.stopPropagation();
 
-                                                                            moveLayerDown(
-                                                                                layer.id,
-                                                                                originalIndex
+                                                                            handleMoveLayerDown(
+                                                                                layer.id
                                                                             );
-                                                                        }
-                                                                    }
-                                                                >
-                                                                    ↓
-                                                                </SmallIconButton>
+                                                                        }}
+                                                                        className="rounded-md bg-slate-800 py-1.5 text-[10px] text-slate-300 hover:bg-slate-700 disabled:opacity-30"
+                                                                    >
+                                                                        Down
+                                                                    </button>
 
-                                                                <SmallIconButton
-                                                                    title="Duplicate layer"
-                                                                    onClick={
-                                                                        event => {
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={event => {
                                                                             event.stopPropagation();
 
                                                                             duplicateLayer(
                                                                                 layer.id
                                                                             );
-                                                                        }
-                                                                    }
-                                                                >
-                                                                    ⧉
-                                                                </SmallIconButton>
+                                                                        }}
+                                                                        className="rounded-md bg-slate-800 py-1.5 text-[10px] text-slate-300 hover:bg-slate-700"
+                                                                    >
+                                                                        Copy
+                                                                    </button>
 
-                                                                <SmallIconButton
-                                                                    title="Delete layer"
-                                                                    disabled={
-                                                                        layers.length <=
-                                                                        1
-                                                                    }
-                                                                    onClick={
-                                                                        event => {
+                                                                    <button
+                                                                        type="button"
+                                                                        disabled={
+                                                                            layers.length <=
+                                                                            1
+                                                                        }
+                                                                        onClick={event => {
                                                                             event.stopPropagation();
 
-                                                                            handleDeleteLayer(
-                                                                                layer.id
-                                                                            );
-                                                                        }
-                                                                    }
-                                                                >
-                                                                    ×
-                                                                </SmallIconButton>
-                                                            </div>
+                                                                            handleDeleteActiveLayer();
+                                                                        }}
+                                                                        className="rounded-md bg-red-950/60 py-1.5 text-[10px] text-red-300 hover:bg-red-900 disabled:opacity-30"
+                                                                    >
+                                                                        Delete
+                                                                    </button>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     );
                                                 }
@@ -2358,580 +2197,615 @@ function FashionEditor() {
                                     </PanelSection>
 
                                     {activeLayer && (
-                                        <PanelSection
-                                            title="Active Layer"
-                                        >
-                                            <label
-                                                className="block"
-                                            >
-                                                <div
-                                                    className="mb-2 flex items-center justify-between text-xs text-slate-400"
-                                                >
-                                                    <span>
-                                                        Opacity
-                                                    </span>
-
-                                                    <span>
-                                                        {formatPercentage(
-                                                            activeLayer.opacity
-                                                        )}
-                                                    </span>
-                                                </div>
-
-                                                <input
-                                                    type="range"
-                                                    min="0"
-                                                    max="1"
-                                                    step="0.01"
+                                        <PanelSection title="Layer Settings">
+                                            <div className="space-y-5">
+                                                <SliderField
+                                                    label="Opacity"
                                                     value={
-                                                        activeLayer.opacity
+                                                        Math.round(
+                                                            activeLayer.opacity *
+                                                            100
+                                                        )
                                                     }
-                                                    onPointerDown={
-                                                        () =>
-                                                            beginHistoryTransaction(
-                                                                "Change layer opacity"
-                                                            )
-                                                    }
-                                                    onPointerUp={
-                                                        commitHistoryTransaction
-                                                    }
-                                                    onBlur={
-                                                        commitHistoryTransaction
-                                                    }
-                                                    onChange={
-                                                        event =>
-                                                            setLayerOpacity(
-                                                                activeLayer.id,
-                                                                Number(
-                                                                    event.target.value
-                                                                )
-                                                            )
-                                                    }
-                                                    className="w-full accent-violet-500"
+                                                    minimum={0}
+                                                    maximum={100}
+                                                    suffix="%"
+                                                    onStart={() => {
+                                                        beginHistoryTransaction(
+                                                            "Change layer opacity"
+                                                        );
+                                                    }}
+                                                    onEnd={() => {
+                                                        commitHistoryTransaction();
+                                                    }}
+                                                    onChange={value => {
+                                                        setLayerOpacity(
+                                                            activeLayer.id,
+                                                            value /
+                                                                100
+                                                        );
+                                                    }}
                                                 />
-                                            </label>
 
-                                            <label
-                                                className="mt-4 block"
-                                            >
-                                                <span
-                                                    className="mb-2 block text-xs text-slate-400"
-                                                >
-                                                    Blend mode
-                                                </span>
+                                                <label className="block">
+                                                    <span className="mb-2 block text-xs font-medium text-slate-300">
+                                                        Blend mode
+                                                    </span>
 
-                                                <select
-                                                    value={
-                                                        activeLayer.blendMode
-                                                    }
-                                                    onChange={
-                                                        event =>
+                                                    <select
+                                                        value={
+                                                            activeLayer.blendMode
+                                                        }
+                                                        onChange={event => {
                                                             setLayerBlendMode(
                                                                 activeLayer.id,
                                                                 event.target.value
+                                                            );
+                                                        }}
+                                                        className="h-9 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                                                    >
+                                                        {BLEND_MODES.map(
+                                                            blendMode => (
+                                                                <option
+                                                                    key={
+                                                                        blendMode
+                                                                    }
+                                                                    value={
+                                                                        blendMode
+                                                                    }
+                                                                >
+                                                                    {blendMode}
+                                                                </option>
                                                             )
-                                                    }
-                                                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 outline-none focus:border-violet-500"
-                                                >
-                                                    {BLEND_MODES.map(
-                                                        mode => (
-                                                            <option
-                                                                key={
-                                                                    mode
-                                                                }
-                                                                value={
-                                                                    mode
-                                                                }
-                                                            >
-                                                                {mode}
-                                                            </option>
-                                                        )
-                                                    )}
-                                                </select>
-                                            </label>
+                                                        )}
+                                                    </select>
+                                                </label>
+                                            </div>
                                         </PanelSection>
                                     )}
                                 </>
-                            ) : (
+                            )}
+
+                            {rightPanelTab ===
+                                "properties" && (
                                 <>
-                                    <PanelSection
-                                        title="Pencil"
-                                    >
-                                        <label
-                                            className="block"
-                                        >
-                                            <div
-                                                className="mb-2 flex items-center justify-between text-xs text-slate-400"
-                                            >
-                                                <span>
-                                                    Size
-                                                </span>
-
-                                                <span>
-                                                    {numberOr(
-                                                        brush.size,
-                                                        4
-                                                    ).toFixed(
-                                                        1
-                                                    )}{" "}
-                                                    px
-                                                </span>
-                                            </div>
-
-                                            <input
-                                                type="range"
-                                                min="0.5"
-                                                max="80"
-                                                step="0.5"
-                                                value={
-                                                    brush.size
-                                                }
-                                                onChange={
-                                                    event =>
+                                    {activeTool ===
+                                        EDITOR_TOOLS.PENCIL && (
+                                        <PanelSection title="Pencil">
+                                            <div className="space-y-5">
+                                                <SliderField
+                                                    label="Size"
+                                                    value={
+                                                        brush.size
+                                                    }
+                                                    minimum={
+                                                        0.25
+                                                    }
+                                                    maximum={
+                                                        100
+                                                    }
+                                                    step={
+                                                        0.25
+                                                    }
+                                                    suffix="px"
+                                                    onChange={value => {
                                                         setBrushSettings({
                                                             size:
-                                                                Number(
-                                                                    event
-                                                                        .target
-                                                                        .value
-                                                                )
-                                                        })
-                                                }
-                                                className="w-full accent-violet-500"
-                                            />
-                                        </label>
+                                                                value
+                                                        });
+                                                    }}
+                                                />
 
-                                        <label
-                                            className="mt-4 block"
-                                        >
-                                            <div
-                                                className="mb-2 flex items-center justify-between text-xs text-slate-400"
-                                            >
-                                                <span>
-                                                    Opacity
-                                                </span>
-
-                                                <span>
-                                                    {formatPercentage(
-                                                        brush.opacity
-                                                    )}
-                                                </span>
-                                            </div>
-
-                                            <input
-                                                type="range"
-                                                min="0.01"
-                                                max="1"
-                                                step="0.01"
-                                                value={
-                                                    brush.opacity
-                                                }
-                                                onChange={
-                                                    event =>
+                                                <SliderField
+                                                    label="Opacity"
+                                                    value={
+                                                        Math.round(
+                                                            brush.opacity *
+                                                            100
+                                                        )
+                                                    }
+                                                    minimum={1}
+                                                    maximum={100}
+                                                    suffix="%"
+                                                    onChange={value => {
                                                         setBrushSettings({
                                                             opacity:
-                                                                Number(
-                                                                    event
-                                                                        .target
-                                                                        .value
-                                                                )
-                                                        })
-                                                }
-                                                className="w-full accent-violet-500"
-                                            />
-                                        </label>
+                                                                value /
+                                                                100
+                                                        });
+                                                    }}
+                                                />
 
-                                        <label
-                                            className="mt-4 block"
-                                        >
-                                            <div
-                                                className="mb-2 flex items-center justify-between text-xs text-slate-400"
-                                            >
-                                                <span>
-                                                    Smoothing
-                                                </span>
-
-                                                <span>
-                                                    {formatPercentage(
-                                                        brush.smoothing
-                                                    )}
-                                                </span>
-                                            </div>
-
-                                            <input
-                                                type="range"
-                                                min="0"
-                                                max="1"
-                                                step="0.01"
-                                                value={
-                                                    brush.smoothing
-                                                }
-                                                onChange={
-                                                    event =>
+                                                <SliderField
+                                                    label="Smoothing"
+                                                    value={
+                                                        Math.round(
+                                                            brush.smoothing *
+                                                            100
+                                                        )
+                                                    }
+                                                    minimum={0}
+                                                    maximum={100}
+                                                    suffix="%"
+                                                    onChange={value => {
                                                         setBrushSettings({
                                                             smoothing:
-                                                                Number(
-                                                                    event
-                                                                        .target
-                                                                        .value
-                                                                )
-                                                        })
-                                                }
-                                                className="w-full accent-violet-500"
-                                            />
-                                        </label>
+                                                                value /
+                                                                100
+                                                        });
+                                                    }}
+                                                />
 
-                                        <div
-                                            className="mt-4 flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900 px-3 py-2"
-                                        >
-                                            <span
-                                                className="text-xs text-slate-400"
-                                            >
-                                                Pressure
-                                            </span>
-
-                                            <button
-                                                type="button"
-                                                onClick={
-                                                    () =>
+                                                <SliderField
+                                                    label="Streamline"
+                                                    value={
+                                                        Math.round(
+                                                            brush.streamline *
+                                                            100
+                                                        )
+                                                    }
+                                                    minimum={0}
+                                                    maximum={100}
+                                                    suffix="%"
+                                                    onChange={value => {
                                                         setBrushSettings({
-                                                            pressureEnabled:
-                                                                !brush.pressureEnabled
-                                                        })
-                                                }
-                                                className={[
-                                                    "rounded-full px-3 py-1 text-xs font-semibold transition",
-
-                                                    brush.pressureEnabled
-                                                        ? "bg-violet-500 text-white"
-                                                        : "bg-slate-800 text-slate-400"
-                                                ].join(" ")}
-                                            >
-                                                {brush.pressureEnabled
-                                                    ? "On"
-                                                    : "Off"}
-                                            </button>
-                                        </div>
-                                    </PanelSection>
-
-                                    <PanelSection
-                                        title="Colours"
-                                    >
-                                        <div
-                                            className="flex items-center gap-3"
-                                        >
-                                            <label
-                                                className="relative block h-12 w-12 cursor-pointer overflow-hidden rounded-xl border-2 border-slate-600 shadow"
-                                                title="Primary colour"
-                                            >
-                                                <input
-                                                    type="color"
-                                                    value={
-                                                        getColorInputValue(
-                                                            colors.primary
-                                                        )
-                                                    }
-                                                    onChange={
-                                                        event =>
-                                                            setPrimaryColor(
-                                                                event.target.value
-                                                            )
-                                                    }
-                                                    className="absolute inset-[-8px] h-20 w-20 cursor-pointer border-0 bg-transparent"
+                                                            streamline:
+                                                                value /
+                                                                100
+                                                        });
+                                                    }}
                                                 />
-                                            </label>
 
-                                            <label
-                                                className="relative block h-10 w-10 cursor-pointer overflow-hidden rounded-xl border-2 border-slate-700 shadow"
-                                                title="Secondary colour"
-                                            >
-                                                <input
-                                                    type="color"
-                                                    value={
-                                                        getColorInputValue(
-                                                            colors.secondary,
-                                                            "#ffffff"
-                                                        )
-                                                    }
-                                                    onChange={
-                                                        event =>
-                                                            setSecondaryColor(
-                                                                event.target.value
-                                                            )
-                                                    }
-                                                    className="absolute inset-[-8px] h-20 w-20 cursor-pointer border-0 bg-transparent"
-                                                />
-                                            </label>
+                                                <label className="flex items-center justify-between gap-4 text-xs text-slate-300">
+                                                    Pressure enabled
 
-                                            <SmallIconButton
-                                                title="Swap primary and secondary colours"
-                                                onClick={
-                                                    swapColors
-                                                }
-                                            >
-                                                ⇄
-                                            </SmallIconButton>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={
+                                                            brush.pressureEnabled
+                                                        }
+                                                        onChange={event => {
+                                                            setBrushSettings({
+                                                                pressureEnabled:
+                                                                    event.target
+                                                                        .checked
+                                                            });
+                                                        }}
+                                                        className="h-4 w-4 accent-violet-500"
+                                                    />
+                                                </label>
 
-                                            <div
-                                                className="min-w-0 flex-1"
-                                            >
-                                                <input
-                                                    value={
-                                                        colors.primary
-                                                    }
-                                                    onChange={
-                                                        event =>
-                                                            setPrimaryColor(
-                                                                event.target.value
-                                                            )
-                                                    }
-                                                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 font-mono text-xs text-slate-200 outline-none focus:border-violet-500"
-                                                    aria-label="Primary colour value"
-                                                />
+                                                <label className="flex items-center justify-between gap-4 text-xs text-slate-300">
+                                                    Simulate pressure
+
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={
+                                                            brush.simulatePressure
+                                                        }
+                                                        onChange={event => {
+                                                            setBrushSettings({
+                                                                simulatePressure:
+                                                                    event.target
+                                                                        .checked
+                                                            });
+                                                        }}
+                                                        className="h-4 w-4 accent-violet-500"
+                                                    />
+                                                </label>
                                             </div>
-                                        </div>
+                                        </PanelSection>
+                                    )}
 
-                                        {colors.recent.length >
-                                            0 && (
-                                            <div
-                                                className="mt-4"
-                                            >
-                                                <p
-                                                    className="mb-2 text-xs text-slate-500"
-                                                >
-                                                    Recent
-                                                </p>
+                                    {activeTool ===
+                                        EDITOR_TOOLS.ERASER && (
+                                        <PanelSection title="Eraser">
+                                            <div className="space-y-5">
+                                                <SliderField
+                                                    label="Size"
+                                                    value={
+                                                        eraser.size
+                                                    }
+                                                    minimum={
+                                                        eraser.minimumSize
+                                                    }
+                                                    maximum={
+                                                        eraser.maximumSize
+                                                    }
+                                                    suffix="px"
+                                                    onChange={
+                                                        setEraserSize
+                                                    }
+                                                />
 
-                                                <div
-                                                    className="flex flex-wrap gap-2"
-                                                >
-                                                    {colors.recent
-                                                        .slice(
-                                                            0,
-                                                            12
-                                                        )
-                                                        .map(
-                                                            color => (
-                                                                <button
-                                                                    key={
-                                                                        color
-                                                                    }
-                                                                    type="button"
-                                                                    title={
-                                                                        color
-                                                                    }
-                                                                    onClick={
-                                                                        () =>
-                                                                            setPrimaryColor(
-                                                                                color
-                                                                            )
-                                                                    }
-                                                                    style={{
-                                                                        backgroundColor:
-                                                                            color
-                                                                    }}
-                                                                    className="h-7 w-7 rounded-md border border-white/20 shadow transition hover:scale-110"
-                                                                />
-                                                            )
-                                                        )}
+                                                <div>
+                                                    <p className="mb-2 text-xs font-medium text-slate-300">
+                                                        Eraser mode
+                                                    </p>
+
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setEraserMode(
+                                                                    "stroke"
+                                                                );
+                                                            }}
+                                                            className={[
+                                                                "rounded-lg border px-3 py-2 text-xs font-semibold transition",
+                                                                eraser.mode ===
+                                                                "stroke"
+                                                                    ? "border-violet-500 bg-violet-500 text-white"
+                                                                    : "border-slate-700 bg-slate-900 text-slate-300"
+                                                            ].join(
+                                                                " "
+                                                            )}
+                                                        >
+                                                            Stroke
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            disabled
+                                                            title="Partial eraser will be added later"
+                                                            className="cursor-not-allowed rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-600"
+                                                        >
+                                                            Partial
+                                                        </button>
+                                                    </div>
+
+                                                    <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
+                                                        Stroke mode removes an entire vector stroke touched by the eraser.
+                                                    </p>
                                                 </div>
                                             </div>
-                                        )}
+                                        </PanelSection>
+                                    )}
+
+                                    {activeTool ===
+                                        EDITOR_TOOLS.SELECT && (
+                                        <PanelSection title="Selection">
+                                            {selectedObjects.length >
+                                            0 ? (
+                                                <div className="space-y-4">
+                                                    <div className="rounded-xl border border-slate-800 bg-slate-900 p-3">
+                                                        <p className="text-sm font-semibold text-white">
+                                                            {selectedObjects.length} selected
+                                                        </p>
+
+                                                        <p className="mt-1 text-[10px] text-slate-500">
+                                                            Drag to move. Use the handles to resize or rotate.
+                                                        </p>
+                                                    </div>
+
+                                                    {selectedObjects.length ===
+                                                        1 && (
+                                                        <div className="grid grid-cols-2 gap-2 text-xs">
+                                                            <div className="rounded-lg bg-slate-900 p-3">
+                                                                <span className="block text-[9px] uppercase tracking-wide text-slate-500">
+                                                                    X
+                                                                </span>
+
+                                                                <strong>
+                                                                    {Math.round(
+                                                                        numberOr(
+                                                                            selectedObjects[0]
+                                                                                .x
+                                                                        )
+                                                                    )}
+                                                                </strong>
+                                                            </div>
+
+                                                            <div className="rounded-lg bg-slate-900 p-3">
+                                                                <span className="block text-[9px] uppercase tracking-wide text-slate-500">
+                                                                    Y
+                                                                </span>
+
+                                                                <strong>
+                                                                    {Math.round(
+                                                                        numberOr(
+                                                                            selectedObjects[0]
+                                                                                .y
+                                                                        )
+                                                                    )}
+                                                                </strong>
+                                                            </div>
+
+                                                            <div className="rounded-lg bg-slate-900 p-3">
+                                                                <span className="block text-[9px] uppercase tracking-wide text-slate-500">
+                                                                    Rotation
+                                                                </span>
+
+                                                                <strong>
+                                                                    {Math.round(
+                                                                        numberOr(
+                                                                            selectedObjects[0]
+                                                                                .rotation
+                                                                        )
+                                                                    )}
+                                                                    °
+                                                                </strong>
+                                                            </div>
+
+                                                            <div className="rounded-lg bg-slate-900 p-3">
+                                                                <span className="block text-[9px] uppercase tracking-wide text-slate-500">
+                                                                    Type
+                                                                </span>
+
+                                                                <strong className="capitalize">
+                                                                    {
+                                                                        selectedObjects[0]
+                                                                            .type
+                                                                    }
+                                                                </strong>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                duplicateObjects(
+                                                                    selectedObjectIds
+                                                                );
+                                                            }}
+                                                            className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700"
+                                                        >
+                                                            Duplicate
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                deleteObjects(
+                                                                    selectedObjectIds
+                                                                );
+                                                            }}
+                                                            className="rounded-lg bg-red-950/60 px-3 py-2 text-xs font-semibold text-red-300 hover:bg-red-900"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <p className="text-xs leading-relaxed text-slate-500">
+                                                    Click an object or drag a selection rectangle across several objects.
+                                                </p>
+                                            )}
+                                        </PanelSection>
+                                    )}
+
+                                    <PanelSection title="Colours">
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+                                                <label>
+                                                    <span className="mb-1.5 block text-[10px] uppercase tracking-wide text-slate-500">
+                                                        Primary
+                                                    </span>
+
+                                                    <input
+                                                        id="fashion-primary-colour"
+                                                        type="color"
+                                                        value={
+                                                            colours.primary
+                                                        }
+                                                        onChange={event => {
+                                                            setPrimaryColor(
+                                                                event.target.value
+                                                            );
+                                                        }}
+                                                        className="h-10 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-1"
+                                                    />
+                                                </label>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={
+                                                        swapColors
+                                                    }
+                                                    title="Swap colours"
+                                                    className="mb-0.5 h-9 w-9 rounded-lg border border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
+                                                >
+                                                    ↔
+                                                </button>
+
+                                                <label>
+                                                    <span className="mb-1.5 block text-[10px] uppercase tracking-wide text-slate-500">
+                                                        Secondary
+                                                    </span>
+
+                                                    <input
+                                                        id="fashion-secondary-colour"
+                                                        type="color"
+                                                        value={
+                                                            colours.secondary
+                                                        }
+                                                        onChange={event => {
+                                                            setSecondaryColor(
+                                                                event.target.value
+                                                            );
+                                                        }}
+                                                        className="h-10 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-1"
+                                                    />
+                                                </label>
+                                            </div>
+
+                                            <div className="grid grid-cols-8 gap-2">
+                                                {DEFAULT_COLOURS.map(
+                                                    colour => (
+                                                        <button
+                                                            key={
+                                                                colour
+                                                            }
+                                                            type="button"
+                                                            title={
+                                                                colour
+                                                            }
+                                                            onClick={() => {
+                                                                setPrimaryColor(
+                                                                    colour
+                                                                );
+                                                            }}
+                                                            className={[
+                                                                "aspect-square rounded-md border-2 transition hover:scale-110",
+                                                                colours.primary ===
+                                                                colour
+                                                                    ? "border-violet-400"
+                                                                    : "border-slate-700"
+                                                            ].join(
+                                                                " "
+                                                            )}
+                                                            style={{
+                                                                background:
+                                                                    colour
+                                                            }}
+                                                        />
+                                                    )
+                                                )}
+                                            </div>
+
+                                            {colours.recent.length >
+                                                0 && (
+                                                <div>
+                                                    <p className="mb-2 text-[10px] uppercase tracking-wide text-slate-500">
+                                                        Recent
+                                                    </p>
+
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {colours.recent
+                                                            .slice(
+                                                                0,
+                                                                12
+                                                            )
+                                                            .map(
+                                                                colour => (
+                                                                    <button
+                                                                        key={
+                                                                            colour
+                                                                        }
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setPrimaryColor(
+                                                                                colour
+                                                                            );
+                                                                        }}
+                                                                        className="h-6 w-6 rounded-md border border-slate-700"
+                                                                        style={{
+                                                                            background:
+                                                                                colour
+                                                                        }}
+                                                                    />
+                                                                )
+                                                            )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
                                     </PanelSection>
 
-                                    <PanelSection
-                                        title="Document"
-                                    >
-                                        <div
-                                            className="grid grid-cols-2 gap-2"
-                                        >
-                                            <div
-                                                className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-2"
-                                            >
-                                                <span
-                                                    className="block text-[10px] uppercase tracking-wider text-slate-500"
-                                                >
-                                                    Width
-                                                </span>
+                                    <PanelSection title="Document">
+                                        <div className="space-y-4 text-xs">
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className="rounded-lg bg-slate-900 p-3">
+                                                    <span className="block text-[9px] uppercase tracking-wide text-slate-500">
+                                                        Width
+                                                    </span>
 
-                                                <strong
-                                                    className="text-sm text-slate-200"
-                                                >
-                                                    {
-                                                        editorDocument.width
-                                                    }{" "}
-                                                    px
-                                                </strong>
+                                                    <strong>
+                                                        {documentData.width}px
+                                                    </strong>
+                                                </div>
+
+                                                <div className="rounded-lg bg-slate-900 p-3">
+                                                    <span className="block text-[9px] uppercase tracking-wide text-slate-500">
+                                                        Height
+                                                    </span>
+
+                                                    <strong>
+                                                        {documentData.height}px
+                                                    </strong>
+                                                </div>
                                             </div>
 
-                                            <div
-                                                className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-2"
-                                            >
-                                                <span
-                                                    className="block text-[10px] uppercase tracking-wider text-slate-500"
-                                                >
-                                                    Height
+                                            <label className="block">
+                                                <span className="mb-2 block text-xs font-medium text-slate-300">
+                                                    Background
                                                 </span>
 
-                                                <strong
-                                                    className="text-sm text-slate-200"
-                                                >
-                                                    {
-                                                        editorDocument.height
-                                                    }{" "}
-                                                    px
-                                                </strong>
-                                            </div>
-                                        </div>
-
-                                        <label
-                                            className="mt-4 flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900 px-3 py-2"
-                                        >
-                                            <span
-                                                className="text-xs text-slate-400"
-                                            >
-                                                Background
-                                            </span>
-
-                                            <input
-                                                type="color"
-                                                value={
-                                                    getColorInputValue(
-                                                        editorDocument.background,
-                                                        "#ffffff"
-                                                    )
-                                                }
-                                                onChange={
-                                                    event =>
+                                                <input
+                                                    type="color"
+                                                    value={
+                                                        documentData.background
+                                                    }
+                                                    onChange={event => {
                                                         setDocumentBackground(
                                                             event.target.value
-                                                        )
-                                                }
-                                                className="h-8 w-12 cursor-pointer rounded border-0 bg-transparent"
-                                            />
-                                        </label>
-                                    </PanelSection>
-
-                                    <PanelSection
-                                        title="Selection"
-                                    >
-                                        <div
-                                            className="rounded-xl border border-slate-800 bg-slate-900 p-3"
-                                        >
-                                            <p
-                                                className="text-sm font-semibold text-slate-200"
-                                            >
-                                                {
-                                                    selectedObjectIds.length
-                                                }{" "}
-                                                selected
-                                            </p>
-
-                                            <p
-                                                className="mt-1 text-xs leading-5 text-slate-500"
-                                            >
-                                                Use the Select
-                                                tool to click and
-                                                move completed
-                                                pencil strokes.
-                                            </p>
+                                                        );
+                                                    }}
+                                                    className="h-10 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-1"
+                                                />
+                                            </label>
                                         </div>
                                     </PanelSection>
                                 </>
                             )}
                         </div>
-
-                        <div
-                            className="shrink-0 border-t border-slate-800 p-3"
-                        >
-                            <button
-                                type="button"
-                                onClick={
-                                    handleClearDocument
-                                }
-                                disabled={
-                                    objectCount === 0
-                                }
-                                className="w-full rounded-lg border border-red-900/60 bg-red-950/30 px-3 py-2 text-xs font-semibold text-red-300 transition hover:border-red-700 hover:bg-red-950/60 disabled:cursor-not-allowed disabled:opacity-35"
-                            >
-                                Clear document
-                            </button>
-                        </div>
                     </aside>
                 )}
-            </div>
+            </main>
 
-            {/*===========================================
-            Status Bar
-            ===========================================*/}
+            {/* Status bar */}
 
-            <footer
-                className="relative z-30 flex h-8 shrink-0 items-center justify-between gap-4 border-t border-slate-800 bg-slate-950 px-3 text-[11px] text-slate-500"
-            >
-                <div
-                    className="flex min-w-0 items-center gap-4"
-                >
+            <footer className="flex h-7 shrink-0 items-center justify-between gap-4 overflow-hidden border-t border-slate-800 bg-slate-950 px-3 text-[10px] text-slate-500">
+                <div className="flex min-w-0 items-center gap-4">
+                    <span className="truncate">
+                        Tool:{" "}
+                        <strong className="text-slate-300">
+                            {activeToolDefinition
+                                ?.label ||
+                                activeTool}
+                        </strong>
+                    </span>
+
                     <span>
-                        {pointerInformation
-                            .insideDocument &&
-                        pointerInformation
-                            .documentPoint
-                            ? `X ${formatCoordinate(
-                                pointerInformation
-                                    .documentPoint
-                                    .x
-                            )}  Y ${formatCoordinate(
-                                pointerInformation
-                                    .documentPoint
-                                    .y
-                            )}`
-                            : "Outside canvas"}
+                        Objects:{" "}
+                        <strong className="text-slate-300">
+                            {objectCount}
+                        </strong>
                     </span>
 
-                    <span
-                        className="hidden sm:inline"
-                    >
-                        {
-                            editorDocument.width
-                        }{" "}
-                        ×{" "}
-                        {
-                            editorDocument.height
-                        }{" "}
-                        px
-                    </span>
-
-                    <span
-                        className="hidden md:inline"
-                    >
-                        {formatObjectCount(
-                            objectCount
-                        )}
-                    </span>
-
-                    <span
-                        className="hidden lg:inline"
-                    >
-                        {
-                            selectedObjectIds.length
-                        }{" "}
-                        selected
+                    <span className="hidden sm:inline">
+                        Layer:{" "}
+                        <strong className="text-slate-300">
+                            {activeLayer
+                                ?.name ||
+                                "None"}
+                        </strong>
                     </span>
                 </div>
 
-                <div
-                    className="flex shrink-0 items-center gap-4"
-                >
-                    <span
-                        className="capitalize"
-                    >
-                        {activeTool}
-                    </span>
+                <div className="flex shrink-0 items-center gap-4">
+                    {pointerInformation
+                        ?.insideDocument && (
+                        <span>
+                            X{" "}
+                            {Math.round(
+                                pointerInformation
+                                    .documentPoint
+                                    .x
+                            )}{" "}
+                            Y{" "}
+                            {Math.round(
+                                pointerInformation
+                                    .documentPoint
+                                    .y
+                            )}
+                        </span>
+                    )}
 
                     <span>
-                        {formatPercentage(
-                            viewport.zoom
-                        )}
+                        {zoomPercentage}%
                     </span>
 
                     <span
@@ -2941,76 +2815,73 @@ function FashionEditor() {
                                 : "text-emerald-400"
                         }
                     >
-                        {persistence.saving
-                            ? "Saving…"
-                            : persistence.dirty
-                                ? "Unsaved"
-                                : "Saved"}
+                        {persistence.dirty
+                            ? "Unsaved"
+                            : "Saved"}
                     </span>
                 </div>
             </footer>
 
-            {/*===========================================
-            Notices
-            ===========================================*/}
+            {/* Toast */}
 
-            {notice && (
+            {toast && (
                 <div
                     className={[
-                        "fixed bottom-12 left-1/2 z-[100] -translate-x-1/2 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-2xl backdrop-blur-xl",
-
-                        notice.type ===
-                        "warning"
-                            ? "border-amber-500/50 bg-amber-950/90 text-amber-200"
-                            : "border-emerald-500/50 bg-emerald-950/90 text-emerald-200"
-                    ].join(" ")}
+                        "fixed bottom-10 right-5 z-[100] max-w-sm rounded-xl border px-4 py-3 text-sm font-semibold shadow-2xl",
+                        toast.type ===
+                        "error"
+                            ? "border-red-800 bg-red-950 text-red-200"
+                            : "border-emerald-800 bg-emerald-950 text-emerald-200"
+                    ].join(
+                        " "
+                    )}
                 >
-                    {notice.message}
+                    {toast.message}
                 </div>
             )}
 
-            {errorMessage && (
-                <div
-                    className="fixed right-4 top-20 z-[100] max-w-sm rounded-xl border border-red-500/50 bg-red-950/95 p-4 text-sm text-red-200 shadow-2xl backdrop-blur-xl"
-                    role="alert"
+            {/* Error notification */}
+
+            {editorError && (
+                <button
+                    type="button"
+                    onClick={() => {
+                        setEditorError(
+                            null
+                        );
+                    }}
+                    className="fixed left-1/2 top-20 z-[100] max-w-lg -translate-x-1/2 rounded-xl border border-red-800 bg-red-950 px-4 py-3 text-left text-xs text-red-200 shadow-2xl"
                 >
-                    <div
-                        className="flex items-start gap-3"
-                    >
-                        <div
-                            className="min-w-0 flex-1"
-                        >
-                            <p
-                                className="font-semibold"
-                            >
-                                Editor error
-                            </p>
+                    <strong className="block">
+                        Editor error
+                    </strong>
 
-                            <p
-                                className="mt-1 leading-5 text-red-300"
-                            >
-                                {errorMessage}
-                            </p>
-                        </div>
+                    <span className="mt-1 block opacity-80">
+                        {editorError.message ||
+                            String(
+                                editorError
+                            )}
+                    </span>
 
-                        <button
-                            type="button"
-                            onClick={
-                                () =>
-                                    setErrorMessage(
-                                        null
-                                    )
-                            }
-                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-red-300 hover:bg-red-900"
-                            aria-label="Close error"
-                        >
-                            ×
-                        </button>
-                    </div>
-                </div>
+                    <span className="mt-2 block text-[10px] opacity-60">
+                        Click to dismiss
+                    </span>
+                </button>
             )}
         </div>
     );
 }
 
-export default FashionEditor;
+/*=========================================================
+Export
+=========================================================*/
+
+const MemoizedFashionEditor =
+    memo(
+        FashionEditor
+    );
+
+MemoizedFashionEditor.displayName =
+    "FashionEditor";
+
+export default MemoizedFashionEditor;

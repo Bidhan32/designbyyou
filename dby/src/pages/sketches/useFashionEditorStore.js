@@ -424,6 +424,26 @@ function createDefaultBrushSettings() {
 }
 
 /*=========================================================
+Default Eraser Settings
+=========================================================*/
+
+function createDefaultEraserSettings() {
+    return {
+        mode:
+            "stroke",
+
+        size:
+            36,
+
+        minimumSize:
+            4,
+
+        maximumSize:
+            300
+    };
+}
+
+/*=========================================================
 Default Shape Settings
 =========================================================*/
 
@@ -591,98 +611,105 @@ export function normalizeEditorObject(
     object = {},
     fallbackLayerId
 ) {
+    const source =
+        isPlainObject(object)
+            ? object
+            : {};
+
     const timestamp =
         nowIso();
 
     const type =
         Object.values(
             OBJECT_TYPES
-        ).includes(object.type)
-            ? object.type
+        ).includes(source.type)
+            ? source.type
             : OBJECT_TYPES.BRUSH;
 
     return {
+        ...source,
+
+        id:
+            source.id ||
+            createId(type),
+
+        type,
+
+        layerId:
+            source.layerId ||
+            fallbackLayerId,
+
+        name:
+            typeof source.name ===
+                "string" &&
+            source.name.trim()
+                ? source.name.trim()
+                : type,
+
         visible:
-            object.visible !== false,
+            source.visible !==
+            false,
 
         locked:
             Boolean(
-                object.locked
+                source.locked
             ),
 
         opacity:
             clamp(
-                object.opacity ?? 1,
+                source.opacity ?? 1,
                 0,
                 1
             ),
 
         x:
             numberOr(
-                object.x,
+                source.x,
                 0
             ),
 
         y:
             numberOr(
-                object.y,
+                source.y,
                 0
             ),
 
         rotation:
             numberOr(
-                object.rotation,
+                source.rotation,
                 0
             ),
 
         scaleX:
             numberOr(
-                object.scaleX,
+                source.scaleX,
                 1
             ),
 
         scaleY:
             numberOr(
-                object.scaleY,
+                source.scaleY,
                 1
             ),
 
         skewX:
             numberOr(
-                object.skewX,
+                source.skewX,
                 0
             ),
 
         skewY:
             numberOr(
-                object.skewY,
+                source.skewY,
                 0
             ),
 
-        name:
-            typeof object.name ===
-                "string"
-                ? object.name
-                : type,
-
-        ...object,
-
-        id:
-            object.id ||
-            createId(type),
-
-        type,
-
-        layerId:
-            object.layerId ||
-            fallbackLayerId,
-
         createdAt:
-            object.createdAt ||
+            source.createdAt ||
             timestamp,
 
         updatedAt:
-            object.updatedAt ||
+            source.updatedAt ||
             timestamp
     };
 }
@@ -1248,15 +1275,19 @@ export const useFashionEditorStore =
                 previousTool:
                     EDITOR_TOOLS.PENCIL,
 
+                    
                 /*-----------------------------------------
                 Drawing Settings
                 -----------------------------------------*/
 
-                brush:
-                    createDefaultBrushSettings(),
+               brush:
+    createDefaultBrushSettings(),
 
-                shape:
-                    createDefaultShapeSettings(),
+eraser:
+    createDefaultEraserSettings(),
+
+shape:
+    createDefaultShapeSettings(),
 
                 fill:
                     createDefaultFillSettings(),
@@ -1512,46 +1543,51 @@ export const useFashionEditorStore =
                 Tool Actions
                 =========================================*/
 
-                setActiveTool: tool => {
-                    if (
-                        !Object.values(
-                            EDITOR_TOOLS
-                        ).includes(tool)
-                    ) {
-                        return;
-                    }
+   /*=========================================
+Tool Actions
+=========================================*/
 
-                    set(
-                        state => ({
-                            previousTool:
-                                state.activeTool,
+setActiveTool:
+    tool => {
+        if (
+            !Object.values(
+                EDITOR_TOOLS
+            ).includes(tool)
+        ) {
+            return;
+        }
 
-                            activeTool:
-                                tool,
+        set(
+            state => {
+                if (
+                    state.activeTool ===
+                    tool
+                ) {
+                    return {};
+                }
 
-                            selectedObjectIds:
-                                tool ===
-                                EDITOR_TOOLS
-                                    .SELECT
-                                    ? state
-                                        .selectedObjectIds
-                                    : state
-                                        .selectedObjectIds
-                        })
-                    );
-                },
+                return {
+                    previousTool:
+                        state.activeTool,
 
-                restorePreviousTool: () => {
-                    set(
-                        state => ({
-                            activeTool:
-                                state.previousTool,
+                    activeTool:
+                        tool
+                };
+            }
+        );
+    },
 
-                            previousTool:
-                                state.activeTool
-                        })
-                    );
-                },
+restorePreviousTool: () => {
+    set(
+        state => ({
+            activeTool:
+                state.previousTool,
+
+            previousTool:
+                state.activeTool
+        })
+    );
+},
 
                 /*=========================================
                 Brush Actions
@@ -1649,6 +1685,97 @@ export const useFashionEditorStore =
                             preset
                         );
                     },
+
+                    /*=========================================
+Eraser Actions
+=========================================*/
+
+setEraserSettings:
+    updates => {
+        if (
+            !isPlainObject(
+                updates
+            )
+        ) {
+            return;
+        }
+
+        set(
+            state => {
+                const minimumSize =
+                    Math.max(
+                        1,
+                        numberOr(
+                            updates.minimumSize,
+                            state.eraser
+                                .minimumSize
+                        )
+                    );
+
+                const maximumSize =
+                    Math.max(
+                        minimumSize,
+                        numberOr(
+                            updates.maximumSize,
+                            state.eraser
+                                .maximumSize
+                        )
+                    );
+
+                const mode =
+                    updates.mode ===
+                        "stroke" ||
+                    updates.mode ===
+                        "partial"
+                        ? updates.mode
+                        : state.eraser
+                            .mode;
+
+                return {
+                    eraser: {
+                        ...state.eraser,
+                        ...updates,
+
+                        mode,
+
+                        minimumSize,
+
+                        maximumSize,
+
+                        size:
+                            clamp(
+                                updates.size ??
+                                state.eraser
+                                    .size,
+                                minimumSize,
+                                maximumSize
+                            )
+                    }
+                };
+            }
+        );
+    },
+
+setEraserSize:
+    size => {
+        get().setEraserSettings({
+            size
+        });
+    },
+
+setEraserMode:
+    mode => {
+        if (
+            mode !== "stroke" &&
+            mode !== "partial"
+        ) {
+            return;
+        }
+
+        get().setEraserSettings({
+            mode
+        });
+    },
 
                 /*=========================================
                 Shape, Fill and Text Settings
@@ -1861,31 +1988,45 @@ export const useFashionEditorStore =
                         );
                     },
 
-                swapColors: () => {
-                    set(
-                        state => ({
-                            colors: {
-                                ...state.colors,
+              swapColors: () => {
+    set(
+        state => {
+            const nextPrimary =
+                state.colors
+                    .secondary;
 
-                                primary:
-                                    state.colors
-                                        .secondary,
+            const nextSecondary =
+                state.colors
+                    .primary;
 
-                                secondary:
-                                    state.colors
-                                        .primary
-                            },
+            return {
+                colors: {
+                    ...state.colors,
 
-                            brush: {
-                                ...state.brush,
+                    primary:
+                        nextPrimary,
 
-                                color:
-                                    state.colors
-                                        .secondary
-                            }
-                        })
-                    );
+                    secondary:
+                        nextSecondary
                 },
+
+                brush: {
+                    ...state.brush,
+
+                    color:
+                        nextPrimary
+                },
+
+                shape: {
+                    ...state.shape,
+
+                    stroke:
+                        nextPrimary
+                }
+            };
+        }
+    );
+},
 
                 saveColor: color => {
                     const selectedColor =
@@ -3100,28 +3241,35 @@ export const useFashionEditorStore =
                 =========================================*/
 
                 setActiveLayer:
-                    layerId => {
-                        const state =
-                            get();
+    (
+        layerId,
+        options = {}
+    ) => {
+        const state =
+            get();
 
-                        if (
-                            !state.layers.some(
-                                layer =>
-                                    layer.id ===
-                                    layerId
-                            )
-                        ) {
-                            return;
-                        }
+        if (
+            !state.layers.some(
+                layer =>
+                    layer.id ===
+                    layerId
+            )
+        ) {
+            return;
+        }
 
-                        set({
-                            activeLayerId:
-                                layerId,
+        set({
+            activeLayerId:
+                layerId,
 
-                            selectedObjectIds:
-                                []
-                        });
-                    },
+            selectedObjectIds:
+                options.clearSelection ===
+                true
+                    ? []
+                    : state
+                        .selectedObjectIds
+        });
+    },
 
                 addLayer: (
                     options = {}
