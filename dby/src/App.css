@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer components {
+  .auth-input {
+    @apply w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg outline-none transition-all focus:border-[#D4AF37] focus:bg-white text-sm;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+
+@theme {
+  --color-fashionGold: #D4AF37;
+  --color-darkElite: #1A1A1A;
+}
+
+@layer components {
+  .auth-label {
+    @apply text-[10px] uppercase tracking-[0.15em] font-black text-gray-400 mb-1 block;
+  }
+
+  .auth-input-v2 {
+    @apply w-full pl-10 pr-4 py-3.5 bg-gray-50 border border-transparent rounded-xl text-sm transition-all focus:bg-white focus:border-fashionGold focus:ring-4 focus:ring-fashionGold/5 outline-none text-darkElite placeholder:text-gray-300;
+  }
+}
+
+/* For the slide-in animation when designer is selected */
+.animate-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #e2e8f0;
+    border-radius: 10px;
+}
+
+/* Custom Scrollbar for Dark Sidebar */
+.custom-scrollbar-dark::-webkit-scrollbar {
+    width: 4px;
+}
+.custom-scrollbar-dark::-webkit-scrollbar-thumb {
+    background-color: rgba(212, 175, 55, 0.2);
+    border-radius: 10px;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(40px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.tldraw-wrapper .tl-ui-layout {
+    top: 80px !important;
+}
+
+/* Hides the tldraw watermark for a premium white-label feel */
+.tl-watermark_logo {
+    display: none !important;
+}
