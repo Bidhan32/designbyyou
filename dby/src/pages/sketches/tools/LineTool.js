@@ -1,11 +1,12 @@
 /*
 =========================================================
 FashionVision Professional Editor
-Shape Tool
+Straight Line Tool
 Version 1.1 — Symmetry Integrated
 =========================================================
 */
 
+import { BRUSH_RENDER_MODES } from "../brushes/BrushPresets";
 import { defineTool } from "./ToolManager";
 
 import {
@@ -23,66 +24,49 @@ import {
 } from "../utils/SymmetryUtils";
 
 /*=========================================================
-Shape Types and Constants
+Constants
 =========================================================*/
 
-export const SHAPE_TYPES = Object.freeze({
-    RECTANGLE: "rectangle",
-    ELLIPSE: "ellipse",
-    CIRCLE: "circle",
-    TRIANGLE: "triangle",
-    POLYGON: "polygon"
-});
-
-const SUPPORTED_SHAPE_TYPES =
-    Object.values(SHAPE_TYPES);
-
 const DEFAULT_PREVIEW_ID =
-    "__fashion-shape-preview__";
+    "__fashion-line-preview__";
 
 const DEFAULT_SYMMETRY_PREVIEW_ID_PREFIX =
-    "__fashion-shape-symmetry-preview__";
+    "__fashion-line-symmetry-preview__";
 
 const DEFAULT_HISTORY_LABEL =
-    "Draw shape";
+    "Draw line";
 
 const DEFAULT_SYMMETRY_HISTORY_LABEL =
-    "Draw symmetrical shape";
+    "Draw symmetrical line";
 
-const DEFAULT_STROKE =
+const DEFAULT_LINE_COLOR =
     "#111111";
 
-const DEFAULT_FILL =
-    "#ffffff";
-
-const DEFAULT_STROKE_WIDTH =
+const DEFAULT_LINE_WIDTH =
     3;
 
-const DEFAULT_POLYGON_SIDES =
-    5;
-
-const MAXIMUM_POLYGON_SIDES =
-    32;
-
-const MINIMUM_SHAPE_SIZE =
-    1;
+const DEFAULT_ANGLE_INCREMENT =
+    15;
 
 const DEFAULT_SYMMETRY_SNAP_THRESHOLD =
     8;
 
+const MINIMUM_LINE_LENGTH =
+    0.5;
+
 /*=========================================================
-General Helpers
+Helpers
 =========================================================*/
 
 function numberOr(
     value,
     fallback = 0
 ) {
-    const number =
+    const result =
         Number(value);
 
-    return Number.isFinite(number)
-        ? number
+    return Number.isFinite(result)
+        ? result
         : fallback;
 }
 
@@ -108,7 +92,8 @@ function isPlainObject(
 ) {
     return Boolean(
         value &&
-        typeof value === "object" &&
+        typeof value ===
+            "object" &&
         !Array.isArray(value)
     );
 }
@@ -148,7 +133,7 @@ function clonePoint(
 }
 
 function createId(
-    prefix = "shape"
+    prefix = "line"
 ) {
     if (
         typeof globalThis.crypto
@@ -191,7 +176,8 @@ function isContextLike(
 ) {
     return Boolean(
         value &&
-        typeof value === "object" &&
+        typeof value ===
+            "object" &&
         (
             value.manager ||
             value.stage ||
@@ -217,23 +203,27 @@ function resolveHandlerArguments(
     firstArgument,
     secondArgument
 ) {
-    return isContextLike(
-        firstArgument
-    )
-        ? {
+    if (
+        isContextLike(
+            firstArgument
+        )
+    ) {
+        return {
             context:
                 firstArgument,
 
             event:
                 secondArgument
-        }
-        : {
-            context:
-                secondArgument,
-
-            event:
-                firstArgument
         };
+    }
+
+    return {
+        context:
+            secondArgument,
+
+        event:
+            firstArgument
+    };
 }
 
 function safelyPreventDefault(
@@ -261,7 +251,7 @@ function safelyPreventDefault(
 }
 
 /*=========================================================
-Editor Context Helpers
+Editor Context
 =========================================================*/
 
 function getLatestState(
@@ -383,20 +373,16 @@ function setTemporaryObjects(
         Array.isArray(
             objects
         )
-            ? objects.filter(
-                Boolean
-            )
+            ? objects.filter(Boolean)
             : [];
 
     context?.setTemporaryObjects?.(
         safeObjects
     );
 
-    context
-        ?.onTemporaryObjectsChange
-        ?.(
-            safeObjects
-        );
+    context?.onTemporaryObjectsChange?.(
+        safeObjects
+    );
 
     return safeObjects;
 }
@@ -411,17 +397,13 @@ function publishTemporaryObjects(
         Array.isArray(
             mirroredObjects
         )
-            ? mirroredObjects.filter(
-                Boolean
-            )
+            ? mirroredObjects.filter(Boolean)
             : [];
 
     const temporaryObjects = [
         primaryObject,
         ...safeMirroredObjects
-    ].filter(
-        Boolean
-    );
+    ].filter(Boolean);
 
     setTemporaryObject(
         context,
@@ -434,12 +416,10 @@ function publishTemporaryObjects(
         temporaryObjects
     );
 
-    context
-        ?.onTemporaryObjectChange
-        ?.(
-            primaryObject ||
-            null
-        );
+    context?.onTemporaryObjectChange?.(
+        primaryObject ||
+        null
+    );
 
     context?.manager
         ?.setToolState?.(
@@ -455,9 +435,7 @@ function publishTemporaryObjects(
                     safeMirroredObjects,
 
                 drawing:
-                    Boolean(
-                        primaryObject
-                    )
+                    Boolean(primaryObject)
             }
         );
 
@@ -482,7 +460,7 @@ function requestRender(
 }
 
 /*=========================================================
-Pointer Helpers
+Pointer Information
 =========================================================*/
 
 function getPointerId(
@@ -505,17 +483,17 @@ function getPointerId(
     const nativeEvent =
         getNativeEvent(event);
 
-    const pointerId =
+    const eventPointerId =
         Number(
             nativeEvent?.pointerId
         );
 
     if (
         Number.isFinite(
-            pointerId
+            eventPointerId
         )
     ) {
-        return pointerId;
+        return eventPointerId;
     }
 
     const touchIdentifier =
@@ -545,7 +523,8 @@ function getPointerType(
             "string" &&
         context.pointerType
     ) {
-        return context.pointerType;
+        return context
+            .pointerType;
     }
 
     const nativeEvent =
@@ -557,7 +536,8 @@ function getPointerType(
             "string" &&
         nativeEvent.pointerType
     ) {
-        return nativeEvent.pointerType;
+        return nativeEvent
+            .pointerType;
     }
 
     if (
@@ -593,11 +573,8 @@ function isPrimaryPointer(
         );
 
     return (
-        !Number.isFinite(
-            button
-        ) ||
-        button ===
-            0
+        !Number.isFinite(button) ||
+        button === 0
     );
 }
 
@@ -606,9 +583,7 @@ function pointerMatchesSession(
     context,
     event
 ) {
-    if (
-        !session
-    ) {
+    if (!session) {
         return false;
     }
 
@@ -634,7 +609,7 @@ function pointerMatchesSession(
 }
 
 /*=========================================================
-Coordinate Helpers
+Coordinates
 =========================================================*/
 
 function getScreenPointFromEvent(
@@ -752,7 +727,6 @@ function screenToDocumentPoint(
     const zoom =
         Math.max(
             0.0001,
-
             numberOr(
                 viewport.zoom,
                 1
@@ -817,61 +791,40 @@ function resolveDocumentPoint(
     );
 }
 
-function getDocumentSize(
-    documentData
-) {
-    return {
-        width:
-            Math.max(
-                1,
-
-                numberOr(
-                    documentData?.width,
-                    1200
-                )
-            ),
-
-        height:
-            Math.max(
-                1,
-
-                numberOr(
-                    documentData?.height,
-                    1600
-                )
-            )
-    };
-}
-
 function isPointInsideDocument(
     point,
     documentData
 ) {
     if (
-        !isFinitePoint(
-            point
-        )
+        !isFinitePoint(point) ||
+        !documentData
     ) {
         return false;
     }
 
-    const {
-        width,
-        height
-    } =
-        getDocumentSize(
-            documentData
+    const width =
+        Math.max(
+            1,
+            numberOr(
+                documentData.width,
+                1200
+            )
+        );
+
+    const height =
+        Math.max(
+            1,
+            numberOr(
+                documentData.height,
+                1600
+            )
         );
 
     return (
-        point.x >=
-            0 &&
-        point.y >=
-            0 &&
-        point.x <=
-            width &&
-        point.y <=
-            height
+        point.x >= 0 &&
+        point.y >= 0 &&
+        point.x <= width &&
+        point.y <= height
     );
 }
 
@@ -880,19 +833,27 @@ function clampPointToDocument(
     documentData
 ) {
     if (
-        !isFinitePoint(
-            point
-        )
+        !isFinitePoint(point)
     ) {
         return null;
     }
 
-    const {
-        width,
-        height
-    } =
-        getDocumentSize(
-            documentData
+    const width =
+        Math.max(
+            1,
+            numberOr(
+                documentData?.width,
+                1200
+            )
+        );
+
+    const height =
+        Math.max(
+            1,
+            numberOr(
+                documentData?.height,
+                1600
+            )
         );
 
     return {
@@ -919,21 +880,16 @@ function snapPointToGrid(
     state
 ) {
     if (
-        !isFinitePoint(
-            point
-        ) ||
+        !isFinitePoint(point) ||
         state?.ui?.snapToGrid !==
             true
     ) {
-        return clonePoint(
-            point
-        );
+        return clonePoint(point);
     }
 
     const gridSize =
         Math.max(
             1,
-
             numberOr(
                 state.ui.gridSize,
                 20
@@ -959,9 +915,75 @@ function snapPointToGrid(
     };
 }
 
-/*=========================================================
-Symmetry Helpers
-=========================================================*/
+function snapPointToAngle(
+    startPoint,
+    endPoint,
+    incrementDegrees
+) {
+    const deltaX =
+        endPoint.x -
+        startPoint.x;
+
+    const deltaY =
+        endPoint.y -
+        startPoint.y;
+
+    const length =
+        Math.hypot(
+            deltaX,
+            deltaY
+        );
+
+    if (
+        length <= 0
+    ) {
+        return clonePoint(
+            startPoint
+        );
+    }
+
+    const incrementRadians =
+        Math.max(
+            1,
+            numberOr(
+                incrementDegrees,
+                DEFAULT_ANGLE_INCREMENT
+            )
+        ) *
+        Math.PI /
+        180;
+
+    const angle =
+        Math.atan2(
+            deltaY,
+            deltaX
+        );
+
+    const snappedAngle =
+        Math.round(
+            angle /
+            incrementRadians
+        ) *
+        incrementRadians;
+
+    return {
+        ...endPoint,
+
+        x:
+            startPoint.x +
+            Math.cos(
+                snappedAngle
+            ) *
+            length,
+
+        y:
+            startPoint.y +
+            Math.sin(
+                snappedAngle
+            ) *
+            length
+    };
+}
 
 function resolveSymmetrySettings(
     state,
@@ -997,7 +1019,7 @@ function resolveSymmetrySettings(
 
         enabled:
             shouldMirrorTool(
-                EDITOR_TOOLS.SHAPE,
+                EDITOR_TOOLS.LINE,
                 normalized
             )
     };
@@ -1009,16 +1031,12 @@ function applySymmetryAxisSnap(
     threshold
 ) {
     if (
-        !isFinitePoint(
-            point
-        ) ||
+        !isFinitePoint(point) ||
         !symmetry?.enabled ||
         symmetry.snapToAxis !==
             true
     ) {
-        return clonePoint(
-            point
-        );
+        return clonePoint(point);
     }
 
     return snapPointToSymmetryAxis(
@@ -1028,7 +1046,7 @@ function applySymmetryAxisSnap(
     );
 }
 
-function resolveShapePoint(
+function resolveStartPoint(
     rawPoint,
     state,
     symmetry,
@@ -1053,21 +1071,50 @@ function resolveShapePoint(
     );
 }
 
-/*=========================================================
-Shape Settings
-=========================================================*/
-
-function normalizeShapeType(
-    shapeType
+function resolveEndpoint(
+    startPoint,
+    rawEndPoint,
+    state,
+    angleSnapping,
+    angleIncrement,
+    symmetry,
+    symmetrySnapThreshold
 ) {
-    return SUPPORTED_SHAPE_TYPES.includes(
-        shapeType
-    )
-        ? shapeType
-        : SHAPE_TYPES.RECTANGLE;
+    let endPoint =
+        snapPointToGrid(
+            rawEndPoint,
+            state
+        );
+
+    if (
+        angleSnapping
+    ) {
+        endPoint =
+            snapPointToAngle(
+                startPoint,
+                endPoint,
+                angleIncrement
+            );
+    }
+
+    endPoint =
+        applySymmetryAxisSnap(
+            endPoint,
+            symmetry,
+            symmetrySnapThreshold
+        );
+
+    return clampPointToDocument(
+        endPoint,
+        state?.document
+    );
 }
 
-function resolveShapeSettings(
+/*=========================================================
+Line Settings and Geometry
+=========================================================*/
+
+function resolveLineSettings(
     state
 ) {
     const shape =
@@ -1077,123 +1124,45 @@ function resolveShapeSettings(
             ? state.shape
             : {};
 
-    const colors =
-        isPlainObject(
-            state?.colors
-        )
+    const primaryColor =
+        typeof state?.colors
+            ?.primary ===
+            "string" &&
+        state.colors.primary.trim()
             ? state.colors
-            : {};
+                .primary
+                .trim()
+            : null;
 
-    const fillType =
-        shape.fillType ===
-            "solid"
-            ? "solid"
-            : "none";
+    const shapeStroke =
+        typeof shape.stroke ===
+            "string" &&
+        shape.stroke.trim()
+            ? shape.stroke.trim()
+            : null;
 
     return {
-        shapeType:
-            normalizeShapeType(
-                shape.shapeType
-            ),
-
-        stroke:
-            typeof shape.stroke ===
-                "string" &&
-            shape.stroke.trim()
-                ? shape.stroke.trim()
-                : (
-                    typeof colors.primary ===
-                        "string" &&
-                    colors.primary.trim()
-                        ? colors.primary.trim()
-                        : DEFAULT_STROKE
-                ),
+        color:
+            primaryColor ||
+            shapeStroke ||
+            DEFAULT_LINE_COLOR,
 
         strokeWidth:
-            clamp(
-                shape.strokeWidth ??
-                    DEFAULT_STROKE_WIDTH,
-                0,
-                200
+            Math.max(
+                0.25,
+                numberOr(
+                    shape.strokeWidth,
+                    DEFAULT_LINE_WIDTH
+                )
             ),
 
-        strokeOpacity:
+        opacity:
             clamp(
                 shape.strokeOpacity ??
-                    1,
+                1,
                 0,
                 1
             ),
-
-        fillType,
-
-        fill:
-            typeof shape.fill ===
-                "string" &&
-            shape.fill.trim()
-                ? shape.fill.trim()
-                : (
-                    typeof colors.secondary ===
-                        "string" &&
-                    colors.secondary.trim()
-                        ? colors.secondary.trim()
-                        : DEFAULT_FILL
-                ),
-
-        fillOpacity:
-            clamp(
-                shape.fillOpacity ??
-                    1,
-                0,
-                1
-            ),
-
-        cornerRadius:
-            Math.max(
-                0,
-
-                numberOr(
-                    shape.cornerRadius,
-                    0
-                )
-            ),
-
-        sides:
-            Math.round(
-                clamp(
-                    shape.sides ??
-                        DEFAULT_POLYGON_SIDES,
-                    3,
-                    MAXIMUM_POLYGON_SIDES
-                )
-            ),
-
-        keepAspectRatio:
-            shape.keepAspectRatio ===
-            true,
-
-        dash:
-            Array.isArray(
-                shape.dash
-            )
-                ? shape.dash
-                    .map(
-                        value =>
-                            Math.max(
-                                0,
-
-                                numberOr(
-                                    value,
-                                    0
-                                )
-                            )
-                    )
-                    .filter(
-                        value =>
-                            value >
-                            0
-                    )
-                : [],
 
         lineCap:
             typeof shape.lineCap ===
@@ -1205,546 +1174,188 @@ function resolveShapeSettings(
             typeof shape.lineJoin ===
                 "string"
                 ? shape.lineJoin
-                : "round"
+                : "round",
+
+        dash:
+            Array.isArray(
+                shape.dash
+            )
+                ? [
+                    ...shape.dash
+                ]
+                : undefined
     };
 }
 
-/*=========================================================
-Drag Bounds
-=========================================================*/
-
-function createDragRectangle(
+function getLineMetrics(
     startPoint,
     endPoint,
-    {
-        constrainProportions =
-            false,
-
-        drawFromCenter =
-            false,
-
-        documentData =
-            null
-    } = {}
+    strokeWidth
 ) {
-    if (
-        !isFinitePoint(
-            startPoint
-        ) ||
-        !isFinitePoint(
-            endPoint
-        )
-    ) {
-        return null;
-    }
-
-    let deltaX =
+    const deltaX =
         endPoint.x -
         startPoint.x;
 
-    let deltaY =
+    const deltaY =
         endPoint.y -
         startPoint.y;
 
-    if (
-        constrainProportions
-    ) {
-        const side =
-            Math.max(
-                Math.abs(
-                    deltaX
-                ),
-                Math.abs(
-                    deltaY
-                )
-            );
+    const length =
+        Math.hypot(
+            deltaX,
+            deltaY
+        );
 
-        deltaX =
-            side *
-            (
-                deltaX <
-                0
-                    ? -1
-                    : 1
-            );
+    const angleRadians =
+        Math.atan2(
+            deltaY,
+            deltaX
+        );
 
-        deltaY =
-            side *
-            (
-                deltaY <
-                0
-                    ? -1
-                    : 1
-            );
-    }
+    const padding =
+        Math.max(
+            0.5,
+            numberOr(
+                strokeWidth,
+                DEFAULT_LINE_WIDTH
+            ) /
+            2
+        );
 
-    let left;
-    let top;
-    let right;
-    let bottom;
-
-    if (
-        drawFromCenter
-    ) {
-        left =
-            startPoint.x -
-            Math.abs(
-                deltaX
-            );
-
-        right =
-            startPoint.x +
-            Math.abs(
-                deltaX
-            );
-
-        top =
-            startPoint.y -
-            Math.abs(
-                deltaY
-            );
-
-        bottom =
-            startPoint.y +
-            Math.abs(
-                deltaY
-            );
-    } else {
-        left =
-            Math.min(
-                startPoint.x,
-                startPoint.x +
-                deltaX
-            );
-
-        right =
-            Math.max(
-                startPoint.x,
-                startPoint.x +
-                deltaX
-            );
-
-        top =
-            Math.min(
-                startPoint.y,
-                startPoint.y +
-                deltaY
-            );
-
-        bottom =
-            Math.max(
-                startPoint.y,
-                startPoint.y +
-                deltaY
-            );
-    }
-
-    if (
-        documentData
-    ) {
-        const documentSize =
-            getDocumentSize(
-                documentData
-            );
-
-        left =
-            clamp(
-                left,
-                0,
-                documentSize.width
-            );
-
-        right =
-            clamp(
-                right,
-                0,
-                documentSize.width
-            );
-
-        top =
-            clamp(
-                top,
-                0,
-                documentSize.height
-            );
-
-        bottom =
-            clamp(
-                bottom,
-                0,
-                documentSize.height
-            );
-    }
-
-    const x =
+    const minX =
         Math.min(
-            left,
-            right
-        );
+            startPoint.x,
+            endPoint.x
+        ) -
+        padding;
 
-    const y =
+    const minY =
         Math.min(
-            top,
-            bottom
-        );
+            startPoint.y,
+            endPoint.y
+        ) -
+        padding;
 
-    const width =
-        Math.abs(
-            right -
-            left
-        );
+    const maxX =
+        Math.max(
+            startPoint.x,
+            endPoint.x
+        ) +
+        padding;
 
-    const height =
-        Math.abs(
-            bottom -
-            top
-        );
+    const maxY =
+        Math.max(
+            startPoint.y,
+            endPoint.y
+        ) +
+        padding;
 
     return {
-        x,
+        length,
 
-        y,
+        angle:
+            angleRadians *
+            180 /
+            Math.PI,
 
-        width,
-
-        height,
-
-        left:
-            x,
-
-        top:
-            y,
-
-        right:
-            x +
-            width,
-
-        bottom:
-            y +
-            height,
+        angleRadians,
 
         center: {
             x:
-                x +
-                width /
+                (
+                    startPoint.x +
+                    endPoint.x
+                ) /
                 2,
 
             y:
-                y +
-                height /
-                2
-        }
-    };
-}
-
-/*=========================================================
-Polygon Geometry
-=========================================================*/
-
-function createRegularPolygonPoints(
-    width,
-    height,
-    sides
-) {
-    const safeWidth =
-        Math.max(
-            0,
-
-            numberOr(
-                width,
-                0
-            )
-        );
-
-    const safeHeight =
-        Math.max(
-            0,
-
-            numberOr(
-                height,
-                0
-            )
-        );
-
-    const safeSides =
-        Math.round(
-            clamp(
-                sides,
-                3,
-                MAXIMUM_POLYGON_SIDES
-            )
-        );
-
-    const centerX =
-        safeWidth /
-        2;
-
-    const centerY =
-        safeHeight /
-        2;
-
-    const radiusX =
-        safeWidth /
-        2;
-
-    const radiusY =
-        safeHeight /
-        2;
-
-    const startAngle =
-        -Math.PI /
-        2;
-
-    const points = [];
-
-    for (
-        let index = 0;
-        index <
-            safeSides;
-        index += 1
-    ) {
-        const angle =
-            startAngle +
-            (
-                index /
-                safeSides
-            ) *
-            Math.PI *
-            2;
-
-        points.push({
-            x:
-                centerX +
-                Math.cos(
-                    angle
-                ) *
-                radiusX,
-
-            y:
-                centerY +
-                Math.sin(
-                    angle
-                ) *
-                radiusY
-        });
-    }
-
-    return points;
-}
-
-function createTrianglePoints(
-    width,
-    height
-) {
-    return [
-        {
-            x:
-                width /
-                2,
-
-            y:
-                0
-        },
-
-        {
-            x:
-                width,
-
-            y:
-                height
-        },
-
-        {
-            x:
-                0,
-
-            y:
-                height
-        }
-    ];
-}
-
-function flattenPoints(
-    points
-) {
-    return Array.isArray(
-        points
-    )
-        ? points.flatMap(
-            point => [
-                numberOr(
-                    point?.x,
-                    0
-                ),
-
-                numberOr(
-                    point?.y,
-                    0
-                )
-            ]
-        )
-        : [];
-}
-
-/*=========================================================
-Shape Object
-=========================================================*/
-
-function createShapeName(
-    shapeType,
-    transient
-) {
-    if (
-        transient
-    ) {
-        return "Shape Preview";
-    }
-
-    const labels = {
-        [SHAPE_TYPES.RECTANGLE]:
-            "Rectangle",
-
-        [SHAPE_TYPES.ELLIPSE]:
-            "Ellipse",
-
-        [SHAPE_TYPES.CIRCLE]:
-            "Circle",
-
-        [SHAPE_TYPES.TRIANGLE]:
-            "Triangle",
-
-        [SHAPE_TYPES.POLYGON]:
-            "Polygon"
-    };
-
-    return (
-        labels[
-            shapeType
-        ] ||
-        "Shape"
-    );
-}
-
-function createShapeObject({
-    id,
-    layerId,
-    bounds,
-    settings,
-    pointerType,
-    transient = false
-}) {
-    if (
-        !bounds ||
-        !settings
-    ) {
-        return null;
-    }
-
-    const shapeType =
-        normalizeShapeType(
-            settings.shapeType
-        );
-
-    const width =
-        Math.max(
-            0,
-
-            numberOr(
-                bounds.width,
-                0
-            )
-        );
-
-    const height =
-        Math.max(
-            0,
-
-            numberOr(
-                bounds.height,
-                0
-            )
-        );
-
-    const radiusX =
-        width /
-        2;
-
-    const radiusY =
-        height /
-        2;
-
-    let points = [];
-
-    if (
-        shapeType ===
-        SHAPE_TYPES.TRIANGLE
-    ) {
-        points =
-            createTrianglePoints(
-                width,
-                height
-            );
-    }
-
-    if (
-        shapeType ===
-        SHAPE_TYPES.POLYGON
-    ) {
-        points =
-            createRegularPolygonPoints(
-                width,
-                height,
-                settings.sides
-            );
-    }
-
-    const cornerRadius =
-        shapeType ===
-            SHAPE_TYPES.RECTANGLE
-            ? clamp(
-                settings.cornerRadius,
-                0,
-                Math.min(
-                    width,
-                    height
+                (
+                    startPoint.y +
+                    endPoint.y
                 ) /
                 2
-            )
-            : 0;
+        },
 
-    const hasFill =
-        settings.fillType !==
-        "none";
+        boundingBox: {
+            x:
+                minX,
 
-    const fill =
-        hasFill
-            ? settings.fill
-            : "transparent";
+            y:
+                minY,
 
-    const fillOpacity =
-        hasFill
-            ? settings.fillOpacity
-            : 0;
+            width:
+                maxX -
+                minX,
+
+            height:
+                maxY -
+                minY,
+
+            minX,
+            minY,
+            maxX,
+            maxY
+        }
+    };
+}
+
+/*=========================================================
+Line Object
+=========================================================*/
+
+/*
+The current ObjectRenderer registers BrushObject. Therefore
+straight lines use OBJECT_TYPES.BRUSH with renderMode "line".
+
+This allows the line to render, select, transform, erase,
+save and export using the files already in the editor.
+*/
+
+function createLineObject({
+    id,
+    layerId,
+    startPoint,
+    endPoint,
+    settings,
+    pointerType,
+    transient
+}) {
+    const metrics =
+        getLineMetrics(
+            startPoint,
+            endPoint,
+            settings.strokeWidth
+        );
 
     const timestamp =
         nowIso();
+
+    const renderMode =
+        BRUSH_RENDER_MODES
+            ?.LINE ||
+        "line";
 
     return {
         id,
 
         type:
-            OBJECT_TYPES.SHAPE,
+            OBJECT_TYPES.BRUSH,
 
         objectKind:
-            "shape",
+            "line",
 
-        shapeType,
+        shapeType:
+            "line",
+
+        brushType:
+            "line",
+
+        renderMode,
 
         name:
-            createShapeName(
-                shapeType,
-                transient
-            ),
+            transient
+                ? "Line Preview"
+                : "Straight Line",
 
         layerId,
 
@@ -1768,14 +1379,10 @@ function createShapeObject({
             ),
 
         x:
-            bounds.x,
+            0,
 
         y:
-            bounds.y,
-
-        width,
-
-        height,
+            0,
 
         rotation:
             0,
@@ -1795,68 +1402,17 @@ function createShapeObject({
         opacity:
             1,
 
+        color:
+            settings.color,
+
         stroke:
-            settings.stroke,
+            settings.color,
 
         strokeWidth:
             settings.strokeWidth,
 
         strokeOpacity:
-            settings.strokeOpacity,
-
-        fillType:
-            settings.fillType,
-
-        fill,
-
-        fillOpacity,
-
-        cornerRadius,
-
-        sides:
-            shapeType ===
-                SHAPE_TYPES.POLYGON
-                ? settings.sides
-                : (
-                    shapeType ===
-                        SHAPE_TYPES.TRIANGLE
-                        ? 3
-                        : null
-                ),
-
-        radius:
-            Math.min(
-                radiusX,
-                radiusY
-            ),
-
-        radiusX,
-
-        radiusY,
-
-        center: {
-            x:
-                width /
-                2,
-
-            y:
-                height /
-                2
-        },
-
-        points,
-
-        flatPoints:
-            flattenPoints(
-                points
-            ),
-
-        closed:
-            true,
-
-        dash: [
-            ...settings.dash
-        ],
+            settings.opacity,
 
         lineCap:
             settings.lineCap,
@@ -1864,129 +1420,116 @@ function createShapeObject({
         lineJoin:
             settings.lineJoin,
 
-        keepAspectRatio:
-            settings
-                .keepAspectRatio,
+        dash:
+            settings.dash,
+
+        points: [
+            clonePoint(
+                startPoint
+            ),
+
+            clonePoint(
+                endPoint
+            )
+        ],
+
+        flatPoints: [
+            startPoint.x,
+            startPoint.y,
+            endPoint.x,
+            endPoint.y
+        ],
+
+        previewPoints: [
+            startPoint.x,
+            startPoint.y,
+            endPoint.x,
+            endPoint.y
+        ],
+
+        startPoint:
+            clonePoint(
+                startPoint
+            ),
+
+        endPoint:
+            clonePoint(
+                endPoint
+            ),
+
+        length:
+            metrics.length,
+
+        angle:
+            metrics.angle,
 
         style: {
+            color:
+                settings.color,
+
             stroke:
-                settings.stroke,
+                settings.color,
 
             strokeWidth:
                 settings
                     .strokeWidth,
 
             strokeOpacity:
-                settings
-                    .strokeOpacity,
+                settings.opacity,
 
-            fillType:
-                settings.fillType,
-
-            fill,
-
-            fillOpacity,
-
-            cornerRadius,
-
-            dash: [
-                ...settings.dash
-            ],
+            opacity:
+                settings.opacity,
 
             lineCap:
                 settings.lineCap,
 
             lineJoin:
-                settings.lineJoin
+                settings.lineJoin,
+
+            dash:
+                settings.dash,
+
+            renderMode
         },
 
         geometry: {
-            x:
-                bounds.x,
-
-            y:
-                bounds.y,
-
-            width,
-
-            height,
-
-            left:
-                bounds.x,
-
-            top:
-                bounds.y,
-
-            right:
-                bounds.x +
-                width,
-
-            bottom:
-                bounds.y +
-                height,
-
-            center: {
-                x:
-                    bounds.x +
-                    width /
-                    2,
-
-                y:
-                    bounds.y +
-                    height /
-                    2
-            },
-
-            radius:
-                Math.min(
-                    radiusX,
-                    radiusY
+            startPoint:
+                clonePoint(
+                    startPoint
                 ),
 
-            radiusX,
-
-            radiusY,
-
-            points:
-                points.map(
-                    clonePoint
+            endPoint:
+                clonePoint(
+                    endPoint
                 ),
 
-            boundingBox: {
-                x:
-                    bounds.x,
+            length:
+                metrics.length,
 
-                y:
-                    bounds.y,
+            angle:
+                metrics.angle,
 
-                width,
+            angleRadians:
+                metrics
+                    .angleRadians,
 
-                height,
+            center:
+                metrics.center,
 
-                minX:
-                    bounds.x,
-
-                minY:
-                    bounds.y,
-
-                maxX:
-                    bounds.x +
-                    width,
-
-                maxY:
-                    bounds.y +
-                    height
-            }
+            boundingBox:
+                metrics
+                    .boundingBox
         },
 
         metadata: {
             tool:
-                EDITOR_TOOLS.SHAPE,
+                EDITOR_TOOLS.LINE,
 
             objectKind:
-                "shape",
+                "line",
 
-            shapeType,
+            shapeType:
+                "line",
 
             pointerType,
 
@@ -1996,7 +1539,7 @@ function createShapeObject({
                 ),
 
             createdWith:
-                "ShapeTool"
+                "LineTool"
         },
 
         createdAt:
@@ -2011,26 +1554,26 @@ function createShapeObject({
 Symmetry and Commit Helpers
 =========================================================*/
 
-function createCommittedShapeObjects(
-    shapeObject,
-    shapeSession,
+function createCommittedLineObjects(
+    lineObject,
+    lineSession,
     documentData,
     options
 ) {
     if (
-        !shapeSession?.symmetry?.enabled
+        !lineSession?.symmetry?.enabled
     ) {
         return [
-            shapeObject
+            lineObject
         ];
     }
 
     return createSymmetryObjectSet(
-        shapeObject,
-        shapeSession.symmetry,
+        lineObject,
+        lineSession.symmetry,
         {
             document:
-                shapeSession.document ||
+                lineSession.document ||
                 documentData,
 
             preventDuplicates:
@@ -2039,25 +1582,23 @@ function createCommittedShapeObjects(
                 false,
 
             linked:
-                shapeSession.symmetry
+                lineSession.symmetry
                     .linkedMirrors ===
                 true
         }
     );
 }
 
-function commitShapeObjects(
+function commitLineObjects(
     context,
-    shapeObjects,
+    lineObjects,
     options
 ) {
     const safeObjects =
         Array.isArray(
-            shapeObjects
+            lineObjects
         )
-            ? shapeObjects.filter(
-                Boolean
-            )
+            ? lineObjects.filter(Boolean)
             : [];
 
     if (
@@ -2073,8 +1614,8 @@ function commitShapeObjects(
             ? options.symmetryHistoryLabel
             : options.historyLabel;
 
-    const selectCreatedShape =
-        options.selectCreatedShape ===
+    const selectCreatedLine =
+        options.selectCreatedLine ===
         true;
 
     const addObjects =
@@ -2093,7 +1634,7 @@ function commitShapeObjects(
                     label,
 
                     select:
-                        selectCreatedShape
+                        selectCreatedLine
                 }
             );
 
@@ -2114,7 +1655,7 @@ function commitShapeObjects(
         !addObject
     ) {
         throw new Error(
-            "ShapeTool requires addObject or addObjects in the editor context."
+            "LineTool requires addObject or addObjects in the editor context."
         );
     }
 
@@ -2148,7 +1689,8 @@ function commitShapeObjects(
         beginHistoryTransaction &&
         commitHistoryTransaction;
 
-    const objectIds = [];
+    const objectIds =
+        [];
 
     if (
         useTransaction
@@ -2160,17 +1702,16 @@ function commitShapeObjects(
 
     try {
         for (
-            const shapeObject
-            of safeObjects
+            const lineObject of safeObjects
         ) {
             const objectId =
                 addObject(
-                    shapeObject,
+                    lineObject,
                     {
                         label,
 
                         select:
-                            selectCreatedShape
+                            selectCreatedLine
                     }
                 );
 
@@ -2178,7 +1719,7 @@ function commitShapeObjects(
                 !objectId
             ) {
                 throw new Error(
-                    "Shape object could not be added."
+                    "Line object could not be added."
                 );
             }
 
@@ -2209,12 +1750,12 @@ function commitShapeObjects(
         ) {
             deleteObjects(
                 objectIds,
-                "Rollback shape creation"
+                "Rollback line creation"
             );
         }
 
         console.error(
-            "ShapeTool commit failed:",
+            "LineTool commit failed:",
             error
         );
 
@@ -2223,15 +1764,15 @@ function commitShapeObjects(
 }
 
 /*=========================================================
-Shape Tool Factory
+Line Tool
 =========================================================*/
 
-export function createShapeTool(
+export function createLineTool(
     options = {}
 ) {
     const toolId =
         options.id ||
-        EDITOR_TOOLS.SHAPE;
+        EDITOR_TOOLS.LINE;
 
     const previewId =
         options.previewId ||
@@ -2249,20 +1790,27 @@ export function createShapeTool(
         options.symmetryHistoryLabel ||
         DEFAULT_SYMMETRY_HISTORY_LABEL;
 
-    const minimumSize =
+    const angleIncrement =
+        Math.max(
+            1,
+            numberOr(
+                options.angleIncrement,
+                DEFAULT_ANGLE_INCREMENT
+            )
+        );
+
+    const minimumLength =
         Math.max(
             0,
-
             numberOr(
-                options.minimumSize,
-                MINIMUM_SHAPE_SIZE
+                options.minimumLength,
+                MINIMUM_LINE_LENGTH
             )
         );
 
     const symmetrySnapThreshold =
         Math.max(
             0,
-
             numberOr(
                 options.symmetrySnapThreshold,
                 DEFAULT_SYMMETRY_SNAP_THRESHOLD
@@ -2287,7 +1835,7 @@ export function createShapeTool(
         );
     }
 
-    function cancelShape(
+    function cancelLine(
         context,
         reason = "cancelled"
     ) {
@@ -2301,7 +1849,7 @@ export function createShapeTool(
             context
         );
 
-        context?.onShapeCancelled?.({
+        context?.onLineCancelled?.({
             reason,
 
             session:
@@ -2311,49 +1859,9 @@ export function createShapeTool(
         return true;
     }
 
-    function resolveCurrentBounds(
-        context,
-        state,
-        endPoint,
-        activeSession = session
-    ) {
-        if (
-            !activeSession ||
-            !state ||
-            !endPoint
-        ) {
-            return null;
-        }
-
-        const constrainProportions =
-            activeSession.settings
-                .keepAspectRatio ||
-            Boolean(
-                context?.shiftKey
-            ) ||
-            activeSession.settings
-                .shapeType ===
-                SHAPE_TYPES.CIRCLE;
-
-        return createDragRectangle(
-            activeSession.startPoint,
-            endPoint,
-            {
-                constrainProportions,
-
-                drawFromCenter:
-                    Boolean(
-                        context?.altKey
-                    ),
-
-                documentData:
-                    state.document
-            }
-        );
-    }
-
     function renderPreview(
-        context
+        context,
+        angleSnapping = false
     ) {
         if (
             !session
@@ -2376,32 +1884,41 @@ export function createShapeTool(
             return null;
         }
 
-        const bounds =
-            resolveCurrentBounds(
-                context,
+        const endPoint =
+            resolveEndpoint(
+                session.startPoint,
+                session.rawEndPoint,
                 state,
-                session.endPoint,
-                session
+                angleSnapping,
+                angleIncrement,
+                session.symmetry,
+                symmetrySnapThreshold
             );
 
         if (
-            !bounds
+            !endPoint
         ) {
             return null;
         }
 
-        session.bounds =
-            bounds;
+        session.endPoint =
+            endPoint;
+
+        session.angleSnapped =
+            angleSnapping;
 
         const previewObject =
-            createShapeObject({
+            createLineObject({
                 id:
                     previewId,
 
                 layerId:
                     session.layerId,
 
-                bounds,
+                startPoint:
+                    session.startPoint,
+
+                endPoint,
 
                 settings:
                     session.settings,
@@ -2412,16 +1929,6 @@ export function createShapeTool(
                 transient:
                     true
             });
-
-        if (
-            !previewObject
-        ) {
-            clearPreview(
-                context
-            );
-
-            return null;
-        }
 
         const symmetryPreviewObjects =
             session.symmetry?.enabled &&
@@ -2453,8 +1960,11 @@ export function createShapeTool(
                 toolId
             );
 
-        context?.onShapeChange?.({
-            bounds,
+        context?.onLineChange?.({
+            startPoint:
+                session.startPoint,
+
+            endPoint,
 
             previewObject,
 
@@ -2473,7 +1983,7 @@ export function createShapeTool(
         return temporaryObjects;
     }
 
-    function startShape(
+    function startLine(
         firstArgument,
         secondArgument
     ) {
@@ -2539,7 +2049,7 @@ export function createShapeTool(
         if (
             session
         ) {
-            cancelShape(
+            cancelLine(
                 context,
                 "restart"
             );
@@ -2553,7 +2063,7 @@ export function createShapeTool(
             );
 
         startPoint =
-            resolveShapePoint(
+            resolveStartPoint(
                 startPoint,
                 state,
                 symmetry,
@@ -2568,9 +2078,7 @@ export function createShapeTool(
 
         session = {
             objectId:
-                createId(
-                    "shape"
-                ),
+                createId("line"),
 
             pointerId:
                 getPointerId(
@@ -2596,10 +2104,8 @@ export function createShapeTool(
                 width:
                     Math.max(
                         1,
-
                         numberOr(
-                            state.document
-                                ?.width,
+                            state.document?.width,
                             1200
                         )
                     ),
@@ -2607,10 +2113,8 @@ export function createShapeTool(
                 height:
                     Math.max(
                         1,
-
                         numberOr(
-                            state.document
-                                ?.height,
+                            state.document?.height,
                             1600
                         )
                     )
@@ -2621,16 +2125,23 @@ export function createShapeTool(
                     startPoint
                 ),
 
+            rawEndPoint:
+                clonePoint(
+                    startPoint
+                ),
+
             endPoint:
                 clonePoint(
                     startPoint
                 ),
 
-            bounds:
-                null,
+            angleSnapped:
+                Boolean(
+                    context.shiftKey
+                ),
 
             settings:
-                resolveShapeSettings(
+                resolveLineSettings(
                     state
                 ),
 
@@ -2641,15 +2152,15 @@ export function createShapeTool(
         };
 
         renderPreview(
-            context
+            context,
+            Boolean(
+                context.shiftKey
+            )
         );
 
-        context?.onShapeStart?.({
+        context?.onLineStart?.({
             startPoint:
                 session.startPoint,
-
-            settings:
-                session.settings,
 
             symmetry,
 
@@ -2659,7 +2170,7 @@ export function createShapeTool(
         return true;
     }
 
-    function updateShape(
+    function updateLine(
         firstArgument,
         secondArgument
     ) {
@@ -2688,7 +2199,7 @@ export function createShapeTool(
                 context
             );
 
-        let point =
+        const point =
             resolveDocumentPoint(
                 context,
                 event,
@@ -2706,31 +2217,23 @@ export function createShapeTool(
             event
         );
 
-        point =
-            resolveShapePoint(
+        session.rawEndPoint =
+            clampPointToDocument(
                 point,
-                state,
-                session.symmetry,
-                symmetrySnapThreshold
+                state.document
             );
 
-        if (
-            !point
-        ) {
-            return false;
-        }
-
-        session.endPoint =
-            point;
-
         renderPreview(
-            context
+            context,
+            Boolean(
+                context.shiftKey
+            )
         );
 
         return true;
     }
 
-    function finishShape(
+    function finishLine(
         firstArgument,
         secondArgument
     ) {
@@ -2755,8 +2258,10 @@ export function createShapeTool(
         }
 
         /*
-        Do not call preventDefault here because pointerup
-        and touchend can be non-cancelable.
+        Do not call preventDefault here.
+
+        pointerup and touchend may be delivered with
+        cancelable=false.
         */
 
         const currentSession =
@@ -2767,7 +2272,7 @@ export function createShapeTool(
                 context
             );
 
-        let releasePoint =
+        const releasePoint =
             resolveDocumentPoint(
                 context,
                 event,
@@ -2775,33 +2280,32 @@ export function createShapeTool(
             );
 
         if (
-            state &&
-            releasePoint
+            releasePoint &&
+            state
         ) {
-            releasePoint =
-                resolveShapePoint(
+            currentSession.rawEndPoint =
+                clampPointToDocument(
                     releasePoint,
-                    state,
-                    currentSession.symmetry,
-                    symmetrySnapThreshold
+                    state.document
                 );
-
-            if (
-                releasePoint
-            ) {
-                currentSession.endPoint =
-                    releasePoint;
-            }
         }
 
-        const bounds =
-            resolveCurrentBounds(
-                context,
-                state,
-                currentSession.endPoint,
-                currentSession
-            ) ||
-            currentSession.bounds;
+        const finalEndPoint =
+            state
+                ? resolveEndpoint(
+                    currentSession.startPoint,
+                    currentSession.rawEndPoint,
+                    state,
+                    Boolean(
+                        context.shiftKey ||
+                        currentSession.angleSnapped
+                    ),
+                    angleIncrement,
+                    currentSession.symmetry,
+                    symmetrySnapThreshold
+                ) ||
+                currentSession.endPoint
+                : currentSession.endPoint;
 
         session =
             null;
@@ -2812,7 +2316,7 @@ export function createShapeTool(
 
         if (
             !state ||
-            !bounds
+            !finalEndPoint
         ) {
             return true;
         }
@@ -2837,19 +2341,26 @@ export function createShapeTool(
             return true;
         }
 
+        const metrics =
+            getLineMetrics(
+                currentSession.startPoint,
+                finalEndPoint,
+                currentSession.settings
+                    .strokeWidth
+            );
+
         if (
-            bounds.width <
-                minimumSize ||
-            bounds.height <
-                minimumSize
+            metrics.length <
+            minimumLength
         ) {
-            context?.onShapeDiscarded?.({
+            context?.onLineDiscarded?.({
                 reason:
-                    "minimum-size",
+                    "minimum-length",
 
-                bounds,
+                length:
+                    metrics.length,
 
-                minimumSize,
+                minimumLength,
 
                 session:
                     currentSession
@@ -2858,15 +2369,19 @@ export function createShapeTool(
             return true;
         }
 
-        const shapeObject =
-            createShapeObject({
+        const lineObject =
+            createLineObject({
                 id:
                     currentSession.objectId,
 
                 layerId:
                     currentSession.layerId,
 
-                bounds,
+                startPoint:
+                    currentSession.startPoint,
+
+                endPoint:
+                    finalEndPoint,
 
                 settings:
                     currentSession.settings,
@@ -2878,22 +2393,16 @@ export function createShapeTool(
                     false
             });
 
-        if (
-            !shapeObject
-        ) {
-            return true;
-        }
-
         const committedObjects =
-            createCommittedShapeObjects(
-                shapeObject,
+            createCommittedLineObjects(
+                lineObject,
                 currentSession,
                 state.document,
                 options
             );
 
         const objectIds =
-            commitShapeObjects(
+            commitLineObjects(
                 context,
                 committedObjects,
                 {
@@ -2909,12 +2418,12 @@ export function createShapeTool(
             objectIds.length ===
             0
         ) {
-            context?.onShapeDiscarded?.({
+            context?.onLineDiscarded?.({
                 reason:
                     "objects-not-added",
 
                 object:
-                    shapeObject,
+                    lineObject,
 
                 objects:
                     committedObjects,
@@ -2950,7 +2459,7 @@ export function createShapeTool(
                 }
             );
 
-        context?.onShapeCommitted?.({
+        context?.onLineCommitted?.({
             objectId:
                 objectIds[0],
 
@@ -2958,15 +2467,13 @@ export function createShapeTool(
 
             object:
                 committedObjects[0] ||
-                shapeObject,
+                lineObject,
 
             objects:
                 committedObjects,
 
             mirroredObjects:
-                committedObjects.slice(
-                    1
-                ),
+                committedObjects.slice(1),
 
             symmetry:
                 currentSession.symmetry,
@@ -2982,7 +2489,7 @@ export function createShapeTool(
         return true;
     }
 
-    function cancelPointerShape(
+    function cancelPointerLine(
         firstArgument,
         secondArgument
     ) {
@@ -3006,7 +2513,7 @@ export function createShapeTool(
             return false;
         }
 
-        return cancelShape(
+        return cancelLine(
             context,
             "pointer-cancelled"
         );
@@ -3024,7 +2531,7 @@ export function createShapeTool(
                 secondArgument
             );
 
-        return cancelShape(
+        return cancelLine(
             context,
             context?.cancelReason ||
             "cancelled"
@@ -3065,13 +2572,13 @@ export function createShapeTool(
                 secondArgument
             );
 
-        return cancelShape(
+        return cancelLine(
             context,
             "deactivated"
         );
     }
 
-    function updateModifierPreview(
+    function updateShiftSnap(
         firstArgument,
         secondArgument
     ) {
@@ -3086,18 +2593,16 @@ export function createShapeTool(
 
         if (
             !session ||
-            (
-                event?.key !==
-                    "Shift" &&
-                event?.key !==
-                    "Alt"
-            )
+            event?.key !==
+                "Shift"
         ) {
             return false;
         }
 
         renderPreview(
-            context
+            context,
+            event.type ===
+                "keydown"
         );
 
         return true;
@@ -3109,18 +2614,18 @@ export function createShapeTool(
 
         name:
             options.name ||
-            "Shape",
+            "Line",
 
         label:
             options.label ||
-            "Shape",
+            "Line",
 
         description:
-            "Draw rectangles, ellipses, circles, triangles and polygons with optional symmetry.",
+            "Draw straight vector lines with optional symmetry.",
 
         shortcut:
             options.shortcut ||
-            "S",
+            "L",
 
         cursor:
             options.cursor ||
@@ -3148,25 +2653,25 @@ export function createShapeTool(
             deactivateTool,
 
         onPointerDown:
-            startShape,
+            startLine,
 
         onPointerMove:
-            updateShape,
+            updateLine,
 
         onPointerUp:
-            finishShape,
+            finishLine,
 
         onPointerCancel:
-            cancelPointerShape,
+            cancelPointerLine,
 
         onCancel:
             cancelInteraction,
 
         onKeyDown:
-            updateModifierPreview,
+            updateShiftSnap,
 
         onKeyUp:
-            updateModifierPreview,
+            updateShiftSnap,
 
         onDestroy:
             deactivateTool
@@ -3177,7 +2682,7 @@ export function createShapeTool(
 Default Export
 =========================================================*/
 
-export const ShapeTool =
-    createShapeTool();
+export const LineTool =
+    createLineTool();
 
-export default ShapeTool;
+export default LineTool;

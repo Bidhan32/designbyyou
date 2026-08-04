@@ -2,7 +2,7 @@
 =========================================================
 FashionVision Professional Editor
 Object Renderer
-Version 1.0
+Version 1.4
 =========================================================
 */
 
@@ -13,6 +13,10 @@ import React, {
 } from "react";
 
 import BrushObject from "./BrushObject";
+import ShapeObject from "./ShapeObject";
+import TextObject from "./TextObject";
+import ImageObject from "./ImageObject";
+import PatternObject from "./PatternObject";
 
 import {
     OBJECT_TYPES
@@ -34,7 +38,8 @@ function isObject(
 ) {
     return Boolean(
         value &&
-        typeof value === "object" &&
+        typeof value ===
+            "object" &&
         !Array.isArray(value)
     );
 }
@@ -42,26 +47,32 @@ function isObject(
 function isFunction(
     value
 ) {
-    return typeof value ===
-        "function";
+    return (
+        typeof value ===
+        "function"
+    );
 }
 
 /*=========================================================
 Built-in Renderer Registry
 =========================================================*/
 
-/*
-Only BrushObject is registered at this stage.
-
-ShapeObject, TextObject, ImageObject and PatternObject can
-be added later without changing the public API of this
-component.
-*/
-
 const BUILT_IN_RENDERERS =
     Object.freeze({
         [OBJECT_TYPES.BRUSH]:
-            BrushObject
+            BrushObject,
+
+        [OBJECT_TYPES.SHAPE]:
+            ShapeObject,
+
+        [OBJECT_TYPES.TEXT]:
+            TextObject,
+
+        [OBJECT_TYPES.IMAGE]:
+            ImageObject,
+
+        [OBJECT_TYPES.PATTERN]:
+            PatternObject
     });
 
 /*=========================================================
@@ -74,7 +85,8 @@ function resolveObjectType(
     if (
         typeof object?.type !==
             "string" ||
-        object.type.trim() === ""
+        object.type.trim() ===
+            ""
     ) {
         return null;
     }
@@ -154,9 +166,7 @@ function renderFallback({
     layer,
     objectType
 }) {
-    if (
-        !fallback
-    ) {
+    if (!fallback) {
         return null;
     }
 
@@ -244,13 +254,11 @@ function ObjectRenderer({
         ]
     );
 
-    /*=====================================================
-    Render Guards
-    =====================================================*/
-
     if (
         !object ||
-        !isObject(object) ||
+        !isObject(
+            object
+        ) ||
         !object.id ||
         !objectType
     ) {
@@ -258,8 +266,10 @@ function ObjectRenderer({
     }
 
     if (
-        object.visible === false ||
-        layer?.visible === false
+        object.visible ===
+            false ||
+        layer?.visible ===
+            false
     ) {
         return null;
     }
@@ -273,10 +283,6 @@ function ObjectRenderer({
         });
     }
 
-    /*=====================================================
-    Renderer Props
-    =====================================================*/
-
     const rendererProps = {
         object,
         layer,
@@ -289,15 +295,14 @@ function ObjectRenderer({
         transient:
             Boolean(
                 transient ||
-                object.transient
+                object.transient ||
+                object.metadata
+                    ?.transient
             ),
 
         onSelect,
-
         onChange,
-
         onDelete,
-
         onRenderError
     };
 

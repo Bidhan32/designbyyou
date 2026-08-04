@@ -2,7 +2,7 @@
 =========================================================
 FashionVision Professional Editor
 Responsive Editor Canvas
-Version 1.3.1
+Version 1.8.0 — Symmetry Guides and Multi-Preview
 =========================================================
 */
 
@@ -28,11 +28,24 @@ import {
 import LayerRenderer from "../layers/LayerRenderer";
 import ObjectRenderer from "../objects/ObjectRenderer";
 
+import {
+    TEXT_EDIT_REQUEST_EVENT
+} from "../objects/TextObject";
+
 import PencilTool from "../tools/PencilTool";
 import SelectionTool from "../tools/SelectionTool";
 import EraserTool from "../tools/EraserTool";
+import BrushTool from "../tools/BrushTool";
+import LineTool from "../tools/LineTool";
+import ShapeTool from "../tools/ShapeTool";
+import FillTool from "../tools/FillTool";
+import TextTool from "../tools/TextTool";
+import ImageTool from "../tools/ImageTool";
+import PatternTool from "../tools/PatternTool";
+import PatternMaskTool from "../tools/PatternMaskTool";
 
 import SelectionTransformer from "./SelectionTransformer";
+import TextEditOverlay from "./TextEditOverlay";
 
 import {
     createToolManager
@@ -45,12 +58,19 @@ import {
     useFashionEditorStore
 } from "../useFashionEditorStore";
 
+import {
+    getSymmetryGuideLines
+} from "../utils/SymmetryUtils";
+
 /*=========================================================
 Constants
 =========================================================*/
 
-const DEFAULT_VIEWPORT_WIDTH = 900;
-const DEFAULT_VIEWPORT_HEIGHT = 700;
+const DEFAULT_VIEWPORT_WIDTH =
+    900;
+
+const DEFAULT_VIEWPORT_HEIGHT =
+    700;
 
 const DEFAULT_WORKSPACE_COLOR =
     "#d9dde5";
@@ -61,7 +81,8 @@ const DEFAULT_GRID_COLOR =
 const TEMPORARY_LAYER_ID =
     "__fashion-editor-temporary-layer__";
 
-const RESIZE_FIT_DELAY = 60;
+const RESIZE_FIT_DELAY =
+    60;
 
 /*=========================================================
 Numeric Helpers
@@ -88,8 +109,10 @@ function clamp(
 ) {
     return Math.max(
         minimum,
+
         Math.min(
             maximum,
+
             numberOr(
                 value,
                 minimum
@@ -102,7 +125,9 @@ function clamp(
 General Helpers
 =========================================================*/
 
-function isFunction(value) {
+function isFunction(
+    value
+) {
     return (
         typeof value ===
         "function"
@@ -113,12 +138,17 @@ function assignRef(
     ref,
     value
 ) {
-    if (!ref) {
+    if (
+        !ref
+    ) {
         return;
     }
 
-    if (isFunction(ref)) {
+    if (
+        isFunction(ref)
+    ) {
         ref(value);
+
         return;
     }
 
@@ -129,7 +159,9 @@ function assignRef(
 function isEditableElement(
     target
 ) {
-    if (!target) {
+    if (
+        !target
+    ) {
         return false;
     }
 
@@ -146,7 +178,9 @@ function isEditableElement(
     );
 }
 
-function getNativeEvent(event) {
+function getNativeEvent(
+    event
+) {
     return (
         event?.evt ||
         event?.nativeEvent ||
@@ -155,7 +189,9 @@ function getNativeEvent(event) {
     );
 }
 
-function safelyPreventDefault(event) {
+function safelyPreventDefault(
+    event
+) {
     const nativeEvent =
         getNativeEvent(event);
 
@@ -186,7 +222,10 @@ This wrapper preserves the original Konva event and native
 event properties, but turns preventDefault into a safe no-op
 only when the browser says the event cannot be cancelled.
 */
-function createManagerSafeEvent(event) {
+
+function createManagerSafeEvent(
+    event
+) {
     const nativeEvent =
         getNativeEvent(event);
 
@@ -244,9 +283,9 @@ function createManagerSafeEvent(event) {
                 ) {
                     if (
                         property ===
-                        "evt" ||
+                            "evt" ||
                         property ===
-                        "nativeEvent"
+                            "nativeEvent"
                     ) {
                         return safeNativeEvent;
                     }
@@ -342,7 +381,9 @@ function getPointerId(
         : null;
 }
 
-function isFinitePoint(point) {
+function isFinitePoint(
+    point
+) {
     return Boolean(
         point &&
         Number.isFinite(
@@ -354,8 +395,12 @@ function isFinitePoint(point) {
     );
 }
 
-function clonePoint(point) {
-    if (!isFinitePoint(point)) {
+function clonePoint(
+    point
+) {
+    if (
+        !isFinitePoint(point)
+    ) {
         return null;
     }
 
@@ -404,13 +449,15 @@ function midpoint(
             (
                 firstPoint.x +
                 secondPoint.x
-            ) / 2,
+            ) /
+            2,
 
         y:
             (
                 firstPoint.y +
                 secondPoint.y
-            ) / 2
+            ) /
+            2
     };
 }
 
@@ -421,27 +468,43 @@ function getResponsiveFitPadding(
     const safeWidth =
         Math.max(
             1,
-            numberOr(width, 1)
+
+            numberOr(
+                width,
+                1
+            )
         );
 
     const safeHeight =
         Math.max(
             1,
-            numberOr(height, 1)
+
+            numberOr(
+                height,
+                1
+            )
         );
 
     if (
-        safeWidth < 480 ||
-        safeHeight < 420
+        safeWidth <
+            480 ||
+        safeHeight <
+            420
     ) {
         return 18;
     }
 
-    if (safeWidth < 768) {
+    if (
+        safeWidth <
+        768
+    ) {
         return 28;
     }
 
-    if (safeWidth < 1100) {
+    if (
+        safeWidth <
+        1100
+    ) {
         return 40;
     }
 
@@ -467,6 +530,7 @@ export function screenPointToDocumentPoint(
     const zoom =
         Math.max(
             0.0001,
+
             numberOr(
                 viewport?.zoom,
                 1
@@ -492,7 +556,8 @@ export function screenPointToDocumentPoint(
                     screenPoint.x
                 ) -
                 viewportX
-            ) / zoom,
+            ) /
+            zoom,
 
         y:
             (
@@ -500,7 +565,8 @@ export function screenPointToDocumentPoint(
                     screenPoint.y
                 ) -
                 viewportY
-            ) / zoom
+            ) /
+            zoom
     };
 }
 
@@ -518,6 +584,7 @@ function isPointInsideDocument(
     const width =
         Math.max(
             1,
+
             numberOr(
                 documentData.width,
                 1200
@@ -527,6 +594,7 @@ function isPointInsideDocument(
     const height =
         Math.max(
             1,
+
             numberOr(
                 documentData.height,
                 1600
@@ -534,10 +602,14 @@ function isPointInsideDocument(
         );
 
     return (
-        point.x >= 0 &&
-        point.y >= 0 &&
-        point.x <= width &&
-        point.y <= height
+        point.x >=
+            0 &&
+        point.y >=
+            0 &&
+        point.x <=
+            width &&
+        point.y <=
+            height
     );
 }
 
@@ -622,50 +694,52 @@ function getLocalTouchPoints(
             : [];
 
     return touches
-        .map(touch => {
-            const identifier =
-                Number(
-                    touch.identifier
-                );
+        .map(
+            touch => {
+                const identifier =
+                    Number(
+                        touch.identifier
+                    );
 
-            const clientX =
-                Number(
-                    touch.clientX
-                );
+                const clientX =
+                    Number(
+                        touch.clientX
+                    );
 
-            const clientY =
-                Number(
-                    touch.clientY
-                );
+                const clientY =
+                    Number(
+                        touch.clientY
+                    );
 
-            if (
-                !Number.isFinite(
-                    identifier
-                ) ||
-                !Number.isFinite(
-                    clientX
-                ) ||
-                !Number.isFinite(
-                    clientY
-                )
-            ) {
-                return null;
-            }
-
-            return [
-                identifier,
-
-                {
-                    x:
-                        clientX -
-                        rectangle.left,
-
-                    y:
-                        clientY -
-                        rectangle.top
+                if (
+                    !Number.isFinite(
+                        identifier
+                    ) ||
+                    !Number.isFinite(
+                        clientX
+                    ) ||
+                    !Number.isFinite(
+                        clientY
+                    )
+                ) {
+                    return null;
                 }
-            ];
-        })
+
+                return [
+                    identifier,
+
+                    {
+                        x:
+                            clientX -
+                            rectangle.left,
+
+                        y:
+                            clientY -
+                            rectangle.top
+                    }
+                ];
+            }
+        )
         .filter(Boolean);
 }
 
@@ -677,7 +751,9 @@ function applyStageTouchStyles(
             ?.container
             ?.();
 
-    if (!stageContainer) {
+    if (
+        !stageContainer
+    ) {
         return;
     }
 
@@ -694,14 +770,18 @@ function applyStageTouchStyles(
         "none";
 
     stageContainer
-        .querySelectorAll("canvas")
-        .forEach(canvas => {
-            canvas.style.touchAction =
-                "none";
+        .querySelectorAll(
+            "canvas"
+        )
+        .forEach(
+            canvas => {
+                canvas.style.touchAction =
+                    "none";
 
-            canvas.style.overscrollBehavior =
-                "none";
-        });
+                canvas.style.overscrollBehavior =
+                    "none";
+            }
+        );
 }
 
 /*=========================================================
@@ -722,132 +802,144 @@ function useContainerSize(
             DEFAULT_VIEWPORT_HEIGHT
     });
 
-    useLayoutEffect(() => {
-        const container =
-            containerRef.current;
+    useLayoutEffect(
+        () => {
+            const container =
+                containerRef.current;
 
-        if (!container) {
-            return undefined;
-        }
+            if (
+                !container
+            ) {
+                return undefined;
+            }
 
-        let animationFrameId =
-            null;
+            let animationFrameId =
+                null;
 
-        const updateSize = () => {
-            const rectangle =
-                container
-                    .getBoundingClientRect();
+            const updateSize =
+                () => {
+                    const rectangle =
+                        container
+                            .getBoundingClientRect();
 
-            const width =
-                Math.max(
-                    1,
-                    Math.round(
-                        rectangle.width
-                    )
-                );
+                    const width =
+                        Math.max(
+                            1,
 
-            const height =
-                Math.max(
-                    1,
-                    Math.round(
-                        rectangle.height
-                    )
-                );
+                            Math.round(
+                                rectangle.width
+                            )
+                        );
 
-            setSize(previousSize => {
-                if (
-                    previousSize.width ===
-                        width &&
-                    previousSize.height ===
-                        height
-                ) {
-                    return previousSize;
-                }
+                    const height =
+                        Math.max(
+                            1,
 
-                return {
-                    width,
-                    height
+                            Math.round(
+                                rectangle.height
+                            )
+                        );
+
+                    setSize(
+                        previousSize => {
+                            if (
+                                previousSize.width ===
+                                    width &&
+                                previousSize.height ===
+                                    height
+                            ) {
+                                return previousSize;
+                            }
+
+                            return {
+                                width,
+                                height
+                            };
+                        }
+                    );
                 };
-            });
-        };
 
-        const scheduleUpdate =
-            () => {
-                if (
-                    animationFrameId !==
-                    null
-                ) {
-                    cancelAnimationFrame(
-                        animationFrameId
+            const scheduleUpdate =
+                () => {
+                    if (
+                        animationFrameId !==
+                        null
+                    ) {
+                        cancelAnimationFrame(
+                            animationFrameId
+                        );
+                    }
+
+                    animationFrameId =
+                        requestAnimationFrame(
+                            updateSize
+                        );
+                };
+
+            updateSize();
+
+            if (
+                typeof ResizeObserver !==
+                "undefined"
+            ) {
+                const observer =
+                    new ResizeObserver(
+                        scheduleUpdate
                     );
-                }
 
-                animationFrameId =
-                    requestAnimationFrame(
-                        updateSize
-                    );
-            };
-
-        updateSize();
-
-        if (
-            typeof ResizeObserver !==
-            "undefined"
-        ) {
-            const observer =
-                new ResizeObserver(
-                    scheduleUpdate
+                observer.observe(
+                    container
                 );
 
-            observer.observe(
-                container
-            );
+                return () => {
+                    observer.disconnect();
 
-            return () => {
-                observer.disconnect();
+                    if (
+                        animationFrameId !==
+                        null
+                    ) {
+                        cancelAnimationFrame(
+                            animationFrameId
+                        );
+                    }
+                };
+            }
 
-                if (
-                    animationFrameId !==
-                    null
-                ) {
-                    cancelAnimationFrame(
-                        animationFrameId
-                    );
-                }
-            };
-        }
-
-        window.addEventListener(
-            "resize",
-            scheduleUpdate
-        );
-
-        window.addEventListener(
-            "orientationchange",
-            scheduleUpdate
-        );
-
-        return () => {
-            window.removeEventListener(
+            window.addEventListener(
                 "resize",
                 scheduleUpdate
             );
 
-            window.removeEventListener(
+            window.addEventListener(
                 "orientationchange",
                 scheduleUpdate
             );
 
-            if (
-                animationFrameId !==
-                null
-            ) {
-                cancelAnimationFrame(
-                    animationFrameId
+            return () => {
+                window.removeEventListener(
+                    "resize",
+                    scheduleUpdate
                 );
-            }
-        };
-    }, [containerRef]);
+
+                window.removeEventListener(
+                    "orientationchange",
+                    scheduleUpdate
+                );
+
+                if (
+                    animationFrameId !==
+                    null
+                ) {
+                    cancelAnimationFrame(
+                        animationFrameId
+                    );
+                }
+            };
+        },
+        [
+            containerRef
+        ]
+    );
 
     return size;
 }
@@ -865,122 +957,157 @@ function DocumentGrid({
         DEFAULT_GRID_COLOR
 }) {
     const lines =
-        useMemo(() => {
-            const safeWidth =
-                Math.max(
-                    1,
-                    numberOr(width, 1)
-                );
+        useMemo(
+            () => {
+                const safeWidth =
+                    Math.max(
+                        1,
 
-            const safeHeight =
-                Math.max(
-                    1,
-                    numberOr(height, 1)
-                );
-
-            let spacing =
-                Math.max(
-                    5,
-                    numberOr(
-                        gridSize,
-                        20
-                    )
-                );
-
-            const estimatedLineCount =
-                safeWidth /
-                    spacing +
-                safeHeight /
-                    spacing;
-
-            /*
-            Avoid creating thousands of
-            individual Konva nodes.
-            */
-
-            if (
-                estimatedLineCount >
-                350
-            ) {
-                spacing *=
-                    Math.ceil(
-                        estimatedLineCount /
-                        350
+                        numberOr(
+                            width,
+                            1
+                        )
                     );
-            }
 
-            const result = [];
+                const safeHeight =
+                    Math.max(
+                        1,
 
-            for (
-                let x = spacing;
-                x < safeWidth;
-                x += spacing
-            ) {
-                result.push({
-                    id:
-                        `grid-vertical-${x}`,
+                        numberOr(
+                            height,
+                            1
+                        )
+                    );
 
-                    points: [
-                        x,
-                        0,
-                        x,
-                        safeHeight
-                    ]
-                });
-            }
+                let spacing =
+                    Math.max(
+                        5,
 
-            for (
-                let y = spacing;
-                y < safeHeight;
-                y += spacing
-            ) {
-                result.push({
-                    id:
-                        `grid-horizontal-${y}`,
+                        numberOr(
+                            gridSize,
+                            20
+                        )
+                    );
 
-                    points: [
-                        0,
-                        y,
-                        safeWidth,
-                        y
-                    ]
-                });
-            }
+                const estimatedLineCount =
+                    safeWidth /
+                        spacing +
+                    safeHeight /
+                        spacing;
 
-            return result;
-        }, [
-            width,
-            height,
-            gridSize
-        ]);
+                /*
+                Avoid creating thousands of
+                individual Konva nodes.
+                */
+
+                if (
+                    estimatedLineCount >
+                    350
+                ) {
+                    spacing *=
+                        Math.ceil(
+                            estimatedLineCount /
+                            350
+                        );
+                }
+
+                const result =
+                    [];
+
+                for (
+                    let x =
+                        spacing;
+                    x <
+                        safeWidth;
+                    x +=
+                        spacing
+                ) {
+                    result.push({
+                        id:
+                            `grid-vertical-${x}`,
+
+                        points: [
+                            x,
+                            0,
+                            x,
+                            safeHeight
+                        ]
+                    });
+                }
+
+                for (
+                    let y =
+                        spacing;
+                    y <
+                        safeHeight;
+                    y +=
+                        spacing
+                ) {
+                    result.push({
+                        id:
+                            `grid-horizontal-${y}`,
+
+                        points: [
+                            0,
+                            y,
+                            safeWidth,
+                            y
+                        ]
+                    });
+                }
+
+                return result;
+            },
+            [
+                width,
+                height,
+                gridSize
+            ]
+        );
 
     const strokeWidth =
         1 /
         Math.max(
             0.0001,
-            numberOr(zoom, 1)
+
+            numberOr(
+                zoom,
+                1
+            )
         );
 
     return (
         <>
-            {lines.map(line => (
-                <Line
-                    key={line.id}
-                    points={line.points}
-                    stroke={color}
-                    strokeWidth={
-                        strokeWidth
-                    }
-                    opacity={0.28}
-                    listening={false}
-                    perfectDrawEnabled={
-                        false
-                    }
-                    shadowForStrokeEnabled={
-                        false
-                    }
-                />
-            ))}
+            {lines.map(
+                line => (
+                    <Line
+                        key={
+                            line.id
+                        }
+                        points={
+                            line.points
+                        }
+                        stroke={
+                            color
+                        }
+                        strokeWidth={
+                            strokeWidth
+                        }
+                        opacity={
+                            0.28
+                        }
+                        listening={
+                            false
+                        }
+                        perfectDrawEnabled={
+                            false
+                        }
+                        shadowForStrokeEnabled={
+                            false
+                        }
+                    />
+                )
+            )}
         </>
     );
 }
@@ -1025,10 +1152,19 @@ function EditorCanvas(
         onTemporaryObjectChange =
             null,
 
+        onTemporaryObjectsChange =
+            null,
+
         onViewportChange =
             null,
 
         onSaveRequested =
+            null,
+
+        onTextEditStart =
+            null,
+
+        onTextEditEnd =
             null,
 
         onError = null
@@ -1089,6 +1225,11 @@ function EditorCanvas(
             onTemporaryObjectChange
         );
 
+    const onTemporaryObjectsChangeRef =
+        useRef(
+            onTemporaryObjectsChange
+        );
+
     const onViewportChangeRef =
         useRef(
             onViewportChange
@@ -1099,6 +1240,16 @@ function EditorCanvas(
             onSaveRequested
         );
 
+    const onTextEditStartRef =
+        useRef(
+            onTextEditStart
+        );
+
+    const onTextEditEndRef =
+        useRef(
+            onTextEditEnd
+        );
+
     const onErrorRef =
         useRef(onError);
 
@@ -1107,9 +1258,9 @@ function EditorCanvas(
     =====================================================*/
 
     const [
-        temporaryObject,
-        setTemporaryObject
-    ] = useState(null);
+        temporaryObjects,
+        setTemporaryObjectsState
+    ] = useState([]);
 
     const [
         isPanning,
@@ -1125,6 +1276,16 @@ function EditorCanvas(
         isTouchGesturing,
         setIsTouchGesturing
     ] = useState(false);
+
+    const [
+        stageNode,
+        setStageNodeState
+    ] = useState(null);
+
+    const [
+        editingTextObjectId,
+        setEditingTextObjectId
+    ] = useState(null);
 
     const containerSize =
         useContainerSize(
@@ -1153,6 +1314,12 @@ function EditorCanvas(
                 state.ui
         );
 
+    const symmetry =
+        useFashionEditorStore(
+            state =>
+                state.symmetry
+        );
+
     const activeTool =
         useFashionEditorStore(
             state =>
@@ -1166,7 +1333,26 @@ function EditorCanvas(
                     layer =>
                         layer.id ===
                         state.activeLayerId
-                ) || null
+                ) ||
+                null
+        );
+
+    /*
+    Return the existing object reference from Zustand.
+    This avoids creating a new snapshot object on each read.
+    */
+
+    const editingTextObject =
+        useFashionEditorStore(
+            state =>
+                editingTextObjectId
+                    ? (
+                        state.objects[
+                            editingTextObjectId
+                        ] ||
+                        null
+                    )
+                    : null
         );
 
     /*=====================================================
@@ -1263,345 +1449,737 @@ function EditorCanvas(
     Keep Callback References Current
     =====================================================*/
 
-    useEffect(() => {
-        onReadyRef.current =
-            onReady;
+    useEffect(
+        () => {
+            onReadyRef.current =
+                onReady;
 
-        onPointerPositionChangeRef.current =
-            onPointerPositionChange;
+            onPointerPositionChangeRef.current =
+                onPointerPositionChange;
 
-        onTemporaryObjectChangeRef.current =
-            onTemporaryObjectChange;
+            onTemporaryObjectChangeRef.current =
+                onTemporaryObjectChange;
 
-        onViewportChangeRef.current =
-            onViewportChange;
+            onTemporaryObjectsChangeRef.current =
+                onTemporaryObjectsChange;
 
-        onSaveRequestedRef.current =
-            onSaveRequested;
+            onViewportChangeRef.current =
+                onViewportChange;
 
-        onErrorRef.current =
-            onError;
-    }, [
-        onReady,
-        onPointerPositionChange,
-        onTemporaryObjectChange,
-        onViewportChange,
-        onSaveRequested,
-        onError
-    ]);
+            onSaveRequestedRef.current =
+                onSaveRequested;
+
+            onTextEditStartRef.current =
+                onTextEditStart;
+
+            onTextEditEndRef.current =
+                onTextEditEnd;
+
+            onErrorRef.current =
+                onError;
+        },
+        [
+            onReady,
+            onPointerPositionChange,
+            onTemporaryObjectChange,
+            onTemporaryObjectsChange,
+            onViewportChange,
+            onSaveRequested,
+            onTextEditStart,
+            onTextEditEnd,
+            onError
+        ]
+    );
 
     /*=====================================================
-    Temporary Object
+    Temporary Objects
     =====================================================*/
 
-    const updateTemporaryObject =
+    const updateTemporaryObjects =
         useCallback(
-            nextObject => {
-                const resolvedObject =
-                    nextObject ||
-                    null;
+            nextObjects => {
+                const normalizedObjects =
+                    (
+                        Array.isArray(
+                            nextObjects
+                        )
+                            ? nextObjects
+                            : nextObjects
+                                ? [
+                                    nextObjects
+                                ]
+                                : []
+                    )
+                        .filter(Boolean)
+                        .filter(
+                            (
+                                object,
+                                index,
+                                objects
+                            ) =>
+                                objects.findIndex(
+                                    candidate =>
+                                        candidate ===
+                                            object ||
+                                        (
+                                            candidate?.id &&
+                                            object?.id &&
+                                            candidate.id ===
+                                                object.id
+                                        )
+                                ) ===
+                                index
+                        );
 
-                setTemporaryObject(
-                    resolvedObject
+                setTemporaryObjectsState(
+                    normalizedObjects
                 );
+
+                const primaryObject =
+                    normalizedObjects[0] ||
+                    null;
 
                 onTemporaryObjectChangeRef
                     .current
                     ?.(
-                        resolvedObject
+                        primaryObject
+                    );
+
+                onTemporaryObjectsChangeRef
+                    .current
+                    ?.(
+                        normalizedObjects
                     );
             },
             []
         );
 
+    const updateTemporaryObject =
+        useCallback(
+            nextObject => {
+                updateTemporaryObjects(
+                    nextObject
+                        ? [
+                            nextObject
+                        ]
+                        : []
+                );
+            },
+            [
+                updateTemporaryObjects
+            ]
+        );
+
+    /*=====================================================
+    Text Editing
+    =====================================================*/
+
+    const closeTextEditor =
+        useCallback(
+            (
+                mode = "close",
+                objectOverride = null
+            ) => {
+                const currentObject =
+                    objectOverride ||
+                    (
+                        editingTextObjectId
+                            ? (
+                                useFashionEditorStore
+                                    .getState()
+                                    .objects[
+                                        editingTextObjectId
+                                    ] ||
+                                null
+                            )
+                            : null
+                    );
+
+                setEditingTextObjectId(
+                    null
+                );
+
+                onTextEditEndRef
+                    .current
+                    ?.({
+                        mode,
+
+                        object:
+                            currentObject
+                    });
+            },
+            [
+                editingTextObjectId
+            ]
+        );
+
+    const openTextEditor =
+        useCallback(
+            request => {
+                const requestedObjectId =
+                    request?.objectId ||
+                    request?.object?.id ||
+                    null;
+
+                if (
+                    !requestedObjectId
+                ) {
+                    return false;
+                }
+
+                const state =
+                    useFashionEditorStore
+                        .getState();
+
+                const requestedObject =
+                    state.objects[
+                        requestedObjectId
+                    ] ||
+                    request?.object ||
+                    null;
+
+                if (
+                    !requestedObject ||
+                    requestedObject.type !==
+                        "text" ||
+                    requestedObject.visible ===
+                        false ||
+                    requestedObject.locked ===
+                        true
+                ) {
+                    return false;
+                }
+
+                const requestedLayer =
+                    state.layers.find(
+                        layer =>
+                            layer.id ===
+                            requestedObject
+                                .layerId
+                    ) ||
+                    null;
+
+                if (
+                    !requestedLayer ||
+                    requestedLayer.visible ===
+                        false ||
+                    requestedLayer.locked ===
+                        true
+                ) {
+                    return false;
+                }
+
+                if (
+                    managerRef.current
+                        ?.isInteracting()
+                ) {
+                    managerRef.current
+                        .cancelInteraction(
+                            "text-edit-started"
+                        );
+                }
+
+                panSessionRef.current =
+                    null;
+
+                setIsPanning(
+                    false
+                );
+
+                updateTemporaryObject(
+                    null
+                );
+
+                setEditingTextObjectId(
+                    requestedObjectId
+                );
+
+                onTextEditStartRef
+                    .current
+                    ?.({
+                        object:
+                            requestedObject,
+
+                        request
+                    });
+
+                return true;
+            },
+            [
+                updateTemporaryObject
+            ]
+        );
+
+    /*
+    TextObject emits this event after a double-click or
+    double-tap. Listening on the Stage avoids passing an edit
+    callback through every layer renderer.
+    */
+
+    useEffect(
+        () => {
+            if (
+                !stageNode
+            ) {
+                return undefined;
+            }
+
+            const handleTextEditRequest =
+                event => {
+                    openTextEditor(
+                        event
+                    );
+                };
+
+            stageNode.on(
+                TEXT_EDIT_REQUEST_EVENT,
+                handleTextEditRequest
+            );
+
+            return () => {
+                stageNode.off(
+                    TEXT_EDIT_REQUEST_EVENT,
+                    handleTextEditRequest
+                );
+            };
+        },
+        [
+            stageNode,
+            openTextEditor
+        ]
+    );
+
+    /*
+    Remove the overlay if the edited object is deleted,
+    hidden, or locked while editing.
+    */
+
+    useEffect(
+        () => {
+            if (
+                !editingTextObjectId
+            ) {
+                return;
+            }
+
+            if (
+                !editingTextObject
+            ) {
+                closeTextEditor(
+                    "object-unavailable"
+                );
+
+                return;
+            }
+
+            const state =
+                useFashionEditorStore
+                    .getState();
+
+            const layer =
+                state.layers.find(
+                    item =>
+                        item.id ===
+                        editingTextObject
+                            .layerId
+                );
+
+            if (
+                editingTextObject.visible ===
+                    false ||
+                editingTextObject.locked ===
+                    true ||
+                !layer ||
+                layer.visible ===
+                    false ||
+                layer.locked ===
+                    true
+            ) {
+                closeTextEditor(
+                    "object-unavailable",
+                    editingTextObject
+                );
+            }
+        },
+        [
+            closeTextEditor,
+            editingTextObject,
+            editingTextObjectId
+        ]
+    );
+
     /*=====================================================
     Tool Manager
     =====================================================*/
 
-    useEffect(() => {
-        const manager =
-            createToolManager({
-                fallbackToolId:
-                    EDITOR_TOOLS.PENCIL,
+    useEffect(
+        () => {
+            const manager =
+                createToolManager({
+                    fallbackToolId:
+                        EDITOR_TOOLS.PENCIL,
 
-                getContext: () => {
-                    const state =
-                        useFashionEditorStore
-                            .getState();
+                    getContext:
+                        () => {
+                            const state =
+                                useFashionEditorStore
+                                    .getState();
 
-                    return {
-                        state,
+                            return {
+                                state,
 
-                        editorState:
-                            state,
+                                editorState:
+                                    state,
 
-                        actions:
-                            state,
+                                actions:
+                                    state,
 
-                        store:
-                            useFashionEditorStore,
+                                store:
+                                    useFashionEditorStore,
 
-                        document:
-                            state.document,
+                                document:
+                                    state.document,
 
-                        viewport:
-                            state.viewport,
+                                viewport:
+                                    state.viewport,
 
-                        activeLayerId:
-                            state.activeLayerId,
+                                activeLayerId:
+                                    state.activeLayerId,
 
-                        brush:
-                            state.brush,
+                                brush:
+                                    state.brush,
 
-                        eraser:
-                            state.eraser,
+                                eraser:
+                                    state.eraser,
 
-                        selection: {
-                            objectIds:
-                                state
-                                    .selectedObjectIds
+                                image:
+                                    state.image,
+
+                                pattern:
+                                    state.pattern,
+
+                                patternMask:
+                                    state.patternMask,
+
+                                symmetry:
+                                    state.symmetry,
+
+                                selection: {
+                                    objectIds:
+                                        state
+                                            .selectedObjectIds
+                                },
+
+                                stage:
+                                    internalStageRef
+                                        .current,
+
+                                stageRef:
+                                    internalStageRef,
+
+                                container:
+                                    containerRef
+                                        .current,
+
+                                containerRef,
+
+                                setTemporaryObject:
+                                    updateTemporaryObject,
+
+                                setTemporaryObjects:
+                                    updateTemporaryObjects,
+
+                                toDocumentPoint:
+                                    screenPoint =>
+                                        screenPointToDocumentPoint(
+                                            screenPoint,
+
+                                            useFashionEditorStore
+                                                .getState()
+                                                .viewport
+                                        ),
+
+                                requestRender:
+                                    () => {
+                                        internalStageRef
+                                            .current
+                                            ?.batchDraw
+                                            ?.();
+                                    }
+                            };
                         },
 
-                        stage:
-                            internalStageRef
-                                .current,
-
-                        stageRef:
-                            internalStageRef,
-
-                        container:
-                            containerRef
-                                .current,
-
-                        containerRef,
-
-                        setTemporaryObject:
-                            updateTemporaryObject,
-
-                        toDocumentPoint:
-                            screenPoint =>
-                                screenPointToDocumentPoint(
-                                    screenPoint,
-                                    useFashionEditorStore
-                                        .getState()
-                                        .viewport
-                                ),
-
-                        requestRender:
-                            () => {
-                                internalStageRef
-                                    .current
-                                    ?.batchDraw
-                                    ?.();
-                            }
-                    };
-                },
-
-                onError: (
-                    error,
-                    details
-                ) => {
-                    if (
-                        isFunction(
-                            onErrorRef
-                                .current
-                        )
-                    ) {
-                        onErrorRef.current(
+                    onError:
+                        (
                             error,
                             details
-                        );
+                        ) => {
+                            if (
+                                isFunction(
+                                    onErrorRef
+                                        .current
+                                )
+                            ) {
+                                onErrorRef.current(
+                                    error,
+                                    details
+                                );
 
-                        return;
-                    }
+                                return;
+                            }
 
-                    console.error(
-                        "Fashion editor tool error:",
-                        error,
-                        details
-                    );
-                }
-            });
+                            console.error(
+                                "Fashion editor tool error:",
+                                error,
+                                details
+                            );
+                        }
+                });
 
-        manager.register(
-            PencilTool
-        );
-
-        manager.register(
-            SelectionTool
-        );
-
-        manager.register(
-            EraserTool
-        );
-
-        managerRef.current =
-            manager;
-
-        const currentTool =
-            useFashionEditorStore
-                .getState()
-                .activeTool;
-
-        if (
-            manager.hasTool(
-                currentTool
-            )
-        ) {
-            manager.activate(
-                currentTool
+            manager.register(
+                PencilTool
             );
-        } else {
-            manager.deactivate();
-        }
 
-        if (
-            internalStageRef.current
-        ) {
-            onReadyRef.current?.({
-                stage:
-                    internalStageRef
-                        .current,
+            manager.register(
+                SelectionTool
+            );
 
-                manager,
+            manager.register(
+                EraserTool
+            );
 
-                container:
-                    containerRef
-                        .current
-            });
-        }
+            manager.register(
+                BrushTool
+            );
 
-        return () => {
-            manager.destroy();
+            manager.register(
+                LineTool
+            );
+
+            manager.register(
+                ShapeTool
+            );
+
+            manager.register(
+                FillTool
+            );
+
+            manager.register(
+                ImageTool
+            );
+
+            manager.register(
+                PatternTool
+            );
+
+            manager.register(
+                PatternMaskTool
+            );
+
+            manager.register(
+                TextTool
+            );
+
+            managerRef.current =
+                manager;
+
+            const currentTool =
+                useFashionEditorStore
+                    .getState()
+                    .activeTool;
 
             if (
-                managerRef.current ===
-                manager
+                manager.hasTool(
+                    currentTool
+                )
             ) {
-                managerRef.current =
-                    null;
+                manager.activate(
+                    currentTool
+                );
+            } else {
+                manager.deactivate();
             }
-        };
-    }, [
-        updateTemporaryObject
-    ]);
+
+            if (
+                internalStageRef.current
+            ) {
+                onReadyRef.current?.({
+                    stage:
+                        internalStageRef
+                            .current,
+
+                    manager,
+
+                    container:
+                        containerRef
+                            .current
+                });
+            }
+
+            return () => {
+                manager.destroy();
+
+                if (
+                    managerRef.current ===
+                    manager
+                ) {
+                    managerRef.current =
+                        null;
+                }
+            };
+        },
+        [
+            updateTemporaryObject,
+            updateTemporaryObjects
+        ]
+    );
 
     /*=====================================================
     Register Additional Tools
     =====================================================*/
 
-    useEffect(() => {
-        const manager =
-            managerRef.current;
+    useEffect(
+        () => {
+            const manager =
+                managerRef.current;
 
-        if (!manager) {
-            return;
-        }
+            if (
+                !manager
+            ) {
+                return;
+            }
 
-        const nextToolIds =
-            new Set();
+            const nextToolIds =
+                new Set();
 
-        if (
-            Array.isArray(
-                tools
-            )
-        ) {
-            tools.forEach(
-                tool => {
-                    if (
-                        !tool?.id ||
-                        tool.id ===
-                            PencilTool.id ||
-                        tool.id ===
-                            SelectionTool.id ||
-                        tool.id ===
-                            EraserTool.id
-                    ) {
-                        return;
-                    }
-
-                    manager.register(
-                        tool,
-                        {
-                            replace:
-                                true
+            if (
+                Array.isArray(
+                    tools
+                )
+            ) {
+                tools.forEach(
+                    tool => {
+                        if (
+                            !tool?.id ||
+                            tool.id ===
+                                PencilTool.id ||
+                            tool.id ===
+                                SelectionTool.id ||
+                            tool.id ===
+                                EraserTool.id ||
+                            tool.id ===
+                                BrushTool.id ||
+                            tool.id ===
+                                LineTool.id ||
+                            tool.id ===
+                                ShapeTool.id ||
+                            tool.id ===
+                                FillTool.id ||
+                            tool.id ===
+                                TextTool.id ||
+                            tool.id ===
+                                ImageTool.id ||
+                            tool.id ===
+                                PatternTool.id ||
+                            tool.id ===
+                                PatternMaskTool.id
+                        ) {
+                            return;
                         }
-                    );
 
-                    nextToolIds.add(
-                        tool.id
-                    );
-                }
-            );
-        }
+                        manager.register(
+                            tool,
+                            {
+                                replace:
+                                    true
+                            }
+                        );
 
-        extraToolIdsRef
-            .current
-            .forEach(toolId => {
-                if (
-                    !nextToolIds.has(
-                        toolId
-                    ) &&
-                    manager.hasTool(
-                        toolId
-                    )
-                ) {
-                    manager.unregister(
-                        toolId
-                    );
-                }
-            });
+                        nextToolIds.add(
+                            tool.id
+                        );
+                    }
+                );
+            }
 
-        extraToolIdsRef.current =
-            nextToolIds;
+            extraToolIdsRef
+                .current
+                .forEach(
+                    toolId => {
+                        if (
+                            !nextToolIds.has(
+                                toolId
+                            ) &&
+                            manager.hasTool(
+                                toolId
+                            )
+                        ) {
+                            manager.unregister(
+                                toolId
+                            );
+                        }
+                    }
+                );
 
-        const currentTool =
-            useFashionEditorStore
-                .getState()
-                .activeTool;
+            extraToolIdsRef.current =
+                nextToolIds;
 
-        if (
-            manager.hasTool(
-                currentTool
-            )
-        ) {
-            manager.activate(
-                currentTool
-            );
-        }
-    }, [tools]);
+            const currentTool =
+                useFashionEditorStore
+                    .getState()
+                    .activeTool;
+
+            if (
+                manager.hasTool(
+                    currentTool
+                )
+            ) {
+                manager.activate(
+                    currentTool
+                );
+            }
+        },
+        [
+            tools
+        ]
+    );
 
     /*=====================================================
     Synchronize Active Tool
     =====================================================*/
 
-    useEffect(() => {
-        const manager =
-            managerRef.current;
+    useEffect(
+        () => {
+            const manager =
+                managerRef.current;
 
-        if (!manager) {
-            return;
-        }
+            if (
+                !manager
+            ) {
+                return;
+            }
 
-        if (
-            manager.hasTool(
-                activeTool
-            )
-        ) {
-            manager.activate(
-                activeTool
+            if (
+                manager.hasTool(
+                    activeTool
+                )
+            ) {
+                manager.activate(
+                    activeTool
+                );
+            } else {
+                manager.deactivate();
+            }
+
+            updateTemporaryObject(
+                null
             );
-        } else {
-            manager.deactivate();
-        }
-
-        updateTemporaryObject(
-            null
-        );
-    }, [
-        activeTool,
-        updateTemporaryObject
-    ]);
+        },
+        [
+            activeTool,
+            updateTemporaryObject
+        ]
+    );
 
     /*=====================================================
     Stage Reference
@@ -1613,6 +2191,18 @@ function EditorCanvas(
                 internalStageRef.current =
                     node;
 
+                if (
+                    node
+                ) {
+                    setStageNodeState(
+                        currentNode =>
+                            currentNode ===
+                                node
+                                ? currentNode
+                                : node
+                    );
+                }
+
                 assignRef(
                     forwardedRef,
                     node
@@ -1623,7 +2213,9 @@ function EditorCanvas(
                     node
                 );
 
-                if (node) {
+                if (
+                    node
+                ) {
                     applyStageTouchStyles(
                         node
                     );
@@ -1652,85 +2244,44 @@ function EditorCanvas(
     Responsive Automatic Document Fit
     =====================================================*/
 
-    useEffect(() => {
-        if (
-            !autoFit ||
-            containerSize.width <= 1 ||
-            containerSize.height <= 1
-        ) {
-            return undefined;
-        }
+    useEffect(
+        () => {
+            if (
+                !autoFit ||
+                containerSize.width <=
+                    1 ||
+                containerSize.height <=
+                    1
+            ) {
+                return undefined;
+            }
 
-        const documentSignature = [
-            documentData.id,
-            documentData.width,
-            documentData.height
-        ].join(":");
+            const documentSignature = [
+                documentData.id,
+                documentData.width,
+                documentData.height
+            ].join(":");
 
-        const signature =
-            autoFitOnResize
-                ? [
-                    documentSignature,
-                    containerSize.width,
-                    containerSize.height
-                ].join(":")
-                : documentSignature;
-
-        if (
-            autoFitSignatureRef
-                .current ===
-            signature
-        ) {
-            return undefined;
-        }
-
-        autoFitSignatureRef.current =
-            signature;
-
-        if (
-            resizeFitTimerRef.current
-        ) {
-            window.clearTimeout(
-                resizeFitTimerRef
-                    .current
-            );
-        }
-
-        resizeFitTimerRef.current =
-            window.setTimeout(
-                () => {
-                    const padding =
-                        Number.isFinite(
-                            Number(
-                                fitPadding
-                            )
-                        )
-                            ? Math.max(
-                                0,
-                                Number(
-                                    fitPadding
-                                )
-                            )
-                            : getResponsiveFitPadding(
-                                containerSize
-                                    .width,
-                                containerSize
-                                    .height
-                            );
-
-                    fitDocumentToViewport(
+            const signature =
+                autoFitOnResize
+                    ? [
+                        documentSignature,
                         containerSize.width,
-                        containerSize.height,
-                        padding
-                    );
+                        containerSize.height
+                    ].join(":")
+                    : documentSignature;
 
-                    resizeFitTimerRef.current =
-                        null;
-                },
-                RESIZE_FIT_DELAY
-            );
+            if (
+                autoFitSignatureRef
+                    .current ===
+                signature
+            ) {
+                return undefined;
+            }
 
-        return () => {
+            autoFitSignatureRef.current =
+                signature;
+
             if (
                 resizeFitTimerRef.current
             ) {
@@ -1738,148 +2289,219 @@ function EditorCanvas(
                     resizeFitTimerRef
                         .current
                 );
-
-                resizeFitTimerRef.current =
-                    null;
             }
-        };
-    }, [
-        autoFit,
-        autoFitOnResize,
-        fitPadding,
-        containerSize.width,
-        containerSize.height,
-        documentData.id,
-        documentData.width,
-        documentData.height,
-        fitDocumentToViewport
-    ]);
+
+            resizeFitTimerRef.current =
+                window.setTimeout(
+                    () => {
+                        const padding =
+                            Number.isFinite(
+                                Number(
+                                    fitPadding
+                                )
+                            )
+                                ? Math.max(
+                                    0,
+
+                                    Number(
+                                        fitPadding
+                                    )
+                                )
+                                : getResponsiveFitPadding(
+                                    containerSize
+                                        .width,
+
+                                    containerSize
+                                        .height
+                                );
+
+                        fitDocumentToViewport(
+                            containerSize.width,
+                            containerSize.height,
+                            padding
+                        );
+
+                        resizeFitTimerRef.current =
+                            null;
+                    },
+                    RESIZE_FIT_DELAY
+                );
+
+            return () => {
+                if (
+                    resizeFitTimerRef.current
+                ) {
+                    window.clearTimeout(
+                        resizeFitTimerRef
+                            .current
+                    );
+
+                    resizeFitTimerRef.current =
+                        null;
+                }
+            };
+        },
+        [
+            autoFit,
+            autoFitOnResize,
+            fitPadding,
+            containerSize.width,
+            containerSize.height,
+            documentData.id,
+            documentData.width,
+            documentData.height,
+            fitDocumentToViewport
+        ]
+    );
 
     /*=====================================================
     Viewport Callback
     =====================================================*/
 
-    useEffect(() => {
-        onViewportChangeRef
-            .current
-            ?.(
-                viewport
-            );
-    }, [viewport]);
+    useEffect(
+        () => {
+            onViewportChangeRef
+                .current
+                ?.(
+                    viewport
+                );
+        },
+        [
+            viewport
+        ]
+    );
 
     /*=====================================================
     Pointer Information
     =====================================================*/
 
     const getPointerInformation =
-        useCallback(() => {
-            const stage =
-                internalStageRef
-                    .current;
+        useCallback(
+            () => {
+                const stage =
+                    internalStageRef
+                        .current;
 
-            const screenPoint =
-                stage
-                    ?.getPointerPosition
-                    ?.();
+                const screenPoint =
+                    stage
+                        ?.getPointerPosition
+                        ?.();
 
-            if (!screenPoint) {
-                return null;
-            }
+                if (
+                    !screenPoint
+                ) {
+                    return null;
+                }
 
-            const state =
-                useFashionEditorStore
-                    .getState();
+                const state =
+                    useFashionEditorStore
+                        .getState();
 
-            const documentPoint =
-                screenPointToDocumentPoint(
-                    screenPoint,
-                    state.viewport
-                );
+                const documentPoint =
+                    screenPointToDocumentPoint(
+                        screenPoint,
+                        state.viewport
+                    );
 
-            return {
-                screenPoint:
-                    clonePoint(
-                        screenPoint
-                    ),
+                return {
+                    screenPoint:
+                        clonePoint(
+                            screenPoint
+                        ),
 
-                documentPoint,
+                    documentPoint,
 
-                insideDocument:
-                    isPointInsideDocument(
-                        documentPoint,
-                        state.document
-                    )
-            };
-        }, []);
+                    insideDocument:
+                        isPointInsideDocument(
+                            documentPoint,
+                            state.document
+                        )
+                };
+            },
+            []
+        );
 
     const publishPointerPosition =
-        useCallback(() => {
-            const information =
-                getPointerInformation();
+        useCallback(
+            () => {
+                const information =
+                    getPointerInformation();
 
-            if (information) {
-                onPointerPositionChangeRef
-                    .current
-                    ?.(
-                        information
-                    );
-            }
+                if (
+                    information
+                ) {
+                    onPointerPositionChangeRef
+                        .current
+                        ?.(
+                            information
+                        );
+                }
 
-            return information;
-        }, [
-            getPointerInformation
-        ]);
+                return information;
+            },
+            [
+                getPointerInformation
+            ]
+        );
 
     /*=====================================================
     Focus
     =====================================================*/
 
     const focusCanvas =
-        useCallback(() => {
-            const container =
-                containerRef.current;
+        useCallback(
+            () => {
+                const container =
+                    containerRef.current;
 
-            if (!container) {
-                return;
-            }
+                if (
+                    !container
+                ) {
+                    return;
+                }
 
-            try {
-                container.focus({
-                    preventScroll:
-                        true
-                });
-            } catch {
-                container.focus();
-            }
-        }, []);
+                try {
+                    container.focus({
+                        preventScroll:
+                            true
+                    });
+                } catch {
+                    container.focus();
+                }
+            },
+            []
+        );
 
     const canvasHasKeyboardFocus =
-        useCallback(() => {
-            const container =
-                containerRef.current;
+        useCallback(
+            () => {
+                const container =
+                    containerRef.current;
 
-            if (
-                !container ||
-                typeof globalThis
-                    .document ===
-                    "undefined"
-            ) {
-                return false;
-            }
+                if (
+                    !container ||
+                    typeof globalThis
+                        .document ===
+                        "undefined"
+                ) {
+                    return false;
+                }
 
-            const activeElement =
-                globalThis
-                    .document
-                    .activeElement;
+                const activeElement =
+                    globalThis
+                        .document
+                        .activeElement;
 
-            return (
-                activeElement ===
-                    container ||
-                container.contains(
-                    activeElement
-                )
-            );
-        }, []);
+                return (
+                    activeElement ===
+                        container ||
+                    container.contains(
+                        activeElement
+                    )
+                );
+            },
+            []
+        );
 
     /*=====================================================
     Touch Gesture Helpers
@@ -1889,8 +2511,7 @@ function EditorCanvas(
         useCallback(
             (
                 event,
-                phase =
-                    "move"
+                phase = "move"
             ) => {
                 const nativeEvent =
                     getNativeEvent(
@@ -1914,9 +2535,9 @@ function EditorCanvas(
                 active touch list. Rebuilding the map from that
                 list is the most reliable path on iOS and Android.
                 */
+
                 if (
-                    nativeEvent
-                        ?.touches
+                    nativeEvent?.touches
                 ) {
                     pointerMap.clear();
 
@@ -1944,6 +2565,7 @@ function EditorCanvas(
                 PointerEvent path used by browsers that expose
                 touch input through pointer events.
                 */
+
                 const pointerId =
                     getPointerId(
                         nativeEvent
@@ -1958,10 +2580,8 @@ function EditorCanvas(
                 }
 
                 if (
-                    phase ===
-                        "end" ||
-                    phase ===
-                        "cancel"
+                    phase === "end" ||
+                    phase === "cancel"
                 ) {
                     pointerMap.delete(
                         pointerId
@@ -1980,7 +2600,9 @@ function EditorCanvas(
                             .current
                     );
 
-                if (localPoint) {
+                if (
+                    localPoint
+                ) {
                     pointerMap.set(
                         pointerId,
                         localPoint
@@ -1994,94 +2616,107 @@ function EditorCanvas(
         );
 
     const initializePinchGesture =
-        useCallback(() => {
-            const pointerEntries = [
-                ...activeTouchPointersRef
-                    .current
-                    .entries()
-            ];
+        useCallback(
+            () => {
+                const pointerEntries = [
+                    ...activeTouchPointersRef
+                        .current
+                        .entries()
+                ];
 
-            if (
-                pointerEntries.length <
-                2
-            ) {
-                pinchGestureRef.current =
-                    null;
+                if (
+                    pointerEntries.length <
+                    2
+                ) {
+                    pinchGestureRef.current =
+                        null;
 
-                return false;
-            }
+                    return false;
+                }
 
-            const [
-                firstEntry,
-                secondEntry
-            ] = pointerEntries;
+                const [
+                    firstEntry,
+                    secondEntry
+                ] =
+                    pointerEntries;
 
-            const [
-                firstPointerId,
-                firstPoint
-            ] = firstEntry;
+                const [
+                    firstPointerId,
+                    firstPoint
+                ] =
+                    firstEntry;
 
-            const [
-                secondPointerId,
-                secondPoint
-            ] = secondEntry;
-
-            const center =
-                midpoint(
-                    firstPoint,
+                const [
+                    secondPointerId,
                     secondPoint
-                );
+                ] =
+                    secondEntry;
 
-            const distance =
-                Math.max(
-                    1,
-                    distanceBetweenPoints(
+                const center =
+                    midpoint(
                         firstPoint,
                         secondPoint
-                    )
-                );
+                    );
 
-            if (!center) {
-                return false;
-            }
+                const distance =
+                    Math.max(
+                        1,
 
-            const state =
-                useFashionEditorStore
-                    .getState();
+                        distanceBetweenPoints(
+                            firstPoint,
+                            secondPoint
+                        )
+                    );
 
-            const documentAnchor =
-                screenPointToDocumentPoint(
-                    center,
-                    state.viewport
-                );
+                if (
+                    !center
+                ) {
+                    return false;
+                }
 
-            if (!documentAnchor) {
-                return false;
-            }
+                const state =
+                    useFashionEditorStore
+                        .getState();
 
-            pinchGestureRef.current = {
-                pointerIds: [
-                    firstPointerId,
-                    secondPointerId
-                ],
+                const documentAnchor =
+                    screenPointToDocumentPoint(
+                        center,
+                        state.viewport
+                    );
 
-                startDistance:
-                    distance,
+                if (
+                    !documentAnchor
+                ) {
+                    return false;
+                }
 
-                startZoom:
-                    state.viewport
-                        .zoom,
+                pinchGestureRef.current = {
+                    pointerIds: [
+                        firstPointerId,
+                        secondPointerId
+                    ],
 
-                documentAnchor
-            };
+                    startDistance:
+                        distance,
 
-            return true;
-        }, []);
+                    startZoom:
+                        state.viewport
+                            .zoom,
+
+                    documentAnchor
+                };
+
+                return true;
+            },
+            []
+        );
 
     const beginTouchGesture =
         useCallback(
             event => {
-                if (!touchGestures) {
+                if (
+                    !touchGestures
+                ) {
                     return false;
                 }
 
@@ -2113,6 +2748,7 @@ function EditorCanvas(
                 Pointer capture is available for PointerEvent
                 input. Native TouchEvent objects do not need it.
                 */
+
                 if (
                     nativeEvent
                         ?.pointerType ===
@@ -2137,7 +2773,8 @@ function EditorCanvas(
                         .current
                 ) {
                     if (
-                        touchCount >= 2
+                        touchCount >=
+                        2
                     ) {
                         initializePinchGesture();
                     }
@@ -2154,7 +2791,11 @@ function EditorCanvas(
                 erasing, selection, or pan tool. The ToolManager
                 must receive it normally.
                 */
-                if (touchCount < 2) {
+
+                if (
+                    touchCount <
+                    2
+                ) {
                     return false;
                 }
 
@@ -2178,7 +2819,9 @@ function EditorCanvas(
                 panSessionRef.current =
                     null;
 
-                setIsPanning(false);
+                setIsPanning(
+                    false
+                );
 
                 updateTemporaryObject(
                     null
@@ -2203,7 +2846,9 @@ function EditorCanvas(
     const updateTouchGesture =
         useCallback(
             event => {
-                if (!touchGestures) {
+                if (
+                    !touchGestures
+                ) {
                     return false;
                 }
 
@@ -2237,14 +2882,19 @@ function EditorCanvas(
                     nativeEvent
                 );
 
-                if (touchCount < 2) {
+                if (
+                    touchCount <
+                    2
+                ) {
                     return true;
                 }
 
                 let gesture =
                     pinchGestureRef.current;
 
-                if (!gesture) {
+                if (
+                    !gesture
+                ) {
                     initializePinchGesture();
 
                     gesture =
@@ -2252,7 +2902,9 @@ function EditorCanvas(
                             .current;
                 }
 
-                if (!gesture) {
+                if (
+                    !gesture
+                ) {
                     return true;
                 }
 
@@ -2282,7 +2934,9 @@ function EditorCanvas(
                         pinchGestureRef
                             .current;
 
-                    if (!gesture) {
+                    if (
+                        !gesture
+                    ) {
                         return true;
                     }
 
@@ -2313,6 +2967,7 @@ function EditorCanvas(
                 const currentDistance =
                     Math.max(
                         1,
+
                         distanceBetweenPoints(
                             firstPoint,
                             secondPoint
@@ -2325,7 +2980,9 @@ function EditorCanvas(
                         secondPoint
                     );
 
-                if (!currentCenter) {
+                if (
+                    !currentCenter
+                ) {
                     return true;
                 }
 
@@ -2333,6 +2990,7 @@ function EditorCanvas(
                     currentDistance /
                     Math.max(
                         1,
+
                         gesture
                             .startDistance
                     );
@@ -2379,10 +3037,11 @@ function EditorCanvas(
         useCallback(
             (
                 event,
-                phase =
-                    "end"
+                phase = "end"
             ) => {
-                if (!touchGestures) {
+                if (
+                    !touchGestures
+                ) {
                     return false;
                 }
 
@@ -2439,18 +3098,27 @@ function EditorCanvas(
                 gesture has completed. Trying to cancel that event
                 produces the intervention warning.
                 */
-                if (!wasTouchGesture) {
+
+                if (
+                    !wasTouchGesture
+                ) {
                     return false;
                 }
 
-                if (touchCount >= 2) {
+                if (
+                    touchCount >=
+                    2
+                ) {
                     initializePinchGesture();
                 } else {
                     pinchGestureRef.current =
                         null;
                 }
 
-                if (touchCount === 0) {
+                if (
+                    touchCount ===
+                    0
+                ) {
                     touchGestureActiveRef.current =
                         false;
 
@@ -2603,7 +3271,9 @@ function EditorCanvas(
                     panSessionRef
                         .current;
 
-                if (!panSession) {
+                if (
+                    !panSession
+                ) {
                     return false;
                 }
 
@@ -2620,7 +3290,9 @@ function EditorCanvas(
                             .current
                     );
 
-                if (!localPoint) {
+                if (
+                    !localPoint
+                ) {
                     return true;
                 }
 
@@ -2646,7 +3318,9 @@ function EditorCanvas(
 
                 return true;
             },
-            [setViewport]
+            [
+                setViewport
+            ]
         );
 
     const endPan =
@@ -2656,7 +3330,9 @@ function EditorCanvas(
                     panSessionRef
                         .current;
 
-                if (!panSession) {
+                if (
+                    !panSession
+                ) {
                     return false;
                 }
 
@@ -2714,7 +3390,9 @@ function EditorCanvas(
                 }
 
                 if (
-                    startPan(event)
+                    startPan(
+                        event
+                    )
                 ) {
                     return;
                 }
@@ -2746,7 +3424,9 @@ function EditorCanvas(
                 }
 
                 if (
-                    updatePan(event)
+                    updatePan(
+                        event
+                    )
                 ) {
                     return;
                 }
@@ -2778,7 +3458,9 @@ function EditorCanvas(
                 }
 
                 if (
-                    endPan(event)
+                    endPan(
+                        event
+                    )
                 ) {
                     return;
                 }
@@ -2810,7 +3492,9 @@ function EditorCanvas(
                 }
 
                 if (
-                    endPan(event)
+                    endPan(
+                        event
+                    )
                 ) {
                     return;
                 }
@@ -2890,7 +3574,9 @@ function EditorCanvas(
                     clearSelection();
                 }
             },
-            [clearSelection]
+            [
+                clearSelection
+            ]
         );
 
     /*=====================================================
@@ -2949,7 +3635,9 @@ function EditorCanvas(
                     return;
                 }
 
-                if (!wheelZoom) {
+                if (
+                    !wheelZoom
+                ) {
                     panBy(
                         -numberOr(
                             nativeEvent
@@ -3003,221 +3691,599 @@ function EditorCanvas(
     =====================================================*/
 
     const handleDoubleClick =
-        useCallback(event => {
-            managerRef.current
-                ?.handleDoubleClick(
-                    event
-                );
-        }, []);
+        useCallback(
+            event => {
+                managerRef.current
+                    ?.handleDoubleClick(
+                        event
+                    );
+            },
+            []
+        );
 
     const handleContextMenu =
-        useCallback(event => {
-            safelyPreventDefault(
-                event
-            );
-
-            managerRef.current
-                ?.handleContextMenu(
-                    createManagerSafeEvent(
-                        event
-                    )
+        useCallback(
+            event => {
+                safelyPreventDefault(
+                    event
                 );
-        }, []);
+
+                managerRef.current
+                    ?.handleContextMenu(
+                        createManagerSafeEvent(
+                            event
+                        )
+                    );
+            },
+            []
+        );
 
     /*=====================================================
     Fit Current View
     =====================================================*/
 
     const fitCurrentView =
-        useCallback(() => {
-            const padding =
-                Number.isFinite(
-                    Number(
-                        fitPadding
-                    )
-                )
-                    ? Math.max(
-                        0,
+        useCallback(
+            () => {
+                const padding =
+                    Number.isFinite(
                         Number(
                             fitPadding
                         )
                     )
-                    : getResponsiveFitPadding(
-                        containerSize
-                            .width,
-                        containerSize
-                            .height
-                    );
+                        ? Math.max(
+                            0,
 
-            fitDocumentToViewport(
+                            Number(
+                                fitPadding
+                            )
+                        )
+                        : getResponsiveFitPadding(
+                            containerSize
+                                .width,
+
+                            containerSize
+                                .height
+                        );
+
+                fitDocumentToViewport(
+                    containerSize.width,
+                    containerSize.height,
+                    padding
+                );
+            },
+            [
+                fitPadding,
                 containerSize.width,
                 containerSize.height,
-                padding
-            );
-        }, [
-            fitPadding,
-            containerSize.width,
-            containerSize.height,
-            fitDocumentToViewport
-        ]);
+                fitDocumentToViewport
+            ]
+        );
 
     /*=====================================================
     Keyboard Shortcuts
     =====================================================*/
 
-    useEffect(() => {
-        const handleKeyDown =
-            event => {
-                if (
-                    isEditableElement(
-                        event.target
-                    )
-                ) {
-                    return;
-                }
-
-                if (
-                    !canvasHasKeyboardFocus()
-                ) {
-                    return;
-                }
-
-                const key =
-                    event.key
-                        .toLowerCase();
-
-                const commandKey =
-                    event.ctrlKey ||
-                    event.metaKey;
-
-                if (
-                    event.code ===
-                    "Space"
-                ) {
-                    event.preventDefault();
+    useEffect(
+        () => {
+            const handleKeyDown =
+                event => {
+                    if (
+                        isEditableElement(
+                            event.target
+                        )
+                    ) {
+                        return;
+                    }
 
                     if (
-                        !spacePressedRef
+                        !canvasHasKeyboardFocus()
+                    ) {
+                        return;
+                    }
+
+                    const key =
+                        event.key
+                            .toLowerCase();
+
+                    const commandKey =
+                        event.ctrlKey ||
+                        event.metaKey;
+
+                    if (
+                        event.code ===
+                        "Space"
+                    ) {
+                        event.preventDefault();
+
+                        if (
+                            !spacePressedRef
+                                .current
+                        ) {
+                            spacePressedRef.current =
+                                true;
+
+                            setIsSpacePressed(
+                                true
+                            );
+                        }
+
+                        return;
+                    }
+
+                    if (
+                        commandKey &&
+                        key ===
+                            "z"
+                    ) {
+                        event.preventDefault();
+
+                        if (
+                            event.shiftKey
+                        ) {
+                            redo();
+                        } else {
+                            undo();
+                        }
+
+                        return;
+                    }
+
+                    if (
+                        commandKey &&
+                        key ===
+                            "y"
+                    ) {
+                        event.preventDefault();
+
+                        redo();
+
+                        return;
+                    }
+
+                    if (
+                        commandKey &&
+                        key ===
+                            "a"
+                    ) {
+                        event.preventDefault();
+
+                        selectAllOnActiveLayer();
+
+                        return;
+                    }
+
+                    if (
+                        commandKey &&
+                        key ===
+                            "c"
+                    ) {
+                        event.preventDefault();
+
+                        copySelection();
+
+                        return;
+                    }
+
+                    if (
+                        commandKey &&
+                        key ===
+                            "x"
+                    ) {
+                        event.preventDefault();
+
+                        cutSelection();
+
+                        return;
+                    }
+
+                    if (
+                        commandKey &&
+                        key ===
+                            "v"
+                    ) {
+                        event.preventDefault();
+
+                        pasteClipboard();
+
+                        return;
+                    }
+
+                    if (
+                        commandKey &&
+                        key ===
+                            "s"
+                    ) {
+                        event.preventDefault();
+
+                        onSaveRequestedRef
                             .current
+                            ?.(
+                                useFashionEditorStore
+                                    .getState()
+                                    .getProjectData()
+                            );
+
+                        return;
+                    }
+
+                    if (
+                        key ===
+                            "delete" ||
+                        key ===
+                            "backspace"
+                    ) {
+                        event.preventDefault();
+
+                        deleteObjects();
+
+                        return;
+                    }
+
+                    if (
+                        key ===
+                        "escape"
+                    ) {
+                        event.preventDefault();
+
+                        if (
+                            activeTool ===
+                            EDITOR_TOOLS.PATTERN_MASK
+                        ) {
+                            managerRef.current
+                                ?.handleKeyDown(
+                                    event
+                                );
+
+                            updateTemporaryObject(
+                                null
+                            );
+
+                            return;
+                        }
+
+                        if (
+                            managerRef.current
+                                ?.isInteracting()
+                        ) {
+                            managerRef.current
+                                .cancelInteraction(
+                                    "escape-key"
+                                );
+
+                            updateTemporaryObject(
+                                null
+                            );
+                        } else {
+                            clearSelection();
+                        }
+
+                        return;
+                    }
+
+                    if (
+                        activeTool ===
+                            EDITOR_TOOLS.SELECT &&
+                        (
+                            key ===
+                                "arrowleft" ||
+                            key ===
+                                "arrowright" ||
+                            key ===
+                                "arrowup" ||
+                            key ===
+                                "arrowdown"
+                        )
+                    ) {
+                        event.preventDefault();
+
+                        const distance =
+                            event.shiftKey
+                                ? 10
+                                : 1;
+
+                        if (
+                            key ===
+                            "arrowleft"
+                        ) {
+                            nudgeSelection(
+                                -distance,
+                                0
+                            );
+                        }
+
+                        if (
+                            key ===
+                            "arrowright"
+                        ) {
+                            nudgeSelection(
+                                distance,
+                                0
+                            );
+                        }
+
+                        if (
+                            key ===
+                            "arrowup"
+                        ) {
+                            nudgeSelection(
+                                0,
+                                -distance
+                            );
+                        }
+
+                        if (
+                            key ===
+                            "arrowdown"
+                        ) {
+                            nudgeSelection(
+                                0,
+                                distance
+                            );
+                        }
+
+                        return;
+                    }
+
+                    if (
+                        key === "p" &&
+                        !commandKey
+                    ) {
+                        event.preventDefault();
+
+                        setActiveTool(
+                            EDITOR_TOOLS.PENCIL
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        key === "b" &&
+                        !commandKey
+                    ) {
+                        event.preventDefault();
+
+                        setActiveTool(
+                            EDITOR_TOOLS.BRUSH
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        key === "l" &&
+                        !commandKey
+                    ) {
+                        event.preventDefault();
+
+                        setActiveTool(
+                            EDITOR_TOOLS.LINE
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        key === "s" &&
+                        !commandKey
+                    ) {
+                        event.preventDefault();
+
+                        setActiveTool(
+                            EDITOR_TOOLS.SHAPE
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        key === "f" &&
+                        !commandKey
+                    ) {
+                        event.preventDefault();
+
+                        setActiveTool(
+                            EDITOR_TOOLS.FILL
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        key === "t" &&
+                        !commandKey
+                    ) {
+                        event.preventDefault();
+
+                        setActiveTool(
+                            EDITOR_TOOLS.TEXT
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        key === "i" &&
+                        !commandKey
+                    ) {
+                        event.preventDefault();
+
+                        setActiveTool(
+                            EDITOR_TOOLS.IMAGE
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        key === "r" &&
+                        !commandKey
+                    ) {
+                        event.preventDefault();
+
+                        setActiveTool(
+                            EDITOR_TOOLS.PATTERN
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        key === "m" &&
+                        !commandKey
+                    ) {
+                        event.preventDefault();
+
+                        setActiveTool(
+                            EDITOR_TOOLS.PATTERN_MASK
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        key === "v" &&
+                        !commandKey
+                    ) {
+                        event.preventDefault();
+
+                        setActiveTool(
+                            EDITOR_TOOLS.SELECT
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        key === "e" &&
+                        !commandKey
+                    ) {
+                        event.preventDefault();
+
+                        setActiveTool(
+                            EDITOR_TOOLS.ERASER
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        key === "h" &&
+                        !commandKey
+                    ) {
+                        event.preventDefault();
+
+                        setActiveTool(
+                            EDITOR_TOOLS.PAN
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        key === "+" ||
+                        key === "="
+                    ) {
+                        event.preventDefault();
+
+                        const state =
+                            useFashionEditorStore
+                                .getState();
+
+                        setZoom(
+                            state.viewport
+                                .zoom *
+                            1.15
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        key === "-" ||
+                        key === "_"
+                    ) {
+                        event.preventDefault();
+
+                        const state =
+                            useFashionEditorStore
+                                .getState();
+
+                        setZoom(
+                            state.viewport
+                                .zoom /
+                            1.15
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        key === "0"
+                    ) {
+                        event.preventDefault();
+
+                        fitCurrentView();
+
+                        return;
+                    }
+
+                    managerRef.current
+                        ?.handleKeyDown(
+                            event
+                        );
+                };
+
+            const handleKeyUp =
+                event => {
+                    if (
+                        event.code ===
+                        "Space"
                     ) {
                         spacePressedRef.current =
-                            true;
+                            false;
 
                         setIsSpacePressed(
-                            true
+                            false
                         );
                     }
 
-                    return;
-                }
+                    managerRef.current
+                        ?.handleKeyUp(
+                            event
+                        );
+                };
 
-                if (
-                    commandKey &&
-                    key === "z"
-                ) {
-                    event.preventDefault();
+            const handleWindowBlur =
+                () => {
+                    spacePressedRef.current =
+                        false;
 
-                    if (
-                        event.shiftKey
-                    ) {
-                        redo();
-                    } else {
-                        undo();
-                    }
+                    setIsSpacePressed(
+                        false
+                    );
 
-                    return;
-                }
+                    panSessionRef.current =
+                        null;
 
-                if (
-                    commandKey &&
-                    key === "y"
-                ) {
-                    event.preventDefault();
+                    setIsPanning(
+                        false
+                    );
 
-                    redo();
-
-                    return;
-                }
-
-                if (
-                    commandKey &&
-                    key === "a"
-                ) {
-                    event.preventDefault();
-
-                    selectAllOnActiveLayer();
-
-                    return;
-                }
-
-                if (
-                    commandKey &&
-                    key === "c"
-                ) {
-                    event.preventDefault();
-
-                    copySelection();
-
-                    return;
-                }
-
-                if (
-                    commandKey &&
-                    key === "x"
-                ) {
-                    event.preventDefault();
-
-                    cutSelection();
-
-                    return;
-                }
-
-                if (
-                    commandKey &&
-                    key === "v"
-                ) {
-                    event.preventDefault();
-
-                    pasteClipboard();
-
-                    return;
-                }
-
-                if (
-                    commandKey &&
-                    key === "s"
-                ) {
-                    event.preventDefault();
-
-                    onSaveRequestedRef
+                    activeTouchPointersRef
                         .current
-                        ?.(
-                            useFashionEditorStore
-                                .getState()
-                                .getProjectData()
-                        );
+                        .clear();
 
-                    return;
-                }
+                    pinchGestureRef.current =
+                        null;
 
-                if (
-                    key ===
-                        "delete" ||
-                    key ===
-                        "backspace"
-                ) {
-                    event.preventDefault();
+                    touchGestureActiveRef.current =
+                        false;
 
-                    deleteObjects();
-
-                    return;
-                }
-
-                if (
-                    key ===
-                    "escape"
-                ) {
-                    event.preventDefault();
+                    setIsTouchGesturing(
+                        false
+                    );
 
                     if (
                         managerRef.current
@@ -3225,300 +4291,65 @@ function EditorCanvas(
                     ) {
                         managerRef.current
                             .cancelInteraction(
-                                "escape-key"
+                                "window-blurred"
                             );
-
-                        updateTemporaryObject(
-                            null
-                        );
-                    } else {
-                        clearSelection();
                     }
 
-                    return;
-                }
-
-                if (
-                    activeTool ===
-                        EDITOR_TOOLS.SELECT &&
-                    (
-                        key ===
-                            "arrowleft" ||
-                        key ===
-                            "arrowright" ||
-                        key ===
-                            "arrowup" ||
-                        key ===
-                            "arrowdown"
-                    )
-                ) {
-                    event.preventDefault();
-
-                    const distance =
-                        event.shiftKey
-                            ? 10
-                            : 1;
-
-                    if (
-                        key ===
-                        "arrowleft"
-                    ) {
-                        nudgeSelection(
-                            -distance,
-                            0
-                        );
-                    }
-
-                    if (
-                        key ===
-                        "arrowright"
-                    ) {
-                        nudgeSelection(
-                            distance,
-                            0
-                        );
-                    }
-
-                    if (
-                        key ===
-                        "arrowup"
-                    ) {
-                        nudgeSelection(
-                            0,
-                            -distance
-                        );
-                    }
-
-                    if (
-                        key ===
-                        "arrowdown"
-                    ) {
-                        nudgeSelection(
-                            0,
-                            distance
-                        );
-                    }
-
-                    return;
-                }
-
-                if (
-                    key === "p" &&
-                    !commandKey
-                ) {
-                    event.preventDefault();
-
-                    setActiveTool(
-                        EDITOR_TOOLS.PENCIL
+                    updateTemporaryObject(
+                        null
                     );
+                };
 
-                    return;
-                }
-
-                if (
-                    key === "v" &&
-                    !commandKey
-                ) {
-                    event.preventDefault();
-
-                    setActiveTool(
-                        EDITOR_TOOLS.SELECT
-                    );
-
-                    return;
-                }
-
-                if (
-                    key === "e" &&
-                    !commandKey
-                ) {
-                    event.preventDefault();
-
-                    setActiveTool(
-                        EDITOR_TOOLS.ERASER
-                    );
-
-                    return;
-                }
-
-                if (
-                    key === "h" &&
-                    !commandKey
-                ) {
-                    event.preventDefault();
-
-                    setActiveTool(
-                        EDITOR_TOOLS.PAN
-                    );
-
-                    return;
-                }
-
-                if (
-                    key === "+" ||
-                    key === "="
-                ) {
-                    event.preventDefault();
-
-                    const state =
-                        useFashionEditorStore
-                            .getState();
-
-                    setZoom(
-                        state.viewport
-                            .zoom *
-                            1.15
-                    );
-
-                    return;
-                }
-
-                if (
-                    key === "-" ||
-                    key === "_"
-                ) {
-                    event.preventDefault();
-
-                    const state =
-                        useFashionEditorStore
-                            .getState();
-
-                    setZoom(
-                        state.viewport
-                            .zoom /
-                            1.15
-                    );
-
-                    return;
-                }
-
-                if (key === "0") {
-                    event.preventDefault();
-
-                    fitCurrentView();
-
-                    return;
-                }
-
-                managerRef.current
-                    ?.handleKeyDown(
-                        event
-                    );
-            };
-
-        const handleKeyUp =
-            event => {
-                if (
-                    event.code ===
-                    "Space"
-                ) {
-                    spacePressedRef.current =
-                        false;
-
-                    setIsSpacePressed(
-                        false
-                    );
-                }
-
-                managerRef.current
-                    ?.handleKeyUp(
-                        event
-                    );
-            };
-
-        const handleWindowBlur =
-            () => {
-                spacePressedRef.current =
-                    false;
-
-                setIsSpacePressed(
-                    false
-                );
-
-                panSessionRef.current =
-                    null;
-
-                setIsPanning(
-                    false
-                );
-
-                activeTouchPointersRef
-                    .current
-                    .clear();
-
-                pinchGestureRef.current =
-                    null;
-
-                touchGestureActiveRef.current =
-                    false;
-
-                setIsTouchGesturing(
-                    false
-                );
-
-                if (
-                    managerRef.current
-                        ?.isInteracting()
-                ) {
-                    managerRef.current
-                        .cancelInteraction(
-                            "window-blurred"
-                        );
-                }
-
-                updateTemporaryObject(
-                    null
-                );
-            };
-
-        window.addEventListener(
-            "keydown",
-            handleKeyDown
-        );
-
-        window.addEventListener(
-            "keyup",
-            handleKeyUp
-        );
-
-        window.addEventListener(
-            "blur",
-            handleWindowBlur
-        );
-
-        return () => {
-            window.removeEventListener(
+            window.addEventListener(
                 "keydown",
                 handleKeyDown
             );
 
-            window.removeEventListener(
+            window.addEventListener(
                 "keyup",
                 handleKeyUp
             );
 
-            window.removeEventListener(
+            window.addEventListener(
                 "blur",
                 handleWindowBlur
             );
-        };
-    }, [
-        activeTool,
-        undo,
-        redo,
-        deleteObjects,
-        clearSelection,
-        selectAllOnActiveLayer,
-        copySelection,
-        cutSelection,
-        pasteClipboard,
-        nudgeSelection,
-        setActiveTool,
-        setZoom,
-        fitCurrentView,
-        canvasHasKeyboardFocus,
-        updateTemporaryObject
-    ]);
+
+            return () => {
+                window.removeEventListener(
+                    "keydown",
+                    handleKeyDown
+                );
+
+                window.removeEventListener(
+                    "keyup",
+                    handleKeyUp
+                );
+
+                window.removeEventListener(
+                    "blur",
+                    handleWindowBlur
+                );
+            };
+        },
+        [
+            activeTool,
+            undo,
+            redo,
+            deleteObjects,
+            clearSelection,
+            selectAllOnActiveLayer,
+            copySelection,
+            cutSelection,
+            pasteClipboard,
+            nudgeSelection,
+            setActiveTool,
+            setZoom,
+            fitCurrentView,
+            canvasHasKeyboardFocus,
+            updateTemporaryObject
+        ]
+    );
 
     /*=====================================================
     Temporary Layer
@@ -3550,15 +4381,14 @@ function EditorCanvas(
                     "source-over",
 
                 objectIds:
-                    temporaryObject
-                        ? [
-                            temporaryObject.id
-                        ]
-                        : []
+                    temporaryObjects.map(
+                        object =>
+                            object.id
+                    )
             }),
             [
                 activeLayer,
-                temporaryObject
+                temporaryObjects
             ]
         );
 
@@ -3567,56 +4397,61 @@ function EditorCanvas(
     =====================================================*/
 
     const cursor =
-        useMemo(() => {
-            if (
-                isTouchGesturing
-            ) {
-                return "grabbing";
-            }
+        useMemo(
+            () => {
+                if (
+                    isTouchGesturing
+                ) {
+                    return "grabbing";
+                }
 
-            if (isPanning) {
-                return "grabbing";
-            }
+                if (
+                    isPanning
+                ) {
+                    return "grabbing";
+                }
 
-            if (
-                activeTool ===
-                    EDITOR_TOOLS.PAN ||
-                isSpacePressed
-            ) {
-                return "grab";
-            }
+                if (
+                    activeTool ===
+                        EDITOR_TOOLS.PAN ||
+                    isSpacePressed
+                ) {
+                    return "grab";
+                }
 
-            const managerCursor =
-                managerRef.current
-                    ?.getCursor
-                    ?.();
+                const managerCursor =
+                    managerRef.current
+                        ?.getCursor
+                        ?.();
 
-            if (
-                managerCursor &&
-                managerCursor !==
-                    "default"
-            ) {
-                return managerCursor;
-            }
+                if (
+                    managerCursor &&
+                    managerCursor !==
+                        "default"
+                ) {
+                    return managerCursor;
+                }
 
-            if (
-                activeTool ===
-                EDITOR_TOOLS.SELECT
-            ) {
-                return "default";
-            }
+                if (
+                    activeTool ===
+                    EDITOR_TOOLS.SELECT
+                ) {
+                    return "default";
+                }
 
-            return (
-                ui.canvasCursor ||
-                "crosshair"
-            );
-        }, [
-            isTouchGesturing,
-            isPanning,
-            activeTool,
-            isSpacePressed,
-            ui.canvasCursor
-        ]);
+                return (
+                    ui.canvasCursor ||
+                    "crosshair"
+                );
+            },
+            [
+                isTouchGesturing,
+                isPanning,
+                activeTool,
+                isSpacePressed,
+                ui.canvasCursor
+            ]
+        );
 
     /*=====================================================
     Document Geometry
@@ -3625,6 +4460,7 @@ function EditorCanvas(
     const documentWidth =
         Math.max(
             1,
+
             numberOr(
                 documentData.width,
                 1200
@@ -3634,6 +4470,7 @@ function EditorCanvas(
     const documentHeight =
         Math.max(
             1,
+
             numberOr(
                 documentData.height,
                 1600
@@ -3643,6 +4480,7 @@ function EditorCanvas(
     const zoom =
         Math.max(
             0.0001,
+
             numberOr(
                 viewport.zoom,
                 1
@@ -3662,19 +4500,36 @@ function EditorCanvas(
         );
 
     const borderWidth =
-        1 / zoom;
+        1 /
+        zoom;
 
     const shadowBlur =
-        24 / zoom;
+        24 /
+        zoom;
 
     const shadowOffsetY =
-        8 / zoom;
+        8 /
+        zoom;
+
+    const symmetryGuideLines =
+        useMemo(
+            () =>
+                getSymmetryGuideLines(
+                    symmetry,
+                    documentData
+                ),
+            [
+                symmetry,
+                documentData
+            ]
+        );
 
     const transformerEnabled =
         activeTool ===
             EDITOR_TOOLS.SELECT &&
         !isPanning &&
-        !isTouchGesturing;
+        !isTouchGesturing &&
+        !editingTextObject;
 
     /*=====================================================
     Render
@@ -3682,7 +4537,9 @@ function EditorCanvas(
 
     return (
         <div
-            ref={containerRef}
+            ref={
+                containerRef
+            }
             className={[
                 "relative h-full w-full overflow-hidden outline-none",
                 className
@@ -3715,12 +4572,23 @@ function EditorCanvas(
 
                 ...style
             }}
-            tabIndex={0}
+            tabIndex={
+                0
+            }
             role="application"
             aria-label="Fashion design drawing canvas"
-            aria-keyshortcuts="V P E H Delete Control+Z Control+Y Control+S"
+            aria-keyshortcuts="V P B L S F T I R M E H Delete Control+Z Control+Y Control+S"
             data-active-tool={
                 activeTool
+            }
+            data-symmetry-enabled={
+                symmetry?.enabled
+                    ? "true"
+                    : "false"
+            }
+            data-symmetry-mode={
+                symmetry?.mode ||
+                "vertical"
             }
             data-touch-gesture={
                 isTouchGesturing
@@ -3729,14 +4597,18 @@ function EditorCanvas(
             }
         >
             <Stage
-                ref={setStageNode}
+                ref={
+                    setStageNode
+                }
                 width={
                     containerSize.width
                 }
                 height={
                     containerSize.height
                 }
-                draggable={false}
+                draggable={
+                    false
+                }
                 onPointerDown={
                     handlePointerDown
                 }
@@ -3778,18 +4650,32 @@ function EditorCanvas(
 
                 <Layer
                     name="fashion-editor-background-layer"
-                    listening={false}
+                    listening={
+                        false
+                    }
                 >
                     <Group
                         name="fashion-editor-background-group"
-                        x={viewportX}
-                        y={viewportY}
-                        scaleX={zoom}
-                        scaleY={zoom}
+                        x={
+                            viewportX
+                        }
+                        y={
+                            viewportY
+                        }
+                        scaleX={
+                            zoom
+                        }
+                        scaleY={
+                            zoom
+                        }
                     >
                         <Rect
-                            x={0}
-                            y={0}
+                            x={
+                                0
+                            }
+                            y={
+                                0
+                            }
                             width={
                                 documentWidth
                             }
@@ -3801,15 +4687,21 @@ function EditorCanvas(
                                 "#ffffff"
                             }
                             shadowColor="#0f172a"
-                            shadowOpacity={0.22}
+                            shadowOpacity={
+                                0.22
+                            }
                             shadowBlur={
                                 shadowBlur
                             }
-                            shadowOffsetX={0}
+                            shadowOffsetX={
+                                0
+                            }
                             shadowOffsetY={
                                 shadowOffsetY
                             }
-                            listening={false}
+                            listening={
+                                false
+                            }
                             perfectDrawEnabled={
                                 false
                             }
@@ -3826,7 +4718,9 @@ function EditorCanvas(
                                 gridSize={
                                     ui.gridSize
                                 }
-                                zoom={zoom}
+                                zoom={
+                                    zoom
+                                }
                                 color={
                                     gridColor
                                 }
@@ -3834,8 +4728,12 @@ function EditorCanvas(
                         )}
 
                         <Rect
-                            x={0}
-                            y={0}
+                            x={
+                                0
+                            }
+                            y={
+                                0
+                            }
                             width={
                                 documentWidth
                             }
@@ -3846,7 +4744,9 @@ function EditorCanvas(
                             strokeWidth={
                                 borderWidth
                             }
-                            listening={false}
+                            listening={
+                                false
+                            }
                             perfectDrawEnabled={
                                 false
                             }
@@ -3861,10 +4761,18 @@ function EditorCanvas(
                 >
                     <Group
                         name="fashion-editor-artwork-group"
-                        x={viewportX}
-                        y={viewportY}
-                        scaleX={zoom}
-                        scaleY={zoom}
+                        x={
+                            viewportX
+                        }
+                        y={
+                            viewportY
+                        }
+                        scaleX={
+                            zoom
+                        }
+                        scaleY={
+                            zoom
+                        }
                     >
                         <LayerRenderer
                             document={
@@ -3898,18 +4806,28 @@ function EditorCanvas(
                     </Group>
                 </Layer>
 
-                {/* Temporary previews and tool cursors */}
+                {/* Temporary previews and symmetry guides */}
 
                 <Layer
                     name="fashion-editor-interaction-layer"
-                    listening={false}
+                    listening={
+                        false
+                    }
                 >
                     <Group
                         name="fashion-editor-interaction-group"
-                        x={viewportX}
-                        y={viewportY}
-                        scaleX={zoom}
-                        scaleY={zoom}
+                        x={
+                            viewportX
+                        }
+                        y={
+                            viewportY
+                        }
+                        scaleX={
+                            zoom
+                        }
+                        scaleY={
+                            zoom
+                        }
                         clipX={
                             clipToDocument
                                 ? 0
@@ -3931,23 +4849,115 @@ function EditorCanvas(
                                 : undefined
                         }
                     >
-                        {temporaryObject && (
-                            <ObjectRenderer
-                                object={
-                                    temporaryObject
-                                }
-                                layer={
-                                    temporaryLayer
-                                }
-                                listening={
-                                    false
-                                }
-                                transient
-                            />
+                        {symmetryGuideLines.map(
+                            guide => (
+                                <Line
+                                    key={
+                                        guide.id
+                                    }
+                                    id={
+                                        guide.id
+                                    }
+                                    name="fashion-editor-symmetry-guide"
+                                    points={
+                                        guide.points
+                                    }
+                                    stroke={
+                                        guide.stroke
+                                    }
+                                    strokeWidth={
+                                        numberOr(
+                                            guide.strokeWidth,
+                                            1
+                                        ) /
+                                        zoom
+                                    }
+                                    opacity={
+                                        guide.opacity
+                                    }
+                                    dash={
+                                        Array.isArray(
+                                            guide.dash
+                                        )
+                                            ? guide.dash.map(
+                                                value =>
+                                                    numberOr(
+                                                        value,
+                                                        0
+                                                    ) /
+                                                    zoom
+                                            )
+                                            : undefined
+                                    }
+                                    listening={
+                                        false
+                                    }
+                                    perfectDrawEnabled={
+                                        false
+                                    }
+                                    shadowForStrokeEnabled={
+                                        false
+                                    }
+                                />
+                            )
+                        )}
+
+                        {temporaryObjects.map(
+                            (
+                                object,
+                                index
+                            ) => (
+                                <ObjectRenderer
+                                    key={
+                                        object.id ||
+                                        `temporary-object-${index}`
+                                    }
+                                    object={
+                                        object
+                                    }
+                                    layer={
+                                        temporaryLayer
+                                    }
+                                    listening={
+                                        false
+                                    }
+                                    transient
+                                />
+                            )
                         )}
                     </Group>
                 </Layer>
             </Stage>
+
+            {editingTextObject && (
+                <TextEditOverlay
+                    key={
+                        editingTextObject.id
+                    }
+                    object={
+                        editingTextObject
+                    }
+                    stageRef={
+                        internalStageRef
+                    }
+                    open
+                    historyLabel="Edit text"
+                    autoFocus
+                    selectAllOnOpen={
+                        false
+                    }
+                    commitOnBlur
+                    allowEmpty
+                    onClose={
+                        mode => {
+                            closeTextEditor(
+                                mode,
+                                editingTextObject
+                            );
+                        }
+                    }
+                />
+            )}
 
             {isTouchGesturing && (
                 <div className="pointer-events-none absolute left-1/2 top-3 z-20 -translate-x-1/2 rounded-full border border-slate-700 bg-slate-950/85 px-3 py-1.5 text-[10px] font-semibold text-slate-300 shadow-lg backdrop-blur">

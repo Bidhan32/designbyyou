@@ -2,7 +2,7 @@
 =========================================================
 FashionVision Professional Editor
 Pencil Tool
-Version 1.0
+Version 1.1 — Symmetry Integrated
 =========================================================
 */
 
@@ -14,8 +14,16 @@ import {
 import {
     EDITOR_TOOLS,
     OBJECT_TYPES,
+    SYMMETRY_MODES,
     useFashionEditorStore
 } from "../useFashionEditorStore";
+
+import {
+    createSymmetryObjectSet,
+    createSymmetryPreviewObjects,
+    normalizeSymmetryConfig,
+    shouldMirrorTool
+} from "../utils/SymmetryUtils";
 
 /*=========================================================
 Pencil Tool Constants
@@ -53,6 +61,15 @@ export const DEFAULT_PENCIL_TOOL_OPTIONS =
         straightLineWithShift:
             true,
 
+        symmetryPreviewEnabled:
+            true,
+
+        symmetrySnapThreshold:
+            8,
+
+        preventSymmetryDuplicates:
+            true,
+
         maximumPoints:
             20000
     });
@@ -82,8 +99,10 @@ function clamp(
 ) {
     return Math.max(
         minimum,
+
         Math.min(
             maximum,
+
             numberOr(
                 value,
                 minimum
@@ -101,27 +120,34 @@ function isPlainObject(
 ) {
     return Boolean(
         value &&
-        typeof value === "object" &&
-        !Array.isArray(value)
+        typeof value ===
+            "object" &&
+        !Array.isArray(
+            value
+        )
     );
 }
 
 function isFunction(
     value
 ) {
-    return typeof value ===
-        "function";
+    return (
+        typeof value ===
+        "function"
+    );
 }
 
 function nowIso() {
-    return new Date().toISOString();
+    return new Date()
+        .toISOString();
 }
 
 function createId(
     prefix = "stroke"
 ) {
     if (
-        typeof crypto !== "undefined" &&
+        typeof crypto !==
+            "undefined" &&
         typeof crypto.randomUUID ===
             "function"
     ) {
@@ -146,10 +172,14 @@ function isFinitePoint(
     return Boolean(
         point &&
         Number.isFinite(
-            Number(point.x)
+            Number(
+                point.x
+            )
         ) &&
         Number.isFinite(
-            Number(point.y)
+            Number(
+                point.y
+            )
         )
     );
 }
@@ -157,7 +187,11 @@ function isFinitePoint(
 function clonePoint(
     point
 ) {
-    if (!isFinitePoint(point)) {
+    if (
+        !isFinitePoint(
+            point
+        )
+    ) {
         return null;
     }
 
@@ -165,10 +199,14 @@ function clonePoint(
         ...point,
 
         x:
-            Number(point.x),
+            Number(
+                point.x
+            ),
 
         y:
-            Number(point.y)
+            Number(
+                point.y
+            )
     };
 }
 
@@ -177,15 +215,30 @@ function distanceBetweenPoints(
     pointB
 ) {
     if (
-        !isFinitePoint(pointA) ||
-        !isFinitePoint(pointB)
+        !isFinitePoint(
+            pointA
+        ) ||
+        !isFinitePoint(
+            pointB
+        )
     ) {
         return 0;
     }
 
     return Math.hypot(
-        pointB.x - pointA.x,
-        pointB.y - pointA.y
+        Number(
+            pointB.x
+        ) -
+        Number(
+            pointA.x
+        ),
+
+        Number(
+            pointB.y
+        ) -
+        Number(
+            pointA.y
+        )
     );
 }
 
@@ -198,7 +251,9 @@ function resolveEditorState(
 ) {
     if (
         context?.state &&
-        isPlainObject(context.state)
+        isPlainObject(
+            context.state
+        )
     ) {
         return context.state;
     }
@@ -217,7 +272,8 @@ function resolveEditorState(
             context?.store?.getState
         )
     ) {
-        return context.store.getState();
+        return context.store
+            .getState();
     }
 
     if (
@@ -227,10 +283,12 @@ function resolveEditorState(
                 ?.getState
         )
     ) {
-        return context.editorStore.getState();
+        return context.editorStore
+            .getState();
     }
 
-    return useFashionEditorStore.getState();
+    return useFashionEditorStore
+        .getState();
 }
 
 /*=========================================================
@@ -242,7 +300,9 @@ function resolveEditorActions(
 ) {
     if (
         context?.actions &&
-        isPlainObject(context.actions)
+        isPlainObject(
+            context.actions
+        )
     ) {
         return context.actions;
     }
@@ -261,8 +321,9 @@ function resolveDocument(
 ) {
     return (
         context?.document ||
-        resolveEditorState(context)
-            ?.document ||
+        resolveEditorState(
+            context
+        )?.document ||
         null
     );
 }
@@ -279,7 +340,9 @@ function resolveActiveLayer(
             context
         );
 
-    if (!state) {
+    if (
+        !state
+    ) {
         return null;
     }
 
@@ -331,35 +394,40 @@ function resolveBrushSettings(
 
         size:
             clamp(
-                source.size ?? 4,
+                source.size ??
+                4,
                 0.25,
                 300
             ),
 
         opacity:
             clamp(
-                source.opacity ?? 1,
+                source.opacity ??
+                1,
                 0.01,
                 1
             ),
 
         smoothing:
             clamp(
-                source.smoothing ?? 0.55,
+                source.smoothing ??
+                0.55,
                 0,
                 1
             ),
 
         streamline:
             clamp(
-                source.streamline ?? 0.45,
+                source.streamline ??
+                0.45,
                 0,
                 1
             ),
 
         thinning:
             clamp(
-                source.thinning ?? 0,
+                source.thinning ??
+                0,
                 -1,
                 1
             ),
@@ -367,6 +435,7 @@ function resolveBrushSettings(
         taperStart:
             Math.max(
                 0,
+
                 numberOr(
                     source.taperStart,
                     0
@@ -376,6 +445,7 @@ function resolveBrushSettings(
         taperEnd:
             Math.max(
                 0,
+
                 numberOr(
                     source.taperEnd,
                     0
@@ -393,17 +463,53 @@ function resolveBrushSettings(
 }
 
 /*=========================================================
+Resolve Symmetry Settings
+=========================================================*/
+
+function resolveSymmetrySettings(
+    context,
+    documentData
+) {
+    const state =
+        resolveEditorState(
+            context
+        );
+
+    const source = {
+        ...state?.symmetry,
+        ...context?.symmetry
+    };
+
+    const normalized =
+        normalizeSymmetryConfig(
+            source,
+            documentData
+        );
+
+    return {
+        ...normalized,
+
+        enabled:
+            shouldMirrorTool(
+                PENCIL_TOOL_ID,
+                normalized
+            )
+    };
+}
+
+/*=========================================================
 Document Boundary Helpers
 =========================================================*/
 
 function getDocumentBounds(
-    document
+    documentData
 ) {
     const width =
         Math.max(
             1,
+
             numberOr(
-                document?.width,
+                documentData?.width,
                 1200
             )
         );
@@ -411,8 +517,9 @@ function getDocumentBounds(
     const height =
         Math.max(
             1,
+
             numberOr(
-                document?.height,
+                documentData?.height,
                 1600
             )
         );
@@ -438,36 +545,48 @@ function getDocumentBounds(
 
 function isPointInsideDocument(
     point,
-    document
+    documentData
 ) {
-    if (!isFinitePoint(point)) {
+    if (
+        !isFinitePoint(
+            point
+        )
+    ) {
         return false;
     }
 
     const bounds =
         getDocumentBounds(
-            document
+            documentData
         );
 
     return (
-        point.x >= bounds.left &&
-        point.y >= bounds.top &&
-        point.x <= bounds.right &&
-        point.y <= bounds.bottom
+        point.x >=
+            bounds.left &&
+        point.y >=
+            bounds.top &&
+        point.x <=
+            bounds.right &&
+        point.y <=
+            bounds.bottom
     );
 }
 
 function clampPointToDocument(
     point,
-    document
+    documentData
 ) {
-    if (!isFinitePoint(point)) {
+    if (
+        !isFinitePoint(
+            point
+        )
+    ) {
         return null;
     }
 
     const bounds =
         getDocumentBounds(
-            document
+            documentData
         );
 
     return {
@@ -489,27 +608,112 @@ function clampPointToDocument(
 
 function resolveDrawingPoint(
     point,
-    document,
+    documentData,
     options
 ) {
-    if (!isFinitePoint(point)) {
+    if (
+        !isFinitePoint(
+            point
+        )
+    ) {
         return null;
     }
 
-    if (!options.clipToDocument) {
+    if (
+        !options.clipToDocument
+    ) {
         return {
             x:
-                Number(point.x),
+                Number(
+                    point.x
+                ),
 
             y:
-                Number(point.y)
+                Number(
+                    point.y
+                )
         };
     }
 
     return clampPointToDocument(
         point,
-        document
+        documentData
     );
+}
+
+/*=========================================================
+Symmetry Snapping
+=========================================================*/
+
+function snapDrawingPointToSymmetryAxes(
+    point,
+    symmetry,
+    threshold
+) {
+    if (
+        !isFinitePoint(
+            point
+        ) ||
+        !symmetry?.enabled ||
+        !symmetry?.snapToAxis
+    ) {
+        return clonePoint(
+            point
+        );
+    }
+
+    const result =
+        clonePoint(
+            point
+        );
+
+    const distance =
+        Math.max(
+            0,
+
+            numberOr(
+                threshold,
+                8
+            )
+        );
+
+    if (
+        symmetry.mode ===
+            SYMMETRY_MODES.VERTICAL ||
+        symmetry.mode ===
+            SYMMETRY_MODES.FOUR_WAY
+    ) {
+        if (
+            Math.abs(
+                result.x -
+                symmetry.axisX
+            ) <=
+            distance
+        ) {
+            result.x =
+                symmetry.axisX;
+        }
+    }
+
+    if (
+        symmetry.mode ===
+            SYMMETRY_MODES.HORIZONTAL ||
+        symmetry.mode ===
+            SYMMETRY_MODES.FOUR_WAY
+    ) {
+        if (
+            Math.abs(
+                result.y -
+                symmetry.axisY
+            ) <=
+            distance
+        ) {
+            result.y =
+                symmetry.axisY;
+        }
+    }
+
+    return result;
 }
 
 /*=========================================================
@@ -541,17 +745,20 @@ function calculateSimulatedPressure(
     const elapsed =
         Math.max(
             1,
+
             currentTimestamp -
             previousTimestamp
         );
 
     const velocity =
-        distance / elapsed;
+        distance /
+        elapsed;
 
     const targetPressure =
         clamp(
             0.82 -
-            velocity * 0.38,
+            velocity *
+            0.38,
             0.18,
             0.85
         );
@@ -562,7 +769,7 @@ function calculateSimulatedPressure(
             0.45
         ) *
             0.65 +
-            targetPressure *
+        targetPressure *
             0.35,
         0.05,
         1
@@ -572,16 +779,20 @@ function calculateSimulatedPressure(
 function resolvePressure(
     context,
     brush,
+    currentPoint,
     previousPoint,
     timestamp
 ) {
-    if (!brush.pressureEnabled) {
+    if (
+        !brush.pressureEnabled
+    ) {
         return 0.5;
     }
 
     const nativePressure =
         clamp(
-            context?.pressure ?? 0.5,
+            context?.pressure ??
+            0.5,
             0,
             1
         );
@@ -591,20 +802,25 @@ function resolvePressure(
         "mouse";
 
     if (
-        pointerType === "pen" &&
-        nativePressure > 0
+        pointerType ===
+            "pen" &&
+        nativePressure >
+            0
     ) {
         return nativePressure;
     }
 
-    if (!brush.simulatePressure) {
-        return nativePressure > 0
+    if (
+        !brush.simulatePressure
+    ) {
+        return nativePressure >
+            0
             ? nativePressure
             : 0.5;
     }
 
     return calculateSimulatedPressure(
-        context.point,
+        currentPoint,
         previousPoint,
         timestamp,
         previousPoint?.timestamp,
@@ -619,18 +835,44 @@ Create Sample Point
 function createSamplePoint(
     context,
     brush,
-    document,
+    documentData,
     options,
-    previousPoint = null
+    previousPoint = null,
+    symmetry = null
 ) {
-    const drawingPoint =
+    let drawingPoint =
         resolveDrawingPoint(
             context.point,
-            document,
+            documentData,
             options
         );
 
-    if (!drawingPoint) {
+    if (
+        !drawingPoint
+    ) {
+        return null;
+    }
+
+    drawingPoint =
+        snapDrawingPointToSymmetryAxes(
+            drawingPoint,
+            symmetry,
+            options.symmetrySnapThreshold
+        );
+
+    if (
+        options.clipToDocument
+    ) {
+        drawingPoint =
+            clampPointToDocument(
+                drawingPoint,
+                documentData
+            );
+    }
+
+    if (
+        !drawingPoint
+    ) {
         return null;
     }
 
@@ -648,6 +890,7 @@ function createSamplePoint(
             resolvePressure(
                 context,
                 brush,
+                drawingPoint,
                 previousPoint,
                 timestamp
             ),
@@ -673,6 +916,7 @@ function createSamplePoint(
         pointerWidth:
             Math.max(
                 1,
+
                 numberOr(
                     context.width,
                     1
@@ -682,6 +926,7 @@ function createSamplePoint(
         pointerHeight:
             Math.max(
                 1,
+
                 numberOr(
                     context.height,
                     1
@@ -702,8 +947,9 @@ function getMinimumPointDistance(
 ) {
     return Math.max(
         options.minimumDistance,
+
         brush.size *
-            options.sizeDistanceFactor
+        options.sizeDistanceFactor
     );
 }
 
@@ -714,13 +960,20 @@ function appendPoint(
     maximumPoints,
     force = false
 ) {
-    if (!isFinitePoint(nextPoint)) {
+    if (
+        !isFinitePoint(
+            nextPoint
+        )
+    ) {
         return points;
     }
 
     if (
-        !Array.isArray(points) ||
-        points.length === 0
+        !Array.isArray(
+            points
+        ) ||
+        points.length ===
+            0
     ) {
         return [
             nextPoint
@@ -736,7 +989,8 @@ function appendPoint(
 
     const previousPoint =
         points[
-            points.length - 1
+            points.length -
+            1
         ];
 
     const distance =
@@ -776,8 +1030,10 @@ function squaredDistance(
         pointB.y;
 
     return (
-        deltaX * deltaX +
-        deltaY * deltaY
+        deltaX *
+        deltaX +
+        deltaY *
+        deltaY
     );
 }
 
@@ -801,8 +1057,10 @@ function squaredSegmentDistance(
         y;
 
     if (
-        deltaX !== 0 ||
-        deltaY !== 0
+        deltaX !==
+            0 ||
+        deltaY !==
+            0
     ) {
         const interpolation =
             (
@@ -810,28 +1068,32 @@ function squaredSegmentDistance(
                     point.x -
                     x
                 ) *
-                    deltaX +
+                deltaX +
                 (
                     point.y -
                     y
                 ) *
-                    deltaY
+                deltaY
             ) /
             (
                 deltaX *
-                    deltaX +
+                deltaX +
                 deltaY *
-                    deltaY
+                deltaY
             );
 
-        if (interpolation > 1) {
+        if (
+            interpolation >
+            1
+        ) {
             x =
                 segmentEnd.x;
 
             y =
                 segmentEnd.y;
         } else if (
-            interpolation > 0
+            interpolation >
+            0
         ) {
             x +=
                 deltaX *
@@ -852,8 +1114,10 @@ function squaredSegmentDistance(
         y;
 
     return (
-        deltaX * deltaX +
-        deltaY * deltaY
+        deltaX *
+        deltaX +
+        deltaY *
+        deltaY
     );
 }
 
@@ -861,7 +1125,10 @@ function simplifyRadialDistance(
     points,
     squaredTolerance
 ) {
-    if (points.length <= 2) {
+    if (
+        points.length <=
+        2
+    ) {
         return [
             ...points
         ];
@@ -876,11 +1143,14 @@ function simplifyRadialDistance(
 
     for (
         let index = 1;
-        index < points.length;
-        index++
+        index <
+        points.length;
+        index += 1
     ) {
         const currentPoint =
-            points[index];
+            points[
+                index
+            ];
 
         if (
             squaredDistance(
@@ -900,7 +1170,8 @@ function simplifyRadialDistance(
 
     const lastPoint =
         points[
-            points.length - 1
+            points.length -
+            1
         ];
 
     if (
@@ -930,15 +1201,23 @@ function simplifyDouglasPeuckerStep(
 
     for (
         let index =
-            firstIndex + 1;
-        index < lastIndex;
-        index++
+            firstIndex +
+            1;
+        index <
+        lastIndex;
+        index += 1
     ) {
         const currentSquaredDistance =
             squaredSegmentDistance(
-                points[index],
-                points[firstIndex],
-                points[lastIndex]
+                points[
+                    index
+                ],
+                points[
+                    firstIndex
+                ],
+                points[
+                    lastIndex
+                ]
             );
 
         if (
@@ -953,7 +1232,10 @@ function simplifyDouglasPeuckerStep(
         }
     }
 
-    if (selectedIndex < 0) {
+    if (
+        selectedIndex <
+        0
+    ) {
         return;
     }
 
@@ -972,7 +1254,9 @@ function simplifyDouglasPeuckerStep(
     }
 
     simplified.push(
-        points[selectedIndex]
+        points[
+            selectedIndex
+        ]
     );
 
     if (
@@ -994,14 +1278,18 @@ function simplifyDouglasPeucker(
     points,
     squaredTolerance
 ) {
-    if (points.length <= 2) {
+    if (
+        points.length <=
+        2
+    ) {
         return [
             ...points
         ];
     }
 
     const lastIndex =
-        points.length - 1;
+        points.length -
+        1;
 
     const simplified = [
         points[0]
@@ -1016,7 +1304,9 @@ function simplifyDouglasPeucker(
     );
 
     simplified.push(
-        points[lastIndex]
+        points[
+            lastIndex
+        ]
     );
 
     return simplified;
@@ -1027,24 +1317,35 @@ export function simplifyPencilPoints(
     tolerance = 0.5
 ) {
     if (
-        !Array.isArray(points) ||
-        points.length <= 2
+        !Array.isArray(
+            points
+        ) ||
+        points.length <=
+            2
     ) {
-        return Array.isArray(points)
-            ? [...points]
+        return Array.isArray(
+            points
+        )
+            ? [
+                ...points
+            ]
             : [];
     }
 
     const safeTolerance =
         Math.max(
             0,
+
             numberOr(
                 tolerance,
                 0.5
             )
         );
 
-    if (safeTolerance === 0) {
+    if (
+        safeTolerance ===
+        0
+    ) {
         return [
             ...points
         ];
@@ -1074,73 +1375,91 @@ export function calculatePencilStrokeBounds(
     points,
     strokeSize = 1
 ) {
+    const validPoints =
+        Array.isArray(
+            points
+        )
+            ? points.filter(
+                isFinitePoint
+            )
+            : [];
+
     if (
-        !Array.isArray(points) ||
-        points.length === 0
+        validPoints.length ===
+        0
     ) {
         return {
-            x: 0,
-            y: 0,
-            width: 0,
-            height: 0,
-            minX: 0,
-            minY: 0,
-            maxX: 0,
-            maxY: 0
-        };
-    }
+            x:
+                0,
 
-    const validPoints =
-        points.filter(
-            isFinitePoint
-        );
+            y:
+                0,
 
-    if (validPoints.length === 0) {
-        return {
-            x: 0,
-            y: 0,
-            width: 0,
-            height: 0,
-            minX: 0,
-            minY: 0,
-            maxX: 0,
-            maxY: 0
+            width:
+                0,
+
+            height:
+                0,
+
+            minX:
+                0,
+
+            minY:
+                0,
+
+            maxX:
+                0,
+
+            maxY:
+                0
         };
     }
 
     const halfSize =
         Math.max(
             0,
+
             numberOr(
                 strokeSize,
                 1
-            ) / 2
+            ) /
+            2
         );
 
     const xs =
         validPoints.map(
-            point => point.x
+            point =>
+                point.x
         );
 
     const ys =
         validPoints.map(
-            point => point.y
+            point =>
+                point.y
         );
 
     const minX =
-        Math.min(...xs) -
+        Math.min(
+            ...xs
+        ) -
         halfSize;
 
     const minY =
-        Math.min(...ys) -
+        Math.min(
+            ...ys
+        ) -
         halfSize;
 
     const maxX =
-        Math.max(...xs) +
+        Math.max(
+            ...xs
+        ) +
         halfSize;
 
     const maxY =
-        Math.max(...ys) +
+        Math.max(
+            ...ys
+        ) +
         halfSize;
 
     return {
@@ -1153,13 +1472,15 @@ export function calculatePencilStrokeBounds(
         width:
             Math.max(
                 0,
-                maxX - minX
+                maxX -
+                minX
             ),
 
         height:
             Math.max(
                 0,
-                maxY - minY
+                maxY -
+                minY
             ),
 
         minX,
@@ -1183,7 +1504,9 @@ function createDotPoints(
     const offset =
         Math.max(
             0.01,
-            brush.size * 0.005
+
+            brush.size *
+            0.005
         );
 
     return [
@@ -1222,24 +1545,31 @@ function finalizeStrokePoints(
             )
             : [];
 
-    if (rawPoints.length === 0) {
+    if (
+        rawPoints.length ===
+        0
+    ) {
         return [];
     }
 
-    if (session.straightLine) {
+    if (
+        session.straightLine
+    ) {
         const firstPoint =
             rawPoints[0];
 
         const lastPoint =
             rawPoints[
-                rawPoints.length - 1
+                rawPoints.length -
+                1
             ];
 
         if (
             distanceBetweenPoints(
                 firstPoint,
                 lastPoint
-            ) < 0.01
+            ) <
+            0.01
         ) {
             return options
                 .allowSinglePointDot
@@ -1256,7 +1586,10 @@ function finalizeStrokePoints(
         ];
     }
 
-    if (rawPoints.length === 1) {
+    if (
+        rawPoints.length ===
+        1
+    ) {
         return options
             .allowSinglePointDot
             ? createDotPoints(
@@ -1266,7 +1599,9 @@ function finalizeStrokePoints(
             : [];
     }
 
-    if (!options.simplifyEnabled) {
+    if (
+        !options.simplifyEnabled
+    ) {
         return [
             ...rawPoints
         ];
@@ -1277,10 +1612,9 @@ function finalizeStrokePoints(
             options.simplifyTolerance,
 
             session.brush.size *
-                session.brush.smoothing *
-                options
-                    .smoothingToleranceFactor *
-                0.1
+            session.brush.smoothing *
+            options.smoothingToleranceFactor *
+            0.1
         );
 
     const simplified =
@@ -1289,7 +1623,10 @@ function finalizeStrokePoints(
             tolerance
         );
 
-    if (simplified.length === 1) {
+    if (
+        simplified.length ===
+        1
+    ) {
         return options
             .allowSinglePointDot
             ? createDotPoints(
@@ -1478,6 +1815,12 @@ function createTemporaryStrokeObject(
         thinning:
             session.brush.thinning,
 
+        taperStart:
+            session.brush.taperStart,
+
+        taperEnd:
+            session.brush.taperEnd,
+
         pressureEnabled:
             session.brush.pressureEnabled,
 
@@ -1509,6 +1852,9 @@ function createTemporaryStrokeObject(
         transient:
             true,
 
+        selectable:
+            false,
+
         listening:
             false,
 
@@ -1516,7 +1862,16 @@ function createTemporaryStrokeObject(
             0,
 
         y:
-            0
+            0,
+
+        rotation:
+            0,
+
+        scaleX:
+            1,
+
+        scaleY:
+            1
     };
 }
 
@@ -1533,10 +1888,42 @@ function publishTemporaryStroke(
             session
         );
 
+    const symmetryTemporaryObjects =
+        session.symmetry?.enabled &&
+        session.options
+            .symmetryPreviewEnabled !==
+            false
+            ? createSymmetryPreviewObjects(
+                temporaryObject,
+                session.symmetry,
+                {
+                    document:
+                        session.document,
+
+                    preventDuplicates:
+                        session.options
+                            .preventSymmetryDuplicates !==
+                        false,
+
+                    previewIdPrefix:
+                        `${session.strokeId}-symmetry-preview`
+                }
+            )
+            : [];
+
+    const temporaryObjects = [
+        temporaryObject,
+        ...symmetryTemporaryObjects
+    ];
+
     context.manager?.setToolState(
         PENCIL_TOOL_ID,
         {
             temporaryObject,
+
+            temporaryObjects,
+
+            symmetryTemporaryObjects,
 
             drawing:
                 true
@@ -1555,6 +1942,16 @@ function publishTemporaryStroke(
 
     if (
         isFunction(
+            context.setTemporaryObjects
+        )
+    ) {
+        context.setTemporaryObjects(
+            temporaryObjects
+        );
+    }
+
+    if (
+        isFunction(
             context.onTemporaryObjectChange
         )
     ) {
@@ -1563,9 +1960,19 @@ function publishTemporaryStroke(
         );
     }
 
+    if (
+        isFunction(
+            context.onTemporaryObjectsChange
+        )
+    ) {
+        context.onTemporaryObjectsChange(
+            temporaryObjects
+        );
+    }
+
     context.requestRender?.();
 
-    return temporaryObject;
+    return temporaryObjects;
 }
 
 /*=========================================================
@@ -1575,11 +1982,17 @@ Clear Temporary Stroke
 function clearTemporaryStroke(
     context
 ) {
-    context.manager?.setToolState(
+    context?.manager?.setToolState(
         PENCIL_TOOL_ID,
         {
             temporaryObject:
                 null,
+
+            temporaryObjects:
+                [],
+
+            symmetryTemporaryObjects:
+                [],
 
             drawing:
                 false
@@ -1598,12 +2011,33 @@ function clearTemporaryStroke(
 
     if (
         isFunction(
+            context?.setTemporaryObjects
+        )
+    ) {
+        context.setTemporaryObjects(
+            []
+        );
+    }
+
+    if (
+        isFunction(
             context
                 ?.onTemporaryObjectChange
         )
     ) {
         context.onTemporaryObjectChange(
             null
+        );
+    }
+
+    if (
+        isFunction(
+            context
+                ?.onTemporaryObjectsChange
+        )
+    ) {
+        context.onTemporaryObjectsChange(
+            []
         );
     }
 
@@ -1620,6 +2054,8 @@ function createPencilSession({
     brush,
     firstPoint,
     context,
+    documentData,
+    symmetry,
     options
 }) {
     return {
@@ -1628,6 +2064,22 @@ function createPencilSession({
         layerId,
 
         brush,
+
+        document: {
+            width:
+                numberOr(
+                    documentData?.width,
+                    1200
+                ),
+
+            height:
+                numberOr(
+                    documentData?.height,
+                    1600
+                )
+        },
+
+        symmetry,
 
         options,
 
@@ -1657,6 +2109,188 @@ function createPencilSession({
 }
 
 /*=========================================================
+Create Committed Stroke Objects
+=========================================================*/
+
+function createCommittedStrokeObjects(
+    strokeObject,
+    session,
+    documentData,
+    options
+) {
+    if (
+        !session.symmetry?.enabled
+    ) {
+        return [
+            strokeObject
+        ];
+    }
+
+    return createSymmetryObjectSet(
+        strokeObject,
+        session.symmetry,
+        {
+            document:
+                session.document ||
+                documentData,
+
+            preventDuplicates:
+                options
+                    .preventSymmetryDuplicates !==
+                false,
+
+            linked:
+                session.symmetry
+                    .linkedMirrors ===
+                true
+        }
+    );
+}
+
+/*=========================================================
+Commit Stroke Objects
+=========================================================*/
+
+function commitStrokeObjects(
+    actions,
+    objects,
+    options
+) {
+    if (
+        !Array.isArray(
+            objects
+        ) ||
+        objects.length ===
+            0
+    ) {
+        return [];
+    }
+
+    const label =
+        objects.length >
+        1
+            ? "Draw symmetrical pencil stroke"
+            : "Draw pencil stroke";
+
+    if (
+        isFunction(
+            actions?.addObjects
+        )
+    ) {
+        const ids =
+            actions.addObjects(
+                objects,
+                {
+                    label,
+
+                    select:
+                        options.selectAfterDraw
+                }
+            );
+
+        return Array.isArray(
+            ids
+        )
+            ? ids
+            : [];
+    }
+
+    if (
+        !isFunction(
+            actions?.addObject
+        )
+    ) {
+        return [];
+    }
+
+    const objectIds =
+        [];
+
+    const useTransaction =
+        objects.length >
+            1 &&
+        isFunction(
+            actions.beginHistoryTransaction
+        ) &&
+        isFunction(
+            actions.commitHistoryTransaction
+        );
+
+    if (
+        useTransaction
+    ) {
+        actions.beginHistoryTransaction(
+            label
+        );
+    }
+
+    try {
+        for (
+            const object
+            of objects
+        ) {
+            const objectId =
+                actions.addObject(
+                    object,
+                    {
+                        label,
+
+                        select:
+                            options.selectAfterDraw
+                    }
+                );
+
+            if (
+                !objectId
+            ) {
+                throw new Error(
+                    "Pencil object could not be added."
+                );
+            }
+
+            objectIds.push(
+                objectId
+            );
+        }
+
+        if (
+            useTransaction
+        ) {
+            actions.commitHistoryTransaction();
+        }
+
+        return objectIds;
+    } catch (error) {
+        if (
+            useTransaction &&
+            isFunction(
+                actions.cancelHistoryTransaction
+            )
+        ) {
+            actions.cancelHistoryTransaction();
+        } else if (
+            objectIds.length >
+                0 &&
+            isFunction(
+                actions.deleteObjects
+            )
+        ) {
+            actions.deleteObjects(
+                objectIds,
+                "Rollback pencil stroke"
+            );
+        }
+
+        console.error(
+            "PencilTool commit failed:",
+            error
+        );
+
+        return [];
+    }
+}
+
+/*=========================================================
 Create Pencil Tool
 =========================================================*/
 
@@ -1670,6 +2304,7 @@ export function createPencilTool(
         minimumDistance:
             Math.max(
                 0,
+
                 numberOr(
                     toolOptions
                         .minimumDistance,
@@ -1681,6 +2316,7 @@ export function createPencilTool(
         sizeDistanceFactor:
             Math.max(
                 0,
+
                 numberOr(
                     toolOptions
                         .sizeDistanceFactor,
@@ -1692,6 +2328,7 @@ export function createPencilTool(
         simplifyTolerance:
             Math.max(
                 0,
+
                 numberOr(
                     toolOptions
                         .simplifyTolerance,
@@ -1700,9 +2337,34 @@ export function createPencilTool(
                 )
             ),
 
+        smoothingToleranceFactor:
+            Math.max(
+                0,
+
+                numberOr(
+                    toolOptions
+                        .smoothingToleranceFactor,
+                    DEFAULT_PENCIL_TOOL_OPTIONS
+                        .smoothingToleranceFactor
+                )
+            ),
+
+        symmetrySnapThreshold:
+            Math.max(
+                0,
+
+                numberOr(
+                    toolOptions
+                        .symmetrySnapThreshold,
+                    DEFAULT_PENCIL_TOOL_OPTIONS
+                        .symmetrySnapThreshold
+                )
+            ),
+
         maximumPoints:
             Math.max(
                 100,
+
                 Math.floor(
                     numberOr(
                         toolOptions
@@ -1722,7 +2384,7 @@ export function createPencilTool(
             "Pencil",
 
         description:
-            "Draw smooth freehand pencil strokes.",
+            "Draw smooth freehand pencil strokes with optional symmetry.",
 
         cursor:
             "crosshair",
@@ -1766,7 +2428,7 @@ export function createPencilTool(
                     return null;
                 }
 
-                const document =
+                const documentData =
                     resolveDocument(
                         context
                     );
@@ -1777,12 +2439,13 @@ export function createPencilTool(
                     );
 
                 if (
-                    !document ||
+                    !documentData ||
                     !activeLayer ||
                     activeLayer.locked ||
-                    !activeLayer.visible
+                    activeLayer.visible ===
+                        false
                 ) {
-                    context.cancelInteraction(
+                    context.cancelInteraction?.(
                         "active-layer-unavailable"
                     );
 
@@ -1794,7 +2457,7 @@ export function createPencilTool(
                         context.point
                     )
                 ) {
-                    context.cancelInteraction(
+                    context.cancelInteraction?.(
                         "invalid-pointer-position"
                     );
 
@@ -1805,10 +2468,10 @@ export function createPencilTool(
                     options.clipToDocument &&
                     !isPointInsideDocument(
                         context.point,
-                        document
+                        documentData
                     )
                 ) {
-                    context.cancelInteraction(
+                    context.cancelInteraction?.(
                         "pointer-outside-document"
                     );
 
@@ -1820,17 +2483,26 @@ export function createPencilTool(
                         context
                     );
 
+                const symmetry =
+                    resolveSymmetrySettings(
+                        context,
+                        documentData
+                    );
+
                 const firstPoint =
                     createSamplePoint(
                         context,
                         brush,
-                        document,
+                        documentData,
                         options,
-                        null
+                        null,
+                        symmetry
                     );
 
-                if (!firstPoint) {
-                    context.cancelInteraction(
+                if (
+                    !firstPoint
+                ) {
+                    context.cancelInteraction?.(
                         "failed-to-create-point"
                     );
 
@@ -1853,10 +2525,14 @@ export function createPencilTool(
 
                         context,
 
+                        documentData,
+
+                        symmetry,
+
                         options
                     });
 
-                context.replaceInteractionData(
+                context.replaceInteractionData?.(
                     session
                 );
 
@@ -1884,13 +2560,12 @@ export function createPencilTool(
 
                 if (
                     !session ||
-                    session.strokeId ===
-                        undefined
+                    !session.strokeId
                 ) {
                     return null;
                 }
 
-                const document =
+                const documentData =
                     resolveDocument(
                         context
                     );
@@ -1905,34 +2580,36 @@ export function createPencilTool(
                     createSamplePoint(
                         context,
                         session.brush,
-                        document,
+                        documentData,
                         options,
-                        previousPoint
+                        previousPoint,
+                        session.symmetry
                     );
 
-                if (!nextPoint) {
+                if (
+                    !nextPoint
+                ) {
                     return null;
                 }
 
                 let nextPoints;
 
-                if (session.straightLine) {
+                if (
+                    session.straightLine
+                ) {
                     nextPoints = [
                         session.points[0],
                         nextPoint
                     ];
                 } else {
-                    const minimumDistance =
-                        getMinimumPointDistance(
-                            session.brush,
-                            options
-                        );
-
                     nextPoints =
                         appendPoint(
                             session.points,
                             nextPoint,
-                            minimumDistance,
+                            getMinimumPointDistance(
+                                session.brush,
+                                options
+                            ),
                             options.maximumPoints
                         );
                 }
@@ -1951,7 +2628,7 @@ export function createPencilTool(
                         nextPoints
                 };
 
-                context.replaceInteractionData(
+                context.replaceInteractionData?.(
                     nextSession
                 );
 
@@ -1977,7 +2654,9 @@ export function createPencilTool(
                     context.interaction
                         ?.data;
 
-                if (!session) {
+                if (
+                    !session
+                ) {
                     clearTemporaryStroke(
                         context
                     );
@@ -1985,7 +2664,7 @@ export function createPencilTool(
                     return null;
                 }
 
-                const document =
+                const documentData =
                     resolveDocument(
                         context
                     );
@@ -2000,35 +2679,32 @@ export function createPencilTool(
                     createSamplePoint(
                         context,
                         session.brush,
-                        document,
+                        documentData,
                         options,
-                        previousPoint
+                        previousPoint,
+                        session.symmetry
                     );
 
-                if (finalSample) {
-                    if (session.straightLine) {
-                        session = {
-                            ...session,
+                if (
+                    finalSample
+                ) {
+                    session = {
+                        ...session,
 
-                            points: [
-                                session.points[0],
-                                finalSample
-                            ]
-                        };
-                    } else {
-                        session = {
-                            ...session,
-
-                            points:
-                                appendPoint(
+                        points:
+                            session.straightLine
+                                ? [
+                                    session.points[0],
+                                    finalSample
+                                ]
+                                : appendPoint(
                                     session.points,
                                     finalSample,
                                     0,
                                     options.maximumPoints,
                                     true
                                 )
-                        };
-                    }
+                    };
                 }
 
                 const finalPoints =
@@ -2045,14 +2721,12 @@ export function createPencilTool(
                     finalPoints.length <
                     2
                 ) {
-                    context.onStrokeDiscarded?.(
-                        {
-                            reason:
-                                "insufficient-points",
+                    context.onStrokeDiscarded?.({
+                        reason:
+                            "insufficient-points",
 
-                            session
-                        }
-                    );
+                        session
+                    });
 
                     return null;
                 }
@@ -2065,10 +2739,13 @@ export function createPencilTool(
                 if (
                     !isFunction(
                         actions?.addObject
+                    ) &&
+                    !isFunction(
+                        actions?.addObjects
                     )
                 ) {
                     console.error(
-                        "PencilTool: addObject action is unavailable."
+                        "PencilTool: addObject/addObjects actions are unavailable."
                     );
 
                     return null;
@@ -2080,33 +2757,43 @@ export function createPencilTool(
                         finalPoints
                     );
 
-                const objectId =
-                    actions.addObject(
+                const committedObjects =
+                    createCommittedStrokeObjects(
                         strokeObject,
-                        {
-                            label:
-                                "Draw pencil stroke",
-
-                            select:
-                                options.selectAfterDraw
-                        }
+                        session,
+                        documentData,
+                        options
                     );
 
-                if (!objectId) {
-                    context.onStrokeDiscarded?.(
-                        {
-                            reason:
-                                "object-not-added",
-
-                            session,
-
-                            object:
-                                strokeObject
-                        }
+                const objectIds =
+                    commitStrokeObjects(
+                        actions,
+                        committedObjects,
+                        options
                     );
+
+                if (
+                    objectIds.length ===
+                    0
+                ) {
+                    context.onStrokeDiscarded?.({
+                        reason:
+                            "objects-not-added",
+
+                        session,
+
+                        object:
+                            strokeObject,
+
+                        objects:
+                            committedObjects
+                    });
 
                     return null;
                 }
+
+                const objectId =
+                    objectIds[0];
 
                 context.manager?.setToolState(
                     PENCIL_TOOL_ID,
@@ -2114,24 +2801,45 @@ export function createPencilTool(
                         temporaryObject:
                             null,
 
+                        temporaryObjects:
+                            [],
+
+                        symmetryTemporaryObjects:
+                            [],
+
                         drawing:
                             false,
 
                         lastCommittedObjectId:
-                            objectId
+                            objectId,
+
+                        lastCommittedObjectIds:
+                            objectIds
                     }
                 );
 
-                context.onStrokeCommitted?.(
-                    {
-                        objectId,
+                context.onStrokeCommitted?.({
+                    objectId,
 
-                        object:
-                            strokeObject,
+                    objectIds,
 
-                        session
-                    }
-                );
+                    object:
+                        committedObjects[0] ||
+                        strokeObject,
+
+                    objects:
+                        committedObjects,
+
+                    mirroredObjects:
+                        committedObjects.slice(
+                            1
+                        ),
+
+                    symmetry:
+                        session.symmetry,
+
+                    session
+                });
 
                 return objectId;
             },

@@ -2,18 +2,17 @@ import { create } from "zustand";
 
 /*=========================================================
 FashionVision Professional 2D Editor Store
-Version 1.0
+Version 2.1 — Symmetry Foundation
 =========================================================*/
 
 /*=========================================================
 Schema and Limits
 =========================================================*/
 
-export const PROJECT_SCHEMA_VERSION = 1;
+export const PROJECT_SCHEMA_VERSION = 2;
 
 export const DEFAULT_DOCUMENT_WIDTH = 1200;
 export const DEFAULT_DOCUMENT_HEIGHT = 1600;
-
 export const DEFAULT_HISTORY_LIMIT = 100;
 
 export const MIN_ZOOM = 0.1;
@@ -37,6 +36,7 @@ export const EDITOR_TOOLS = Object.freeze({
     TEXT: "text",
     IMAGE: "image",
     PATTERN: "pattern",
+    PATTERN_MASK: "pattern-mask",
 
     EYEDROPPER: "eyedropper",
 
@@ -58,7 +58,7 @@ export const OBJECT_TYPES = Object.freeze({
 });
 
 /*=========================================================
-Blend Modes
+Blend Modes and Settings Constants
 =========================================================*/
 
 export const BLEND_MODES = Object.freeze([
@@ -86,8 +86,58 @@ export const BLEND_MODES = Object.freeze([
     "luminosity"
 ]);
 
+const IMAGE_FIT_MODES = Object.freeze([
+    "contain",
+    "cover",
+    "fill"
+]);
+
+const PATTERN_REPEAT_MODES = Object.freeze([
+    "repeat",
+    "repeat-x",
+    "repeat-y",
+    "no-repeat"
+]);
+
+const MINIMUM_PATTERN_SCALE = 0.02;
+const MAXIMUM_PATTERN_SCALE = 50;
+
 /*=========================================================
-Numeric Helpers
+Symmetry Constants
+=========================================================*/
+
+export const SYMMETRY_MODES = Object.freeze({
+    VERTICAL:
+        "vertical",
+
+    HORIZONTAL:
+        "horizontal",
+
+    FOUR_WAY:
+        "four-way"
+});
+
+export const SYMMETRY_AXES = Object.freeze({
+    X:
+        "x",
+
+    Y:
+        "y",
+
+    BOTH:
+        "both"
+});
+
+const SUPPORTED_SYMMETRY_TOOLS = Object.freeze([
+    EDITOR_TOOLS.PENCIL,
+    EDITOR_TOOLS.BRUSH,
+    EDITOR_TOOLS.LINE,
+    EDITOR_TOOLS.SHAPE,
+    EDITOR_TOOLS.ERASER
+]);
+
+/*=========================================================
+Helpers
 =========================================================*/
 
 function numberOr(
@@ -111,26 +161,47 @@ function clamp(
 ) {
     return Math.max(
         minimum,
+
         Math.min(
             maximum,
-            numberOr(value, minimum)
+            numberOr(
+                value,
+                minimum
+            )
         )
     );
 }
 
-/*=========================================================
-General Helpers
-=========================================================*/
+function normalizeDegrees(
+    value
+) {
+    const degrees =
+        numberOr(
+            value,
+            0
+        );
+
+    return (
+        (
+            degrees %
+            360
+        ) +
+        360
+    ) %
+    360;
+}
 
 function nowIso() {
-    return new Date().toISOString();
+    return new Date()
+        .toISOString();
 }
 
 function createId(
     prefix = "item"
 ) {
     if (
-        typeof crypto !== "undefined" &&
+        typeof crypto !==
+            "undefined" &&
         typeof crypto.randomUUID ===
             "function"
     ) {
@@ -153,16 +224,19 @@ function cloneSerializable(
         "function"
     ) {
         try {
-            return globalThis.structuredClone(
-                value
-            );
+            return globalThis
+                .structuredClone(
+                    value
+                );
         } catch {
-            // Fall through to JSON cloning.
+            // Fall back to JSON cloning.
         }
     }
 
     return JSON.parse(
-        JSON.stringify(value)
+        JSON.stringify(
+            value
+        )
     );
 }
 
@@ -171,15 +245,22 @@ function isPlainObject(
 ) {
     return Boolean(
         value &&
-        typeof value === "object" &&
-        !Array.isArray(value)
+        typeof value ===
+            "object" &&
+        !Array.isArray(
+            value
+        )
     );
 }
 
 function uniqueIds(
     values = []
 ) {
-    if (!Array.isArray(values)) {
+    if (
+        !Array.isArray(
+            values
+        )
+    ) {
         return [];
     }
 
@@ -187,8 +268,10 @@ function uniqueIds(
         ...new Set(
             values.filter(
                 value =>
-                    typeof value === "string" &&
-                    value.length > 0
+                    typeof value ===
+                        "string" &&
+                    value.length >
+                        0
             )
         )
     ];
@@ -199,7 +282,11 @@ function moveArrayItem(
     fromIndex,
     toIndex
 ) {
-    if (!Array.isArray(values)) {
+    if (
+        !Array.isArray(
+            values
+        )
+    ) {
         return [];
     }
 
@@ -207,29 +294,32 @@ function moveArrayItem(
         ...values
     ];
 
+    if (
+        result.length <
+        2
+    ) {
+        return result;
+    }
+
     const safeFrom =
         clamp(
             fromIndex,
             0,
-            Math.max(
-                0,
-                result.length - 1
-            )
+            result.length -
+                1
         );
 
     const safeTo =
         clamp(
             toIndex,
             0,
-            Math.max(
-                0,
-                result.length - 1
-            )
+            result.length -
+                1
         );
 
     if (
-        safeFrom === safeTo ||
-        result.length < 2
+        safeFrom ===
+        safeTo
     ) {
         return result;
     }
@@ -250,8 +340,49 @@ function moveArrayItem(
     return result;
 }
 
+function getLayerById(
+    state,
+    layerId
+) {
+    return (
+        state.layers.find(
+            layer =>
+                layer.id ===
+                layerId
+        ) ||
+        null
+    );
+}
+
+function isEditableObject(
+    state,
+    object
+) {
+    if (
+        !object ||
+        object.locked ||
+        object.visible ===
+            false
+    ) {
+        return false;
+    }
+
+    const layer =
+        getLayerById(
+            state,
+            object.layerId
+        );
+
+    return Boolean(
+        layer &&
+        !layer.locked &&
+        layer.visible !==
+            false
+    );
+}
+
 /*=========================================================
-Default Document
+Default Document and Layer
 =========================================================*/
 
 export function createDefaultDocument(
@@ -263,7 +394,9 @@ export function createDefaultDocument(
     return {
         id:
             overrides.id ||
-            createId("document"),
+            createId(
+                "document"
+            ),
 
         name:
             typeof overrides.name ===
@@ -275,6 +408,7 @@ export function createDefaultDocument(
         width:
             Math.max(
                 100,
+
                 numberOr(
                     overrides.width,
                     DEFAULT_DOCUMENT_WIDTH
@@ -284,6 +418,7 @@ export function createDefaultDocument(
         height:
             Math.max(
                 100,
+
                 numberOr(
                     overrides.height,
                     DEFAULT_DOCUMENT_HEIGHT
@@ -303,6 +438,7 @@ export function createDefaultDocument(
         dpi:
             Math.max(
                 72,
+
                 numberOr(
                     overrides.dpi,
                     144
@@ -322,10 +458,6 @@ export function createDefaultDocument(
     };
 }
 
-/*=========================================================
-Default Layer
-=========================================================*/
-
 export function createDefaultLayer(
     overrides = {},
     index = 0
@@ -333,7 +465,9 @@ export function createDefaultLayer(
     return {
         id:
             overrides.id ||
-            createId("layer"),
+            createId(
+                "layer"
+            ),
 
         name:
             typeof overrides.name ===
@@ -343,7 +477,8 @@ export function createDefaultLayer(
                 : `Layer ${index + 1}`,
 
         visible:
-            overrides.visible !== false,
+            overrides.visible !==
+            false,
 
         locked:
             Boolean(
@@ -352,7 +487,8 @@ export function createDefaultLayer(
 
         opacity:
             clamp(
-                overrides.opacity ?? 1,
+                overrides.opacity ??
+                1,
                 0,
                 1
             ),
@@ -380,7 +516,7 @@ export function createDefaultLayer(
 }
 
 /*=========================================================
-Default Brush Settings
+Default Tool Settings
 =========================================================*/
 
 function createDefaultBrushSettings() {
@@ -423,10 +559,6 @@ function createDefaultBrushSettings() {
     };
 }
 
-/*=========================================================
-Default Eraser Settings
-=========================================================*/
-
 function createDefaultEraserSettings() {
     return {
         mode:
@@ -442,10 +574,6 @@ function createDefaultEraserSettings() {
             300
     };
 }
-
-/*=========================================================
-Default Shape Settings
-=========================================================*/
 
 function createDefaultShapeSettings() {
     return {
@@ -477,13 +605,18 @@ function createDefaultShapeSettings() {
             5,
 
         keepAspectRatio:
-            false
+            false,
+
+        dash:
+            [],
+
+        lineCap:
+            "round",
+
+        lineJoin:
+            "round"
     };
 }
-
-/*=========================================================
-Default Fill Settings
-=========================================================*/
 
 function createDefaultFillSettings() {
     return {
@@ -510,26 +643,37 @@ function createDefaultFillSettings() {
     };
 }
 
-/*=========================================================
-Default Text Settings
-=========================================================*/
-
 function createDefaultTextSettings() {
     return {
+        content:
+            "Text",
+
+        text:
+            "Text",
+
+        value:
+            "Text",
+
         fontFamily:
             "Arial",
 
         fontSize:
             32,
 
-        fontStyle:
-            "normal",
-
         fontWeight:
             400,
 
+        fontStyle:
+            "normal",
+
+        textDecoration:
+            "",
+
         align:
             "left",
+
+        verticalAlign:
+            "top",
 
         lineHeight:
             1.2,
@@ -540,14 +684,327 @@ function createDefaultTextSettings() {
         fill:
             "#111111",
 
+        color:
+            "#111111",
+
         opacity:
-            1
+            1,
+
+        width:
+            240,
+
+        height:
+            64,
+
+        wrap:
+            "word",
+
+        padding:
+            0
+    };
+}
+
+function createDefaultImageSettings() {
+    return {
+        opacity:
+            1,
+
+        fit:
+            "contain",
+
+        preserveAspectRatio:
+            true,
+
+        cornerRadius:
+            0,
+
+        imageSmoothingEnabled:
+            true
+    };
+}
+
+function createDefaultPatternSettings() {
+    return {
+        repeat:
+            "repeat",
+
+        repeatMode:
+            "repeat",
+
+        scale:
+            1,
+
+        scaleX:
+            1,
+
+        scaleY:
+            1,
+
+        rotation:
+            0,
+
+        opacity:
+            1,
+
+        offsetX:
+            0,
+
+        offsetY:
+            0,
+
+        imageSmoothingEnabled:
+            true,
+
+        clipToBounds:
+            true,
+
+        background:
+            "transparent",
+
+        keepAssetAfterPlacement:
+            true,
+
+        switchToSelectAfterCreate:
+            true
     };
 }
 
 /*=========================================================
-Default Viewport
+Default Symmetry Settings
 =========================================================*/
+
+export function createDefaultSymmetrySettings(
+    documentData = {}
+) {
+    const width =
+        Math.max(
+            1,
+
+            numberOr(
+                documentData.width,
+                DEFAULT_DOCUMENT_WIDTH
+            )
+        );
+
+    const height =
+        Math.max(
+            1,
+
+            numberOr(
+                documentData.height,
+                DEFAULT_DOCUMENT_HEIGHT
+            )
+        );
+
+    return {
+        enabled:
+            false,
+
+        mode:
+            SYMMETRY_MODES.VERTICAL,
+
+        axisX:
+            width /
+            2,
+
+        axisY:
+            height /
+            2,
+
+        showGuide:
+            true,
+
+        guideColor:
+            "#8b5cf6",
+
+        guideOpacity:
+            0.85,
+
+        guideWidth:
+            1,
+
+        guideDash: [
+            10,
+            8
+        ],
+
+        snapToAxis:
+            false,
+
+        mirrorPencil:
+            true,
+
+        mirrorBrush:
+            true,
+
+        mirrorLine:
+            true,
+
+        mirrorShape:
+            true,
+
+        mirrorEraser:
+            false,
+
+        linkedMirrors:
+            false
+    };
+}
+
+export function normalizeSymmetrySettings(
+    symmetry = {},
+    documentData = {}
+) {
+    const defaults =
+        createDefaultSymmetrySettings(
+            documentData
+        );
+
+    const source =
+        isPlainObject(
+            symmetry
+        )
+            ? symmetry
+            : {};
+
+    const mode =
+        Object.values(
+            SYMMETRY_MODES
+        ).includes(
+            source.mode
+        )
+            ? source.mode
+            : defaults.mode;
+
+    const width =
+        Math.max(
+            1,
+
+            numberOr(
+                documentData.width,
+                DEFAULT_DOCUMENT_WIDTH
+            )
+        );
+
+    const height =
+        Math.max(
+            1,
+
+            numberOr(
+                documentData.height,
+                DEFAULT_DOCUMENT_HEIGHT
+            )
+        );
+
+    return {
+        ...defaults,
+        ...source,
+
+        enabled:
+            Boolean(
+                source.enabled
+            ),
+
+        mode,
+
+        axisX:
+            clamp(
+                source.axisX ??
+                defaults.axisX,
+                0,
+                width
+            ),
+
+        axisY:
+            clamp(
+                source.axisY ??
+                defaults.axisY,
+                0,
+                height
+            ),
+
+        showGuide:
+            source.showGuide !==
+            false,
+
+        guideColor:
+            typeof source.guideColor ===
+                "string" &&
+            source.guideColor.trim()
+                ? source.guideColor.trim()
+                : defaults.guideColor,
+
+        guideOpacity:
+            clamp(
+                source.guideOpacity ??
+                defaults.guideOpacity,
+                0,
+                1
+            ),
+
+        guideWidth:
+            clamp(
+                source.guideWidth ??
+                defaults.guideWidth,
+                0.25,
+                20
+            ),
+
+        guideDash:
+            Array.isArray(
+                source.guideDash
+            )
+                ? source.guideDash
+                    .map(
+                        value =>
+                            Math.max(
+                                0,
+
+                                numberOr(
+                                    value,
+                                    0
+                                )
+                            )
+                    )
+                    .filter(
+                        value =>
+                            value >
+                            0
+                    )
+                : defaults.guideDash,
+
+        snapToAxis:
+            Boolean(
+                source.snapToAxis
+            ),
+
+        mirrorPencil:
+            source.mirrorPencil !==
+            false,
+
+        mirrorBrush:
+            source.mirrorBrush !==
+            false,
+
+        mirrorLine:
+            source.mirrorLine !==
+            false,
+
+        mirrorShape:
+            source.mirrorShape !==
+            false,
+
+        mirrorEraser:
+            Boolean(
+                source.mirrorEraser
+            ),
+
+        linkedMirrors:
+            Boolean(
+                source.linkedMirrors
+            )
+    };
+}
 
 function createDefaultViewport() {
     return {
@@ -561,10 +1018,6 @@ function createDefaultViewport() {
             0
     };
 }
-
-/*=========================================================
-Default UI State
-=========================================================*/
 
 function createDefaultUiState() {
     return {
@@ -604,7 +1057,7 @@ function createDefaultUiState() {
 }
 
 /*=========================================================
-Normalize Canvas Object
+Object and Project Normalization
 =========================================================*/
 
 export function normalizeEditorObject(
@@ -612,7 +1065,9 @@ export function normalizeEditorObject(
     fallbackLayerId
 ) {
     const source =
-        isPlainObject(object)
+        isPlainObject(
+            object
+        )
             ? object
             : {};
 
@@ -622,7 +1077,9 @@ export function normalizeEditorObject(
     const type =
         Object.values(
             OBJECT_TYPES
-        ).includes(source.type)
+        ).includes(
+            source.type
+        )
             ? source.type
             : OBJECT_TYPES.BRUSH;
 
@@ -631,7 +1088,9 @@ export function normalizeEditorObject(
 
         id:
             source.id ||
-            createId(type),
+            createId(
+                type
+            ),
 
         type,
 
@@ -657,7 +1116,8 @@ export function normalizeEditorObject(
 
         opacity:
             clamp(
-                source.opacity ?? 1,
+                source.opacity ??
+                1,
                 0,
                 1
             ),
@@ -714,10 +1174,6 @@ export function normalizeEditorObject(
     };
 }
 
-/*=========================================================
-Create Initial Content
-=========================================================*/
-
 function createInitialContent(
     documentOverrides = {}
 ) {
@@ -740,24 +1196,24 @@ function createInitialContent(
             initialLayer
         ],
 
-        objects: {},
+        objects:
+            {},
 
         activeLayerId:
             initialLayer.id,
 
-        selectedObjectIds: []
+        selectedObjectIds:
+            []
     };
 }
-
-/*=========================================================
-Project Normalization
-=========================================================*/
 
 export function normalizeProjectData(
     project = {}
 ) {
     const source =
-        isPlainObject(project)
+        isPlainObject(
+            project
+        )
             ? project
             : {};
 
@@ -784,7 +1240,8 @@ export function normalizeProjectData(
             : [];
 
     if (
-        layers.length === 0
+        layers.length ===
+        0
     ) {
         layers = [
             createDefaultLayer(
@@ -821,22 +1278,22 @@ export function normalizeProjectData(
                 )
                 : [];
 
-    const objects = {};
+    const objects =
+        {};
 
     rawObjects.forEach(
         rawObject => {
-            if (!rawObject) {
+            if (
+                !rawObject
+            ) {
                 return;
             }
 
-            const requestedLayerId =
-                rawObject.layerId;
-
             const layerId =
                 layerIds.has(
-                    requestedLayerId
+                    rawObject.layerId
                 )
-                    ? requestedLayerId
+                    ? rawObject.layerId
                     : firstLayerId;
 
             const normalizedObject =
@@ -847,7 +1304,8 @@ export function normalizeProjectData(
 
             objects[
                 normalizedObject.id
-            ] = normalizedObject;
+            ] =
+                normalizedObject;
         }
     );
 
@@ -862,17 +1320,21 @@ export function normalizeProjectData(
                         layer.objectIds
                     ).filter(
                         objectId =>
-                            objects[objectId] &&
-                            objects[objectId]
-                                .layerId ===
+                            objects[
+                                objectId
+                            ] &&
+                            objects[
+                                objectId
+                            ].layerId ===
                                 layer.id
                     );
 
                 validIds.forEach(
-                    objectId =>
+                    objectId => {
                         assignedObjectIds.add(
                             objectId
-                        )
+                        );
+                    }
                 );
 
                 return {
@@ -904,33 +1366,41 @@ export function normalizeProjectData(
                 );
 
             const safeIndex =
-                layerIndex >= 0
+                layerIndex >=
+                0
                     ? layerIndex
                     : 0;
 
-            const layer =
-                layers[safeIndex];
-
-            layers[safeIndex] = {
-                ...layer,
+            layers[
+                safeIndex
+            ] = {
+                ...layers[
+                    safeIndex
+                ],
 
                 objectIds: [
-                    ...layer.objectIds,
+                    ...layers[
+                        safeIndex
+                    ].objectIds,
+
                     object.id
                 ]
             };
         }
     );
 
-    const requestedActiveLayerId =
-        source.activeLayerId;
-
     const activeLayerId =
         layerIds.has(
-            requestedActiveLayerId
+            source.activeLayerId
         )
-            ? requestedActiveLayerId
+            ? source.activeLayerId
             : firstLayerId;
+
+    const symmetry =
+        normalizeSymmetrySettings(
+            source.symmetry,
+            documentData
+        );
 
     return {
         schemaVersion:
@@ -943,7 +1413,9 @@ export function normalizeProjectData(
 
         objects,
 
-        activeLayerId
+        activeLayerId,
+
+        symmetry
     };
 }
 
@@ -965,7 +1437,10 @@ function createHistorySnapshot(
             state.objects,
 
         activeLayerId:
-            state.activeLayerId
+            state.activeLayerId,
+
+        symmetry:
+            state.symmetry
     });
 }
 
@@ -975,7 +1450,9 @@ function createHistoryEntry(
 ) {
     return {
         id:
-            createId("history"),
+            createId(
+                "history"
+            ),
 
         label:
             label ||
@@ -1017,6 +1494,9 @@ function restoreSnapshot(
         activeLayerId:
             normalized.activeLayerId,
 
+        symmetry:
+            normalized.symmetry,
+
         selectedObjectIds:
             state.selectedObjectIds.filter(
                 objectId =>
@@ -1038,10 +1518,13 @@ function applyContentPatch(
     let nextHistory =
         state.history;
 
-    if (!transaction) {
+    if (
+        !transaction
+    ) {
         const entry =
             createHistoryEntry(
                 label,
+
                 createHistorySnapshot(
                     state
                 )
@@ -1057,7 +1540,8 @@ function applyContentPatch(
                 -state.history.limit
             ),
 
-            future: [],
+            future:
+                [],
 
             transaction:
                 null
@@ -1079,7 +1563,8 @@ function applyContentPatch(
         },
 
         revision:
-            state.revision + 1,
+            state.revision +
+            1,
 
         history:
             nextHistory,
@@ -1125,7 +1610,9 @@ function translateObject(
                 )
         );
 
-    if (hasPointObjects) {
+    if (
+        hasPointObjects
+    ) {
         return {
             ...object,
 
@@ -1136,13 +1623,17 @@ function translateObject(
 
                         x:
                             numberOr(
-                                point.x
-                            ) + dx,
+                                point.x,
+                                0
+                            ) +
+                            dx,
 
                         y:
                             numberOr(
-                                point.y
-                            ) + dy
+                                point.y,
+                                0
+                            ) +
+                            dy
                     })
                 ),
 
@@ -1158,13 +1649,15 @@ function translateObject(
             numberOr(
                 object.x,
                 0
-            ) + dx,
+            ) +
+            dx,
 
         y:
             numberOr(
                 object.y,
                 0
-            ) + dy,
+            ) +
+            dy,
 
         updatedAt:
             nowIso()
@@ -1182,7 +1675,11 @@ function mergeObjectUpdates(
         style:
             updates.style
                 ? {
-                    ...object.style,
+                    ...(
+                        object.style ||
+                        {}
+                    ),
+
                     ...updates.style
                 }
                 : object.style,
@@ -1190,15 +1687,35 @@ function mergeObjectUpdates(
         transform:
             updates.transform
                 ? {
-                    ...object.transform,
+                    ...(
+                        object.transform ||
+                        {}
+                    ),
+
                     ...updates.transform
                 }
                 : object.transform,
 
+        geometry:
+            updates.geometry
+                ? {
+                    ...(
+                        object.geometry ||
+                        {}
+                    ),
+
+                    ...updates.geometry
+                }
+                : object.geometry,
+
         metadata:
             updates.metadata
                 ? {
-                    ...object.metadata,
+                    ...(
+                        object.metadata ||
+                        {}
+                    ),
+
                     ...updates.metadata
                 }
                 : object.metadata,
@@ -1239,7 +1756,9 @@ export const useFashionEditorStore =
                                 state
                             );
 
-                        if (!patch) {
+                        if (
+                            !patch
+                        ) {
                             return {};
                         }
 
@@ -1275,25 +1794,35 @@ export const useFashionEditorStore =
                 previousTool:
                     EDITOR_TOOLS.PENCIL,
 
-                    
                 /*-----------------------------------------
                 Drawing Settings
                 -----------------------------------------*/
 
-               brush:
-    createDefaultBrushSettings(),
+                brush:
+                    createDefaultBrushSettings(),
 
-eraser:
-    createDefaultEraserSettings(),
+                eraser:
+                    createDefaultEraserSettings(),
 
-shape:
-    createDefaultShapeSettings(),
+                shape:
+                    createDefaultShapeSettings(),
 
                 fill:
                     createDefaultFillSettings(),
 
                 text:
                     createDefaultTextSettings(),
+
+                image:
+                    createDefaultImageSettings(),
+
+                pattern:
+                    createDefaultPatternSettings(),
+
+                symmetry:
+                    createDefaultSymmetrySettings(
+                        initialContent.document
+                    ),
 
                 /*-----------------------------------------
                 Colour System
@@ -1306,24 +1835,22 @@ shape:
                     secondary:
                         "#ffffff",
 
-                    recent: [],
+                    recent:
+                        [],
 
-                    saved: [],
+                    saved:
+                        [],
 
                     activePaletteId:
                         null
                 },
 
                 /*-----------------------------------------
-                Viewport
+                Viewport and UI
                 -----------------------------------------*/
 
                 viewport:
                     createDefaultViewport(),
-
-                /*-----------------------------------------
-                User Interface
-                -----------------------------------------*/
 
                 ui:
                     createDefaultUiState(),
@@ -1333,7 +1860,8 @@ shape:
                 -----------------------------------------*/
 
                 clipboard: {
-                    objects: [],
+                    objects:
+                        [],
 
                     pasteCount:
                         0
@@ -1344,9 +1872,11 @@ shape:
                 -----------------------------------------*/
 
                 history: {
-                    past: [],
+                    past:
+                        [],
 
-                    future: [],
+                    future:
+                        [],
 
                     limit:
                         DEFAULT_HISTORY_LIMIT,
@@ -1377,104 +1907,164 @@ shape:
                 Document Actions
                 =========================================*/
 
-                newDocument: (
-                    options = {}
-                ) => {
-                    const content =
-                        createInitialContent(
-                            options
+                newDocument:
+                    (
+                        options = {}
+                    ) => {
+                        const content =
+                            createInitialContent(
+                                options
+                            );
+
+                        set(
+                            state => ({
+                                ...content,
+
+                                revision:
+                                    0,
+
+                                activeTool:
+                                    state.activeTool,
+
+                                previousTool:
+                                    state.previousTool,
+
+                                brush:
+                                    createDefaultBrushSettings(),
+
+                                eraser:
+                                    createDefaultEraserSettings(),
+
+                                shape:
+                                    createDefaultShapeSettings(),
+
+                                fill:
+                                    createDefaultFillSettings(),
+
+                                text:
+                                    createDefaultTextSettings(),
+
+                                image:
+                                    createDefaultImageSettings(),
+
+                                pattern:
+                                    createDefaultPatternSettings(),
+
+                                symmetry:
+                                    createDefaultSymmetrySettings(
+                                        content.document
+                                    ),
+
+                                colors: {
+                                    ...state.colors,
+
+                                    primary:
+                                        "#111111",
+
+                                    secondary:
+                                        "#ffffff",
+
+                                    recent:
+                                        []
+                                },
+
+                                viewport:
+                                    createDefaultViewport(),
+
+                                clipboard: {
+                                    objects:
+                                        [],
+
+                                    pasteCount:
+                                        0
+                                },
+
+                                history: {
+                                    ...state.history,
+
+                                    past:
+                                        [],
+
+                                    future:
+                                        [],
+
+                                    transaction:
+                                        null
+                                },
+
+                                persistence: {
+                                    dirty:
+                                        false,
+
+                                    saving:
+                                        false,
+
+                                    lastSavedAt:
+                                        null,
+
+                                    error:
+                                        null
+                                }
+                            })
                         );
+                    },
 
-                    set({
-                        ...content,
+                clearDocument:
+                    () => {
+                        commitContentChange(
+                            "Clear document",
 
-                        revision:
-                            0,
+                            () => {
+                                const layer =
+                                    createDefaultLayer(
+                                        {
+                                            name:
+                                                "Layer 1"
+                                        },
+                                        0
+                                    );
 
-                        clipboard: {
-                            objects: [],
-                            pasteCount: 0
-                        },
+                                return {
+                                    layers: [
+                                        layer
+                                    ],
 
-                        history: {
-                            ...get().history,
+                                    objects:
+                                        {},
 
-                            past: [],
-                            future: [],
-                            transaction:
-                                null
-                        },
+                                    activeLayerId:
+                                        layer.id,
 
-                        persistence: {
-                            dirty:
-                                false,
-
-                            saving:
-                                false,
-
-                            lastSavedAt:
-                                null,
-
-                            error:
-                                null
-                        },
-
-                        viewport:
-                            createDefaultViewport()
-                    });
-                },
-
-                clearDocument: () => {
-                    commitContentChange(
-                        "Clear document",
-                        state => {
-                            const layer =
-                                createDefaultLayer(
-                                    {
-                                        name:
-                                            "Layer 1"
-                                    },
-                                    0
-                                );
-
-                            return {
-                                layers: [
-                                    layer
-                                ],
-
-                                objects: {},
-
-                                activeLayerId:
-                                    layer.id,
-
-                                selectedObjectIds:
-                                    []
-                            };
-                        }
-                    );
-                },
-
-                setDocumentName: name => {
-                    if (
-                        typeof name !==
-                            "string" ||
-                        !name.trim()
-                    ) {
-                        return;
-                    }
-
-                    commitContentChange(
-                        "Rename document",
-                        state => ({
-                            document: {
-                                ...state.document,
-
-                                name:
-                                    name.trim()
+                                    selectedObjectIds:
+                                        []
+                                };
                             }
-                        })
-                    );
-                },
+                        );
+                    },
+
+                setDocumentName:
+                    name => {
+                        if (
+                            typeof name !==
+                                "string" ||
+                            !name.trim()
+                        ) {
+                            return;
+                        }
+
+                        commitContentChange(
+                            "Rename document",
+
+                            state => ({
+                                document: {
+                                    ...state.document,
+
+                                    name:
+                                        name.trim()
+                                }
+                            })
+                        );
+                    },
 
                 setDocumentBackground:
                     background => {
@@ -1488,6 +2078,7 @@ shape:
 
                         commitContentChange(
                             "Change document background",
+
                             state => ({
                                 document: {
                                     ...state.document,
@@ -1499,95 +2090,151 @@ shape:
                         );
                     },
 
-                resizeDocument: (
-                    width,
-                    height
-                ) => {
-                    const safeWidth =
-                        Math.max(
-                            100,
-                            numberOr(
-                                width,
-                                get().document
-                                    .width
-                            )
-                        );
+                resizeDocument:
+                    (
+                        width,
+                        height
+                    ) => {
+                        const safeWidth =
+                            Math.max(
+                                100,
 
-                    const safeHeight =
-                        Math.max(
-                            100,
-                            numberOr(
-                                height,
-                                get().document
-                                    .height
-                            )
-                        );
+                                numberOr(
+                                    width,
+                                    get()
+                                        .document
+                                        .width
+                                )
+                            );
 
-                    commitContentChange(
-                        "Resize document",
-                        state => ({
-                            document: {
-                                ...state.document,
+                        const safeHeight =
+                            Math.max(
+                                100,
 
-                                width:
-                                    safeWidth,
+                                numberOr(
+                                    height,
+                                    get()
+                                        .document
+                                        .height
+                                )
+                            );
 
-                                height:
-                                    safeHeight
+                        commitContentChange(
+                            "Resize document",
+
+                            state => {
+                                const previousWidth =
+                                    Math.max(
+                                        1,
+
+                                        numberOr(
+                                            state.document.width,
+                                            safeWidth
+                                        )
+                                    );
+
+                                const previousHeight =
+                                    Math.max(
+                                        1,
+
+                                        numberOr(
+                                            state.document.height,
+                                            safeHeight
+                                        )
+                                    );
+
+                                return {
+                                    document: {
+                                        ...state.document,
+
+                                        width:
+                                            safeWidth,
+
+                                        height:
+                                            safeHeight
+                                    },
+
+                                    symmetry:
+                                        normalizeSymmetrySettings(
+                                            {
+                                                ...state.symmetry,
+
+                                                axisX:
+                                                    state.symmetry.axisX *
+                                                    (
+                                                        safeWidth /
+                                                        previousWidth
+                                                    ),
+
+                                                axisY:
+                                                    state.symmetry.axisY *
+                                                    (
+                                                        safeHeight /
+                                                        previousHeight
+                                                    )
+                                            },
+
+                                            {
+                                                width:
+                                                    safeWidth,
+
+                                                height:
+                                                    safeHeight
+                                            }
+                                        )
+                                };
                             }
-                        })
-                    );
-                },
+                        );
+                    },
 
                 /*=========================================
                 Tool Actions
                 =========================================*/
 
-   /*=========================================
-Tool Actions
-=========================================*/
+                setActiveTool:
+                    tool => {
+                        if (
+                            !Object.values(
+                                EDITOR_TOOLS
+                            ).includes(
+                                tool
+                            )
+                        ) {
+                            return;
+                        }
 
-setActiveTool:
-    tool => {
-        if (
-            !Object.values(
-                EDITOR_TOOLS
-            ).includes(tool)
-        ) {
-            return;
-        }
+                        set(
+                            state => {
+                                if (
+                                    state.activeTool ===
+                                    tool
+                                ) {
+                                    return {};
+                                }
 
-        set(
-            state => {
-                if (
-                    state.activeTool ===
-                    tool
-                ) {
-                    return {};
-                }
+                                return {
+                                    previousTool:
+                                        state.activeTool,
 
-                return {
-                    previousTool:
-                        state.activeTool,
+                                    activeTool:
+                                        tool
+                                };
+                            }
+                        );
+                    },
 
-                    activeTool:
-                        tool
-                };
-            }
-        );
-    },
+                restorePreviousTool:
+                    () => {
+                        set(
+                            state => ({
+                                activeTool:
+                                    state.previousTool,
 
-restorePreviousTool: () => {
-    set(
-        state => ({
-            activeTool:
-                state.previousTool,
-
-            previousTool:
-                state.activeTool
-        })
-    );
-},
+                                previousTool:
+                                    state.activeTool
+                            })
+                        );
+                    },
 
                 /*=========================================
                 Brush Actions
@@ -1612,8 +2259,7 @@ restorePreviousTool: () => {
                                     size:
                                         clamp(
                                             updates.size ??
-                                            state.brush
-                                                .size,
+                                            state.brush.size,
                                             0.25,
                                             300
                                         ),
@@ -1621,8 +2267,7 @@ restorePreviousTool: () => {
                                     opacity:
                                         clamp(
                                             updates.opacity ??
-                                            state.brush
-                                                .opacity,
+                                            state.brush.opacity,
                                             0.01,
                                             1
                                         ),
@@ -1630,8 +2275,7 @@ restorePreviousTool: () => {
                                     smoothing:
                                         clamp(
                                             updates.smoothing ??
-                                            state.brush
-                                                .smoothing,
+                                            state.brush.smoothing,
                                             0,
                                             1
                                         ),
@@ -1639,8 +2283,7 @@ restorePreviousTool: () => {
                                     streamline:
                                         clamp(
                                             updates.streamline ??
-                                            state.brush
-                                                .streamline,
+                                            state.brush.streamline,
                                             0,
                                             1
                                         ),
@@ -1648,8 +2291,7 @@ restorePreviousTool: () => {
                                     thinning:
                                         clamp(
                                             updates.thinning ??
-                                            state.brush
-                                                .thinning,
+                                            state.brush.thinning,
                                             -1,
                                             1
                                         )
@@ -1658,127 +2300,131 @@ restorePreviousTool: () => {
                         );
                     },
 
-                setBrushSize: size => {
-                    get().setBrushSettings({
-                        size
-                    });
-                },
+                setBrushSize:
+                    size => {
+                        get()
+                            .setBrushSettings({
+                                size
+                            });
+                    },
 
                 setBrushOpacity:
                     opacity => {
-                        get().setBrushSettings({
-                            opacity
-                        });
+                        get()
+                            .setBrushSettings({
+                                opacity
+                            });
                     },
 
                 setBrushPreset:
                     preset => {
                         if (
-                            !isPlainObject(
+                            isPlainObject(
                                 preset
+                            )
+                        ) {
+                            get()
+                                .setBrushSettings(
+                                    preset
+                                );
+                        }
+                    },
+
+                /*=========================================
+                Eraser Actions
+                =========================================*/
+
+                setEraserSettings:
+                    updates => {
+                        if (
+                            !isPlainObject(
+                                updates
                             )
                         ) {
                             return;
                         }
 
-                        get().setBrushSettings(
-                            preset
+                        set(
+                            state => {
+                                const minimumSize =
+                                    Math.max(
+                                        1,
+
+                                        numberOr(
+                                            updates.minimumSize,
+                                            state.eraser.minimumSize
+                                        )
+                                    );
+
+                                const maximumSize =
+                                    Math.max(
+                                        minimumSize,
+
+                                        numberOr(
+                                            updates.maximumSize,
+                                            state.eraser.maximumSize
+                                        )
+                                    );
+
+                                const mode =
+                                    updates.mode ===
+                                        "stroke" ||
+                                    updates.mode ===
+                                        "partial"
+                                        ? updates.mode
+                                        : state.eraser.mode;
+
+                                return {
+                                    eraser: {
+                                        ...state.eraser,
+                                        ...updates,
+
+                                        mode,
+
+                                        minimumSize,
+
+                                        maximumSize,
+
+                                        size:
+                                            clamp(
+                                                updates.size ??
+                                                state.eraser.size,
+                                                minimumSize,
+                                                maximumSize
+                                            )
+                                    }
+                                };
+                            }
                         );
                     },
 
-                    /*=========================================
-Eraser Actions
-=========================================*/
+                setEraserSize:
+                    size => {
+                        get()
+                            .setEraserSettings({
+                                size
+                            });
+                    },
 
-setEraserSettings:
-    updates => {
-        if (
-            !isPlainObject(
-                updates
-            )
-        ) {
-            return;
-        }
+                setEraserMode:
+                    mode => {
+                        if (
+                            mode !==
+                                "stroke" &&
+                            mode !==
+                                "partial"
+                        ) {
+                            return;
+                        }
 
-        set(
-            state => {
-                const minimumSize =
-                    Math.max(
-                        1,
-                        numberOr(
-                            updates.minimumSize,
-                            state.eraser
-                                .minimumSize
-                        )
-                    );
-
-                const maximumSize =
-                    Math.max(
-                        minimumSize,
-                        numberOr(
-                            updates.maximumSize,
-                            state.eraser
-                                .maximumSize
-                        )
-                    );
-
-                const mode =
-                    updates.mode ===
-                        "stroke" ||
-                    updates.mode ===
-                        "partial"
-                        ? updates.mode
-                        : state.eraser
-                            .mode;
-
-                return {
-                    eraser: {
-                        ...state.eraser,
-                        ...updates,
-
-                        mode,
-
-                        minimumSize,
-
-                        maximumSize,
-
-                        size:
-                            clamp(
-                                updates.size ??
-                                state.eraser
-                                    .size,
-                                minimumSize,
-                                maximumSize
-                            )
-                    }
-                };
-            }
-        );
-    },
-
-setEraserSize:
-    size => {
-        get().setEraserSettings({
-            size
-        });
-    },
-
-setEraserMode:
-    mode => {
-        if (
-            mode !== "stroke" &&
-            mode !== "partial"
-        ) {
-            return;
-        }
-
-        get().setEraserSettings({
-            mode
-        });
-    },
+                        get()
+                            .setEraserSettings({
+                                mode
+                            });
+                    },
 
                 /*=========================================
-                Shape, Fill and Text Settings
+                Shape, Fill, Text, Image and Pattern Actions
                 =========================================*/
 
                 setShapeSettings:
@@ -1799,32 +2445,46 @@ setEraserMode:
 
                                     strokeWidth:
                                         clamp(
-                                            updates
-                                                .strokeWidth ??
-                                            state.shape
-                                                .strokeWidth,
+                                            updates.strokeWidth ??
+                                            state.shape.strokeWidth,
                                             0,
                                             200
                                         ),
 
                                     strokeOpacity:
                                         clamp(
-                                            updates
-                                                .strokeOpacity ??
-                                            state.shape
-                                                .strokeOpacity,
+                                            updates.strokeOpacity ??
+                                            state.shape.strokeOpacity,
                                             0,
                                             1
                                         ),
 
                                     fillOpacity:
                                         clamp(
-                                            updates
-                                                .fillOpacity ??
-                                            state.shape
-                                                .fillOpacity,
+                                            updates.fillOpacity ??
+                                            state.shape.fillOpacity,
                                             0,
                                             1
+                                        ),
+
+                                    cornerRadius:
+                                        Math.max(
+                                            0,
+
+                                            numberOr(
+                                                updates.cornerRadius,
+                                                state.shape.cornerRadius
+                                            )
+                                        ),
+
+                                    sides:
+                                        Math.round(
+                                            clamp(
+                                                updates.sides ??
+                                                state.shape.sides,
+                                                3,
+                                                32
+                                            )
                                         )
                                 }
                             })
@@ -1850,8 +2510,7 @@ setEraserMode:
                                     opacity:
                                         clamp(
                                             updates.opacity ??
-                                            state.fill
-                                                .opacity,
+                                            state.fill.opacity,
                                             0,
                                             1
                                         ),
@@ -1859,8 +2518,7 @@ setEraserMode:
                                     tolerance:
                                         clamp(
                                             updates.tolerance ??
-                                            state.fill
-                                                .tolerance,
+                                            state.fill.tolerance,
                                             0,
                                             255
                                         )
@@ -1888,8 +2546,7 @@ setEraserMode:
                                     fontSize:
                                         clamp(
                                             updates.fontSize ??
-                                            state.text
-                                                .fontSize,
+                                            state.text.fontSize,
                                             4,
                                             500
                                         ),
@@ -1897,12 +2554,577 @@ setEraserMode:
                                     opacity:
                                         clamp(
                                             updates.opacity ??
-                                            state.text
-                                                .opacity,
+                                            state.text.opacity,
                                             0,
                                             1
+                                        ),
+
+                                    lineHeight:
+                                        clamp(
+                                            updates.lineHeight ??
+                                            state.text.lineHeight,
+                                            0.5,
+                                            10
+                                        ),
+
+                                    letterSpacing:
+                                        clamp(
+                                            updates.letterSpacing ??
+                                            state.text.letterSpacing,
+                                            -100,
+                                            500
+                                        ),
+
+                                    width:
+                                        Math.max(
+                                            1,
+
+                                            numberOr(
+                                                updates.width,
+                                                state.text.width
+                                            )
+                                        ),
+
+                                    height:
+                                        Math.max(
+                                            1,
+
+                                            numberOr(
+                                                updates.height,
+                                                state.text.height
+                                            )
+                                        ),
+
+                                    padding:
+                                        Math.max(
+                                            0,
+
+                                            numberOr(
+                                                updates.padding,
+                                                state.text.padding
+                                            )
                                         )
                                 }
+                            })
+                        );
+                    },
+
+                setImageSettings:
+                    updates => {
+                        if (
+                            !isPlainObject(
+                                updates
+                            )
+                        ) {
+                            return;
+                        }
+
+                        set(
+                            state => {
+                                const requestedFit =
+                                    updates.fit ??
+                                    updates.imageFit ??
+                                    updates.objectFit ??
+                                    state.image.fit;
+
+                                const fit =
+                                    IMAGE_FIT_MODES.includes(
+                                        requestedFit
+                                    )
+                                        ? requestedFit
+                                        : state.image.fit;
+
+                                const preserveAspectRatio =
+                                    updates.preserveAspectRatio ===
+                                    undefined
+                                        ? fit ===
+                                            "fill"
+                                            ? false
+                                            : state.image
+                                                .preserveAspectRatio
+                                        : Boolean(
+                                            updates.preserveAspectRatio
+                                        );
+
+                                return {
+                                    image: {
+                                        ...state.image,
+                                        ...updates,
+
+                                        fit,
+
+                                        preserveAspectRatio,
+
+                                        opacity:
+                                            clamp(
+                                                updates.opacity ??
+                                                state.image.opacity,
+                                                0,
+                                                1
+                                            ),
+
+                                        cornerRadius:
+                                            Math.max(
+                                                0,
+
+                                                numberOr(
+                                                    updates.cornerRadius,
+                                                    state.image.cornerRadius
+                                                )
+                                            ),
+
+                                        imageSmoothingEnabled:
+                                            (
+                                                updates.imageSmoothingEnabled ??
+                                                state.image
+                                                    .imageSmoothingEnabled
+                                            ) !==
+                                            false
+                                    }
+                                };
+                            }
+                        );
+                    },
+
+                resetImageSettings:
+                    () => {
+                        set({
+                            image:
+                                createDefaultImageSettings()
+                        });
+                    },
+
+                setPatternSettings:
+                    updates => {
+                        if (
+                            !isPlainObject(
+                                updates
+                            )
+                        ) {
+                            return;
+                        }
+
+                        set(
+                            state => {
+                                const scaleChanged =
+                                    updates.scale !==
+                                    undefined;
+
+                                const scale =
+                                    clamp(
+                                        updates.scale ??
+                                        updates.patternScale ??
+                                        state.pattern.scale,
+                                        MINIMUM_PATTERN_SCALE,
+                                        MAXIMUM_PATTERN_SCALE
+                                    );
+
+                                const repeatCandidate =
+                                    updates.repeat ??
+                                    updates.repeatMode ??
+                                    updates.patternRepeat ??
+                                    state.pattern.repeat;
+
+                                const repeat =
+                                    PATTERN_REPEAT_MODES.includes(
+                                        repeatCandidate
+                                    )
+                                        ? repeatCandidate
+                                        : state.pattern.repeat;
+
+                                const background =
+                                    typeof updates.background ===
+                                    "string"
+                                        ? updates.background
+                                        : state.pattern.background;
+
+                                return {
+                                    pattern: {
+                                        ...state.pattern,
+                                        ...updates,
+
+                                        repeat,
+
+                                        repeatMode:
+                                            repeat,
+
+                                        scale,
+
+                                        scaleX:
+                                            clamp(
+                                                updates.scaleX ??
+                                                updates.patternScaleX ??
+                                                (
+                                                    scaleChanged
+                                                        ? scale
+                                                        : state.pattern.scaleX
+                                                ),
+                                                MINIMUM_PATTERN_SCALE,
+                                                MAXIMUM_PATTERN_SCALE
+                                            ),
+
+                                        scaleY:
+                                            clamp(
+                                                updates.scaleY ??
+                                                updates.patternScaleY ??
+                                                (
+                                                    scaleChanged
+                                                        ? scale
+                                                        : state.pattern.scaleY
+                                                ),
+                                                MINIMUM_PATTERN_SCALE,
+                                                MAXIMUM_PATTERN_SCALE
+                                            ),
+
+                                        rotation:
+                                            normalizeDegrees(
+                                                updates.rotation ??
+                                                updates.patternRotation ??
+                                                state.pattern.rotation
+                                            ),
+
+                                        opacity:
+                                            clamp(
+                                                updates.opacity ??
+                                                updates.patternOpacity ??
+                                                state.pattern.opacity,
+                                                0,
+                                                1
+                                            ),
+
+                                        offsetX:
+                                            numberOr(
+                                                updates.offsetX ??
+                                                updates.patternOffsetX,
+                                                state.pattern.offsetX
+                                            ),
+
+                                        offsetY:
+                                            numberOr(
+                                                updates.offsetY ??
+                                                updates.patternOffsetY,
+                                                state.pattern.offsetY
+                                            ),
+
+                                        imageSmoothingEnabled:
+                                            (
+                                                updates.imageSmoothingEnabled ??
+                                                state.pattern
+                                                    .imageSmoothingEnabled
+                                            ) !==
+                                            false,
+
+                                        clipToBounds:
+                                            (
+                                                updates.clipToBounds ??
+                                                state.pattern.clipToBounds
+                                            ) !==
+                                            false,
+
+                                        background,
+
+                                        keepAssetAfterPlacement:
+                                            (
+                                                updates.keepAssetAfterPlacement ??
+                                                state.pattern
+                                                    .keepAssetAfterPlacement
+                                            ) !==
+                                            false,
+
+                                        switchToSelectAfterCreate:
+                                            (
+                                                updates.switchToSelectAfterCreate ??
+                                                state.pattern
+                                                    .switchToSelectAfterCreate
+                                            ) !==
+                                            false
+                                    }
+                                };
+                            }
+                        );
+                    },
+
+                resetPatternSettings:
+                    () => {
+                        set({
+                            pattern:
+                                createDefaultPatternSettings()
+                        });
+                    },
+
+                /*=========================================
+                Symmetry Settings
+                =========================================*/
+
+                setSymmetrySettings:
+                    updates => {
+                        if (
+                            !isPlainObject(
+                                updates
+                            )
+                        ) {
+                            return false;
+                        }
+
+                        set(
+                            state => ({
+                                symmetry:
+                                    normalizeSymmetrySettings(
+                                        {
+                                            ...state.symmetry,
+                                            ...updates
+                                        },
+
+                                        state.document
+                                    )
+                            })
+                        );
+
+                        return true;
+                    },
+
+                toggleSymmetry:
+                    forcedValue => {
+                        set(
+                            state => ({
+                                symmetry: {
+                                    ...state.symmetry,
+
+                                    enabled:
+                                        typeof forcedValue ===
+                                            "boolean"
+                                            ? forcedValue
+                                            : !state.symmetry.enabled
+                                }
+                            })
+                        );
+                    },
+
+                setSymmetryMode:
+                    mode => {
+                        if (
+                            !Object.values(
+                                SYMMETRY_MODES
+                            ).includes(
+                                mode
+                            )
+                        ) {
+                            return false;
+                        }
+
+                        get()
+                            .setSymmetrySettings({
+                                mode
+                            });
+
+                        return true;
+                    },
+
+                setSymmetryAxis:
+                    (
+                        axis,
+                        value
+                    ) => {
+                        const state =
+                            get();
+
+                        if (
+                            axis ===
+                            SYMMETRY_AXES.X
+                        ) {
+                            return get()
+                                .setSymmetrySettings({
+                                    axisX:
+                                        clamp(
+                                            value,
+                                            0,
+                                            state.document.width
+                                        )
+                                });
+                        }
+
+                        if (
+                            axis ===
+                            SYMMETRY_AXES.Y
+                        ) {
+                            return get()
+                                .setSymmetrySettings({
+                                    axisY:
+                                        clamp(
+                                            value,
+                                            0,
+                                            state.document.height
+                                        )
+                                });
+                        }
+
+                        if (
+                            axis ===
+                                SYMMETRY_AXES.BOTH &&
+                            isPlainObject(
+                                value
+                            )
+                        ) {
+                            return get()
+                                .setSymmetrySettings({
+                                    axisX:
+                                        clamp(
+                                            value.x ??
+                                            value.axisX,
+                                            0,
+                                            state.document.width
+                                        ),
+
+                                    axisY:
+                                        clamp(
+                                            value.y ??
+                                            value.axisY,
+                                            0,
+                                            state.document.height
+                                        )
+                                });
+                        }
+
+                        return false;
+                    },
+
+                centerSymmetryAxes:
+                    (
+                        axis =
+                            SYMMETRY_AXES.BOTH
+                    ) => {
+                        const state =
+                            get();
+
+                        const updates =
+                            {};
+
+                        if (
+                            axis ===
+                                SYMMETRY_AXES.X ||
+                            axis ===
+                                SYMMETRY_AXES.BOTH
+                        ) {
+                            updates.axisX =
+                                state.document.width /
+                                2;
+                        }
+
+                        if (
+                            axis ===
+                                SYMMETRY_AXES.Y ||
+                            axis ===
+                                SYMMETRY_AXES.BOTH
+                        ) {
+                            updates.axisY =
+                                state.document.height /
+                                2;
+                        }
+
+                        return get()
+                            .setSymmetrySettings(
+                                updates
+                            );
+                    },
+
+                setSymmetryToolEnabled:
+                    (
+                        tool,
+                        enabled
+                    ) => {
+                        if (
+                            !SUPPORTED_SYMMETRY_TOOLS.includes(
+                                tool
+                            )
+                        ) {
+                            return false;
+                        }
+
+                        const propertyByTool = {
+                            [EDITOR_TOOLS.PENCIL]:
+                                "mirrorPencil",
+
+                            [EDITOR_TOOLS.BRUSH]:
+                                "mirrorBrush",
+
+                            [EDITOR_TOOLS.LINE]:
+                                "mirrorLine",
+
+                            [EDITOR_TOOLS.SHAPE]:
+                                "mirrorShape",
+
+                            [EDITOR_TOOLS.ERASER]:
+                                "mirrorEraser"
+                        };
+
+                        const property =
+                            propertyByTool[
+                                tool
+                            ];
+
+                        if (
+                            !property
+                        ) {
+                            return false;
+                        }
+
+                        return get()
+                            .setSymmetrySettings({
+                                [property]:
+                                    Boolean(
+                                        enabled
+                                    )
+                            });
+                    },
+
+                isSymmetryEnabledForTool:
+                    tool => {
+                        const symmetry =
+                            get()
+                                .symmetry;
+
+                        if (
+                            !symmetry.enabled
+                        ) {
+                            return false;
+                        }
+
+                        switch (
+                            tool
+                        ) {
+                            case EDITOR_TOOLS.PENCIL:
+                                return symmetry
+                                    .mirrorPencil;
+
+                            case EDITOR_TOOLS.BRUSH:
+                                return symmetry
+                                    .mirrorBrush;
+
+                            case EDITOR_TOOLS.LINE:
+                                return symmetry
+                                    .mirrorLine;
+
+                            case EDITOR_TOOLS.SHAPE:
+                                return symmetry
+                                    .mirrorShape;
+
+                            case EDITOR_TOOLS.ERASER:
+                                return symmetry
+                                    .mirrorEraser;
+
+                            default:
+                                return false;
+                        }
+                    },
+
+                resetSymmetrySettings:
+                    () => {
+                        set(
+                            state => ({
+                                symmetry:
+                                    createDefaultSymmetrySettings(
+                                        state.document
+                                    )
                             })
                         );
                     },
@@ -1935,14 +3157,11 @@ setEraserMode:
                                     recent: [
                                         cleanColor,
 
-                                        ...state
-                                            .colors
-                                            .recent
-                                            .filter(
-                                                item =>
-                                                    item !==
-                                                    cleanColor
-                                            )
+                                        ...state.colors.recent.filter(
+                                            item =>
+                                                item !==
+                                                cleanColor
+                                        )
                                     ].slice(
                                         0,
                                         24
@@ -1988,79 +3207,77 @@ setEraserMode:
                         );
                     },
 
-              swapColors: () => {
-    set(
-        state => {
-            const nextPrimary =
-                state.colors
-                    .secondary;
+                swapColors:
+                    () => {
+                        set(
+                            state => {
+                                const nextPrimary =
+                                    state.colors.secondary;
 
-            const nextSecondary =
-                state.colors
-                    .primary;
+                                const nextSecondary =
+                                    state.colors.primary;
 
-            return {
-                colors: {
-                    ...state.colors,
+                                return {
+                                    colors: {
+                                        ...state.colors,
 
-                    primary:
-                        nextPrimary,
+                                        primary:
+                                            nextPrimary,
 
-                    secondary:
-                        nextSecondary
-                },
+                                        secondary:
+                                            nextSecondary
+                                    },
 
-                brush: {
-                    ...state.brush,
+                                    brush: {
+                                        ...state.brush,
 
-                    color:
-                        nextPrimary
-                },
+                                        color:
+                                            nextPrimary
+                                    },
 
-                shape: {
-                    ...state.shape,
+                                    shape: {
+                                        ...state.shape,
 
-                    stroke:
-                        nextPrimary
-                }
-            };
-        }
-    );
-},
+                                        stroke:
+                                            nextPrimary
+                                    }
+                                };
+                            }
+                        );
+                    },
 
-                saveColor: color => {
-                    const selectedColor =
-                        typeof color ===
-                            "string" &&
-                        color.trim()
-                            ? color.trim()
-                            : get().colors
-                                .primary;
+                saveColor:
+                    color => {
+                        const selectedColor =
+                            typeof color ===
+                                "string" &&
+                            color.trim()
+                                ? color.trim()
+                                : get()
+                                    .colors
+                                    .primary;
 
-                    set(
-                        state => ({
-                            colors: {
-                                ...state.colors,
+                        set(
+                            state => ({
+                                colors: {
+                                    ...state.colors,
 
-                                saved: [
-                                    selectedColor,
+                                    saved: [
+                                        selectedColor,
 
-                                    ...state
-                                        .colors
-                                        .saved
-                                        .filter(
+                                        ...state.colors.saved.filter(
                                             item =>
                                                 item !==
                                                 selectedColor
                                         )
-                                ].slice(
-                                    0,
-                                    64
-                                )
-                            }
-                        })
-                    );
-                },
+                                    ].slice(
+                                        0,
+                                        64
+                                    )
+                                }
+                            })
+                        );
+                    },
 
                 removeSavedColor:
                     color => {
@@ -2070,13 +3287,11 @@ setEraserMode:
                                     ...state.colors,
 
                                     saved:
-                                        state.colors
-                                            .saved
-                                            .filter(
-                                                item =>
-                                                    item !==
-                                                    color
-                                            )
+                                        state.colors.saved.filter(
+                                            item =>
+                                                item !==
+                                                color
+                                        )
                                 }
                             })
                         );
@@ -2086,250 +3301,87 @@ setEraserMode:
                 Object Actions
                 =========================================*/
 
-                addObject: (
-                    object,
-                    options = {}
-                ) => {
-                    if (
-                        !isPlainObject(
-                            object
-                        )
-                    ) {
-                        return null;
-                    }
-
-                    const state =
-                        get();
-
-                    const requestedLayerId =
-                        object.layerId ||
-                        state.activeLayerId;
-
-                    const layer =
-                        state.layers.find(
-                            item =>
-                                item.id ===
-                                requestedLayerId
-                        );
-
-                    if (
-                        !layer ||
-                        layer.locked ||
-                        !layer.visible
-                    ) {
-                        return null;
-                    }
-
-                    const normalizedObject =
-                        normalizeEditorObject(
-                            object,
-                            layer.id
-                        );
-
-                    if (
-                        state.objects[
-                            normalizedObject.id
-                        ]
-                    ) {
-                        normalizedObject.id =
-                            createId(
-                                normalizedObject
-                                    .type
-                            );
-                    }
-
-                    commitContentChange(
-                        options.label ||
-                        "Add object",
-                        currentState => ({
-                            objects: {
-                                ...currentState.objects,
-
-                                [normalizedObject.id]:
-                                    normalizedObject
-                            },
-
-                            layers:
-                                currentState.layers.map(
-                                    item =>
-                                        item.id ===
-                                        layer.id
-                                            ? {
-                                                ...item,
-
-                                                objectIds: [
-                                                    ...item.objectIds,
-                                                    normalizedObject.id
-                                                ],
-
-                                                updatedAt:
-                                                    nowIso()
-                                            }
-                                            : item
-                                ),
-
-                            selectedObjectIds:
-                                options.select ===
-                                false
-                                    ? currentState
-                                        .selectedObjectIds
-                                    : [
-                                        normalizedObject.id
-                                    ]
-                        })
-                    );
-
-                    return normalizedObject.id;
-                },
-
-                addObjects: (
-                    objects,
-                    options = {}
-                ) => {
-                    if (
-                        !Array.isArray(
-                            objects
-                        ) ||
-                        objects.length === 0
-                    ) {
-                        return [];
-                    }
-
-                    const state =
-                        get();
-
-                    const prepared = [];
-
-                    objects.forEach(
-                        object => {
-                            if (
-                                !isPlainObject(
-                                    object
-                                )
-                            ) {
-                                return;
-                            }
-
-                            const layerId =
-                                object.layerId ||
-                                state.activeLayerId;
-
-                            const layer =
-                                state.layers.find(
-                                    item =>
-                                        item.id ===
-                                        layerId
-                                );
-
-                            if (
-                                !layer ||
-                                layer.locked ||
-                                !layer.visible
-                            ) {
-                                return;
-                            }
-
-                            const normalized =
-                                normalizeEditorObject(
-                                    object,
-                                    layerId
-                                );
-
-                            if (
-                                state.objects[
-                                    normalized.id
-                                ] ||
-                                prepared.some(
-                                    item =>
-                                        item.id ===
-                                        normalized.id
-                                )
-                            ) {
-                                normalized.id =
-                                    createId(
-                                        normalized
-                                            .type
-                                    );
-                            }
-
-                            prepared.push(
-                                normalized
-                            );
+                addObject:
+                    (
+                        object,
+                        options = {}
+                    ) => {
+                        if (
+                            !isPlainObject(
+                                object
+                            )
+                        ) {
+                            return null;
                         }
-                    );
 
-                    if (
-                        prepared.length === 0
-                    ) {
-                        return [];
-                    }
+                        const state =
+                            get();
 
-                    const addedIds =
-                        prepared.map(
-                            object =>
-                                object.id
-                        );
+                        const requestedLayerId =
+                            object.layerId ||
+                            state.activeLayerId;
 
-                    commitContentChange(
-                        options.label ||
-                        "Add objects",
-                        currentState => {
-                            const nextObjects = {
-                                ...currentState.objects
-                            };
-
-                            const idsByLayer =
-                                new Map();
-
-                            prepared.forEach(
-                                object => {
-                                    nextObjects[
-                                        object.id
-                                    ] = object;
-
-                                    const existing =
-                                        idsByLayer.get(
-                                            object.layerId
-                                        ) || [];
-
-                                    idsByLayer.set(
-                                        object.layerId,
-                                        [
-                                            ...existing,
-                                            object.id
-                                        ]
-                                    );
-                                }
+                        const layer =
+                            getLayerById(
+                                state,
+                                requestedLayerId
                             );
 
-                            return {
-                                objects:
-                                    nextObjects,
+                        if (
+                            !layer ||
+                            layer.locked ||
+                            layer.visible ===
+                                false
+                        ) {
+                            return null;
+                        }
+
+                        const normalizedObject =
+                            normalizeEditorObject(
+                                object,
+                                layer.id
+                            );
+
+                        if (
+                            state.objects[
+                                normalizedObject.id
+                            ]
+                        ) {
+                            normalizedObject.id =
+                                createId(
+                                    normalizedObject.type
+                                );
+                        }
+
+                        commitContentChange(
+                            options.label ||
+                            "Add object",
+
+                            currentState => ({
+                                objects: {
+                                    ...currentState.objects,
+
+                                    [normalizedObject.id]:
+                                        normalizedObject
+                                },
 
                                 layers:
                                     currentState.layers.map(
-                                        layer => {
-                                            const ids =
-                                                idsByLayer.get(
-                                                    layer.id
-                                                );
+                                        item =>
+                                            item.id ===
+                                            layer.id
+                                                ? {
+                                                    ...item,
 
-                                            if (!ids) {
-                                                return layer;
-                                            }
+                                                    objectIds: [
+                                                        ...item.objectIds,
+                                                        normalizedObject.id
+                                                    ],
 
-                                            return {
-                                                ...layer,
-
-                                                objectIds: [
-                                                    ...layer.objectIds,
-                                                    ...ids
-                                                ],
-
-                                                updatedAt:
-                                                    nowIso()
-                                            };
-                                        }
+                                                    updatedAt:
+                                                        nowIso()
+                                                }
+                                                : item
                                     ),
 
                                 selectedObjectIds:
@@ -2337,207 +3389,303 @@ setEraserMode:
                                     false
                                         ? currentState
                                             .selectedObjectIds
-                                        : addedIds
-                            };
+                                        : [
+                                            normalizedObject.id
+                                        ]
+                            })
+                        );
+
+                        return normalizedObject.id;
+                    },
+
+                addObjects:
+                    (
+                        objects,
+                        options = {}
+                    ) => {
+                        if (
+                            !Array.isArray(
+                                objects
+                            ) ||
+                            objects.length ===
+                                0
+                        ) {
+                            return [];
                         }
-                    );
 
-                    return addedIds;
-                },
+                        const state =
+                            get();
 
-                updateObject: (
-                    objectId,
-                    updates,
-                    label =
-                        "Update object"
-                ) => {
-                    const state =
-                        get();
+                        const prepared =
+                            [];
 
-                    const object =
-                        state.objects[
-                            objectId
-                        ];
-
-                    if (
-                        !object ||
-                        object.locked
-                    ) {
-                        return;
-                    }
-
-                    const layer =
-                        state.layers.find(
-                            item =>
-                                item.id ===
-                                object.layerId
-                        );
-
-                    if (
-                        !layer ||
-                        layer.locked
-                    ) {
-                        return;
-                    }
-
-                    const resolvedUpdates =
-                        typeof updates ===
-                            "function"
-                            ? updates(
-                                cloneSerializable(
-                                    object
-                                )
-                            )
-                            : updates;
-
-                    if (
-                        !isPlainObject(
-                            resolvedUpdates
-                        )
-                    ) {
-                        return;
-                    }
-
-                    commitContentChange(
-                        label,
-                        currentState => ({
-                            objects: {
-                                ...currentState.objects,
-
-                                [objectId]:
-                                    mergeObjectUpdates(
-                                        currentState
-                                            .objects[
-                                            objectId
-                                        ],
-                                        resolvedUpdates
+                        objects.forEach(
+                            object => {
+                                if (
+                                    !isPlainObject(
+                                        object
                                     )
-                            }
-                        })
-                    );
-                },
+                                ) {
+                                    return;
+                                }
 
-                updateObjects: (
-                    objectIds,
-                    updates,
-                    label =
-                        "Update objects"
-                ) => {
-                    const safeIds =
-                        uniqueIds(
-                            objectIds
+                                const layerId =
+                                    object.layerId ||
+                                    state.activeLayerId;
+
+                                const layer =
+                                    getLayerById(
+                                        state,
+                                        layerId
+                                    );
+
+                                if (
+                                    !layer ||
+                                    layer.locked ||
+                                    layer.visible ===
+                                        false
+                                ) {
+                                    return;
+                                }
+
+                                const normalized =
+                                    normalizeEditorObject(
+                                        object,
+                                        layerId
+                                    );
+
+                                if (
+                                    state.objects[
+                                        normalized.id
+                                    ] ||
+                                    prepared.some(
+                                        item =>
+                                            item.id ===
+                                            normalized.id
+                                    )
+                                ) {
+                                    normalized.id =
+                                        createId(
+                                            normalized.type
+                                        );
+                                }
+
+                                prepared.push(
+                                    normalized
+                                );
+                            }
                         );
 
-                    if (
-                        safeIds.length === 0
-                    ) {
-                        return;
-                    }
+                        if (
+                            prepared.length ===
+                            0
+                        ) {
+                            return [];
+                        }
 
-                    commitContentChange(
-                        label,
-                        state => {
-                            const nextObjects = {
-                                ...state.objects
-                            };
-
-                            let changed =
-                                false;
-
-                            safeIds.forEach(
-                                objectId => {
-                                    const object =
-                                        state.objects[
-                                            objectId
-                                        ];
-
-                                    if (
-                                        !object ||
-                                        object.locked
-                                    ) {
-                                        return;
-                                    }
-
-                                    const layer =
-                                        state.layers.find(
-                                            item =>
-                                                item.id ===
-                                                object.layerId
-                                        );
-
-                                    if (
-                                        !layer ||
-                                        layer.locked
-                                    ) {
-                                        return;
-                                    }
-
-                                    const resolved =
-                                        typeof updates ===
-                                            "function"
-                                            ? updates(
-                                                cloneSerializable(
-                                                    object
-                                                )
-                                            )
-                                            : updates;
-
-                                    if (
-                                        !isPlainObject(
-                                            resolved
-                                        )
-                                    ) {
-                                        return;
-                                    }
-
-                                    nextObjects[
-                                        objectId
-                                    ] =
-                                        mergeObjectUpdates(
-                                            object,
-                                            resolved
-                                        );
-
-                                    changed =
-                                        true;
-                                }
+                        const addedIds =
+                            prepared.map(
+                                object =>
+                                    object.id
                             );
 
-                            return changed
-                                ? {
-                                    objects:
-                                        nextObjects
-                                }
-                                : null;
-                        }
-                    );
-                },
+                        commitContentChange(
+                            options.label ||
+                            "Add objects",
 
-                deleteObjects: (
-                    objectIds,
-                    label =
-                        "Delete objects"
-                ) => {
-                    const requestedIds =
-                        uniqueIds(
-                            objectIds?.length
-                                ? objectIds
-                                : get()
-                                    .selectedObjectIds
+                            currentState => {
+                                const nextObjects = {
+                                    ...currentState.objects
+                                };
+
+                                const idsByLayer =
+                                    new Map();
+
+                                prepared.forEach(
+                                    object => {
+                                        nextObjects[
+                                            object.id
+                                        ] =
+                                            object;
+
+                                        const existing =
+                                            idsByLayer.get(
+                                                object.layerId
+                                            ) ||
+                                            [];
+
+                                        idsByLayer.set(
+                                            object.layerId,
+
+                                            [
+                                                ...existing,
+                                                object.id
+                                            ]
+                                        );
+                                    }
+                                );
+
+                                return {
+                                    objects:
+                                        nextObjects,
+
+                                    layers:
+                                        currentState.layers.map(
+                                            layer => {
+                                                const ids =
+                                                    idsByLayer.get(
+                                                        layer.id
+                                                    );
+
+                                                if (
+                                                    !ids
+                                                ) {
+                                                    return layer;
+                                                }
+
+                                                return {
+                                                    ...layer,
+
+                                                    objectIds: [
+                                                        ...layer.objectIds,
+                                                        ...ids
+                                                    ],
+
+                                                    updatedAt:
+                                                        nowIso()
+                                                };
+                                            }
+                                        ),
+
+                                    selectedObjectIds:
+                                        options.select ===
+                                        false
+                                            ? currentState
+                                                .selectedObjectIds
+                                            : addedIds
+                                };
+                            }
                         );
 
-                    if (
-                        requestedIds.length ===
-                        0
-                    ) {
-                        return;
-                    }
+                        return addedIds;
+                    },
 
-                    commitContentChange(
-                        label,
-                        state => {
-                            const deletableIds =
-                                requestedIds.filter(
+                updateObject:
+                    (
+                        objectId,
+                        updates,
+                        label =
+                            "Update object"
+                    ) => {
+                        const state =
+                            get();
+
+                        const object =
+                            state.objects[
+                                objectId
+                            ];
+
+                        if (
+                            !object ||
+                            object.locked
+                        ) {
+                            return false;
+                        }
+
+                        const layer =
+                            getLayerById(
+                                state,
+                                object.layerId
+                            );
+
+                        if (
+                            !layer ||
+                            layer.locked
+                        ) {
+                            return false;
+                        }
+
+                        const resolvedUpdates =
+                            typeof updates ===
+                            "function"
+                                ? updates(
+                                    cloneSerializable(
+                                        object
+                                    )
+                                )
+                                : updates;
+
+                        if (
+                            !isPlainObject(
+                                resolvedUpdates
+                            )
+                        ) {
+                            return false;
+                        }
+
+                        commitContentChange(
+                            label,
+
+                            currentState => {
+                                const currentObject =
+                                    currentState.objects[
+                                        objectId
+                                    ];
+
+                                if (
+                                    !currentObject
+                                ) {
+                                    return null;
+                                }
+
+                                return {
+                                    objects: {
+                                        ...currentState.objects,
+
+                                        [objectId]:
+                                            mergeObjectUpdates(
+                                                currentObject,
+                                                resolvedUpdates
+                                            )
+                                    }
+                                };
+                            }
+                        );
+
+                        return true;
+                    },
+
+                updateObjects:
+                    (
+                        objectIds,
+                        updates,
+                        label =
+                            "Update objects"
+                    ) => {
+                        const safeIds =
+                            uniqueIds(
+                                objectIds
+                            );
+
+                        if (
+                            safeIds.length ===
+                            0
+                        ) {
+                            return false;
+                        }
+
+                        let didChange =
+                            false;
+
+                        commitContentChange(
+                            label,
+
+                            state => {
+                                const nextObjects = {
+                                    ...state.objects
+                                };
+
+                                safeIds.forEach(
                                     objectId => {
                                         const object =
                                             state.objects[
@@ -2548,478 +3696,615 @@ setEraserMode:
                                             !object ||
                                             object.locked
                                         ) {
-                                            return false;
+                                            return;
                                         }
 
                                         const layer =
-                                            state.layers.find(
-                                                item =>
-                                                    item.id ===
-                                                    object.layerId
+                                            getLayerById(
+                                                state,
+                                                object.layerId
                                             );
 
-                                        return Boolean(
-                                            layer &&
-                                            !layer.locked
-                                        );
+                                        if (
+                                            !layer ||
+                                            layer.locked
+                                        ) {
+                                            return;
+                                        }
+
+                                        const resolved =
+                                            typeof updates ===
+                                            "function"
+                                                ? updates(
+                                                    cloneSerializable(
+                                                        object
+                                                    )
+                                                )
+                                                : updates;
+
+                                        if (
+                                            !isPlainObject(
+                                                resolved
+                                            )
+                                        ) {
+                                            return;
+                                        }
+
+                                        nextObjects[
+                                            objectId
+                                        ] =
+                                            mergeObjectUpdates(
+                                                object,
+                                                resolved
+                                            );
+
+                                        didChange =
+                                            true;
                                     }
                                 );
 
-                            if (
-                                deletableIds.length ===
-                                0
-                            ) {
-                                return null;
+                                return didChange
+                                    ? {
+                                        objects:
+                                            nextObjects
+                                    }
+                                    : null;
                             }
+                        );
 
-                            const idSet =
-                                new Set(
-                                    deletableIds
-                                );
+                        return didChange;
+                    },
 
-                            const nextObjects = {
-                                ...state.objects
-                            };
-
-                            deletableIds.forEach(
-                                objectId => {
-                                    delete nextObjects[
-                                        objectId
-                                    ];
-                                }
+                deleteObjects:
+                    (
+                        objectIds,
+                        label =
+                            "Delete objects"
+                    ) => {
+                        const requestedIds =
+                            uniqueIds(
+                                objectIds
+                                    ?.length
+                                    ? objectIds
+                                    : get()
+                                        .selectedObjectIds
                             );
 
-                            return {
-                                objects:
-                                    nextObjects,
-
-                                layers:
-                                    state.layers.map(
-                                        layer => ({
-                                            ...layer,
-
-                                            objectIds:
-                                                layer.objectIds.filter(
-                                                    objectId =>
-                                                        !idSet.has(
-                                                            objectId
-                                                        )
-                                                )
-                                        })
-                                    ),
-
-                                selectedObjectIds:
-                                    state.selectedObjectIds.filter(
-                                        objectId =>
-                                            !idSet.has(
-                                                objectId
-                                            )
-                                    )
-                            };
+                        if (
+                            requestedIds.length ===
+                            0
+                        ) {
+                            return false;
                         }
-                    );
-                },
 
-                duplicateObjects: (
-                    objectIds,
-                    options = {}
-                ) => {
-                    const state =
-                        get();
+                        let deleted =
+                            false;
 
-                    const ids =
-                        uniqueIds(
-                            objectIds?.length
-                                ? objectIds
-                                : state
-                                    .selectedObjectIds
-                        );
+                        commitContentChange(
+                            label,
 
-                    const offsetX =
-                        numberOr(
-                            options.offsetX,
-                            20
-                        );
+                            state => {
+                                const deletableIds =
+                                    requestedIds.filter(
+                                        objectId => {
+                                            const object =
+                                                state.objects[
+                                                    objectId
+                                                ];
 
-                    const offsetY =
-                        numberOr(
-                            options.offsetY,
-                            20
-                        );
+                                            if (
+                                                !object ||
+                                                object.locked
+                                            ) {
+                                                return false;
+                                            }
 
-                    const copies =
-                        ids
-                            .map(
-                                objectId =>
-                                    state.objects[
-                                        objectId
-                                    ]
-                            )
-                            .filter(Boolean)
-                            .map(
-                                object => {
-                                    const translated =
-                                        translateObject(
-                                            cloneSerializable(
-                                                object
-                                            ),
-                                            offsetX,
-                                            offsetY
-                                        );
+                                            const layer =
+                                                getLayerById(
+                                                    state,
+                                                    object.layerId
+                                                );
 
-                                    return {
-                                        ...translated,
+                                            return Boolean(
+                                                layer &&
+                                                !layer.locked
+                                            );
+                                        }
+                                    );
 
-                                        id:
-                                            createId(
-                                                object.type
-                                            ),
-
-                                        name:
-                                            `${object.name || object.type} copy`,
-
-                                        createdAt:
-                                            nowIso(),
-
-                                        updatedAt:
-                                            nowIso()
-                                    };
+                                if (
+                                    deletableIds.length ===
+                                    0
+                                ) {
+                                    return null;
                                 }
-                            );
 
-                    return get().addObjects(
-                        copies,
-                        {
-                            label:
-                                "Duplicate objects",
+                                deleted =
+                                    true;
 
-                            select:
-                                true
-                        }
-                    );
-                },
+                                const idSet =
+                                    new Set(
+                                        deletableIds
+                                    );
 
-                nudgeSelection: (
-                    deltaX,
-                    deltaY
-                ) => {
-                    const selectedIds =
-                        get()
-                            .selectedObjectIds;
+                                const nextObjects = {
+                                    ...state.objects
+                                };
 
-                    if (
-                        selectedIds.length ===
-                        0
-                    ) {
-                        return;
-                    }
-
-                    commitContentChange(
-                        "Move objects",
-                        state => {
-                            const nextObjects = {
-                                ...state.objects
-                            };
-
-                            let changed =
-                                false;
-
-                            selectedIds.forEach(
-                                objectId => {
-                                    const object =
-                                        state.objects[
+                                deletableIds.forEach(
+                                    objectId => {
+                                        delete nextObjects[
                                             objectId
                                         ];
-
-                                    if (
-                                        !object ||
-                                        object.locked
-                                    ) {
-                                        return;
                                     }
+                                );
 
-                                    const layer =
-                                        state.layers.find(
-                                            item =>
-                                                item.id ===
-                                                object.layerId
-                                        );
-
-                                    if (
-                                        !layer ||
-                                        layer.locked
-                                    ) {
-                                        return;
-                                    }
-
-                                    nextObjects[
-                                        objectId
-                                    ] =
-                                        translateObject(
-                                            object,
-                                            deltaX,
-                                            deltaY
-                                        );
-
-                                    changed =
-                                        true;
-                                }
-                            );
-
-                            return changed
-                                ? {
+                                return {
                                     objects:
-                                        nextObjects
-                                }
-                                : null;
-                        }
-                    );
-                },
+                                        nextObjects,
 
-                moveObjectToLayer: (
-                    objectId,
-                    targetLayerId
-                ) => {
-                    const state =
-                        get();
-
-                    const object =
-                        state.objects[
-                            objectId
-                        ];
-
-                    const sourceLayer =
-                        state.layers.find(
-                            layer =>
-                                layer.id ===
-                                object?.layerId
-                        );
-
-                    const targetLayer =
-                        state.layers.find(
-                            layer =>
-                                layer.id ===
-                                targetLayerId
-                        );
-
-                    if (
-                        !object ||
-                        !sourceLayer ||
-                        !targetLayer ||
-                        sourceLayer.locked ||
-                        targetLayer.locked ||
-                        object.locked ||
-                        sourceLayer.id ===
-                        targetLayer.id
-                    ) {
-                        return;
-                    }
-
-                    commitContentChange(
-                        "Move object to layer",
-                        currentState => ({
-                            objects: {
-                                ...currentState.objects,
-
-                                [objectId]: {
-                                    ...object,
-
-                                    layerId:
-                                        targetLayerId,
-
-                                    updatedAt:
-                                        nowIso()
-                                }
-                            },
-
-                            layers:
-                                currentState.layers.map(
-                                    layer => {
-                                        if (
-                                            layer.id ===
-                                            sourceLayer.id
-                                        ) {
-                                            return {
+                                    layers:
+                                        state.layers.map(
+                                            layer => ({
                                                 ...layer,
 
                                                 objectIds:
                                                     layer.objectIds.filter(
-                                                        id =>
-                                                            id !==
-                                                            objectId
+                                                        objectId =>
+                                                            !idSet.has(
+                                                                objectId
+                                                            )
                                                     )
-                                            };
-                                        }
+                                            })
+                                        ),
+
+                                    selectedObjectIds:
+                                        state.selectedObjectIds.filter(
+                                            objectId =>
+                                                !idSet.has(
+                                                    objectId
+                                                )
+                                        )
+                                };
+                            }
+                        );
+
+                        return deleted;
+                    },
+
+                duplicateObjects:
+                    (
+                        objectIds,
+                        options = {}
+                    ) => {
+                        const state =
+                            get();
+
+                        const ids =
+                            uniqueIds(
+                                objectIds
+                                    ?.length
+                                    ? objectIds
+                                    : state
+                                        .selectedObjectIds
+                            );
+
+                        const offsetX =
+                            numberOr(
+                                options.offsetX,
+                                20
+                            );
+
+                        const offsetY =
+                            numberOr(
+                                options.offsetY,
+                                20
+                            );
+
+                        const copies =
+                            ids
+                                .map(
+                                    objectId =>
+                                        state.objects[
+                                            objectId
+                                        ]
+                                )
+                                .filter(
+                                    Boolean
+                                )
+                                .map(
+                                    object => {
+                                        const translated =
+                                            translateObject(
+                                                cloneSerializable(
+                                                    object
+                                                ),
+                                                offsetX,
+                                                offsetY
+                                            );
+
+                                        return {
+                                            ...translated,
+
+                                            id:
+                                                createId(
+                                                    object.type
+                                                ),
+
+                                            name:
+                                                `${object.name || object.type} copy`,
+
+                                            createdAt:
+                                                nowIso(),
+
+                                            updatedAt:
+                                                nowIso()
+                                        };
+                                    }
+                                );
+
+                        return get()
+                            .addObjects(
+                                copies,
+
+                                {
+                                    label:
+                                        "Duplicate objects",
+
+                                    select:
+                                        true
+                                }
+                            );
+                    },
+
+                nudgeSelection:
+                    (
+                        deltaX,
+                        deltaY
+                    ) => {
+                        const selectedIds =
+                            get()
+                                .selectedObjectIds;
+
+                        if (
+                            selectedIds.length ===
+                            0
+                        ) {
+                            return false;
+                        }
+
+                        let moved =
+                            false;
+
+                        commitContentChange(
+                            "Move objects",
+
+                            state => {
+                                const nextObjects = {
+                                    ...state.objects
+                                };
+
+                                selectedIds.forEach(
+                                    objectId => {
+                                        const object =
+                                            state.objects[
+                                                objectId
+                                            ];
 
                                         if (
-                                            layer.id ===
-                                            targetLayer.id
+                                            !isEditableObject(
+                                                state,
+                                                object
+                                            )
                                         ) {
-                                            return {
-                                                ...layer,
-
-                                                objectIds: [
-                                                    ...layer.objectIds,
-                                                    objectId
-                                                ]
-                                            };
+                                            return;
                                         }
 
-                                        return layer;
+                                        nextObjects[
+                                            objectId
+                                        ] =
+                                            translateObject(
+                                                object,
+                                                deltaX,
+                                                deltaY
+                                            );
+
+                                        moved =
+                                            true;
                                     }
-                                )
-                        })
-                    );
-                },
+                                );
 
-                reorderObject: (
-                    objectId,
-                    targetIndex
-                ) => {
-                    const state =
-                        get();
-
-                    const object =
-                        state.objects[
-                            objectId
-                        ];
-
-                    const layer =
-                        state.layers.find(
-                            item =>
-                                item.id ===
-                                object?.layerId
+                                return moved
+                                    ? {
+                                        objects:
+                                            nextObjects
+                                    }
+                                    : null;
+                            }
                         );
 
-                    if (
-                        !object ||
-                        !layer ||
-                        layer.locked
-                    ) {
-                        return;
-                    }
+                        return moved;
+                    },
 
-                    const currentIndex =
-                        layer.objectIds.indexOf(
-                            objectId
-                        );
+                moveObjectToLayer:
+                    (
+                        objectId,
+                        targetLayerId
+                    ) => {
+                        const state =
+                            get();
 
-                    if (
-                        currentIndex < 0
-                    ) {
-                        return;
-                    }
-
-                    commitContentChange(
-                        "Reorder object",
-                        currentState => ({
-                            layers:
-                                currentState.layers.map(
-                                    item =>
-                                        item.id ===
-                                        layer.id
-                                            ? {
-                                                ...item,
-
-                                                objectIds:
-                                                    moveArrayItem(
-                                                        item.objectIds,
-                                                        currentIndex,
-                                                        targetIndex
-                                                    )
-                                            }
-                                            : item
-                                )
-                        })
-                    );
-                },
-
-                bringToFront:
-                    objectId => {
                         const object =
-                            get().objects[
+                            state.objects[
+                                objectId
+                            ];
+
+                        const sourceLayer =
+                            getLayerById(
+                                state,
+                                object?.layerId
+                            );
+
+                        const targetLayer =
+                            getLayerById(
+                                state,
+                                targetLayerId
+                            );
+
+                        if (
+                            !object ||
+                            !sourceLayer ||
+                            !targetLayer ||
+                            sourceLayer.locked ||
+                            targetLayer.locked ||
+                            object.locked ||
+                            sourceLayer.id ===
+                            targetLayer.id
+                        ) {
+                            return false;
+                        }
+
+                        commitContentChange(
+                            "Move object to layer",
+
+                            currentState => ({
+                                objects: {
+                                    ...currentState.objects,
+
+                                    [objectId]: {
+                                        ...currentState.objects[
+                                            objectId
+                                        ],
+
+                                        layerId:
+                                            targetLayerId,
+
+                                        updatedAt:
+                                            nowIso()
+                                    }
+                                },
+
+                                layers:
+                                    currentState.layers.map(
+                                        layer => {
+                                            if (
+                                                layer.id ===
+                                                sourceLayer.id
+                                            ) {
+                                                return {
+                                                    ...layer,
+
+                                                    objectIds:
+                                                        layer.objectIds.filter(
+                                                            id =>
+                                                                id !==
+                                                                objectId
+                                                        ),
+
+                                                    updatedAt:
+                                                        nowIso()
+                                                };
+                                            }
+
+                                            if (
+                                                layer.id ===
+                                                targetLayer.id
+                                            ) {
+                                                return {
+                                                    ...layer,
+
+                                                    objectIds: [
+                                                        ...layer.objectIds,
+                                                        objectId
+                                                    ],
+
+                                                    updatedAt:
+                                                        nowIso()
+                                                };
+                                            }
+
+                                            return layer;
+                                        }
+                                    )
+                            })
+                        );
+
+                        return true;
+                    },
+
+                reorderObject:
+                    (
+                        objectId,
+                        targetIndex
+                    ) => {
+                        const state =
+                            get();
+
+                        const object =
+                            state.objects[
                                 objectId
                             ];
 
                         const layer =
-                            get().layers.find(
-                                item =>
-                                    item.id ===
-                                    object?.layerId
+                            getLayerById(
+                                state,
+                                object?.layerId
                             );
 
-                        if (layer) {
-                            get().reorderObject(
+                        if (
+                            !object ||
+                            !layer ||
+                            layer.locked
+                        ) {
+                            return false;
+                        }
+
+                        const currentIndex =
+                            layer.objectIds.indexOf(
+                                objectId
+                            );
+
+                        if (
+                            currentIndex <
+                            0
+                        ) {
+                            return false;
+                        }
+
+                        commitContentChange(
+                            "Reorder object",
+
+                            currentState => ({
+                                layers:
+                                    currentState.layers.map(
+                                        item =>
+                                            item.id ===
+                                            layer.id
+                                                ? {
+                                                    ...item,
+
+                                                    objectIds:
+                                                        moveArrayItem(
+                                                            item.objectIds,
+                                                            currentIndex,
+                                                            targetIndex
+                                                        ),
+
+                                                    updatedAt:
+                                                        nowIso()
+                                                }
+                                                : item
+                                    )
+                            })
+                        );
+
+                        return true;
+                    },
+
+                bringToFront:
+                    objectId => {
+                        const state =
+                            get();
+
+                        const object =
+                            state.objects[
+                                objectId
+                            ];
+
+                        const layer =
+                            getLayerById(
+                                state,
+                                object?.layerId
+                            );
+
+                        if (
+                            !layer
+                        ) {
+                            return false;
+                        }
+
+                        return get()
+                            .reorderObject(
                                 objectId,
-                                layer.objectIds
-                                    .length -
+                                layer.objectIds.length -
                                 1
                             );
-                        }
                     },
 
                 sendToBack:
                     objectId => {
-                        get().reorderObject(
-                            objectId,
-                            0
-                        );
+                        return get()
+                            .reorderObject(
+                                objectId,
+                                0
+                            );
                     },
 
                 /*=========================================
                 Selection Actions
                 =========================================*/
 
-                selectObjects: (
-                    objectIds,
-                    options = {}
-                ) => {
-                    const state =
-                        get();
+                selectObjects:
+                    (
+                        objectIds,
+                        options = {}
+                    ) => {
+                        const state =
+                            get();
 
-                    const validIds =
-                        uniqueIds(
-                            objectIds
-                        ).filter(
-                            objectId => {
-                                const object =
-                                    state.objects[
-                                        objectId
-                                    ];
+                        const validIds =
+                            uniqueIds(
+                                objectIds
+                            ).filter(
+                                objectId => {
+                                    const object =
+                                        state.objects[
+                                            objectId
+                                        ];
 
-                                const layer =
-                                    state.layers.find(
-                                        item =>
-                                            item.id ===
+                                    const layer =
+                                        getLayerById(
+                                            state,
                                             object?.layerId
+                                        );
+
+                                    return Boolean(
+                                        object &&
+                                        object.visible !==
+                                            false &&
+                                        layer &&
+                                        layer.visible !==
+                                            false
                                     );
+                                }
+                            );
 
-                                return Boolean(
-                                    object &&
-                                    object.visible !==
-                                        false &&
-                                    layer &&
-                                    layer.visible
-                                );
-                            }
-                        );
-
-                    set({
-                        selectedObjectIds:
-                            options.append
-                                ? uniqueIds([
-                                    ...state
-                                        .selectedObjectIds,
-                                    ...validIds
-                                ])
-                                : validIds
-                    });
-                },
+                        set({
+                            selectedObjectIds:
+                                options.append
+                                    ? uniqueIds([
+                                        ...state.selectedObjectIds,
+                                        ...validIds
+                                    ])
+                                    : validIds
+                        });
+                    },
 
                 toggleObjectSelection:
                     objectId => {
                         const state =
                             get();
+
+                        const object =
+                            state.objects[
+                                objectId
+                            ];
+
+                        if (
+                            !object
+                        ) {
+                            return;
+                        }
 
                         const selected =
                             state.selectedObjectIds.includes(
@@ -3041,12 +4326,13 @@ setEraserMode:
                         });
                     },
 
-                clearSelection: () => {
-                    set({
-                        selectedObjectIds:
-                            []
-                    });
-                },
+                clearSelection:
+                    () => {
+                        set({
+                            selectedObjectIds:
+                                []
+                        });
+                    },
 
                 selectAllOnActiveLayer:
                     () => {
@@ -3054,15 +4340,15 @@ setEraserMode:
                             get();
 
                         const layer =
-                            state.layers.find(
-                                item =>
-                                    item.id ===
-                                    state.activeLayerId
+                            getLayerById(
+                                state,
+                                state.activeLayerId
                             );
 
                         if (
                             !layer ||
-                            !layer.visible
+                            layer.visible ===
+                                false
                         ) {
                             return;
                         }
@@ -3083,408 +4369,456 @@ setEraserMode:
                 Clipboard Actions
                 =========================================*/
 
-                copySelection: () => {
-                    const state =
-                        get();
+                copySelection:
+                    () => {
+                        const state =
+                            get();
 
-                    const copied =
-                        state.selectedObjectIds
-                            .map(
-                                objectId =>
-                                    state.objects[
-                                        objectId
-                                    ]
-                            )
-                            .filter(Boolean)
-                            .map(
-                                object =>
-                                    cloneSerializable(
-                                        object
-                                    )
-                            );
+                        const copied =
+                            state.selectedObjectIds
+                                .map(
+                                    objectId =>
+                                        state.objects[
+                                            objectId
+                                        ]
+                                )
+                                .filter(
+                                    Boolean
+                                )
+                                .map(
+                                    object =>
+                                        cloneSerializable(
+                                            object
+                                        )
+                                );
 
-                    set({
-                        clipboard: {
-                            objects:
-                                copied,
-
-                            pasteCount:
-                                0
-                        }
-                    });
-
-                    return copied.length;
-                },
-
-                cutSelection: () => {
-                    const count =
-                        get()
-                            .copySelection();
-
-                    if (count > 0) {
-                        get().deleteObjects(
-                            get()
-                                .selectedObjectIds,
-                            "Cut objects"
-                        );
-                    }
-                },
-
-                pasteClipboard: () => {
-                    const state =
-                        get();
-
-                    if (
-                        state.clipboard
-                            .objects
-                            .length === 0
-                    ) {
-                        return [];
-                    }
-
-                    const pasteNumber =
-                        state.clipboard
-                            .pasteCount +
-                        1;
-
-                    const offset =
-                        pasteNumber * 18;
-
-                    const copies =
-                        state.clipboard
-                            .objects
-                            .map(
-                                sourceObject => {
-                                    const preferredLayer =
-                                        state.layers.find(
-                                            layer =>
-                                                layer.id ===
-                                                sourceObject
-                                                    .layerId &&
-                                                !layer.locked
-                                        );
-
-                                    const activeLayer =
-                                        state.layers.find(
-                                            layer =>
-                                                layer.id ===
-                                                state.activeLayerId &&
-                                                !layer.locked
-                                        );
-
-                                    const targetLayer =
-                                        preferredLayer ||
-                                        activeLayer;
-
-                                    if (
-                                        !targetLayer
-                                    ) {
-                                        return null;
-                                    }
-
-                                    const translated =
-                                        translateObject(
-                                            sourceObject,
-                                            offset,
-                                            offset
-                                        );
-
-                                    return {
-                                        ...translated,
-
-                                        id:
-                                            createId(
-                                                sourceObject.type
-                                            ),
-
-                                        layerId:
-                                            targetLayer.id,
-
-                                        createdAt:
-                                            nowIso(),
-
-                                        updatedAt:
-                                            nowIso()
-                                    };
-                                }
-                            )
-                            .filter(Boolean);
-
-                    const ids =
-                        get().addObjects(
-                            copies,
-                            {
-                                label:
-                                    "Paste objects",
-
-                                select:
-                                    true
-                            }
-                        );
-
-                    set(
-                        currentState => ({
+                        set({
                             clipboard: {
-                                ...currentState.clipboard,
+                                objects:
+                                    copied,
 
                                 pasteCount:
-                                    pasteNumber
+                                    0
                             }
-                        })
-                    );
+                        });
 
-                    return ids;
-                },
+                        return copied.length;
+                    },
+
+                cutSelection:
+                    () => {
+                        const selectedIds = [
+                            ...get()
+                                .selectedObjectIds
+                        ];
+
+                        const count =
+                            get()
+                                .copySelection();
+
+                        if (
+                            count >
+                            0
+                        ) {
+                            get()
+                                .deleteObjects(
+                                    selectedIds,
+                                    "Cut objects"
+                                );
+                        }
+
+                        return count;
+                    },
+
+                pasteClipboard:
+                    () => {
+                        const state =
+                            get();
+
+                        if (
+                            state.clipboard.objects.length ===
+                            0
+                        ) {
+                            return [];
+                        }
+
+                        const pasteNumber =
+                            state.clipboard.pasteCount +
+                            1;
+
+                        const offset =
+                            pasteNumber *
+                            18;
+
+                        const copies =
+                            state.clipboard.objects
+                                .map(
+                                    sourceObject => {
+                                        const preferredLayer =
+                                            state.layers.find(
+                                                layer =>
+                                                    layer.id ===
+                                                    sourceObject.layerId &&
+                                                    !layer.locked &&
+                                                    layer.visible !==
+                                                        false
+                                            );
+
+                                        const activeLayer =
+                                            state.layers.find(
+                                                layer =>
+                                                    layer.id ===
+                                                    state.activeLayerId &&
+                                                    !layer.locked &&
+                                                    layer.visible !==
+                                                        false
+                                            );
+
+                                        const targetLayer =
+                                            preferredLayer ||
+                                            activeLayer;
+
+                                        if (
+                                            !targetLayer
+                                        ) {
+                                            return null;
+                                        }
+
+                                        const translated =
+                                            translateObject(
+                                                cloneSerializable(
+                                                    sourceObject
+                                                ),
+                                                offset,
+                                                offset
+                                            );
+
+                                        return {
+                                            ...translated,
+
+                                            id:
+                                                createId(
+                                                    sourceObject.type
+                                                ),
+
+                                            layerId:
+                                                targetLayer.id,
+
+                                            createdAt:
+                                                nowIso(),
+
+                                            updatedAt:
+                                                nowIso()
+                                        };
+                                    }
+                                )
+                                .filter(
+                                    Boolean
+                                );
+
+                        const ids =
+                            get()
+                                .addObjects(
+                                    copies,
+
+                                    {
+                                        label:
+                                            "Paste objects",
+
+                                        select:
+                                            true
+                                    }
+                                );
+
+                        set(
+                            currentState => ({
+                                clipboard: {
+                                    ...currentState.clipboard,
+
+                                    pasteCount:
+                                        pasteNumber
+                                }
+                            })
+                        );
+
+                        return ids;
+                    },
 
                 /*=========================================
                 Layer Actions
                 =========================================*/
 
                 setActiveLayer:
-    (
-        layerId,
-        options = {}
-    ) => {
-        const state =
-            get();
+                    (
+                        layerId,
+                        options = {}
+                    ) => {
+                        const state =
+                            get();
 
-        if (
-            !state.layers.some(
-                layer =>
-                    layer.id ===
-                    layerId
-            )
-        ) {
-            return;
-        }
-
-        set({
-            activeLayerId:
-                layerId,
-
-            selectedObjectIds:
-                options.clearSelection ===
-                true
-                    ? []
-                    : state
-                        .selectedObjectIds
-        });
-    },
-
-                addLayer: (
-                    options = {}
-                ) => {
-                    const state =
-                        get();
-
-                    const activeIndex =
-                        state.layers.findIndex(
-                            layer =>
-                                layer.id ===
-                                state.activeLayerId
-                        );
-
-                    const insertIndex =
-                        Number.isFinite(
-                            Number(
-                                options.index
+                        if (
+                            !state.layers.some(
+                                layer =>
+                                    layer.id ===
+                                    layerId
                             )
-                        )
-                            ? clamp(
-                                options.index,
-                                0,
-                                state.layers
-                                    .length
-                            )
-                            : activeIndex >= 0
-                                ? activeIndex +
-                                1
-                                : state.layers
-                                    .length;
+                        ) {
+                            return false;
+                        }
 
-                    const layer =
-                        createDefaultLayer(
-                            {
-                                ...options,
+                        set({
+                            activeLayerId:
+                                layerId,
 
-                                name:
-                                    options.name ||
-                                    `Layer ${
-                                        state.layers.length +
-                                        1
-                                    }`
-                            },
-                            state.layers.length
-                        );
+                            selectedObjectIds:
+                                options.clearSelection ===
+                                true
+                                    ? []
+                                    : state.selectedObjectIds
+                        });
 
-                    commitContentChange(
-                        "Add layer",
-                        currentState => {
-                            const nextLayers = [
-                                ...currentState.layers
-                            ];
+                        return true;
+                    },
 
-                            nextLayers.splice(
-                                insertIndex,
-                                0,
-                                layer
+                addLayer:
+                    (
+                        options = {}
+                    ) => {
+                        const state =
+                            get();
+
+                        const activeIndex =
+                            state.layers.findIndex(
+                                layer =>
+                                    layer.id ===
+                                    state.activeLayerId
                             );
 
-                            return {
-                                layers:
-                                    nextLayers,
+                        const insertIndex =
+                            Number.isFinite(
+                                Number(
+                                    options.index
+                                )
+                            )
+                                ? clamp(
+                                    options.index,
+                                    0,
+                                    state.layers.length
+                                )
+                                : activeIndex >=
+                                    0
+                                    ? activeIndex +
+                                        1
+                                    : state.layers.length;
 
-                                activeLayerId:
-                                    layer.id,
+                        const layer =
+                            createDefaultLayer(
+                                {
+                                    ...options,
 
-                                selectedObjectIds:
-                                    []
-                            };
-                        }
-                    );
+                                    name:
+                                        options.name ||
+                                        `Layer ${state.layers.length + 1}`
+                                },
 
-                    return layer.id;
-                },
+                                state.layers.length
+                            );
 
-                updateLayer: (
-                    layerId,
-                    updates,
-                    label =
-                        "Update layer"
-                ) => {
-                    if (
-                        !isPlainObject(
-                            updates
-                        )
-                    ) {
-                        return;
-                    }
+                        commitContentChange(
+                            "Add layer",
 
-                    const state =
-                        get();
+                            currentState => {
+                                const nextLayers = [
+                                    ...currentState.layers
+                                ];
 
-                    const layer =
-                        state.layers.find(
-                            item =>
-                                item.id ===
-                                layerId
+                                nextLayers.splice(
+                                    insertIndex,
+                                    0,
+                                    layer
+                                );
+
+                                return {
+                                    layers:
+                                        nextLayers,
+
+                                    activeLayerId:
+                                        layer.id,
+
+                                    selectedObjectIds:
+                                        []
+                                };
+                            }
                         );
 
-                    if (!layer) {
-                        return;
-                    }
+                        return layer.id;
+                    },
 
-                    commitContentChange(
-                        label,
-                        currentState => ({
-                            layers:
-                                currentState.layers.map(
-                                    item =>
-                                        item.id ===
-                                        layerId
-                                            ? {
-                                                ...item,
-                                                ...updates,
-
-                                                id:
-                                                    item.id,
-
-                                                opacity:
-                                                    clamp(
-                                                        updates.opacity ??
-                                                        item.opacity,
-                                                        0,
-                                                        1
-                                                    ),
-
-                                                blendMode:
-                                                    BLEND_MODES.includes(
-                                                        updates.blendMode
-                                                    )
-                                                        ? updates.blendMode
-                                                        : item.blendMode,
-
-                                                objectIds:
-                                                    item.objectIds,
-
-                                                updatedAt:
-                                                    nowIso()
-                                            }
-                                            : item
-                                )
-                        })
-                    );
-                },
-
-                renameLayer: (
-                    layerId,
-                    name
-                ) => {
-                    if (
-                        typeof name !==
-                            "string" ||
-                        !name.trim()
-                    ) {
-                        return;
-                    }
-
-                    get().updateLayer(
+                updateLayer:
+                    (
                         layerId,
-                        {
-                            name:
-                                name.trim()
-                        },
-                        "Rename layer"
-                    );
-                },
+                        updates,
+                        label =
+                            "Update layer"
+                    ) => {
+                        if (
+                            !isPlainObject(
+                                updates
+                            )
+                        ) {
+                            return false;
+                        }
+
+                        const state =
+                            get();
+
+                        const layer =
+                            getLayerById(
+                                state,
+                                layerId
+                            );
+
+                        if (
+                            !layer
+                        ) {
+                            return false;
+                        }
+
+                        commitContentChange(
+                            label,
+
+                            currentState => ({
+                                layers:
+                                    currentState.layers.map(
+                                        item =>
+                                            item.id ===
+                                            layerId
+                                                ? {
+                                                    ...item,
+                                                    ...updates,
+
+                                                    id:
+                                                        item.id,
+
+                                                    opacity:
+                                                        clamp(
+                                                            updates.opacity ??
+                                                            item.opacity,
+                                                            0,
+                                                            1
+                                                        ),
+
+                                                    blendMode:
+                                                        BLEND_MODES.includes(
+                                                            updates.blendMode
+                                                        )
+                                                            ? updates.blendMode
+                                                            : item.blendMode,
+
+                                                    objectIds:
+                                                        item.objectIds,
+
+                                                    updatedAt:
+                                                        nowIso()
+                                                }
+                                                : item
+                                    )
+                            })
+                        );
+
+                        return true;
+                    },
+
+                renameLayer:
+                    (
+                        layerId,
+                        name
+                    ) => {
+                        if (
+                            typeof name !==
+                                "string" ||
+                            !name.trim()
+                        ) {
+                            return false;
+                        }
+
+                        return get()
+                            .updateLayer(
+                                layerId,
+
+                                {
+                                    name:
+                                        name.trim()
+                                },
+
+                                "Rename layer"
+                            );
+                    },
 
                 toggleLayerVisibility:
                     layerId => {
                         const layer =
-                            get().layers.find(
-                                item =>
-                                    item.id ===
-                                    layerId
-                            );
+                            get()
+                                .layers
+                                .find(
+                                    item =>
+                                        item.id ===
+                                        layerId
+                                );
 
-                        if (!layer) {
-                            return;
+                        if (
+                            !layer
+                        ) {
+                            return false;
                         }
 
-                        get().updateLayer(
-                            layerId,
-                            {
-                                visible:
-                                    !layer.visible
-                            },
-                            "Toggle layer visibility"
-                        );
+                        return get()
+                            .updateLayer(
+                                layerId,
+
+                                {
+                                    visible:
+                                        !layer.visible
+                                },
+
+                                "Toggle layer visibility"
+                            );
                     },
 
                 toggleLayerLock:
                     layerId => {
                         const layer =
-                            get().layers.find(
-                                item =>
-                                    item.id ===
-                                    layerId
-                            );
-
-                        if (!layer) {
-                            return;
-                        }
-
-                        get().updateLayer(
-                            layerId,
-                            {
-                                locked:
-                                    !layer.locked
-                            },
-                            "Toggle layer lock"
-                        );
+                            get()
+                                .layers
+                                .find(
+                                    item =>
+                                        item.id ===
+                                        layerId
+                                );
 
                         if (
-                            !layer.locked
+                            !layer
+                        ) {
+                            return false;
+                        }
+
+                        const nextLocked =
+                            !layer.locked;
+
+                        get()
+                            .updateLayer(
+                                layerId,
+
+                                {
+                                    locked:
+                                        nextLocked
+                                },
+
+                                "Toggle layer lock"
+                            );
+
+                        if (
+                            nextLocked
                         ) {
                             set(
                                 state => ({
@@ -3499,74 +4833,89 @@ setEraserMode:
                                 })
                             );
                         }
+
+                        return true;
                     },
 
-                setLayerOpacity: (
-                    layerId,
-                    opacity
-                ) => {
-                    get().updateLayer(
+                setLayerOpacity:
+                    (
                         layerId,
-                        {
-                            opacity
-                        },
-                        "Change layer opacity"
-                    );
-                },
+                        opacity
+                    ) => {
+                        return get()
+                            .updateLayer(
+                                layerId,
 
-                setLayerBlendMode: (
-                    layerId,
-                    blendMode
-                ) => {
-                    if (
-                        !BLEND_MODES.includes(
-                            blendMode
-                        )
-                    ) {
-                        return;
-                    }
+                                {
+                                    opacity
+                                },
 
-                    get().updateLayer(
+                                "Change layer opacity"
+                            );
+                    },
+
+                setLayerBlendMode:
+                    (
                         layerId,
-                        {
-                            blendMode
-                        },
-                        "Change layer blend mode"
-                    );
-                },
+                        blendMode
+                    ) => {
+                        if (
+                            !BLEND_MODES.includes(
+                                blendMode
+                            )
+                        ) {
+                            return false;
+                        }
 
-                moveLayer: (
-                    layerId,
-                    targetIndex
-                ) => {
-                    const state =
-                        get();
+                        return get()
+                            .updateLayer(
+                                layerId,
 
-                    const currentIndex =
-                        state.layers.findIndex(
-                            layer =>
-                                layer.id ===
-                                layerId
+                                {
+                                    blendMode
+                                },
+
+                                "Change layer blend mode"
+                            );
+                    },
+
+                moveLayer:
+                    (
+                        layerId,
+                        targetIndex
+                    ) => {
+                        const state =
+                            get();
+
+                        const currentIndex =
+                            state.layers.findIndex(
+                                layer =>
+                                    layer.id ===
+                                    layerId
+                            );
+
+                        if (
+                            currentIndex <
+                            0
+                        ) {
+                            return false;
+                        }
+
+                        commitContentChange(
+                            "Reorder layer",
+
+                            currentState => ({
+                                layers:
+                                    moveArrayItem(
+                                        currentState.layers,
+                                        currentIndex,
+                                        targetIndex
+                                    )
+                            })
                         );
 
-                    if (
-                        currentIndex < 0
-                    ) {
-                        return;
-                    }
-
-                    commitContentChange(
-                        "Reorder layer",
-                        currentState => ({
-                            layers:
-                                moveArrayItem(
-                                    currentState.layers,
-                                    currentIndex,
-                                    targetIndex
-                                )
-                        })
-                    );
-                },
+                        return true;
+                    },
 
                 duplicateLayer:
                     layerId => {
@@ -3574,18 +4923,21 @@ setEraserMode:
                             get();
 
                         const sourceLayer =
-                            state.layers.find(
-                                layer =>
-                                    layer.id ===
-                                    layerId
+                            getLayerById(
+                                state,
+                                layerId
                             );
 
-                        if (!sourceLayer) {
+                        if (
+                            !sourceLayer
+                        ) {
                             return null;
                         }
 
                         const newLayerId =
-                            createId("layer");
+                            createId(
+                                "layer"
+                            );
 
                         const objectCopies =
                             sourceLayer.objectIds
@@ -3595,7 +4947,9 @@ setEraserMode:
                                             objectId
                                         ]
                                 )
-                                .filter(Boolean)
+                                .filter(
+                                    Boolean
+                                )
                                 .map(
                                     object => ({
                                         ...cloneSerializable(
@@ -3649,6 +5003,7 @@ setEraserMode:
 
                         commitContentChange(
                             "Duplicate layer",
+
                             currentState => {
                                 const nextLayers = [
                                     ...currentState.layers
@@ -3669,7 +5024,8 @@ setEraserMode:
                                     object => {
                                         nextObjects[
                                             object.id
-                                        ] = object;
+                                        ] =
+                                            object;
                                     }
                                 );
 
@@ -3692,164 +5048,174 @@ setEraserMode:
                         return newLayerId;
                     },
 
-                deleteLayer: (
-                    layerId,
-                    options = {}
-                ) => {
-                    const state =
-                        get();
+                deleteLayer:
+                    (
+                        layerId,
+                        options = {}
+                    ) => {
+                        const state =
+                            get();
 
-                    if (
-                        state.layers.length <=
-                        1
-                    ) {
-                        return false;
-                    }
+                        if (
+                            state.layers.length <=
+                            1
+                        ) {
+                            return false;
+                        }
 
-                    const layerIndex =
-                        state.layers.findIndex(
-                            layer =>
-                                layer.id ===
-                                layerId
-                        );
+                        const layerIndex =
+                            state.layers.findIndex(
+                                layer =>
+                                    layer.id ===
+                                    layerId
+                            );
 
-                    if (
-                        layerIndex < 0
-                    ) {
-                        return false;
-                    }
+                        if (
+                            layerIndex <
+                            0
+                        ) {
+                            return false;
+                        }
 
-                    const layer =
-                        state.layers[
-                            layerIndex
-                        ];
-
-                    const fallbackLayer =
-                        state.layers[
-                            layerIndex - 1
-                        ] ||
-                        state.layers[
-                            layerIndex + 1
-                        ];
-
-                    if (!fallbackLayer) {
-                        return false;
-                    }
-
-                    const mode =
-                        options.mode ===
-                            "move"
-                            ? "move"
-                            : "delete";
-
-                    commitContentChange(
-                        "Delete layer",
-                        currentState => {
-                            const nextObjects = {
-                                ...currentState.objects
-                            };
-
-                            let nextFallbackIds = [
-                                ...fallbackLayer
-                                    .objectIds
+                        const layer =
+                            state.layers[
+                                layerIndex
                             ];
 
-                            if (
-                                mode === "move"
-                            ) {
-                                layer.objectIds.forEach(
-                                    objectId => {
-                                        const object =
+                        const fallbackLayer =
+                            state.layers[
+                                layerIndex -
+                                1
+                            ] ||
+                            state.layers[
+                                layerIndex +
+                                1
+                            ];
+
+                        if (
+                            !fallbackLayer
+                        ) {
+                            return false;
+                        }
+
+                        const mode =
+                            options.mode ===
+                            "move"
+                                ? "move"
+                                : "delete";
+
+                        commitContentChange(
+                            "Delete layer",
+
+                            currentState => {
+                                const nextObjects = {
+                                    ...currentState.objects
+                                };
+
+                                let nextFallbackIds = [
+                                    ...fallbackLayer.objectIds
+                                ];
+
+                                if (
+                                    mode ===
+                                    "move"
+                                ) {
+                                    layer.objectIds.forEach(
+                                        objectId => {
+                                            const object =
+                                                nextObjects[
+                                                    objectId
+                                                ];
+
+                                            if (
+                                                !object
+                                            ) {
+                                                return;
+                                            }
+
                                             nextObjects[
                                                 objectId
-                                            ];
+                                            ] = {
+                                                ...object,
 
-                                        if (!object) {
-                                            return;
+                                                layerId:
+                                                    fallbackLayer.id,
+
+                                                updatedAt:
+                                                    nowIso()
+                                            };
+
+                                            nextFallbackIds.push(
+                                                objectId
+                                            );
                                         }
+                                    );
+                                } else {
+                                    layer.objectIds.forEach(
+                                        objectId => {
+                                            delete nextObjects[
+                                                objectId
+                                            ];
+                                        }
+                                    );
+                                }
 
-                                        nextObjects[
-                                            objectId
-                                        ] = {
-                                            ...object,
+                                const removedIds =
+                                    new Set(
+                                        layer.objectIds
+                                    );
 
-                                            layerId:
-                                                fallbackLayer.id,
-
-                                            updatedAt:
-                                                nowIso()
-                                        };
-
-                                        nextFallbackIds.push(
-                                            objectId
-                                        );
-                                    }
-                                );
-                            } else {
-                                layer.objectIds.forEach(
-                                    objectId => {
-                                        delete nextObjects[
-                                            objectId
-                                        ];
-                                    }
-                                );
-                            }
-
-                            const removedIds =
-                                new Set(
-                                    layer.objectIds
-                                );
-
-                            return {
-                                layers:
-                                    currentState.layers
-                                        .filter(
-                                            item =>
-                                                item.id !==
-                                                layerId
-                                        )
-                                        .map(
-                                            item =>
-                                                item.id ===
-                                                fallbackLayer.id
-                                                    ? {
-                                                        ...item,
-
-                                                        objectIds:
-                                                            nextFallbackIds
-                                                    }
-                                                    : item
-                                        ),
-
-                                objects:
-                                    nextObjects,
-
-                                activeLayerId:
-                                    currentState
-                                        .activeLayerId ===
-                                    layerId
-                                        ? fallbackLayer.id
-                                        : currentState
-                                            .activeLayerId,
-
-                                selectedObjectIds:
-                                    mode === "delete"
-                                        ? currentState
-                                            .selectedObjectIds
+                                return {
+                                    layers:
+                                        currentState.layers
                                             .filter(
+                                                item =>
+                                                    item.id !==
+                                                    layerId
+                                            )
+                                            .map(
+                                                item =>
+                                                    item.id ===
+                                                    fallbackLayer.id
+                                                        ? {
+                                                            ...item,
+
+                                                            objectIds:
+                                                                uniqueIds(
+                                                                    nextFallbackIds
+                                                                ),
+
+                                                            updatedAt:
+                                                                nowIso()
+                                                        }
+                                                        : item
+                                            ),
+
+                                    objects:
+                                        nextObjects,
+
+                                    activeLayerId:
+                                        currentState.activeLayerId ===
+                                        layerId
+                                            ? fallbackLayer.id
+                                            : currentState.activeLayerId,
+
+                                    selectedObjectIds:
+                                        mode ===
+                                        "delete"
+                                            ? currentState.selectedObjectIds.filter(
                                                 objectId =>
                                                     !removedIds.has(
                                                         objectId
                                                     )
                                             )
-                                        : currentState
-                                            .selectedObjectIds
-                            };
-                        }
-                    );
+                                            : currentState.selectedObjectIds
+                                };
+                            }
+                        );
 
-                    return true;
-                },
+                        return true;
+                    },
 
                 /*=========================================
                 Viewport Actions
@@ -3874,8 +5240,7 @@ setEraserMode:
                                     zoom:
                                         clamp(
                                             updates.zoom ??
-                                            state.viewport
-                                                .zoom,
+                                            state.viewport.zoom,
                                             MIN_ZOOM,
                                             MAX_ZOOM
                                         ),
@@ -3883,208 +5248,263 @@ setEraserMode:
                                     x:
                                         numberOr(
                                             updates.x,
-                                            state.viewport
-                                                .x
+                                            state.viewport.x
                                         ),
 
                                     y:
                                         numberOr(
                                             updates.y,
-                                            state.viewport
-                                                .y
+                                            state.viewport.y
                                         )
                                 }
                             })
                         );
                     },
 
-                setZoom: (
-                    zoom,
-                    anchor = null
-                ) => {
-                    const state =
-                        get();
+                setZoom:
+                    (
+                        zoom,
+                        anchor = null
+                    ) => {
+                        const state =
+                            get();
 
-                    const previousZoom =
-                        state.viewport.zoom;
+                        const previousZoom =
+                            state.viewport.zoom;
 
-                    const nextZoom =
-                        clamp(
-                            zoom,
-                            MIN_ZOOM,
-                            MAX_ZOOM
-                        );
+                        const nextZoom =
+                            clamp(
+                                zoom,
+                                MIN_ZOOM,
+                                MAX_ZOOM
+                            );
 
-                    if (
-                        !anchor ||
-                        !Number.isFinite(
-                            Number(anchor.x)
-                        ) ||
-                        !Number.isFinite(
-                            Number(anchor.y)
-                        )
-                    ) {
+                        if (
+                            !anchor ||
+                            !Number.isFinite(
+                                Number(
+                                    anchor.x
+                                )
+                            ) ||
+                            !Number.isFinite(
+                                Number(
+                                    anchor.y
+                                )
+                            )
+                        ) {
+                            set({
+                                viewport: {
+                                    ...state.viewport,
+
+                                    zoom:
+                                        nextZoom
+                                }
+                            });
+
+                            return;
+                        }
+
+                        const documentPoint = {
+                            x:
+                                (
+                                    Number(
+                                        anchor.x
+                                    ) -
+                                    state.viewport.x
+                                ) /
+                                previousZoom,
+
+                            y:
+                                (
+                                    Number(
+                                        anchor.y
+                                    ) -
+                                    state.viewport.y
+                                ) /
+                                previousZoom
+                        };
+
                         set({
                             viewport: {
-                                ...state.viewport,
-
                                 zoom:
+                                    nextZoom,
+
+                                x:
+                                    Number(
+                                        anchor.x
+                                    ) -
+                                    documentPoint.x *
+                                    nextZoom,
+
+                                y:
+                                    Number(
+                                        anchor.y
+                                    ) -
+                                    documentPoint.y *
                                     nextZoom
                             }
                         });
+                    },
 
-                        return;
-                    }
+                zoomIn:
+                    (
+                        anchor = null
+                    ) => {
+                        get()
+                            .setZoom(
+                                get()
+                                    .viewport
+                                    .zoom *
+                                1.15,
 
-                    const documentPoint = {
-                        x:
-                            (
-                                Number(anchor.x) -
-                                state.viewport.x
-                            ) /
-                            previousZoom,
+                                anchor
+                            );
+                    },
 
-                        y:
-                            (
-                                Number(anchor.y) -
-                                state.viewport.y
-                            ) /
-                            previousZoom
-                    };
+                zoomOut:
+                    (
+                        anchor = null
+                    ) => {
+                        get()
+                            .setZoom(
+                                get()
+                                    .viewport
+                                    .zoom /
+                                1.15,
 
-                    set({
-                        viewport: {
-                            zoom:
-                                nextZoom,
+                                anchor
+                            );
+                    },
 
-                            x:
-                                Number(anchor.x) -
-                                documentPoint.x *
-                                nextZoom,
+                panBy:
+                    (
+                        deltaX,
+                        deltaY
+                    ) => {
+                        set(
+                            state => ({
+                                viewport: {
+                                    ...state.viewport,
 
-                            y:
-                                Number(anchor.y) -
-                                documentPoint.y *
-                                nextZoom
-                        }
-                    });
-                },
+                                    x:
+                                        state.viewport.x +
+                                        numberOr(
+                                            deltaX,
+                                            0
+                                        ),
 
-                zoomIn: (
-                    anchor = null
-                ) => {
-                    get().setZoom(
-                        get().viewport.zoom *
-                        1.15,
-                        anchor
-                    );
-                },
+                                    y:
+                                        state.viewport.y +
+                                        numberOr(
+                                            deltaY,
+                                            0
+                                        )
+                                }
+                            })
+                        );
+                    },
 
-                zoomOut: (
-                    anchor = null
-                ) => {
-                    get().setZoom(
-                        get().viewport.zoom /
-                        1.15,
-                        anchor
-                    );
-                },
+                resetViewport:
+                    () => {
+                        set({
+                            viewport:
+                                createDefaultViewport()
+                        });
+                    },
 
-                panBy: (
-                    deltaX,
-                    deltaY
-                ) => {
-                    set(
-                        state => ({
+                fitDocumentToViewport:
+                    (
+                        viewportWidth,
+                        viewportHeight,
+                        padding = 64
+                    ) => {
+                        const state =
+                            get();
+
+                        const safeViewportWidth =
+                            Math.max(
+                                1,
+
+                                numberOr(
+                                    viewportWidth,
+                                    1
+                                )
+                            );
+
+                        const safeViewportHeight =
+                            Math.max(
+                                1,
+
+                                numberOr(
+                                    viewportHeight,
+                                    1
+                                )
+                            );
+
+                        const safePadding =
+                            Math.max(
+                                0,
+
+                                numberOr(
+                                    padding,
+                                    64
+                                )
+                            );
+
+                        const availableWidth =
+                            Math.max(
+                                1,
+
+                                safeViewportWidth -
+                                safePadding *
+                                2
+                            );
+
+                        const availableHeight =
+                            Math.max(
+                                1,
+
+                                safeViewportHeight -
+                                safePadding *
+                                2
+                            );
+
+                        const zoom =
+                            clamp(
+                                Math.min(
+                                    availableWidth /
+                                    state.document.width,
+
+                                    availableHeight /
+                                    state.document.height
+                                ),
+
+                                MIN_ZOOM,
+                                MAX_ZOOM
+                            );
+
+                        set({
                             viewport: {
-                                ...state.viewport,
+                                zoom,
 
                                 x:
-                                    state.viewport.x +
-                                    numberOr(
-                                        deltaX
-                                    ),
+                                    (
+                                        safeViewportWidth -
+                                        state.document.width *
+                                        zoom
+                                    ) /
+                                    2,
 
                                 y:
-                                    state.viewport.y +
-                                    numberOr(
-                                        deltaY
-                                    )
+                                    (
+                                        safeViewportHeight -
+                                        state.document.height *
+                                        zoom
+                                    ) /
+                                    2
                             }
-                        })
-                    );
-                },
-
-                resetViewport: () => {
-                    set({
-                        viewport:
-                            createDefaultViewport()
-                    });
-                },
-
-                fitDocumentToViewport: (
-                    viewportWidth,
-                    viewportHeight,
-                    padding = 64
-                ) => {
-                    const state =
-                        get();
-
-                    const availableWidth =
-                        Math.max(
-                            1,
-                            numberOr(
-                                viewportWidth
-                            ) -
-                            padding * 2
-                        );
-
-                    const availableHeight =
-                        Math.max(
-                            1,
-                            numberOr(
-                                viewportHeight
-                            ) -
-                            padding * 2
-                        );
-
-                    const zoom =
-                        clamp(
-                            Math.min(
-                                availableWidth /
-                                state.document
-                                    .width,
-
-                                availableHeight /
-                                state.document
-                                    .height
-                            ),
-                            MIN_ZOOM,
-                            MAX_ZOOM
-                        );
-
-                    set({
-                        viewport: {
-                            zoom,
-
-                            x:
-                                (
-                                    viewportWidth -
-                                    state.document
-                                        .width *
-                                    zoom
-                                ) / 2,
-
-                            y:
-                                (
-                                    viewportHeight -
-                                    state.document
-                                        .height *
-                                    zoom
-                                ) / 2
-                        }
-                    });
-                },
+                        });
+                    },
 
                 /*=========================================
                 UI Actions
@@ -4109,10 +5529,10 @@ setEraserMode:
                                     gridSize:
                                         Math.max(
                                             1,
+
                                             numberOr(
                                                 updates.gridSize,
-                                                state.ui
-                                                    .gridSize
+                                                state.ui.gridSize
                                             )
                                         )
                                 }
@@ -4120,19 +5540,19 @@ setEraserMode:
                         );
                     },
 
-                toggleGrid: () => {
-                    set(
-                        state => ({
-                            ui: {
-                                ...state.ui,
+                toggleGrid:
+                    () => {
+                        set(
+                            state => ({
+                                ui: {
+                                    ...state.ui,
 
-                                showGrid:
-                                    !state.ui
-                                        .showGrid
-                            }
-                        })
-                    );
-                },
+                                    showGrid:
+                                        !state.ui.showGrid
+                                }
+                            })
+                        );
+                    },
 
                 toggleSnapToGrid:
                     () => {
@@ -4142,8 +5562,7 @@ setEraserMode:
                                     ...state.ui,
 
                                     snapToGrid:
-                                        !state.ui
-                                            .snapToGrid
+                                        !state.ui.snapToGrid
                                 }
                             })
                         );
@@ -4158,8 +5577,7 @@ setEraserMode:
                         set(
                             state => {
                                 if (
-                                    state.history
-                                        .transaction
+                                    state.history.transaction
                                 ) {
                                     return {};
                                 }
@@ -4200,10 +5618,11 @@ setEraserMode:
                         set(
                             state => {
                                 const transaction =
-                                    state.history
-                                        .transaction;
+                                    state.history.transaction;
 
-                                if (!transaction) {
+                                if (
+                                    !transaction
+                                ) {
                                     return {};
                                 }
 
@@ -4232,17 +5651,14 @@ setEraserMode:
                                         ...state.history,
 
                                         past: [
-                                            ...state
-                                                .history
-                                                .past,
+                                            ...state.history.past,
                                             entry
                                         ].slice(
-                                            -state
-                                                .history
-                                                .limit
+                                            -state.history.limit
                                         ),
 
-                                        future: [],
+                                        future:
+                                            [],
 
                                         transaction:
                                             null
@@ -4257,18 +5673,18 @@ setEraserMode:
                         set(
                             state => {
                                 const transaction =
-                                    state.history
-                                        .transaction;
+                                    state.history.transaction;
 
-                                if (!transaction) {
+                                if (
+                                    !transaction
+                                ) {
                                     return {};
                                 }
 
                                 return {
                                     ...restoreSnapshot(
                                         state,
-                                        transaction
-                                            .snapshot
+                                        transaction.snapshot
                                     ),
 
                                     revision:
@@ -4286,19 +5702,70 @@ setEraserMode:
                         );
                     },
 
-                undo: () => {
-                    set(
-                        state => {
-                            if (
-                                state.history
-                                    .transaction
-                            ) {
+                undo:
+                    () => {
+                        set(
+                            state => {
+                                if (
+                                    state.history.transaction
+                                ) {
+                                    return {
+                                        ...restoreSnapshot(
+                                            state,
+                                            state.history
+                                                .transaction
+                                                .snapshot
+                                        ),
+
+                                        revision:
+                                            state.revision +
+                                            1,
+
+                                        history: {
+                                            ...state.history,
+
+                                            transaction:
+                                                null
+                                        },
+
+                                        persistence: {
+                                            ...state.persistence,
+
+                                            dirty:
+                                                true
+                                        }
+                                    };
+                                }
+
+                                const past =
+                                    state.history.past;
+
+                                if (
+                                    past.length ===
+                                    0
+                                ) {
+                                    return {};
+                                }
+
+                                const entry =
+                                    past[
+                                        past.length -
+                                        1
+                                    ];
+
+                                const currentEntry =
+                                    createHistoryEntry(
+                                        entry.label,
+
+                                        createHistorySnapshot(
+                                            state
+                                        )
+                                    );
+
                                 return {
                                     ...restoreSnapshot(
                                         state,
-                                        state.history
-                                            .transaction
-                                            .snapshot
+                                        entry.snapshot
                                     ),
 
                                     revision:
@@ -4308,181 +5775,134 @@ setEraserMode:
                                     history: {
                                         ...state.history,
 
+                                        past:
+                                            past.slice(
+                                                0,
+                                                -1
+                                            ),
+
+                                        future: [
+                                            ...state.history.future,
+                                            currentEntry
+                                        ].slice(
+                                            -state.history.limit
+                                        ),
+
                                         transaction:
                                             null
+                                    },
+
+                                    persistence: {
+                                        ...state.persistence,
+
+                                        dirty:
+                                            true
                                     }
                                 };
                             }
+                        );
+                    },
 
-                            const past =
-                                state.history
-                                    .past;
+                redo:
+                    () => {
+                        set(
+                            state => {
+                                const future =
+                                    state.history.future;
 
-                            if (
-                                past.length ===
-                                0
-                            ) {
-                                return {};
+                                if (
+                                    future.length ===
+                                    0 ||
+                                    state.history.transaction
+                                ) {
+                                    return {};
+                                }
+
+                                const entry =
+                                    future[
+                                        future.length -
+                                        1
+                                    ];
+
+                                const currentEntry =
+                                    createHistoryEntry(
+                                        entry.label,
+
+                                        createHistorySnapshot(
+                                            state
+                                        )
+                                    );
+
+                                return {
+                                    ...restoreSnapshot(
+                                        state,
+                                        entry.snapshot
+                                    ),
+
+                                    revision:
+                                        state.revision +
+                                        1,
+
+                                    history: {
+                                        ...state.history,
+
+                                        past: [
+                                            ...state.history.past,
+                                            currentEntry
+                                        ].slice(
+                                            -state.history.limit
+                                        ),
+
+                                        future:
+                                            future.slice(
+                                                0,
+                                                -1
+                                            ),
+
+                                        transaction:
+                                            null
+                                    },
+
+                                    persistence: {
+                                        ...state.persistence,
+
+                                        dirty:
+                                            true
+                                    }
+                                };
                             }
+                        );
+                    },
 
-                            const entry =
-                                past[
-                                    past.length -
-                                    1
-                                ];
-
-                            const currentEntry =
-                                createHistoryEntry(
-                                    entry.label,
-                                    createHistorySnapshot(
-                                        state
-                                    )
-                                );
-
-                            return {
-                                ...restoreSnapshot(
-                                    state,
-                                    entry.snapshot
-                                ),
-
-                                revision:
-                                    state.revision +
-                                    1,
-
+                clearHistory:
+                    () => {
+                        set(
+                            state => ({
                                 history: {
                                     ...state.history,
 
                                     past:
-                                        past.slice(
-                                            0,
-                                            -1
-                                        ),
-
-                                    future: [
-                                        ...state
-                                            .history
-                                            .future,
-                                        currentEntry
-                                    ].slice(
-                                        -state
-                                            .history
-                                            .limit
-                                    ),
-
-                                    transaction:
-                                        null
-                                },
-
-                                persistence: {
-                                    ...state.persistence,
-
-                                    dirty:
-                                        true
-                                }
-                            };
-                        }
-                    );
-                },
-
-                redo: () => {
-                    set(
-                        state => {
-                            const future =
-                                state.history
-                                    .future;
-
-                            if (
-                                future.length ===
-                                0 ||
-                                state.history
-                                    .transaction
-                            ) {
-                                return {};
-                            }
-
-                            const entry =
-                                future[
-                                    future.length -
-                                    1
-                                ];
-
-                            const currentEntry =
-                                createHistoryEntry(
-                                    entry.label,
-                                    createHistorySnapshot(
-                                        state
-                                    )
-                                );
-
-                            return {
-                                ...restoreSnapshot(
-                                    state,
-                                    entry.snapshot
-                                ),
-
-                                revision:
-                                    state.revision +
-                                    1,
-
-                                history: {
-                                    ...state.history,
-
-                                    past: [
-                                        ...state
-                                            .history
-                                            .past,
-                                        currentEntry
-                                    ].slice(
-                                        -state
-                                            .history
-                                            .limit
-                                    ),
+                                        [],
 
                                     future:
-                                        future.slice(
-                                            0,
-                                            -1
-                                        ),
+                                        [],
 
                                     transaction:
                                         null
-                                },
-
-                                persistence: {
-                                    ...state.persistence,
-
-                                    dirty:
-                                        true
                                 }
-                            };
-                        }
-                    );
-                },
-
-                clearHistory: () => {
-                    set(
-                        state => ({
-                            history: {
-                                ...state.history,
-
-                                past: [],
-
-                                future: [],
-
-                                transaction:
-                                    null
-                            }
-                        })
-                    );
-                },
+                            })
+                        );
+                    },
 
                 setHistoryLimit:
                     limit => {
                         const safeLimit =
-                            clamp(
-                                limit,
-                                10,
-                                500
+                            Math.round(
+                                clamp(
+                                    limit,
+                                    10,
+                                    500
+                                )
                             );
 
                         set(
@@ -4494,63 +5914,72 @@ setEraserMode:
                                         safeLimit,
 
                                     past:
-                                        state.history
-                                            .past
-                                            .slice(
-                                                -safeLimit
-                                            ),
+                                        state.history.past.slice(
+                                            -safeLimit
+                                        ),
 
                                     future:
-                                        state.history
-                                            .future
-                                            .slice(
-                                                -safeLimit
-                                            )
+                                        state.history.future.slice(
+                                            -safeLimit
+                                        )
                                 }
                             })
                         );
                     },
 
-                canUndo: () =>
-                    get().history.past
-                        .length > 0 ||
-                    Boolean(
-                        get().history
-                            .transaction
-                    ),
+                canUndo:
+                    () =>
+                        get()
+                            .history
+                            .past
+                            .length >
+                        0 ||
+                        Boolean(
+                            get()
+                                .history
+                                .transaction
+                        ),
 
-                canRedo: () =>
-                    get().history.future
-                        .length > 0,
+                canRedo:
+                    () =>
+                        get()
+                            .history
+                            .future
+                            .length >
+                        0,
 
                 /*=========================================
                 Project Import and Export
                 =========================================*/
 
-                getProjectData: () => {
-                    const state =
-                        get();
+                getProjectData:
+                    () => {
+                        const state =
+                            get();
 
-                    return cloneSerializable({
-                        schemaVersion:
-                            PROJECT_SCHEMA_VERSION,
+                        return cloneSerializable({
+                            schemaVersion:
+                                PROJECT_SCHEMA_VERSION,
 
-                        document:
-                            state.document,
+                            document:
+                                state.document,
 
-                        layers:
-                            state.layers,
+                            layers:
+                                state.layers,
 
-                        objects:
-                            state.objects,
+                            objects:
+                                state.objects,
 
-                        activeLayerId:
-                            state.activeLayerId,
+                            activeLayerId:
+                                state.activeLayerId,
 
-                        exportedAt:
-                            nowIso()
-                    });
-                },
+                            symmetry:
+                                state.symmetry,
+
+                            exportedAt:
+                                nowIso()
+                        });
+                    },
 
                 loadProject:
                     projectData => {
@@ -4571,8 +6000,10 @@ setEraserMode:
                                     normalized.objects,
 
                                 activeLayerId:
-                                    normalized
-                                        .activeLayerId,
+                                    normalized.activeLayerId,
+
+                                symmetry:
+                                    normalized.symmetry,
 
                                 selectedObjectIds:
                                     [],
@@ -4584,7 +6015,8 @@ setEraserMode:
                                     createDefaultViewport(),
 
                                 clipboard: {
-                                    objects: [],
+                                    objects:
+                                        [],
 
                                     pasteCount:
                                         0
@@ -4593,9 +6025,11 @@ setEraserMode:
                                 history: {
                                     ...state.history,
 
-                                    past: [],
+                                    past:
+                                        [],
 
-                                    future: [],
+                                    future:
+                                        [],
 
                                     transaction:
                                         null
@@ -4637,35 +6071,34 @@ setEraserMode:
                                     error:
                                         saving
                                             ? null
-                                            : state
-                                                .persistence
-                                                .error
+                                            : state.persistence.error
                                 }
                             })
                         );
                     },
 
-                markSaved: () => {
-                    set(
-                        state => ({
-                            persistence: {
-                                ...state.persistence,
+                markSaved:
+                    () => {
+                        set(
+                            state => ({
+                                persistence: {
+                                    ...state.persistence,
 
-                                dirty:
-                                    false,
+                                    dirty:
+                                        false,
 
-                                saving:
-                                    false,
+                                    saving:
+                                        false,
 
-                                lastSavedAt:
-                                    nowIso(),
+                                    lastSavedAt:
+                                        nowIso(),
 
-                                error:
-                                    null
-                            }
-                        })
-                    );
-                },
+                                    error:
+                                        null
+                                }
+                            })
+                        );
+                    },
 
                 setSaveError:
                     error => {
@@ -4713,7 +6146,9 @@ export const selectSelectedObjects =
                         objectId
                     ]
             )
-            .filter(Boolean);
+            .filter(
+                Boolean
+            );
 
 export const selectActiveLayerObjects =
     state => {
@@ -4724,7 +6159,9 @@ export const selectActiveLayerObjects =
                     state.activeLayerId
             );
 
-        if (!layer) {
+        if (
+            !layer
+        ) {
             return [];
         }
 
@@ -4735,14 +6172,18 @@ export const selectActiveLayerObjects =
                         objectId
                     ]
             )
-            .filter(Boolean);
+            .filter(
+                Boolean
+            );
     };
 
 export const selectVisibleObjects =
     state =>
         state.layers.flatMap(
             layer => {
-                if (!layer.visible) {
+                if (
+                    !layer.visible
+                ) {
                     return [];
                 }
 
@@ -4757,7 +6198,7 @@ export const selectVisibleObjects =
                         object =>
                             object &&
                             object.visible !==
-                            false
+                                false
                     );
             }
         );
@@ -4765,7 +6206,7 @@ export const selectVisibleObjects =
 export const selectCanUndo =
     state =>
         state.history.past.length >
-            0 ||
+        0 ||
         Boolean(
             state.history.transaction
         );

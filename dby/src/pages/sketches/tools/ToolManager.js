@@ -2,40 +2,27 @@
 =========================================================
 FashionVision Professional Editor
 Tool Manager
-Version 1.0
+Version 1.1
 =========================================================
 */
-
-/*=========================================================
-Tool Event Names
-=========================================================*/
 
 export const TOOL_EVENTS = Object.freeze({
     ACTIVATE: "onActivate",
     DEACTIVATE: "onDeactivate",
-
     POINTER_DOWN: "onPointerDown",
     POINTER_MOVE: "onPointerMove",
     POINTER_UP: "onPointerUp",
     POINTER_ENTER: "onPointerEnter",
     POINTER_LEAVE: "onPointerLeave",
     POINTER_CANCEL: "onPointerCancel",
-
     DOUBLE_CLICK: "onDoubleClick",
     CONTEXT_MENU: "onContextMenu",
-
     WHEEL: "onWheel",
-
     KEY_DOWN: "onKeyDown",
     KEY_UP: "onKeyUp",
-
     CANCEL: "onCancel",
     DESTROY: "onDestroy"
 });
-
-/*=========================================================
-Interaction Phases
-=========================================================*/
 
 export const INTERACTION_PHASES = Object.freeze({
     IDLE: "idle",
@@ -45,33 +32,23 @@ export const INTERACTION_PHASES = Object.freeze({
     CANCELLED: "cancelled"
 });
 
-/*=========================================================
-Pointer Buttons
-=========================================================*/
-
 export const POINTER_BUTTONS = Object.freeze({
     LEFT: 0,
     MIDDLE: 1,
     RIGHT: 2
 });
 
-/*=========================================================
-Supported Tool Handlers
-=========================================================*/
-
 const TOOL_HANDLER_NAMES = Object.freeze(
-    Object.values(
-        TOOL_EVENTS
-    )
+    Object.values(TOOL_EVENTS)
 );
+
+const MINIMUM_ZOOM = 0.0001;
 
 /*=========================================================
 General Helpers
 =========================================================*/
 
-function isPlainObject(
-    value
-) {
+function isPlainObject(value) {
     return Boolean(
         value &&
         typeof value === "object" &&
@@ -79,20 +56,14 @@ function isPlainObject(
     );
 }
 
-function isFunction(
-    value
-) {
-    return typeof value ===
-        "function";
+function isFunction(value) {
+    return typeof value === "function";
 }
 
-function isPromiseLike(
-    value
-) {
+function isPromiseLike(value) {
     return Boolean(
         value &&
-        typeof value.then ===
-            "function"
+        isFunction(value.then)
     );
 }
 
@@ -100,11 +71,13 @@ function numberOr(
     value,
     fallback = 0
 ) {
-    const number =
+    const numericValue =
         Number(value);
 
-    return Number.isFinite(number)
-        ? number
+    return Number.isFinite(
+        numericValue
+    )
+        ? numericValue
         : fallback;
 }
 
@@ -117,34 +90,61 @@ function clamp(
         minimum,
         Math.min(
             maximum,
-            numberOr(value, minimum)
+            numberOr(
+                value,
+                minimum
+            )
         )
     );
 }
 
-function clonePoint(
-    point
-) {
-    if (!point) {
+function clonePoint(point) {
+    if (
+        !point ||
+        !Number.isFinite(
+            Number(point.x)
+        ) ||
+        !Number.isFinite(
+            Number(point.y)
+        )
+    ) {
         return null;
     }
 
     return {
         x:
-            numberOr(point.x),
+            Number(point.x),
 
         y:
-            numberOr(point.y)
+            Number(point.y)
     };
+}
+
+function calculateDistance(
+    firstPoint,
+    secondPoint
+) {
+    if (
+        !firstPoint ||
+        !secondPoint
+    ) {
+        return 0;
+    }
+
+    return Math.hypot(
+        secondPoint.x -
+            firstPoint.x,
+
+        secondPoint.y -
+            firstPoint.y
+    );
 }
 
 /*=========================================================
 Native Event Helpers
 =========================================================*/
 
-function getNativeEvent(
-    event
-) {
+function getNativeEvent(event) {
     return (
         event?.evt ||
         event?.nativeEvent ||
@@ -153,18 +153,24 @@ function getNativeEvent(
     );
 }
 
-function getStageFromEvent(
-    event
+function getStageFromEvent(event) {
+    return (
+        event?.target
+            ?.getStage?.() ||
+        event?.currentTarget
+            ?.getStage?.() ||
+        null
+    );
+}
+
+function getPrimaryTouch(
+    nativeEvent
 ) {
     return (
-        event
-            ?.target
-            ?.getStage
-            ?.() ||
-        event
-            ?.currentTarget
-            ?.getStage
-            ?.() ||
+        nativeEvent
+            ?.changedTouches?.[0] ||
+        nativeEvent
+            ?.touches?.[0] ||
         null
     );
 }
@@ -177,10 +183,25 @@ function getPointerId(
             nativeEvent?.pointerId
         );
 
+    if (
+        Number.isFinite(
+            pointerId
+        )
+    ) {
+        return pointerId;
+    }
+
+    const touchIdentifier =
+        Number(
+            getPrimaryTouch(
+                nativeEvent
+            )?.identifier
+        );
+
     return Number.isFinite(
-        pointerId
+        touchIdentifier
     )
-        ? pointerId
+        ? touchIdentifier
         : null;
 }
 
@@ -188,15 +209,19 @@ function getPointerType(
     nativeEvent
 ) {
     if (
-        typeof nativeEvent?.pointerType ===
-        "string"
+        typeof nativeEvent
+            ?.pointerType ===
+            "string" &&
+        nativeEvent.pointerType
     ) {
-        return nativeEvent.pointerType;
+        return nativeEvent
+            .pointerType;
     }
 
     if (
         nativeEvent?.touches ||
-        nativeEvent?.changedTouches
+        nativeEvent
+            ?.changedTouches
     ) {
         return "touch";
     }
@@ -208,9 +233,13 @@ function getPointerButton(
     nativeEvent
 ) {
     const button =
-        Number(nativeEvent?.button);
+        Number(
+            nativeEvent?.button
+        );
 
-    return Number.isFinite(button)
+    return Number.isFinite(
+        button
+    )
         ? button
         : POINTER_BUTTONS.LEFT;
 }
@@ -219,10 +248,14 @@ function getPointerPressure(
     nativeEvent
 ) {
     const pressure =
-        Number(nativeEvent?.pressure);
+        Number(
+            nativeEvent?.pressure
+        );
 
     if (
-        Number.isFinite(pressure) &&
+        Number.isFinite(
+            pressure
+        ) &&
         pressure > 0
     ) {
         return clamp(
@@ -234,10 +267,9 @@ function getPointerPressure(
 
     const force =
         Number(
-            nativeEvent
-                ?.touches
-                ?.[0]
-                ?.force
+            getPrimaryTouch(
+                nativeEvent
+            )?.force
         );
 
     if (
@@ -253,221 +285,6 @@ function getPointerPressure(
 
     return 0.5;
 }
-
-/*=========================================================
-Read Pointer Position
-=========================================================*/
-
-function getScreenPoint(
-    event,
-    stage
-) {
-    const stagePoint =
-        stage
-            ?.getPointerPosition
-            ?.();
-
-    if (
-        stagePoint &&
-        Number.isFinite(stagePoint.x) &&
-        Number.isFinite(stagePoint.y)
-    ) {
-        return {
-            x:
-                stagePoint.x,
-
-            y:
-                stagePoint.y
-        };
-    }
-
-    const nativeEvent =
-        getNativeEvent(event);
-
-    const offsetX =
-        Number(nativeEvent?.offsetX);
-
-    const offsetY =
-        Number(nativeEvent?.offsetY);
-
-    if (
-        Number.isFinite(offsetX) &&
-        Number.isFinite(offsetY)
-    ) {
-        return {
-            x:
-                offsetX,
-
-            y:
-                offsetY
-        };
-    }
-
-    const target =
-        nativeEvent?.currentTarget ||
-        nativeEvent?.target;
-
-    const rectangle =
-        target
-            ?.getBoundingClientRect
-            ?.();
-
-    const clientX =
-        Number(nativeEvent?.clientX);
-
-    const clientY =
-        Number(nativeEvent?.clientY);
-
-    if (
-        rectangle &&
-        Number.isFinite(clientX) &&
-        Number.isFinite(clientY)
-    ) {
-        return {
-            x:
-                clientX -
-                rectangle.left,
-
-            y:
-                clientY -
-                rectangle.top
-        };
-    }
-
-    return null;
-}
-
-/*=========================================================
-Convert Screen Position to Document Position
-=========================================================*/
-
-function toDocumentPoint(
-    screenPoint,
-    stage,
-    viewport,
-    customMapper
-) {
-    if (!screenPoint) {
-        return null;
-    }
-
-    if (isFunction(customMapper)) {
-        const mappedPoint =
-            customMapper(
-                screenPoint
-            );
-
-        if (
-            mappedPoint &&
-            Number.isFinite(
-                mappedPoint.x
-            ) &&
-            Number.isFinite(
-                mappedPoint.y
-            )
-        ) {
-            return {
-                x:
-                    mappedPoint.x,
-
-                y:
-                    mappedPoint.y
-            };
-        }
-    }
-
-    /*
-    Konva's pointer position is not affected by Stage
-    transformations. Inverting the Stage transform gives
-    the logical document coordinate.
-    */
-
-    try {
-        const transform =
-            stage
-                ?.getAbsoluteTransform
-                ?.()
-                ?.copy
-                ?.();
-
-        if (
-            transform &&
-            isFunction(transform.invert) &&
-            isFunction(transform.point)
-        ) {
-            transform.invert();
-
-            const transformedPoint =
-                transform.point(
-                    screenPoint
-                );
-
-            if (
-                transformedPoint &&
-                Number.isFinite(
-                    transformedPoint.x
-                ) &&
-                Number.isFinite(
-                    transformedPoint.y
-                )
-            ) {
-                return {
-                    x:
-                        transformedPoint.x,
-
-                    y:
-                        transformedPoint.y
-                };
-            }
-        }
-    } catch {
-        /*
-        Use viewport conversion below when a Konva
-        transform cannot be resolved.
-        */
-    }
-
-    const zoom =
-        Math.max(
-            0.0001,
-            numberOr(
-                viewport?.zoom,
-                1
-            )
-        );
-
-    const viewportX =
-        numberOr(
-            viewport?.x,
-            0
-        );
-
-    const viewportY =
-        numberOr(
-            viewport?.y,
-            0
-        );
-
-    return {
-        x:
-            (
-                screenPoint.x -
-                viewportX
-            ) /
-            zoom,
-
-        y:
-            (
-                screenPoint.y -
-                viewportY
-            ) /
-            zoom
-    };
-}
-
-/*=========================================================
-Modifier Key State
-=========================================================*/
 
 function getModifierKeys(
     nativeEvent
@@ -496,38 +313,30 @@ function getModifierKeys(
 }
 
 /*=========================================================
-Prevent Browser Event
+Safe Browser Event Handling
 =========================================================*/
 
-function preventEventDefault(event) {
+function preventEventDefault(
+    event
+) {
     const nativeEvent =
-        event?.evt ||
-        event?.nativeEvent ||
-        event;
+        getNativeEvent(event);
 
     if (
         !nativeEvent ||
-        typeof nativeEvent.preventDefault !==
-            "function"
-    ) {
-        return false;
-    }
-
-    /*
-    touchend and pointerup events can become
-    non-cancelable after browser scrolling or
-    gesture handling has already started.
-    */
-
-    if (
+        !isFunction(
+            nativeEvent
+                .preventDefault
+        ) ||
         nativeEvent.cancelable ===
-        false
+            false
     ) {
         return false;
     }
 
     if (
-        nativeEvent.defaultPrevented
+        nativeEvent
+            .defaultPrevented
     ) {
         return true;
     }
@@ -537,10 +346,6 @@ function preventEventDefault(event) {
     return true;
 }
 
-/*=========================================================
-Stop Browser Event
-=========================================================*/
-
 function stopEventPropagation(
     event
 ) {
@@ -548,8 +353,7 @@ function stopEventPropagation(
         getNativeEvent(event);
 
     nativeEvent
-        ?.stopPropagation
-        ?.();
+        ?.stopPropagation?.();
 
     if (event) {
         event.cancelBubble =
@@ -558,7 +362,7 @@ function stopEventPropagation(
 }
 
 /*=========================================================
-Pointer Capture Helpers
+Pointer Capture
 =========================================================*/
 
 function capturePointer(
@@ -574,13 +378,23 @@ function capturePointer(
     }
 
     const target =
-        nativeEvent?.currentTarget ||
+        nativeEvent
+            ?.currentTarget ||
         nativeEvent?.target;
 
+    if (
+        !isFunction(
+            target
+                ?.setPointerCapture
+        )
+    ) {
+        return false;
+    }
+
     try {
-        target
-            ?.setPointerCapture
-            ?.(pointerId);
+        target.setPointerCapture(
+            pointerId
+        );
 
         return true;
     } catch {
@@ -601,13 +415,23 @@ function releasePointer(
     }
 
     const target =
-        nativeEvent?.currentTarget ||
+        nativeEvent
+            ?.currentTarget ||
         nativeEvent?.target;
 
+    if (
+        !isFunction(
+            target
+                ?.releasePointerCapture
+        )
+    ) {
+        return false;
+    }
+
     try {
-        target
-            ?.releasePointerCapture
-            ?.(pointerId);
+        target.releasePointerCapture(
+            pointerId
+        );
 
         return true;
     } catch {
@@ -616,15 +440,394 @@ function releasePointer(
 }
 
 /*=========================================================
-Tool Definition Validation
+Konva Pointer Registration
+=========================================================*/
+
+function getClientPoint(
+    nativeEvent
+) {
+    const touch =
+        getPrimaryTouch(
+            nativeEvent
+        );
+
+    const clientX =
+        Number(
+            nativeEvent?.clientX ??
+            touch?.clientX
+        );
+
+    const clientY =
+        Number(
+            nativeEvent?.clientY ??
+            touch?.clientY
+        );
+
+    if (
+        !Number.isFinite(
+            clientX
+        ) ||
+        !Number.isFinite(
+            clientY
+        )
+    ) {
+        return null;
+    }
+
+    return {
+        x:
+            clientX,
+
+        y:
+            clientY
+    };
+}
+
+/*
+Register the forwarded event before reading its pointer
+position. This prevents Konva's:
+
+"Pointer position is missing and not registered by the stage"
+*/
+
+function registerStagePointer(
+    event,
+    stage
+) {
+    const nativeEvent =
+        getNativeEvent(event);
+
+    if (
+        !stage ||
+        !nativeEvent ||
+        !isFunction(
+            stage
+                .setPointersPositions
+        ) ||
+        !getClientPoint(
+            nativeEvent
+        )
+    ) {
+        return false;
+    }
+
+    try {
+        stage.setPointersPositions(
+            nativeEvent
+        );
+
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function getRegisteredStagePoint(
+    stage
+) {
+    if (!stage) {
+        return null;
+    }
+
+    let pointerPositions =
+        [];
+
+    try {
+        if (
+            isFunction(
+                stage
+                    .getPointersPositions
+            )
+        ) {
+            pointerPositions =
+                stage
+                    .getPointersPositions() ||
+                [];
+        }
+    } catch {
+        pointerPositions =
+            [];
+    }
+
+    if (
+        !Array.isArray(
+            pointerPositions
+        ) ||
+        pointerPositions.length ===
+            0
+    ) {
+        pointerPositions =
+            Array.isArray(
+                stage
+                    ._pointerPositions
+            )
+                ? stage
+                    ._pointerPositions
+                : [];
+    }
+
+    return clonePoint(
+        pointerPositions[0]
+    );
+}
+
+function getPointRelativeToStage(
+    nativeEvent,
+    stage
+) {
+    const clientPoint =
+        getClientPoint(
+            nativeEvent
+        );
+
+    const container =
+        stage
+            ?.container?.();
+
+    const rectangle =
+        container
+            ?.getBoundingClientRect?.();
+
+    if (
+        !clientPoint ||
+        !rectangle
+    ) {
+        return null;
+    }
+
+    const containerWidth =
+        Math.max(
+            1,
+            numberOr(
+                container.clientWidth,
+                rectangle.width ||
+                    1
+            )
+        );
+
+    const containerHeight =
+        Math.max(
+            1,
+            numberOr(
+                container.clientHeight,
+                rectangle.height ||
+                    1
+            )
+        );
+
+    const scaleX =
+        rectangle.width /
+        containerWidth;
+
+    const scaleY =
+        rectangle.height /
+        containerHeight;
+
+    return {
+        x:
+            (
+                clientPoint.x -
+                rectangle.left
+            ) /
+            Math.max(
+                MINIMUM_ZOOM,
+                scaleX
+            ),
+
+        y:
+            (
+                clientPoint.y -
+                rectangle.top
+            ) /
+            Math.max(
+                MINIMUM_ZOOM,
+                scaleY
+            )
+    };
+}
+
+function getScreenPoint(
+    event,
+    stage
+) {
+    const nativeEvent =
+        getNativeEvent(event);
+
+    registerStagePointer(
+        event,
+        stage
+    );
+
+    const registeredPoint =
+        getRegisteredStagePoint(
+            stage
+        );
+
+    if (registeredPoint) {
+        return registeredPoint;
+    }
+
+    /*
+    Pointer-up and touch-end may already be removed from
+    Konva's active pointer list.
+    */
+
+    const relativePoint =
+        getPointRelativeToStage(
+            nativeEvent,
+            stage
+        );
+
+    if (relativePoint) {
+        return relativePoint;
+    }
+
+    const offsetX =
+        Number(
+            nativeEvent?.offsetX
+        );
+
+    const offsetY =
+        Number(
+            nativeEvent?.offsetY
+        );
+
+    if (
+        Number.isFinite(
+            offsetX
+        ) &&
+        Number.isFinite(
+            offsetY
+        )
+    ) {
+        return {
+            x:
+                offsetX,
+
+            y:
+                offsetY
+        };
+    }
+
+    return null;
+}
+
+/*=========================================================
+Coordinate Conversion
+=========================================================*/
+
+function toDocumentPoint(
+    screenPoint,
+    stage,
+    viewport,
+    customMapper
+) {
+    if (!screenPoint) {
+        return null;
+    }
+
+    if (
+        isFunction(
+            customMapper
+        )
+    ) {
+        const mappedPoint =
+            clonePoint(
+                customMapper(
+                    screenPoint
+                )
+            );
+
+        if (mappedPoint) {
+            return mappedPoint;
+        }
+    }
+
+    /*
+    This supports applications that transform the Stage.
+    FashionVision normally supplies its viewport mapper
+    from EditorCanvas.
+    */
+
+    try {
+        const transform =
+            stage
+                ?.getAbsoluteTransform?.()
+                ?.copy?.();
+
+        if (
+            transform &&
+            isFunction(
+                transform.invert
+            ) &&
+            isFunction(
+                transform.point
+            )
+        ) {
+            transform.invert();
+
+            const transformedPoint =
+                clonePoint(
+                    transform.point(
+                        screenPoint
+                    )
+                );
+
+            if (
+                transformedPoint
+            ) {
+                return transformedPoint;
+            }
+        }
+    } catch {
+        // Use viewport conversion below.
+    }
+
+    const zoom =
+        Math.max(
+            MINIMUM_ZOOM,
+            numberOr(
+                viewport?.zoom,
+                1
+            )
+        );
+
+    return {
+        x:
+            (
+                screenPoint.x -
+                numberOr(
+                    viewport?.x,
+                    0
+                )
+            ) /
+            zoom,
+
+        y:
+            (
+                screenPoint.y -
+                numberOr(
+                    viewport?.y,
+                    0
+                )
+            ) /
+            zoom
+    };
+}
+
+/*=========================================================
+Tool Definition
 =========================================================*/
 
 export function validateToolDefinition(
     tool
 ) {
-    const errors = [];
+    const errors =
+        [];
 
-    if (!isPlainObject(tool)) {
+    if (
+        !isPlainObject(tool)
+    ) {
         return {
             valid:
                 false,
@@ -646,7 +849,8 @@ export function validateToolDefinition(
     }
 
     if (
-        tool.label !== undefined &&
+        tool.label !==
+            undefined &&
         typeof tool.label !==
             "string"
     ) {
@@ -656,10 +860,13 @@ export function validateToolDefinition(
     }
 
     if (
-        tool.cursor !== undefined &&
+        tool.cursor !==
+            undefined &&
         typeof tool.cursor !==
             "string" &&
-        !isFunction(tool.cursor)
+        !isFunction(
+            tool.cursor
+        )
     ) {
         errors.push(
             "Tool cursor must be a string or function."
@@ -669,10 +876,14 @@ export function validateToolDefinition(
     TOOL_HANDLER_NAMES.forEach(
         handlerName => {
             if (
-                tool[handlerName] !==
+                tool[
+                    handlerName
+                ] !==
                     undefined &&
                 !isFunction(
-                    tool[handlerName]
+                    tool[
+                        handlerName
+                    ]
                 )
             ) {
                 errors.push(
@@ -690,10 +901,6 @@ export function validateToolDefinition(
     };
 }
 
-/*=========================================================
-Create Normalized Tool Definition
-=========================================================*/
-
 export function defineTool(
     definition
 ) {
@@ -702,11 +909,12 @@ export function defineTool(
             definition
         );
 
-    if (!validation.valid) {
+    if (
+        !validation.valid
+    ) {
         throw new Error(
-            validation.errors.join(
-                " "
-            )
+            validation.errors
+                .join(" ")
         );
     }
 
@@ -741,12 +949,13 @@ export function defineTool(
         ...definition,
 
         id:
-            definition.id.trim()
+            definition.id
+                .trim()
     };
 }
 
 /*=========================================================
-Create Empty Interaction
+Interaction
 =========================================================*/
 
 function createInteraction({
@@ -759,14 +968,12 @@ function createInteraction({
 }) {
     return {
         phase:
-            INTERACTION_PHASES.STARTED,
+            INTERACTION_PHASES
+                .STARTED,
 
         toolId,
-
         pointerId,
-
         pointerType,
-
         button,
 
         startedAt:
@@ -808,29 +1015,9 @@ function createInteraction({
         movementCount:
             0,
 
-        data: {}
+        data:
+            {}
     };
-}
-
-/*=========================================================
-Calculate Interaction Distance
-=========================================================*/
-
-function calculateDistance(
-    pointA,
-    pointB
-) {
-    if (
-        !pointA ||
-        !pointB
-    ) {
-        return 0;
-    }
-
-    return Math.hypot(
-        pointB.x - pointA.x,
-        pointB.y - pointA.y
-    );
 }
 
 /*=========================================================
@@ -838,7 +1025,6 @@ Tool Manager
 =========================================================*/
 
 export class ToolManager {
-
     constructor({
         getContext = null,
         onError = null,
@@ -864,7 +1050,9 @@ export class ToolManager {
             false;
 
         this.getExternalContext =
-            isFunction(getContext)
+            isFunction(
+                getContext
+            )
                 ? getContext
                 : () => ({});
 
@@ -909,7 +1097,9 @@ export class ToolManager {
             );
 
         if (
-            this.tools.has(tool.id) &&
+            this.tools.has(
+                tool.id
+            ) &&
             !replace
         ) {
             throw new Error(
@@ -961,7 +1151,9 @@ export class ToolManager {
         this.assertNotDestroyed();
 
         if (
-            !this.tools.has(toolId)
+            !this.tools.has(
+                toolId
+            )
         ) {
             return false;
         }
@@ -984,17 +1176,21 @@ export class ToolManager {
 
             const nextToolId =
                 this.fallbackToolId &&
+                this.fallbackToolId !==
+                    toolId &&
                 this.tools.has(
                     this.fallbackToolId
                 )
-                    ? this.fallbackToolId
+                    ? this
+                        .fallbackToolId
                     : [
-                        ...this.tools.keys()
+                        ...this.tools
+                            .keys()
                     ].find(
                         id =>
-                            id !==
-                            toolId
-                    ) || null;
+                            id !== toolId
+                    ) ||
+                    null;
 
             if (nextToolId) {
                 this.activate(
@@ -1012,17 +1208,13 @@ export class ToolManager {
         );
     }
 
-    hasTool(
-        toolId
-    ) {
+    hasTool(toolId) {
         return this.tools.has(
             toolId
         );
     }
 
-    getTool(
-        toolId
-    ) {
+    getTool(toolId) {
         return (
             this.tools.get(
                 toolId
@@ -1069,7 +1261,9 @@ export class ToolManager {
             return true;
         }
 
-        if (this.interaction) {
+        if (
+            this.interaction
+        ) {
             this.cancelInteraction(
                 "tool-changed"
             );
@@ -1083,10 +1277,13 @@ export class ToolManager {
                 previousToolId
             );
 
-        if (previousTool) {
+        if (
+            previousTool
+        ) {
             this.invokeToolHandler(
                 previousTool,
-                TOOL_EVENTS.DEACTIVATE,
+                TOOL_EVENTS
+                    .DEACTIVATE,
                 null,
                 {
                     ...contextOverrides,
@@ -1118,8 +1315,10 @@ export class ToolManager {
 
         this.onActiveToolChange?.({
             previousToolId,
+
             activeToolId:
                 toolId,
+
             tool:
                 nextTool
         });
@@ -1130,11 +1329,15 @@ export class ToolManager {
     deactivate(
         contextOverrides = {}
     ) {
-        if (!this.activeToolId) {
-            return;
+        if (
+            !this.activeToolId
+        ) {
+            return false;
         }
 
-        if (this.interaction) {
+        if (
+            this.interaction
+        ) {
             this.cancelInteraction(
                 "tool-deactivated"
             );
@@ -1154,7 +1357,8 @@ export class ToolManager {
         if (tool) {
             this.invokeToolHandler(
                 tool,
-                TOOL_EVENTS.DEACTIVATE,
+                TOOL_EVENTS
+                    .DEACTIVATE,
                 null,
                 {
                     ...contextOverrides,
@@ -1169,11 +1373,15 @@ export class ToolManager {
 
         this.onActiveToolChange?.({
             previousToolId,
+
             activeToolId:
                 null,
+
             tool:
                 null
         });
+
+        return true;
     }
 
     /*=====================================================
@@ -1181,7 +1389,8 @@ export class ToolManager {
     =====================================================*/
 
     getToolState(
-        toolId = this.activeToolId
+        toolId =
+            this.activeToolId
     ) {
         if (!toolId) {
             return {};
@@ -1259,9 +1468,7 @@ export class ToolManager {
         return nextState;
     }
 
-    clearToolState(
-        toolId
-    ) {
+    clearToolState(toolId) {
         if (!toolId) {
             return false;
         }
@@ -1274,6 +1481,16 @@ export class ToolManager {
     /*=====================================================
     Interaction Data
     =====================================================*/
+
+    getInteraction() {
+        return this.interaction;
+    }
+
+    isInteracting() {
+        return Boolean(
+            this.interaction
+        );
+    }
 
     setInteractionData(
         updates
@@ -1288,11 +1505,14 @@ export class ToolManager {
         }
 
         this.interaction.data = {
-            ...this.interaction.data,
+            ...this.interaction
+                .data,
+
             ...updates
         };
 
-        return this.interaction.data;
+        return this.interaction
+            .data;
     }
 
     replaceInteractionData(
@@ -1308,17 +1528,8 @@ export class ToolManager {
         this.interaction.data =
             data;
 
-        return this.interaction.data;
-    }
-
-    getInteraction() {
-        return this.interaction;
-    }
-
-    isInteracting() {
-        return Boolean(
-            this.interaction
-        );
+        return this.interaction
+            .data;
     }
 
     /*=====================================================
@@ -1338,15 +1549,17 @@ export class ToolManager {
             contextOverrides.stage ||
             externalContext.stage ||
             contextOverrides
-                .stageRef
-                ?.current ||
+                .stageRef?.current ||
             externalContext
-                .stageRef
-                ?.current ||
-            getStageFromEvent(event);
+                .stageRef?.current ||
+            getStageFromEvent(
+                event
+            );
 
         const nativeEvent =
-            getNativeEvent(event);
+            getNativeEvent(
+                event
+            );
 
         const screenPoint =
             getScreenPoint(
@@ -1360,9 +1573,14 @@ export class ToolManager {
             externalContext.state
                 ?.viewport ||
             {
-                zoom: 1,
-                x: 0,
-                y: 0
+                zoom:
+                    1,
+
+                x:
+                    0,
+
+                y:
+                    0
             };
 
         const documentPoint =
@@ -1444,7 +1662,8 @@ export class ToolManager {
 
             buttons:
                 numberOr(
-                    nativeEvent?.buttons,
+                    nativeEvent
+                        ?.buttons,
                     0
                 ),
 
@@ -1455,31 +1674,36 @@ export class ToolManager {
 
             tiltX:
                 numberOr(
-                    nativeEvent?.tiltX,
+                    nativeEvent
+                        ?.tiltX,
                     0
                 ),
 
             tiltY:
                 numberOr(
-                    nativeEvent?.tiltY,
+                    nativeEvent
+                        ?.tiltY,
                     0
                 ),
 
             twist:
                 numberOr(
-                    nativeEvent?.twist,
+                    nativeEvent
+                        ?.twist,
                     0
                 ),
 
             width:
                 numberOr(
-                    nativeEvent?.width,
+                    nativeEvent
+                        ?.width,
                     1
                 ),
 
             height:
                 numberOr(
-                    nativeEvent?.height,
+                    nativeEvent
+                        ?.height,
                     1
                 ),
 
@@ -1563,7 +1787,7 @@ export class ToolManager {
                 reason =>
                     this.cancelInteraction(
                         reason ||
-                        "tool-requested-cancel",
+                            "tool-requested-cancel",
                         event,
                         contextOverrides
                     )
@@ -1581,9 +1805,15 @@ export class ToolManager {
         contextOverrides = {}
     ) {
         const handler =
-            tool?.[handlerName];
+            tool?.[
+                handlerName
+            ];
 
-        if (!isFunction(handler)) {
+        if (
+            !isFunction(
+                handler
+            )
+        ) {
             return undefined;
         }
 
@@ -1595,11 +1825,22 @@ export class ToolManager {
             );
 
         try {
+            /*
+            Context first preserves existing tools.
+            Original event second supports BrushTool,
+            coalesced pointer samples and pressure.
+            */
+
             const result =
-                handler(context);
+                handler(
+                    context,
+                    event
+                );
 
             if (
-                isPromiseLike(result)
+                isPromiseLike(
+                    result
+                )
             ) {
                 result.catch(
                     error => {
@@ -1653,7 +1894,8 @@ export class ToolManager {
             POINTER_BUTTONS.RIGHT
         ) {
             return Boolean(
-                tool?.allowRightButton
+                tool
+                    ?.allowRightButton
             );
         }
 
@@ -1662,7 +1904,8 @@ export class ToolManager {
             POINTER_BUTTONS.MIDDLE
         ) {
             return Boolean(
-                tool?.allowMiddleButton
+                tool
+                    ?.allowMiddleButton
             );
         }
 
@@ -1673,16 +1916,96 @@ export class ToolManager {
         tool,
         event
     ) {
-        if (tool?.preventDefault) {
+        if (
+            tool?.preventDefault
+        ) {
             preventEventDefault(
                 event
             );
         }
 
-        if (tool?.stopPropagation) {
+        if (
+            tool
+                ?.stopPropagation
+        ) {
             stopEventPropagation(
                 event
             );
+        }
+    }
+
+    pointerMatchesInteraction(
+        interaction,
+        pointerId
+    ) {
+        if (!interaction) {
+            return true;
+        }
+
+        if (
+            interaction.pointerId ===
+                null ||
+            pointerId === null
+        ) {
+            return true;
+        }
+
+        return (
+            interaction.pointerId ===
+            pointerId
+        );
+    }
+
+    updateInteractionFromContext(
+        interaction,
+        context,
+        phase,
+        countMovement = false
+    ) {
+        if (!interaction) {
+            return;
+        }
+
+        interaction.phase =
+            phase;
+
+        interaction.previousScreenPoint =
+            clonePoint(
+                interaction
+                    .currentScreenPoint
+            );
+
+        interaction.previousPoint =
+            clonePoint(
+                interaction
+                    .currentPoint
+            );
+
+        interaction.currentScreenPoint =
+            clonePoint(
+                context
+                    .screenPoint
+            );
+
+        interaction.currentPoint =
+            clonePoint(
+                context
+                    .documentPoint
+            );
+
+        interaction.distance =
+            calculateDistance(
+                interaction
+                    .startPoint,
+                interaction
+                    .currentPoint
+            );
+
+        if (
+            countMovement
+        ) {
+            interaction.movementCount +=
+                1;
         }
     }
 
@@ -1700,7 +2023,7 @@ export class ToolManager {
             this.getActiveTool();
 
         if (!tool) {
-            return;
+            return undefined;
         }
 
         const initialContext =
@@ -1713,13 +2036,16 @@ export class ToolManager {
         if (
             !this.canToolHandleButton(
                 tool,
-                initialContext.button
+                initialContext
+                    .button
             )
         ) {
-            return;
+            return undefined;
         }
 
-        if (this.interaction) {
+        if (
+            this.interaction
+        ) {
             this.cancelInteraction(
                 "new-pointer-down",
                 event,
@@ -1738,26 +2064,33 @@ export class ToolManager {
                     tool.id,
 
                 pointerId:
-                    initialContext.pointerId,
+                    initialContext
+                        .pointerId,
 
                 pointerType:
-                    initialContext.pointerType,
+                    initialContext
+                        .pointerType,
 
                 button:
-                    initialContext.button,
+                    initialContext
+                        .button,
 
                 screenPoint:
-                    initialContext.screenPoint,
+                    initialContext
+                        .screenPoint,
 
                 documentPoint:
-                    initialContext.documentPoint
+                    initialContext
+                        .documentPoint
             });
 
-        initialContext.capturePointer();
+        initialContext
+            .capturePointer();
 
         return this.invokeToolHandler(
             tool,
-            TOOL_EVENTS.POINTER_DOWN,
+            TOOL_EVENTS
+                .POINTER_DOWN,
             event,
             contextOverrides
         );
@@ -1779,12 +2112,13 @@ export class ToolManager {
         const tool =
             interaction
                 ? this.getTool(
-                    interaction.toolId
+                    interaction
+                        .toolId
                 )
                 : this.getActiveTool();
 
         if (!tool) {
-            return;
+            return undefined;
         }
 
         const context =
@@ -1794,54 +2128,22 @@ export class ToolManager {
                 tool.id
             );
 
-        if (interaction) {
-            const incomingPointerId =
-                context.pointerId;
-
-            if (
-                interaction.pointerId !==
-                    null &&
-                incomingPointerId !==
-                    null &&
-                interaction.pointerId !==
-                    incomingPointerId
-            ) {
-                return;
-            }
-
-            interaction.phase =
-                INTERACTION_PHASES.MOVING;
-
-            interaction.previousScreenPoint =
-                clonePoint(
-                    interaction
-                        .currentScreenPoint
-                );
-
-            interaction.previousPoint =
-                clonePoint(
-                    interaction.currentPoint
-                );
-
-            interaction.currentScreenPoint =
-                clonePoint(
-                    context.screenPoint
-                );
-
-            interaction.currentPoint =
-                clonePoint(
-                    context.documentPoint
-                );
-
-            interaction.distance =
-                calculateDistance(
-                    interaction.startPoint,
-                    interaction.currentPoint
-                );
-
-            interaction.movementCount +=
-                1;
+        if (
+            !this.pointerMatchesInteraction(
+                interaction,
+                context.pointerId
+            )
+        ) {
+            return undefined;
         }
+
+        this.updateInteractionFromContext(
+            interaction,
+            context,
+            INTERACTION_PHASES
+                .MOVING,
+            true
+        );
 
         this.prepareEventForTool(
             tool,
@@ -1850,7 +2152,8 @@ export class ToolManager {
 
         return this.invokeToolHandler(
             tool,
-            TOOL_EVENTS.POINTER_MOVE,
+            TOOL_EVENTS
+                .POINTER_MOVE,
             event,
             contextOverrides
         );
@@ -1872,7 +2175,8 @@ export class ToolManager {
         const tool =
             interaction
                 ? this.getTool(
-                    interaction.toolId
+                    interaction
+                        .toolId
                 )
                 : this.getActiveTool();
 
@@ -1880,7 +2184,7 @@ export class ToolManager {
             this.interaction =
                 null;
 
-            return;
+            return undefined;
         }
 
         const context =
@@ -1891,48 +2195,25 @@ export class ToolManager {
             );
 
         if (
-            interaction &&
-            interaction.pointerId !==
-                null &&
-            context.pointerId !==
-                null &&
-            interaction.pointerId !==
+            !this.pointerMatchesInteraction(
+                interaction,
                 context.pointerId
+            )
         ) {
-            return;
+            return undefined;
         }
 
-        if (interaction) {
-            interaction.phase =
-                INTERACTION_PHASES.ENDING;
+        this.updateInteractionFromContext(
+            interaction,
+            context,
+            INTERACTION_PHASES
+                .ENDING
+        );
 
-            interaction.previousScreenPoint =
-                clonePoint(
-                    interaction
-                        .currentScreenPoint
-                );
-
-            interaction.previousPoint =
-                clonePoint(
-                    interaction.currentPoint
-                );
-
-            interaction.currentScreenPoint =
-                clonePoint(
-                    context.screenPoint
-                );
-
-            interaction.currentPoint =
-                clonePoint(
-                    context.documentPoint
-                );
-
-            interaction.distance =
-                calculateDistance(
-                    interaction.startPoint,
-                    interaction.currentPoint
-                );
-        }
+        /*
+        Safe for touchend because preventEventDefault()
+        ignores native events with cancelable=false.
+        */
 
         this.prepareEventForTool(
             tool,
@@ -1942,7 +2223,8 @@ export class ToolManager {
         const result =
             this.invokeToolHandler(
                 tool,
-                TOOL_EVENTS.POINTER_UP,
+                TOOL_EVENTS
+                    .POINTER_UP,
                 event,
                 contextOverrides
             );
@@ -1963,10 +2245,13 @@ export class ToolManager {
         event,
         contextOverrides = {}
     ) {
+        const interaction =
+            this.interaction;
+
         const tool =
-            this.interaction
+            interaction
                 ? this.getTool(
-                    this.interaction
+                    interaction
                         .toolId
                 )
                 : this.getActiveTool();
@@ -1974,13 +2259,14 @@ export class ToolManager {
         if (tool) {
             this.invokeToolHandler(
                 tool,
-                TOOL_EVENTS.POINTER_CANCEL,
+                TOOL_EVENTS
+                    .POINTER_CANCEL,
                 event,
                 contextOverrides
             );
         }
 
-        this.cancelInteraction(
+        return this.cancelInteraction(
             "pointer-cancelled",
             event,
             contextOverrides
@@ -2004,12 +2290,13 @@ export class ToolManager {
                 : this.getActiveTool();
 
         if (!tool) {
-            return;
+            return undefined;
         }
 
         return this.invokeToolHandler(
             tool,
-            TOOL_EVENTS.POINTER_ENTER,
+            TOOL_EVENTS
+                .POINTER_ENTER,
             event,
             contextOverrides
         );
@@ -2028,19 +2315,20 @@ export class ToolManager {
                 : this.getActiveTool();
 
         if (!tool) {
-            return;
+            return undefined;
         }
 
         return this.invokeToolHandler(
             tool,
-            TOOL_EVENTS.POINTER_LEAVE,
+            TOOL_EVENTS
+                .POINTER_LEAVE,
             event,
             contextOverrides
         );
     }
 
     /*=====================================================
-    Double Click
+    Other Pointer Events
     =====================================================*/
 
     handleDoubleClick(
@@ -2051,7 +2339,7 @@ export class ToolManager {
             this.getActiveTool();
 
         if (!tool) {
-            return;
+            return undefined;
         }
 
         this.prepareEventForTool(
@@ -2061,15 +2349,12 @@ export class ToolManager {
 
         return this.invokeToolHandler(
             tool,
-            TOOL_EVENTS.DOUBLE_CLICK,
+            TOOL_EVENTS
+                .DOUBLE_CLICK,
             event,
             contextOverrides
         );
     }
-
-    /*=====================================================
-    Context Menu
-    =====================================================*/
 
     handleContextMenu(
         event,
@@ -2079,20 +2364,17 @@ export class ToolManager {
             this.getActiveTool();
 
         if (!tool) {
-            return;
+            return undefined;
         }
 
         return this.invokeToolHandler(
             tool,
-            TOOL_EVENTS.CONTEXT_MENU,
+            TOOL_EVENTS
+                .CONTEXT_MENU,
             event,
             contextOverrides
         );
     }
-
-    /*=====================================================
-    Wheel
-    =====================================================*/
 
     handleWheel(
         event,
@@ -2102,7 +2384,7 @@ export class ToolManager {
             this.getActiveTool();
 
         if (!tool) {
-            return;
+            return undefined;
         }
 
         return this.invokeToolHandler(
@@ -2130,12 +2412,12 @@ export class ToolManager {
                 : this.getActiveTool();
 
         if (!tool) {
-            return;
+            return undefined;
         }
 
         if (
             event?.key ===
-            "Escape" &&
+                "Escape" &&
             this.interaction
         ) {
             this.cancelInteraction(
@@ -2144,7 +2426,7 @@ export class ToolManager {
                 contextOverrides
             );
 
-            return;
+            return true;
         }
 
         return this.invokeToolHandler(
@@ -2168,7 +2450,7 @@ export class ToolManager {
                 : this.getActiveTool();
 
         if (!tool) {
-            return;
+            return undefined;
         }
 
         return this.invokeToolHandler(
@@ -2180,7 +2462,7 @@ export class ToolManager {
     }
 
     /*=====================================================
-    Cancel Active Interaction
+    Cancel Interaction
     =====================================================*/
 
     cancelInteraction(
@@ -2196,7 +2478,8 @@ export class ToolManager {
         }
 
         interaction.phase =
-            INTERACTION_PHASES.CANCELLED;
+            INTERACTION_PHASES
+                .CANCELLED;
 
         interaction.cancelReason =
             reason;
@@ -2220,11 +2503,10 @@ export class ToolManager {
             );
         }
 
-        const nativeEvent =
-            getNativeEvent(event);
-
         releasePointer(
-            nativeEvent
+            getNativeEvent(
+                event
+            )
         );
 
         this.interaction =
@@ -2248,7 +2530,9 @@ export class ToolManager {
         }
 
         if (
-            isFunction(tool.cursor)
+            isFunction(
+                tool.cursor
+            )
         ) {
             try {
                 return (
@@ -2273,14 +2557,16 @@ export class ToolManager {
     }
 
     /*=====================================================
-    Reset Manager
+    Reset
     =====================================================*/
 
     reset({
         keepRegisteredTools = true,
         activateFallback = true
     } = {}) {
-        if (this.interaction) {
+        if (
+            this.interaction
+        ) {
             this.cancelInteraction(
                 "manager-reset"
             );
@@ -2288,7 +2574,9 @@ export class ToolManager {
 
         this.toolStates.clear();
 
-        if (!keepRegisteredTools) {
+        if (
+            !keepRegisteredTools
+        ) {
             this.tools.clear();
         }
 
@@ -2309,15 +2597,19 @@ export class ToolManager {
     }
 
     /*=====================================================
-    Destroy Manager
+    Destroy
     =====================================================*/
 
     destroy() {
-        if (this.destroyed) {
+        if (
+            this.destroyed
+        ) {
             return;
         }
 
-        if (this.interaction) {
+        if (
+            this.interaction
+        ) {
             this.cancelInteraction(
                 "manager-destroyed"
             );
@@ -2334,7 +2626,6 @@ export class ToolManager {
         );
 
         this.tools.clear();
-
         this.toolStates.clear();
 
         this.activeToolId =
@@ -2349,17 +2640,18 @@ export class ToolManager {
     =====================================================*/
 
     assertNotDestroyed() {
-        if (this.destroyed) {
+        if (
+            this.destroyed
+        ) {
             throw new Error(
                 "ToolManager has already been destroyed."
             );
         }
     }
-
 }
 
 /*=========================================================
-Tool Manager Factory
+Factory and Export
 =========================================================*/
 
 export function createToolManager(
@@ -2369,9 +2661,5 @@ export function createToolManager(
         options
     );
 }
-
-/*=========================================================
-Default Export
-=========================================================*/
 
 export default ToolManager;

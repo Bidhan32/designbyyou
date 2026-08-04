@@ -2,7 +2,7 @@
 =========================================================
 FashionVision Professional Editor
 Selection Transformer
-Version 1.0
+Version 1.1 — Linked Symmetry Transforming
 =========================================================
 */
 
@@ -55,8 +55,19 @@ const DEFAULT_ROTATION_SNAPS =
         315
     ]);
 
+const SYMMETRY_VARIANTS =
+    Object.freeze({
+        SOURCE: "source",
+        VERTICAL: "vertical",
+        HORIZONTAL: "horizontal",
+        BOTH: "both"
+    });
+
 const TRANSFORM_EPSILON =
     0.0001;
+
+const MATRIX_EPSILON =
+    0.0000001;
 
 /*=========================================================
 Numeric Helpers
@@ -113,13 +124,18 @@ function normalizeScale(
     value
 ) {
     const scale =
-        numberOr(value, 1);
+        numberOr(
+            value,
+            1
+        );
 
     if (
         Math.abs(scale) <
         0.0001
     ) {
-        return 0.0001;
+        return scale < 0
+            ? -0.0001
+            : 0.0001;
     }
 
     return roundNumber(
@@ -131,19 +147,43 @@ function normalizeRotation(
     rotation
 ) {
     let value =
-        numberOr(rotation, 0) %
+        numberOr(
+            rotation,
+            0
+        ) %
         360;
 
-    if (value > 180) {
-        value -= 360;
+    if (
+        value >
+        180
+    ) {
+        value -=
+            360;
     }
 
-    if (value < -180) {
-        value += 360;
+    if (
+        value <
+        -180
+    ) {
+        value +=
+            360;
     }
 
     return roundNumber(
         value
+    );
+}
+
+function radiansToDegrees(
+    radians
+) {
+    return (
+        numberOr(
+            radians,
+            0
+        ) *
+        180 /
+        Math.PI
     );
 }
 
@@ -154,8 +194,35 @@ General Helpers
 function isFunction(
     value
 ) {
-    return typeof value ===
-        "function";
+    return (
+        typeof value ===
+        "function"
+    );
+}
+
+function isPlainObject(
+    value
+) {
+    return Boolean(
+        value &&
+        typeof value ===
+            "object" &&
+        !Array.isArray(value)
+    );
+}
+
+function uniqueIds(
+    values
+) {
+    return [
+        ...new Set(
+            (
+                Array.isArray(values)
+                    ? values
+                    : []
+            ).filter(Boolean)
+        )
+    ];
 }
 
 function getNodeChildren(
@@ -178,12 +245,14 @@ function getNodeChildren(
             children?.toArray
         )
     ) {
-        return children.toArray();
+        return children
+            .toArray();
     }
 
     try {
         return Array.from(
-            children || []
+            children ||
+            []
         );
     } catch {
         return [];
@@ -201,7 +270,9 @@ function resolveStage({
 }) {
     if (
         stage &&
-        isFunction(stage.find)
+        isFunction(
+            stage.find
+        )
     ) {
         return stage;
     }
@@ -242,8 +313,11 @@ export function findKonvaNodeById(
     }
 
     if (
-        isFunction(root.id) &&
-        root.id() === objectId
+        isFunction(
+            root.id
+        ) &&
+        root.id() ===
+            objectId
     ) {
         return root;
     }
@@ -262,7 +336,9 @@ export function findKonvaNodeById(
                 objectId
             );
 
-        if (found) {
+        if (
+            found
+        ) {
             return found;
         }
     }
@@ -281,21 +357,27 @@ function isObjectTransformable(
     return Boolean(
         object &&
         layer &&
-        object.visible !== false &&
-        object.locked !== true &&
-        layer.visible !== false &&
-        layer.locked !== true
+        object.visible !==
+            false &&
+        object.locked !==
+            true &&
+        layer.visible !==
+            false &&
+        layer.locked !==
+            true
     );
 }
 
 /*=========================================================
-Read Node Transform
+Read and Apply Node Transform
 =========================================================*/
 
 export function readNodeTransform(
     node
 ) {
-    if (!node) {
+    if (
+        !node
+    ) {
         return null;
     }
 
@@ -352,10 +434,6 @@ export function readNodeTransform(
             )
     };
 }
-
-/*=========================================================
-Apply Node Transform
-=========================================================*/
 
 function applyNodeTransform(
     node,
@@ -442,8 +520,12 @@ function numbersAreDifferent(
 ) {
     return (
         Math.abs(
-            numberOr(firstValue) -
-            numberOr(secondValue)
+            numberOr(
+                firstValue
+            ) -
+            numberOr(
+                secondValue
+            )
         ) >
         TRANSFORM_EPSILON
     );
@@ -501,6 +583,937 @@ function transformsAreDifferent(
 }
 
 /*=========================================================
+2D Affine Matrix Helpers
+
+Matrix format matches Canvas and Konva:
+
+    [a, b, c, d, e, f]
+
+    x' = a*x + c*y + e
+    y' = b*x + d*y + f
+=========================================================*/
+
+function identityMatrix() {
+    return [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+    ];
+}
+
+function normalizeMatrix(
+    matrix
+) {
+    if (
+        !Array.isArray(
+            matrix
+        ) ||
+        matrix.length <
+            6
+    ) {
+        return identityMatrix();
+    }
+
+    return [
+        numberOr(
+            matrix[0],
+            1
+        ),
+
+        numberOr(
+            matrix[1],
+            0
+        ),
+
+        numberOr(
+            matrix[2],
+            0
+        ),
+
+        numberOr(
+            matrix[3],
+            1
+        ),
+
+        numberOr(
+            matrix[4],
+            0
+        ),
+
+        numberOr(
+            matrix[5],
+            0
+        )
+    ];
+}
+
+function multiplyMatrices(
+    first,
+    second
+) {
+    const [
+        a1,
+        b1,
+        c1,
+        d1,
+        e1,
+        f1
+    ] =
+        normalizeMatrix(
+            first
+        );
+
+    const [
+        a2,
+        b2,
+        c2,
+        d2,
+        e2,
+        f2
+    ] =
+        normalizeMatrix(
+            second
+        );
+
+    return [
+        a1 * a2 +
+            c1 * b2,
+
+        b1 * a2 +
+            d1 * b2,
+
+        a1 * c2 +
+            c1 * d2,
+
+        b1 * c2 +
+            d1 * d2,
+
+        a1 * e2 +
+            c1 * f2 +
+            e1,
+
+        b1 * e2 +
+            d1 * f2 +
+            f1
+    ];
+}
+
+function invertMatrix(
+    matrix
+) {
+    const [
+        a,
+        b,
+        c,
+        d,
+        e,
+        f
+    ] =
+        normalizeMatrix(
+            matrix
+        );
+
+    const determinant =
+        a * d -
+        b * c;
+
+    if (
+        Math.abs(
+            determinant
+        ) <
+        MATRIX_EPSILON
+    ) {
+        return null;
+    }
+
+    return [
+        d /
+            determinant,
+
+        -b /
+            determinant,
+
+        -c /
+            determinant,
+
+        a /
+            determinant,
+
+        (
+            c * f -
+            d * e
+        ) /
+            determinant,
+
+        (
+            b * e -
+            a * f
+        ) /
+            determinant
+    ];
+}
+
+function getAbsoluteMatrix(
+    node
+) {
+    const matrix =
+        node
+            ?.getAbsoluteTransform
+            ?.()
+            ?.getMatrix
+            ?.();
+
+    return normalizeMatrix(
+        matrix
+    );
+}
+
+function getParentAbsoluteMatrix(
+    node
+) {
+    const parent =
+        node
+            ?.getParent
+            ?.();
+
+    if (
+        !parent
+    ) {
+        return identityMatrix();
+    }
+
+    return getAbsoluteMatrix(
+        parent
+    );
+}
+
+function decomposeMatrix(
+    matrix
+) {
+    const [
+        a,
+        b,
+        c,
+        d,
+        e,
+        f
+    ] =
+        normalizeMatrix(
+            matrix
+        );
+
+    const determinant =
+        a * d -
+        b * c;
+
+    const result = {
+        x:
+            e,
+
+        y:
+            f,
+
+        rotation:
+            0,
+
+        scaleX:
+            1,
+
+        scaleY:
+            1,
+
+        skewX:
+            0,
+
+        skewY:
+            0
+    };
+
+    if (
+        Math.abs(a) >
+            MATRIX_EPSILON ||
+        Math.abs(b) >
+            MATRIX_EPSILON
+    ) {
+        const radius =
+            Math.sqrt(
+                a * a +
+                b * b
+            );
+
+        result.rotation =
+            b > 0
+                ? Math.acos(
+                    clamp(
+                        a /
+                            radius,
+                        -1,
+                        1
+                    )
+                )
+                : -Math.acos(
+                    clamp(
+                        a /
+                            radius,
+                        -1,
+                        1
+                    )
+                );
+
+        result.scaleX =
+            radius;
+
+        result.scaleY =
+            determinant /
+            radius;
+
+        result.skewX =
+            Math.atan(
+                (
+                    a * c +
+                    b * d
+                ) /
+                (
+                    radius *
+                    radius
+                )
+            );
+    } else if (
+        Math.abs(c) >
+            MATRIX_EPSILON ||
+        Math.abs(d) >
+            MATRIX_EPSILON
+    ) {
+        const radius =
+            Math.sqrt(
+                c * c +
+                d * d
+            );
+
+        result.rotation =
+            Math.PI /
+                2 -
+            (
+                d > 0
+                    ? Math.acos(
+                        clamp(
+                            -c /
+                                radius,
+                            -1,
+                            1
+                        )
+                    )
+                    : -Math.acos(
+                        clamp(
+                            c /
+                                radius,
+                            -1,
+                            1
+                        )
+                    )
+            );
+
+        result.scaleX =
+            determinant /
+            radius;
+
+        result.scaleY =
+            radius;
+
+        result.skewY =
+            Math.atan(
+                (
+                    a * c +
+                    b * d
+                ) /
+                (
+                    radius *
+                    radius
+                )
+            );
+    }
+
+    return {
+        x:
+            roundNumber(
+                result.x,
+                6
+            ),
+
+        y:
+            roundNumber(
+                result.y,
+                6
+            ),
+
+        rotation:
+            normalizeRotation(
+                radiansToDegrees(
+                    result.rotation
+                )
+            ),
+
+        scaleX:
+            normalizeScale(
+                result.scaleX
+            ),
+
+        scaleY:
+            normalizeScale(
+                result.scaleY
+            ),
+
+        skewX:
+            roundNumber(
+                radiansToDegrees(
+                    result.skewX
+                ),
+                6
+            ),
+
+        skewY:
+            roundNumber(
+                radiansToDegrees(
+                    result.skewY
+                ),
+                6
+            )
+    };
+}
+
+function applyAbsoluteMatrixToNode(
+    node,
+    absoluteMatrix
+) {
+    if (
+        !node ||
+        !absoluteMatrix
+    ) {
+        return false;
+    }
+
+    const parentAbsoluteMatrix =
+        getParentAbsoluteMatrix(
+            node
+        );
+
+    const inverseParentMatrix =
+        invertMatrix(
+            parentAbsoluteMatrix
+        );
+
+    if (
+        !inverseParentMatrix
+    ) {
+        return false;
+    }
+
+    const localMatrix =
+        multiplyMatrices(
+            inverseParentMatrix,
+            absoluteMatrix
+        );
+
+    const decomposed =
+        decomposeMatrix(
+            localMatrix
+        );
+
+    const [
+        a,
+        b,
+        c,
+        d,
+        e,
+        f
+    ] =
+        normalizeMatrix(
+            localMatrix
+        );
+
+    const offsetX =
+        numberOr(
+            node.offsetX?.(),
+            0
+        );
+
+    const offsetY =
+        numberOr(
+            node.offsetY?.(),
+            0
+        );
+
+    node.setAttrs({
+        x:
+            e +
+            a * offsetX +
+            c * offsetY,
+
+        y:
+            f +
+            b * offsetX +
+            d * offsetY,
+
+        rotation:
+            decomposed.rotation,
+
+        scaleX:
+            decomposed.scaleX,
+
+        scaleY:
+            decomposed.scaleY,
+
+        skewX:
+            decomposed.skewX,
+
+        skewY:
+            decomposed.skewY,
+
+        offsetX,
+        offsetY
+    });
+
+    return true;
+}
+
+/*=========================================================
+Symmetry Metadata Helpers
+=========================================================*/
+
+function normalizeSymmetryVariant(
+    variant
+) {
+    const requested =
+        typeof variant ===
+            "string"
+            ? variant
+                .trim()
+                .toLowerCase()
+            : "";
+
+    switch (
+        requested
+    ) {
+        case SYMMETRY_VARIANTS.VERTICAL:
+        case SYMMETRY_VARIANTS.HORIZONTAL:
+        case SYMMETRY_VARIANTS.BOTH:
+            return requested;
+
+        default:
+            return SYMMETRY_VARIANTS.SOURCE;
+    }
+}
+
+function getLinkedSymmetryMetadata(
+    object
+) {
+    const symmetry =
+        object
+            ?.metadata
+            ?.symmetry;
+
+    if (
+        !isPlainObject(
+            symmetry
+        ) ||
+        symmetry.linked !==
+            true ||
+        !symmetry.groupId
+    ) {
+        return null;
+    }
+
+    return {
+        ...symmetry,
+
+        groupId:
+            symmetry.groupId,
+
+        sourceObjectId:
+            symmetry.sourceObjectId ||
+            object.id ||
+            null,
+
+        variant:
+            normalizeSymmetryVariant(
+                symmetry.variant
+            ),
+
+        axisX:
+            numberOr(
+                symmetry.axisX,
+                0
+            ),
+
+        axisY:
+            numberOr(
+                symmetry.axisY,
+                0
+            )
+    };
+}
+
+function createDocumentReflectionMatrix(
+    variant,
+    axisX,
+    axisY
+) {
+    switch (
+        normalizeSymmetryVariant(
+            variant
+        )
+    ) {
+        case SYMMETRY_VARIANTS.VERTICAL:
+            return [
+                -1,
+                0,
+                0,
+                1,
+                2 * axisX,
+                0
+            ];
+
+        case SYMMETRY_VARIANTS.HORIZONTAL:
+            return [
+                1,
+                0,
+                0,
+                -1,
+                0,
+                2 * axisY
+            ];
+
+        case SYMMETRY_VARIANTS.BOTH:
+            return [
+                -1,
+                0,
+                0,
+                -1,
+                2 * axisX,
+                2 * axisY
+            ];
+
+        default:
+            return identityMatrix();
+    }
+}
+
+function convertDocumentMatrixToStage(
+    documentMatrix,
+    documentToStageMatrix
+) {
+    const inverseDocumentToStage =
+        invertMatrix(
+            documentToStageMatrix
+        );
+
+    if (
+        !inverseDocumentToStage
+    ) {
+        return normalizeMatrix(
+            documentMatrix
+        );
+    }
+
+    return multiplyMatrices(
+        documentToStageMatrix,
+
+        multiplyMatrices(
+            documentMatrix,
+            inverseDocumentToStage
+        )
+    );
+}
+
+function getDocumentToStageMatrix(
+    resolvedStage
+) {
+    const artworkGroup =
+        resolvedStage
+            ?.findOne
+            ?.(
+                ".fashion-editor-artwork-group"
+            );
+
+    if (
+        artworkGroup
+    ) {
+        return getAbsoluteMatrix(
+            artworkGroup
+        );
+    }
+
+    return identityMatrix();
+}
+
+/*=========================================================
+Linked Symmetry Session Helpers
+=========================================================*/
+
+function createNodeSnapshot(
+    objectId,
+    node
+) {
+    if (
+        !objectId ||
+        !node
+    ) {
+        return null;
+    }
+
+    return {
+        objectId,
+        node,
+
+        transform:
+            readNodeTransform(
+                node
+            ),
+
+        absoluteMatrix:
+            getAbsoluteMatrix(
+                node
+            )
+    };
+}
+
+function resolveLinkedGroupMembers({
+    groupId,
+    objects,
+    layerMap,
+    resolvedStage,
+    transformer
+}) {
+    const candidates =
+        Object.values(
+            objects ||
+            {}
+        )
+            .filter(
+                object => {
+                    const metadata =
+                        getLinkedSymmetryMetadata(
+                            object
+                        );
+
+                    return Boolean(
+                        metadata &&
+                        metadata.groupId ===
+                            groupId
+                    );
+                }
+            );
+
+    if (
+        candidates.length <
+            2 ||
+        candidates.some(
+            object =>
+                !isObjectTransformable(
+                    object,
+                    layerMap.get(
+                        object.layerId
+                    )
+                )
+        )
+    ) {
+        return [];
+    }
+
+    const members =
+        candidates
+            .map(
+                object => {
+                    const node =
+                        findKonvaNodeById(
+                            resolvedStage,
+                            object.id
+                        );
+
+                    if (
+                        !node ||
+                        node ===
+                            transformer
+                    ) {
+                        return null;
+                    }
+
+                    const metadata =
+                        getLinkedSymmetryMetadata(
+                            object
+                        );
+
+                    return {
+                        object,
+                        node,
+                        metadata
+                    };
+                }
+            )
+            .filter(Boolean);
+
+    /*
+    A linked set is synchronized only when every member is
+    editable and mounted. This prevents partially changing
+    a symmetry set.
+    */
+
+    return members.length ===
+        candidates.length
+        ? members
+        : [];
+}
+
+function synchronizeLinkedGroups(
+    session
+) {
+    if (
+        !session ||
+        !Array.isArray(
+            session.linkedGroups
+        )
+    ) {
+        return [];
+    }
+
+    const synchronizedIds =
+        new Set();
+
+    session.linkedGroups.forEach(
+        group => {
+            const driverSnapshot =
+                session.snapshotMap.get(
+                    group.driverObjectId
+                );
+
+            if (
+                !driverSnapshot
+            ) {
+                return;
+            }
+
+            const currentDriverMatrix =
+                getAbsoluteMatrix(
+                    driverSnapshot.node
+                );
+
+            const inverseDriverStart =
+                invertMatrix(
+                    driverSnapshot
+                        .absoluteMatrix
+                );
+
+            if (
+                !inverseDriverStart
+            ) {
+                return;
+            }
+
+            const driverDelta =
+                multiplyMatrices(
+                    currentDriverMatrix,
+                    inverseDriverStart
+                );
+
+            const driverReflection =
+                group.reflectionMatrices[
+                    group.driverVariant
+                ] ||
+                identityMatrix();
+
+            /*
+            Convert the driver's change into source symmetry
+            space. Reflection matrices are involutions, so
+            each reflection is also its own inverse.
+            */
+
+            const sourceDelta =
+                multiplyMatrices(
+                    driverReflection,
+
+                    multiplyMatrices(
+                        driverDelta,
+                        driverReflection
+                    )
+                );
+
+            group.memberObjectIds.forEach(
+                memberObjectId => {
+                    if (
+                        memberObjectId ===
+                        group.driverObjectId
+                    ) {
+                        synchronizedIds.add(
+                            memberObjectId
+                        );
+
+                        return;
+                    }
+
+                    const memberSnapshot =
+                        session.snapshotMap.get(
+                            memberObjectId
+                        );
+
+                    if (
+                        !memberSnapshot
+                    ) {
+                        return;
+                    }
+
+                    const memberVariant =
+                        group.memberVariants[
+                            memberObjectId
+                        ] ||
+                        SYMMETRY_VARIANTS.SOURCE;
+
+                    const memberReflection =
+                        group.reflectionMatrices[
+                            memberVariant
+                        ] ||
+                        identityMatrix();
+
+                    const memberDelta =
+                        multiplyMatrices(
+                            memberReflection,
+
+                            multiplyMatrices(
+                                sourceDelta,
+                                memberReflection
+                            )
+                        );
+
+                    const targetAbsoluteMatrix =
+                        multiplyMatrices(
+                            memberDelta,
+                            memberSnapshot
+                                .absoluteMatrix
+                        );
+
+                    if (
+                        applyAbsoluteMatrixToNode(
+                            memberSnapshot.node,
+                            targetAbsoluteMatrix
+                        )
+                    ) {
+                        synchronizedIds.add(
+                            memberObjectId
+                        );
+                    }
+                }
+            );
+        }
+    );
+
+    return [
+        ...synchronizedIds
+    ];
+}
+
+/*=========================================================
 Selection Transformer Component
 =========================================================*/
 
@@ -524,6 +1537,8 @@ function SelectionTransformer({
     minimumHeight = 8,
 
     constrainToDocument = false,
+
+    linkedSymmetryEnabled = true,
 
     borderColor = "#7c3aed",
     anchorFill = "#ffffff",
@@ -598,6 +1613,12 @@ function SelectionTransformer({
                 state.updateObject
         );
 
+    const updateObjects =
+        useFashionEditorStore(
+            state =>
+                state.updateObjects
+        );
+
     const beginHistoryTransaction =
         useFashionEditorStore(
             state =>
@@ -658,28 +1679,37 @@ function SelectionTransformer({
         );
 
     const anchorSize =
-        10 / zoom;
+        10 /
+        zoom;
 
     const anchorStrokeWidth =
-        1.5 / zoom;
+        1.5 /
+        zoom;
 
     const borderStrokeWidth =
-        1.5 / zoom;
+        1.5 /
+        zoom;
 
     const transformerPadding =
-        5 / zoom;
+        5 /
+        zoom;
 
     const rotateAnchorOffset =
-        28 / zoom;
+        28 /
+        zoom;
 
     const anchorCornerRadius =
-        2.5 / zoom;
+        2.5 /
+        zoom;
 
     const borderDash =
         useMemo(
             () => [
-                5 / zoom,
-                4 / zoom
+                5 /
+                    zoom,
+
+                4 /
+                    zoom
             ],
             [
                 zoom
@@ -770,7 +1800,9 @@ function SelectionTransformer({
             const transformer =
                 transformerRef.current;
 
-            if (!transformer) {
+            if (
+                !transformer
+            ) {
                 return;
             }
 
@@ -802,7 +1834,9 @@ function SelectionTransformer({
     const stopTransformerEvent =
         useCallback(
             event => {
-                if (event) {
+                if (
+                    event
+                ) {
                     event.cancelBubble =
                         true;
                 }
@@ -842,40 +1876,300 @@ function SelectionTransformer({
                     [];
 
                 if (
-                    nodes.length === 0
+                    nodes.length ===
+                    0
                 ) {
                     return;
                 }
 
-                const snapshots =
-                    nodes
-                        .map(
-                            node => {
-                                const objectId =
-                                    node.id?.();
+                const resolvedStage =
+                    resolveStage({
+                        stage,
+                        stageRef,
+                        transformer
+                    });
 
-                                if (
-                                    !objectId ||
-                                    !objects[
-                                        objectId
-                                    ]
-                                ) {
-                                    return null;
-                                }
+                if (
+                    !resolvedStage
+                ) {
+                    return;
+                }
 
-                                return {
-                                    objectId,
-
-                                    node,
-
-                                    transform:
-                                        readNodeTransform(
-                                            node
-                                        )
-                                };
-                            }
+                const selectedIds =
+                    uniqueIds(
+                        nodes.map(
+                            node =>
+                                node.id?.()
                         )
-                        .filter(Boolean);
+                    );
+
+                const snapshotMap =
+                    new Map();
+
+                selectedIds.forEach(
+                    objectId => {
+                        const node =
+                            nodes.find(
+                                candidate =>
+                                    candidate.id?.() ===
+                                    objectId
+                            );
+
+                        const snapshot =
+                            createNodeSnapshot(
+                                objectId,
+                                node
+                            );
+
+                        if (
+                            snapshot
+                        ) {
+                            snapshotMap.set(
+                                objectId,
+                                snapshot
+                            );
+                        }
+                    }
+                );
+
+                const linkedGroups =
+                    [];
+
+                const processedGroupIds =
+                    new Set();
+
+                if (
+                    linkedSymmetryEnabled
+                ) {
+                    selectedIds.forEach(
+                        selectedObjectId => {
+                            const selectedObject =
+                                objects[
+                                    selectedObjectId
+                                ];
+
+                            const selectedMetadata =
+                                getLinkedSymmetryMetadata(
+                                    selectedObject
+                                );
+
+                            if (
+                                !selectedMetadata ||
+                                processedGroupIds.has(
+                                    selectedMetadata
+                                        .groupId
+                                )
+                            ) {
+                                return;
+                            }
+
+                            processedGroupIds.add(
+                                selectedMetadata
+                                    .groupId
+                            );
+
+                            const members =
+                                resolveLinkedGroupMembers({
+                                    groupId:
+                                        selectedMetadata
+                                            .groupId,
+
+                                    objects,
+                                    layerMap,
+                                    resolvedStage,
+                                    transformer
+                                });
+
+                            if (
+                                members.length <
+                                2
+                            ) {
+                                return;
+                            }
+
+                            members.forEach(
+                                member => {
+                                    if (
+                                        snapshotMap.has(
+                                            member.object.id
+                                        )
+                                    ) {
+                                        return;
+                                    }
+
+                                    const snapshot =
+                                        createNodeSnapshot(
+                                            member.object.id,
+                                            member.node
+                                        );
+
+                                    if (
+                                        snapshot
+                                    ) {
+                                        snapshotMap.set(
+                                            member.object.id,
+                                            snapshot
+                                        );
+                                    }
+                                }
+                            );
+
+                            const selectedMemberIds =
+                                members
+                                    .map(
+                                        member =>
+                                            member.object.id
+                                    )
+                                    .filter(
+                                        objectId =>
+                                            selectedIds.includes(
+                                                objectId
+                                            )
+                                    );
+
+                            if (
+                                selectedMemberIds.length ===
+                                0
+                            ) {
+                                return;
+                            }
+
+                            const selectedSource =
+                                selectedMemberIds.find(
+                                    objectId =>
+                                        getLinkedSymmetryMetadata(
+                                            objects[
+                                                objectId
+                                            ]
+                                        )?.variant ===
+                                        SYMMETRY_VARIANTS.SOURCE
+                                );
+
+                            const driverObjectId =
+                                selectedSource ||
+                                selectedMemberIds[0];
+
+                            const driverMetadata =
+                                getLinkedSymmetryMetadata(
+                                    objects[
+                                        driverObjectId
+                                    ]
+                                );
+
+                            if (
+                                !driverMetadata
+                            ) {
+                                return;
+                            }
+
+                            const axisX =
+                                numberOr(
+                                    driverMetadata.axisX,
+
+                                    numberOr(
+                                        document.width,
+                                        1200
+                                    ) /
+                                    2
+                                );
+
+                            const axisY =
+                                numberOr(
+                                    driverMetadata.axisY,
+
+                                    numberOr(
+                                        document.height,
+                                        1600
+                                    ) /
+                                    2
+                                );
+
+                            const documentToStageMatrix =
+                                getDocumentToStageMatrix(
+                                    resolvedStage
+                                );
+
+                            const reflectionMatrices = {
+                                [SYMMETRY_VARIANTS.SOURCE]:
+                                    identityMatrix(),
+
+                                [SYMMETRY_VARIANTS.VERTICAL]:
+                                    convertDocumentMatrixToStage(
+                                        createDocumentReflectionMatrix(
+                                            SYMMETRY_VARIANTS.VERTICAL,
+                                            axisX,
+                                            axisY
+                                        ),
+                                        documentToStageMatrix
+                                    ),
+
+                                [SYMMETRY_VARIANTS.HORIZONTAL]:
+                                    convertDocumentMatrixToStage(
+                                        createDocumentReflectionMatrix(
+                                            SYMMETRY_VARIANTS.HORIZONTAL,
+                                            axisX,
+                                            axisY
+                                        ),
+                                        documentToStageMatrix
+                                    ),
+
+                                [SYMMETRY_VARIANTS.BOTH]:
+                                    convertDocumentMatrixToStage(
+                                        createDocumentReflectionMatrix(
+                                            SYMMETRY_VARIANTS.BOTH,
+                                            axisX,
+                                            axisY
+                                        ),
+                                        documentToStageMatrix
+                                    )
+                            };
+
+                            const memberVariants =
+                                {};
+
+                            members.forEach(
+                                member => {
+                                    memberVariants[
+                                        member.object.id
+                                    ] =
+                                        member.metadata
+                                            .variant;
+                                }
+                            );
+
+                            linkedGroups.push({
+                                groupId:
+                                    selectedMetadata
+                                        .groupId,
+
+                                sourceObjectId:
+                                    driverMetadata
+                                        .sourceObjectId,
+
+                                driverObjectId,
+
+                                driverVariant:
+                                    driverMetadata
+                                        .variant,
+
+                                memberObjectIds:
+                                    members.map(
+                                        member =>
+                                            member.object.id
+                                    ),
+
+                                memberVariants,
+                                reflectionMatrices,
+                                axisX,
+                                axisY
+                            });
+                        }
+                    );
+                }
+
+                const snapshots = [
+                    ...snapshotMap.values()
+                ];
 
                 if (
                     snapshots.length ===
@@ -884,40 +2178,74 @@ function SelectionTransformer({
                     return;
                 }
 
+                const label =
+                    linkedGroups.length >
+                    0
+                        ? "Transform linked symmetry"
+                        : snapshots.length ===
+                            1
+                            ? "Transform object"
+                            : "Transform objects";
+
+                const historyStarted =
+                    isFunction(
+                        beginHistoryTransaction
+                    );
+
                 transformingRef.current =
                     true;
 
                 transformSessionRef.current = {
                     snapshots,
+                    snapshotMap,
+
+                    selectedObjectIds:
+                        selectedIds,
+
+                    linkedGroups,
+                    label,
+                    historyStarted,
 
                     startedAt:
                         Date.now()
                 };
 
-                beginHistoryTransaction(
-                    snapshots.length === 1
-                        ? "Transform object"
-                        : "Transform objects"
-                );
+                if (
+                    historyStarted
+                ) {
+                    beginHistoryTransaction(
+                        label
+                    );
+                }
 
                 onTransformStart?.({
                     objectIds:
+                        selectedIds,
+
+                    affectedObjectIds:
                         snapshots.map(
                             snapshot =>
                                 snapshot.objectId
                         ),
 
-                    nodes:
-                        snapshots.map(
-                            snapshot =>
-                                snapshot.node
+                    linkedGroupIds:
+                        linkedGroups.map(
+                            group =>
+                                group.groupId
                         ),
 
+                    nodes,
                     event
                 });
             },
             [
+                stage,
+                stageRef,
                 objects,
+                layerMap,
+                document.width,
+                document.height,
+                linkedSymmetryEnabled,
                 beginHistoryTransaction,
                 onTransformStart,
                 stopTransformerEvent
@@ -934,6 +2262,16 @@ function SelectionTransformer({
                 stopTransformerEvent(
                     event
                 );
+
+                const session =
+                    transformSessionRef.current;
+
+                const linkedObjectIds =
+                    session
+                        ? synchronizeLinkedGroups(
+                            session
+                        )
+                        : [];
 
                 const transformer =
                     transformerRef.current;
@@ -962,6 +2300,17 @@ function SelectionTransformer({
                                     node.id?.()
                             )
                             .filter(Boolean),
+
+                    affectedObjectIds:
+                        session
+                            ?.snapshots
+                            ?.map(
+                                snapshot =>
+                                    snapshot.objectId
+                            ) ||
+                        [],
+
+                    linkedObjectIds,
 
                     transforms:
                         nodes.map(
@@ -999,66 +2348,135 @@ function SelectionTransformer({
                 const session =
                     transformSessionRef.current;
 
-                if (!session) {
+                if (
+                    !session
+                ) {
                     transformingRef.current =
                         false;
 
                     return;
                 }
 
-                let changedCount =
-                    0;
+                synchronizeLinkedGroups(
+                    session
+                );
 
                 const completedTransforms =
-                    [];
+                    session.snapshots
+                        .map(
+                            snapshot => {
+                                const currentTransform =
+                                    readNodeTransform(
+                                        snapshot.node
+                                    );
 
-                session.snapshots.forEach(
-                    snapshot => {
-                        const currentTransform =
-                            readNodeTransform(
-                                snapshot.node
+                                if (
+                                    !transformsAreDifferent(
+                                        snapshot.transform,
+                                        currentTransform
+                                    )
+                                ) {
+                                    return null;
+                                }
+
+                                return {
+                                    objectId:
+                                        snapshot.objectId,
+
+                                    before:
+                                        snapshot.transform,
+
+                                    after:
+                                        currentTransform
+                                };
+                            }
+                        )
+                        .filter(Boolean);
+
+                const transformMap =
+                    new Map(
+                        completedTransforms.map(
+                            item => [
+                                item.objectId,
+                                item.after
+                            ]
+                        )
+                    );
+
+                try {
+                    if (
+                        completedTransforms.length >
+                        0
+                    ) {
+                        const changedIds =
+                            completedTransforms.map(
+                                item =>
+                                    item.objectId
                             );
 
                         if (
-                            !transformsAreDifferent(
-                                snapshot.transform,
-                                currentTransform
+                            isFunction(
+                                updateObjects
                             )
                         ) {
-                            return;
+                            updateObjects(
+                                changedIds,
+
+                                currentObject =>
+                                    transformMap.get(
+                                        currentObject.id
+                                    ) ||
+                                    {},
+
+                                session.label
+                            );
+                        } else {
+                            completedTransforms.forEach(
+                                item => {
+                                    updateObject(
+                                        item.objectId,
+                                        item.after,
+                                        session.label
+                                    );
+                                }
+                            );
                         }
 
-                        changedCount +=
-                            1;
-
-                        completedTransforms.push({
-                            objectId:
-                                snapshot.objectId,
-
-                            before:
-                                snapshot.transform,
-
-                            after:
-                                currentTransform
-                        });
-
-                        updateObject(
-                            snapshot.objectId,
-                            currentTransform,
-                            session.snapshots
-                                .length === 1
-                                ? "Transform object"
-                                : "Transform objects"
-                        );
+                        if (
+                            session.historyStarted
+                        ) {
+                            commitHistoryTransaction();
+                        }
+                    } else if (
+                        session.historyStarted
+                    ) {
+                        cancelHistoryTransaction();
                     }
-                );
-
-                if (
-                    changedCount > 0
+                } catch (
+                    error
                 ) {
-                    commitHistoryTransaction();
-                } else {
-                    cancelHistoryTransaction();
+                    session.snapshots.forEach(
+                        snapshot => {
+                            applyNodeTransform(
+                                snapshot.node,
+                                snapshot.transform
+                            );
+                        }
+                    );
+
+                    if (
+                        session.historyStarted
+                    ) {
+                        cancelHistoryTransaction();
+                    }
+
+                    transformingRef.current =
+                        false;
+
+                    transformSessionRef.current =
+                        null;
+
+                    throw error;
                 }
 
                 transformingRef.current =
@@ -1082,18 +2500,35 @@ function SelectionTransformer({
 
                 onTransformEnd?.({
                     changed:
-                        changedCount > 0,
+                        completedTransforms.length >
+                        0,
 
-                    changedCount,
+                    changedCount:
+                        completedTransforms.length,
 
                     transforms:
                         completedTransforms,
+
+                    linkedGroupIds:
+                        session.linkedGroups.map(
+                            group =>
+                                group.groupId
+                        ),
+
+                    linkedObjectIds:
+                        uniqueIds(
+                            session.linkedGroups.flatMap(
+                                group =>
+                                    group.memberObjectIds
+                            )
+                        ),
 
                     event
                 });
             },
             [
                 updateObject,
+                updateObjects,
                 commitHistoryTransaction,
                 cancelHistoryTransaction,
                 onTransformEnd,
@@ -1114,7 +2549,9 @@ function SelectionTransformer({
                 const session =
                     transformSessionRef.current;
 
-                if (!session) {
+                if (
+                    !session
+                ) {
                     return false;
                 }
 
@@ -1134,7 +2571,11 @@ function SelectionTransformer({
                     }
                 );
 
-                cancelHistoryTransaction();
+                if (
+                    session.historyStarted
+                ) {
+                    cancelHistoryTransaction();
+                }
 
                 transformingRef.current =
                     false;
@@ -1156,9 +2597,18 @@ function SelectionTransformer({
                     reason,
 
                     objectIds:
+                        session.selectedObjectIds,
+
+                    affectedObjectIds:
                         session.snapshots.map(
                             snapshot =>
                                 snapshot.objectId
+                        ),
+
+                    linkedGroupIds:
+                        session.linkedGroups.map(
+                            group =>
+                                group.groupId
                         )
                 });
 
@@ -1171,7 +2621,7 @@ function SelectionTransformer({
         );
 
     /*=====================================================
-    Cancel on Escape
+    Cancel on Escape and Window Blur
     =====================================================*/
 
     useEffect(
@@ -1180,7 +2630,7 @@ function SelectionTransformer({
                 event => {
                     if (
                         event.key !==
-                        "Escape" ||
+                            "Escape" ||
                         !transformSessionRef
                             .current
                     ) {
@@ -1376,8 +2826,10 @@ function SelectionTransformer({
                         );
 
                     if (
-                        left < 0 ||
-                        top < 0 ||
+                        left <
+                            0 ||
+                        top <
+                            0 ||
                         right >
                             documentWidth ||
                         bottom >
