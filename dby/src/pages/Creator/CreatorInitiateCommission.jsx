@@ -1,218 +1,574 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Loader2, ArrowLeft, Send, Sparkles, AlertCircle, Shield } from 'lucide-react';
-import API from '../../api/axios';
-import { useToast } from '../../context/ToastContext';
+"use strict";
 
-const CreatorInitiateCommission = () => {
-    const { designerId } = useParams(); 
-    const navigate = useNavigate();
-    const location = useLocation();
-    const { showToast } = useToast();
+/*
+=========================================================
+DesignByYou
+Creator Initiate Commission
+Version 2.0
+=========================================================
 
-    // Get package details if they clicked on a specific one from the portfolio
-    const referenceDesign = location.state?.referenceDesign || null;
+PURPOSE
+---------------------------------------------------------
 
-    const [designerProfile, setDesignerProfile] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [submitting, setSubmitting] = useState(false);
+This component is now a compatibility / routing bridge.
 
-    // Form fields
-    const [briefText, setBriefText] = useState('');
-    const [agreedPrice, setAgreedPrice] = useState(referenceDesign?.base_price || '');
-    const [deadline, setDeadline] = useState('');
+Historically this page contained its own commission form
+and submitted to:
 
-    useEffect(() => {
-        const fetchDesignerDetails = async () => {
-            try {
-                const { data } = await API.get(`/all/designers/${designerId}`);
-                setDesignerProfile(data.data);
-            } catch (err) {
-                console.error("Error loading designer details:", err);
-                showToast("Could not load the designer profile.", "error");
-                navigate(-1);
-            } finally {
-                setLoading(false);
-            }
-        };
+POST /creators/commissions/request
 
-        if (designerId) fetchDesignerDetails();
-    }, [designerId, navigate, showToast]);
+That created a second booking workflow separate from the
+secure P2P booking system.
 
-    const handleCreateCommissionOrder = async (e) => {
-        e.preventDefault();
-        
-        if (!briefText.trim() || briefText.length < 20) {
-            showToast("Please write a project brief with at least 20 characters.", "error");
-            return;
-        }
+All Creator-to-Designer commissions must now use the single
+canonical flow:
 
-        if (Number(agreedPrice) <= 0) {
-            showToast("Your budget offer must be higher than $0.00", "error");
-            return;
-        }
+CreatorCreateBooking
+        ↓
+POST /p2p-bookings/create
+        ↓
+Stripe PaymentIntent
+        ↓
+POST /p2p-bookings/verify-escrow
+        ↓
+P2P booking workflow
 
-        setSubmitting(true);
-        try {
-            const payload = {
-                designer_id: designerId,
-                reference_design_id: referenceDesign?.id || null, 
-                reference_design_title: referenceDesign?.title || 'Custom Studio Order',
-                brief_text: briefText,
-                agreed_price: parseFloat(agreedPrice),
-                deadline: deadline || null
-            };
+=========================================================
+WHY KEEP THIS COMPONENT?
+---------------------------------------------------------
 
-            const { data } = await API.post('/creators/commissions/request', payload);
+Existing links elsewhere in the application may still
+navigate to this route.
 
-            if (data.status === 'success' || data.data) {
-                showToast("Your design request has been sent to the designer!", "success");
-                
-                // SAFE ROUTING FIX: Check all possible backend response shapes using optional chaining.
-                // If the backend doesn't send back an explicit ID, it safely drops back to the general bookings page.
-                const bookingId = data?.data?.id || data?.data?.bookingId || data?.id;
+Instead of breaking those links, this component forwards
+them safely into:
 
-                if (bookingId) {
-                    navigate(`/creator/bookings/${bookingId}`);
-                } else {
-                    navigate('/creator/bookings');
-                }
-            }
-        } catch (err) {
-            console.error("Error creating order:", err);
-            showToast(err.response?.data?.message || "Failed to send your design project request.", "error");
-        } finally {
-            setSubmitting(false);
-        }
-    };
+/creator/bookings/new
 
-    if (loading) return (
-        <div className="h-[60vh] flex items-center justify-center">
-            <Loader2 className="animate-spin text-indigo-600" size={32} />
-        </div>
+while preserving:
+
+- designer_id
+- design_id
+- indicative budget
+
+=========================================================
+IMPORTANT
+---------------------------------------------------------
+
+This component:
+
+- does NOT create bookings
+- does NOT call Stripe
+- does NOT calculate fees
+- does NOT trust client-side financial state
+- does NOT duplicate CreatorCreateBooking
+
+=========================================================
+*/
+
+import React, {
+  useEffect,
+  useMemo,
+} from "react";
+
+import {
+  ArrowLeft,
+  Loader2,
+  LockKeyhole,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
+
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+
+/*=========================================================
+Helpers
+=========================================================*/
+
+function cleanValue(value) {
+  const cleaned =
+    String(
+      value ?? "",
+    ).trim();
+
+  if (
+    !cleaned ||
+    ["null", "undefined"].includes(
+      cleaned.toLowerCase(),
+    )
+  ) {
+    return null;
+  }
+
+  return cleaned;
+}
+
+function positiveMoney(value) {
+  const amount =
+    Number(value);
+
+  if (
+    !Number.isFinite(amount) ||
+    amount <= 0
+  ) {
+    return null;
+  }
+
+  return Number(
+    amount.toFixed(2),
+  );
+}
+
+/*=========================================================
+Creator Initiate Commission
+=========================================================*/
+
+export default function CreatorInitiateCommission() {
+  const {
+    designerId,
+  } = useParams();
+
+  const navigate =
+    useNavigate();
+
+  const location =
+    useLocation();
+
+  /*
+  Older Showcase / Designer Profile links may still pass
+  the selected design through route state.
+
+  We only use safe routing context from that object.
+
+  The backend will independently validate:
+
+  - Designer
+  - design ownership
+  - publication state
+  - agreed amount
+  - booking type
+  */
+
+  const referenceDesign =
+    location.state
+      ?.referenceDesign ||
+    null;
+
+  /*=======================================================
+  Destination
+  =======================================================*/
+
+  const destination =
+    useMemo(() => {
+      const safeDesignerId =
+        cleanValue(
+          designerId,
+        );
+
+      if (!safeDesignerId) {
+        return null;
+      }
+
+      const params =
+        new URLSearchParams();
+
+      params.set(
+        "designer_id",
+        safeDesignerId,
+      );
+
+      const designId =
+        cleanValue(
+          referenceDesign?.id,
+        );
+
+      if (designId) {
+        params.set(
+          "design_id",
+          designId,
+        );
+      }
+
+      /*
+      base_price is only an indicative starting budget.
+
+      CreatorCreateBooking allows the Creator to edit it.
+
+      The backend remains authoritative for the eventual
+      agreed booking amount and Stripe charge.
+      */
+
+      const budget =
+        positiveMoney(
+          referenceDesign
+            ?.base_price,
+        );
+
+      if (budget) {
+        params.set(
+          "budget",
+          String(budget),
+        );
+      }
+
+      return `/creator/bookings/new?${params.toString()}`;
+    }, [
+      designerId,
+      referenceDesign?.id,
+      referenceDesign?.base_price,
+    ]);
+
+  /*=======================================================
+  Redirect to Canonical Booking Flow
+  =======================================================*/
+
+  useEffect(() => {
+    if (!destination) {
+      return;
+    }
+
+    /*
+    replace:true prevents the browser Back button from
+    bouncing between this legacy bridge and the canonical
+    booking form.
+    */
+
+    navigate(
+      destination,
+      {
+        replace: true,
+      },
     );
+  }, [
+    destination,
+    navigate,
+  ]);
 
+  /*=======================================================
+  Invalid Legacy Route
+  =======================================================*/
+
+  if (!destination) {
     return (
-        <div className="max-w-3xl mx-auto space-y-8 pb-16 animate-fade-in">
-            
-            <button 
-                onClick={() => navigate(-1)}
-                className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
-            >
-                <ArrowLeft size={14} /> Back to Studio Profile
-            </button>
+      <div
+        className="
+          relative
+          flex
+          min-h-[65vh]
+          items-center
+          justify-center
+          overflow-hidden
+          px-4
+          py-16
+          text-slate-950
 
-            <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg uppercase shadow-xs">
-                        {designerProfile?.studio_name?.substring(0, 2) || 'DS'}
-                    </div>
-                    <div>
-                        <h1 className="text-lg font-bold text-gray-900">Hire {designerProfile?.studio_name || 'Designer'}</h1>
-                        <p className="text-xs text-gray-400 mt-0.5">Start a secure, contract-backed custom design project.</p>
-                    </div>
-                </div>
-                {referenceDesign && (
-                    <div className="px-3 py-1.5 bg-gray-50 border border-gray-200/60 rounded-xl text-right shrink-0">
-                        <span className="block text-[9px] uppercase tracking-wider font-bold text-gray-400">Selected Package</span>
-                        <span className="text-xs font-bold text-gray-800 max-w-[200px] block truncate">{referenceDesign.title}</span>
-                    </div>
-                )}
-            </div>
+          dark:text-white
+        "
+      >
+        <div
+          className="
+            pointer-events-none
+            absolute
+            left-1/2
+            top-1/2
+            h-96
+            w-96
+            -translate-x-1/2
+            -translate-y-1/2
+            rounded-full
+            bg-[#D4AF37]/10
+            blur-[120px]
+          "
+        />
 
-            <form onSubmit={handleCreateCommissionOrder} className="grid grid-cols-1 md:grid-cols-12 gap-8">
-                
-                <div className="md:col-span-8 space-y-6">
-                    <div className="bg-white border border-gray-100 rounded-2xl p-6 space-y-4 shadow-xs">
-                        <div className="flex items-center gap-2 text-sm font-bold text-gray-900 border-b border-gray-50 pb-2">
-                            <Sparkles size={16} className="text-indigo-600" />
-                            Project Details & Requirements
-                        </div>
-                        
-                        <div className="space-y-1.5">
-                            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Project Brief</label>
-                            <textarea 
-                                value={briefText}
-                                onChange={(e) => setBriefText(e.target.value)}
-                                placeholder="Describe what you need. Mention sizes, required file types (.png, .psd, etc.), style style preferences, links to examples, or features you want included..."
-                                rows={6}
-                                className="w-full p-4 text-sm border border-gray-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-gray-300 resize-none leading-relaxed"
-                            />
-                        </div>
+        <section
+          className="
+            relative
+            z-10
+            w-full
+            max-w-lg
+            rounded-[2rem]
+            border
+            border-slate-200
+            bg-white
+            p-8
+            text-center
+            shadow-[0_25px_80px_rgba(15,23,42,0.08)]
 
-                        <div className="space-y-1.5">
-                            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Target Completion Date (Optional)</label>
-                            <input 
-                                type="date"
-                                value={deadline}
-                                min={new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0]} // Sets minimum to 2 days from today
-                                onChange={(e) => setDeadline(e.target.value)}
-                                className="w-full p-3 text-sm border border-gray-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-gray-700 font-medium"
-                            />
-                        </div>
-                    </div>
-                </div>
+            dark:border-white/[0.07]
+            dark:bg-[#090909]
+            dark:shadow-[0_35px_100px_rgba(0,0,0,0.55)]
+          "
+        >
+          <div
+            className="
+              mx-auto
+              grid
+              h-16
+              w-16
+              place-items-center
+              rounded-2xl
+              border
+              border-[#D4AF37]/25
+              bg-[#D4AF37]/10
+              text-[#997619]
 
-                <div className="md:col-span-4 space-y-6">
-                    <div className="bg-white border border-gray-100 rounded-2xl p-6 space-y-5 shadow-xs">
-                        <div className="text-sm font-bold text-gray-900 border-b border-gray-50 pb-2">
-                            Budget Offer
-                        </div>
+              dark:text-[#D4AF37]
+            "
+          >
+            <Sparkles
+              size={27}
+            />
+          </div>
 
-                        <div className="space-y-1.5">
-                            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Proposed Budget ($)</label>
-                            <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
-                                <input 
-                                    type="number"
-                                    value={agreedPrice}
-                                    onChange={(e) => setAgreedPrice(e.target.value)}
-                                    placeholder="0.00"
-                                    min="1"
-                                    step="0.01"
-                                    className="w-full pl-8 pr-4 py-3 font-mono text-base font-bold text-gray-900 border border-gray-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                                />
-                            </div>
-                            {referenceDesign?.base_price && (
-                                <p className="text-[10px] text-gray-400 italic">
-                                    The standard rate for this package is ${referenceDesign.base_price}.
-                                </p>
-                            )}
-                        </div>
+          <p
+            className="
+              mt-6
+              text-[9px]
+              font-black
+              uppercase
+              tracking-[0.24em]
+              text-[#98751A]
 
-                        <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200/60 flex gap-2">
-                            <Shield size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                            <p className="text-[10px] leading-relaxed text-gray-500">
-                                Submitting this form sends an official project request. Once accepted, your payment is held safely until the design is delivered.
-                            </p>
-                        </div>
+              dark:text-[#D4AF37]
+            "
+          >
+            Commission Setup
+          </p>
 
-                        <button
-                            type="submit"
-                            disabled={submitting}
-                            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-100 disabled:text-gray-400 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
-                        >
-                            {submitting ? (
-                                <Loader2 className="animate-spin" size={14} />
-                            ) : (
-                                <>
-                                    Send Design Request <Send size={12} />
-                                </>
-                            )}
-                        </button>
-                    </div>
+          <h1
+            className="
+              mt-3
+              font-serif
+              text-3xl
+              font-light
 
-                    <div className="p-4 bg-amber-50/40 border border-amber-100 rounded-2xl flex gap-3">
-                        <AlertCircle size={16} className="text-amber-600 shrink-0" />
-                        <p className="text-[10px] leading-relaxed text-amber-800 font-medium">
-                            Designers can request adjustments or decline project briefs. You will not be charged until you review and officially confirm the order terms.
-                        </p>
-                    </div>
-                </div>
+              sm:text-4xl
+            "
+          >
+            Designer unavailable
+          </h1>
 
-            </form>
-        </div>
+          <p
+            className="
+              mx-auto
+              mt-4
+              max-w-sm
+              text-sm
+              leading-7
+              text-slate-500
+
+              dark:text-white/40
+            "
+          >
+            This commission link does not
+            contain a valid Designer.
+            Return to the directory and
+            choose a Designer before
+            starting a contract.
+          </p>
+
+          <button
+            type="button"
+            onClick={() =>
+              navigate(
+                "/creator/directory",
+              )
+            }
+            className="
+              mt-7
+              inline-flex
+              h-12
+              items-center
+              justify-center
+              gap-2
+              rounded-xl
+              bg-[#D4AF37]
+              px-6
+              text-[9px]
+              font-black
+              uppercase
+              tracking-[0.18em]
+              text-black
+              transition
+
+              hover:-translate-y-0.5
+              hover:bg-[#E4C65D]
+            "
+          >
+            <ArrowLeft
+              size={14}
+            />
+
+            Designer Directory
+          </button>
+        </section>
+      </div>
     );
-};
+  }
 
-export default CreatorInitiateCommission;
+  /*=======================================================
+  Redirect Screen
+
+  Usually visible only briefly.
+  =======================================================*/
+
+  return (
+    <div
+      className="
+        relative
+        flex
+        min-h-[65vh]
+        items-center
+        justify-center
+        overflow-hidden
+        px-4
+        py-16
+        text-slate-950
+
+        dark:text-white
+      "
+    >
+      <div
+        className="
+          pointer-events-none
+          absolute
+          left-1/2
+          top-1/2
+          h-[34rem]
+          w-[34rem]
+          -translate-x-1/2
+          -translate-y-1/2
+          rounded-full
+          bg-[#D4AF37]/10
+          blur-[150px]
+        "
+      />
+
+      <section
+        className="
+          relative
+          z-10
+          w-full
+          max-w-md
+          rounded-[2rem]
+          border
+          border-slate-200/80
+          bg-white/90
+          p-8
+          text-center
+          shadow-[0_25px_80px_rgba(15,23,42,0.07)]
+          backdrop-blur-xl
+
+          dark:border-white/[0.07]
+          dark:bg-[#090909]/90
+          dark:shadow-[0_35px_100px_rgba(0,0,0,0.55)]
+        "
+      >
+        <div
+          className="
+            relative
+            mx-auto
+            grid
+            h-16
+            w-16
+            place-items-center
+            rounded-2xl
+            border
+            border-emerald-200
+            bg-emerald-50
+            text-emerald-600
+
+            dark:border-emerald-400/20
+            dark:bg-emerald-400/10
+            dark:text-emerald-300
+          "
+        >
+          <LockKeyhole
+            size={25}
+          />
+
+          <span
+            className="
+              absolute
+              -right-1
+              -top-1
+              grid
+              h-6
+              w-6
+              place-items-center
+              rounded-full
+              border-2
+              border-white
+              bg-[#D4AF37]
+              text-black
+
+              dark:border-[#090909]
+            "
+          >
+            <ShieldCheck
+              size={12}
+            />
+          </span>
+        </div>
+
+        <p
+          className="
+            mt-6
+            text-[9px]
+            font-black
+            uppercase
+            tracking-[0.24em]
+            text-[#98751A]
+
+            dark:text-[#D4AF37]
+          "
+        >
+          Secure Commission
+        </p>
+
+        <h1
+          className="
+            mt-3
+            font-serif
+            text-3xl
+            font-light
+          "
+        >
+          Preparing your contract
+        </h1>
+
+        <p
+          className="
+            mt-3
+            text-sm
+            leading-6
+            text-slate-500
+
+            dark:text-white/40
+          "
+        >
+          Moving you to the secure
+          booking and Stripe escrow
+          workflow.
+        </p>
+
+        <Loader2
+          size={20}
+          className="
+            mx-auto
+            mt-7
+            animate-spin
+            text-[#98751A]
+
+            dark:text-[#D4AF37]
+          "
+        />
+      </section>
+    </div>
+  );
+}

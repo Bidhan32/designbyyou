@@ -1,260 +1,3197 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-// 🚀 ADDED: Edit2 imported for the Remix button
-import { Search, Loader2, Sparkles, Zap, User, ShieldAlert, Crown, Flame, Star, ChevronRight, ChevronLeft, ArrowRight, Edit2 } from 'lucide-react';
-import API from '../../api/axios';
-import { useAuth } from '../../context/AuthContext';
+"use strict";
 
-const CATEGORIES = ['All', 'Concept Art', 'Avant-Garde', 'Minimalist', 'Streetwear', 'High-Fashion', 'Textiles'];
+/*
+=========================================================
+DesignByYou
+Creator Showcase
+Version 5.1
+=========================================================
 
-const HERO_SLIDES = [
-  {
-    subtitle: 'Welcome to DesignByYou',
-    title: 'Design',
-    highlight: 'Reimagined.',
-    desc: 'Connect with world-class digital architects and bring your concepts to reality.',
-    image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop',
-  },
-  {
-    subtitle: 'The Inspiration Directory',
-    title: 'Escrow',
-    highlight: 'Secured.',
-    desc: 'Explore a secure vault of exclusive design concepts ready for instant commissioning.',
-    image: 'https://images.unsplash.com/photo-1600607686527-6fb886090705?q=80&w=2500&auto=format&fit=crop',
-  },
-  {
-    subtitle: 'Elite Network',
-    title: 'Scale',
-    highlight: 'Boundless.',
-    desc: 'Initiate zero-fee escrow contracts instantly with verified pro designers.',
-    image: 'https://images.unsplash.com/photo-1634084462412-254141397efb?q=80&w=2500&auto=format&fit=crop',
-  },
+CLIENT STRUCTURE
+---------------------------------------------------------
+
+1. Full-Width Dynamic Hero
+   Design Without Limits
+
+2. Trending Styles
+
+3. Browse by Style
+
+4. Browse by Garment
+
+5. Browse by Occasion
+
+6. Featured Designers
+
+7. New Arrivals
+
+8. Create Your Own Design
+
+=========================================================
+SHARED SHOWCASE HERO
+=========================================================
+
+GET
+/api/v1/showcase-hero
+
+Super Admin may choose:
+
+1. slideshow
+   - 3 to 5 images
+   - configurable rotation time
+
+OR
+
+2. video
+   - one muted looping background video
+   - optional poster image
+
+Only one mode runs at a time.
+
+If the shared Hero is disabled or unavailable, this page
+falls back to its existing Showcase/design Hero image.
+
+=========================================================
+DATABASE-DRIVEN DISCOVERY
+=========================================================
+
+GET
+/api/v1/creator-showcase/discovery
+
+Returns:
+
+styles
+garments
+occasions
+trending
+
+The frontend does NOT hardcode discovery terms.
+
+=========================================================
+RELATIONAL FILTERING
+=========================================================
+
+Discovery cards use:
+
+showcase_discovery_terms.slug
+
+and request:
+
+GET
+/api/v1/creator-showcase/pipeline?term=<slug>
+
+Examples:
+
+?term=streetwear
+?term=dresses
+?term=graduation
+
+The backend filters through:
+
+design_showcase_terms
+        ↓
+showcase_discovery_terms
+
+=========================================================
+TRENDING
+=========================================================
+
+If Admin has marked styles:
+
+is_trending = TRUE
+
+those styles are used.
+
+If trending is empty, the first five active Style terms
+are used temporarily.
+
+=========================================================
+SHOWCASE MODEL
+=========================================================
+
+Public Showcase work may belong to:
+
+- Creator
+- approved Designer
+
+Designer-owned work:
+    may expose booking/commission actions
+
+Creator-owned work:
+    does NOT expose Designer booking actions
+
+=========================================================
+NOT ECOMMERCE
+=========================================================
+
+This page does NOT use:
+
+- price
+- starting price
+- checkout
+- purchases
+- licensing
+- storefront sales
+=========================================================
+*/
+
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
+import {
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  Crown,
+  Loader2,
+  Palette,
+  PencilRuler,
+  RefreshCw,
+  ShieldAlert,
+  Sparkles,
+  Star,
+  User,
+  Zap,
+} from "lucide-react";
+
+import { Link, useNavigate } from "react-router-dom";
+
+import API from "../../api/axios";
+
+/*=========================================================
+Configuration
+=========================================================*/
+
+const SHOWCASE_PAGE_SIZE = 24;
+
+const SHOWCASE_ENDPOINT = "/creator-showcase/pipeline";
+
+const DISCOVERY_ENDPOINT = "/creator-showcase/discovery";
+
+const TOP_DESIGNERS_ENDPOINT = "/creator-showcase/top-designers";
+
+const HERO_ENDPOINT = "/showcase-hero";
+
+const CREATE_ROUTE = "/creator/upload";
+
+/*=========================================================
+Fallback Images
+=========================================================*/
+
+const FALLBACK_HERO =
+  "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2200&auto=format&fit=crop";
+
+const STYLE_FALLBACKS = [
+  "https://images.unsplash.com/photo-1600607686527-6fb886090705?q=80&w=1400&auto=format&fit=crop",
+
+  "https://images.unsplash.com/photo-1634084462412-254141397efb?q=80&w=1400&auto=format&fit=crop",
+
+  "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1400&auto=format&fit=crop",
 ];
+
+/*=========================================================
+Helpers
+=========================================================*/
+
+function cleanText(value, fallback = "") {
+  const text = String(value ?? "").trim();
+
+  return text || fallback;
+}
+
+function isRequestCanceled(error) {
+  return (
+    error?.code === "ERR_CANCELED" ||
+    error?.name === "CanceledError" ||
+    error?.name === "AbortError"
+  );
+}
+
+function getErrorMessage(error, fallback) {
+  if (isRequestCanceled(error)) {
+    return "";
+  }
+
+  return error?.response?.data?.message || error?.message || fallback;
+}
+
+function extractArray(response) {
+  const value = response?.data?.data;
+
+  return Array.isArray(value) ? value : [];
+}
+
+/*=========================================================
+Hero Helpers
+=========================================================*/
+
+/**
+ * Supports:
+ *
+ * https://cdn.example.com/image.jpg
+ *
+ * and:
+ *
+ * /uploads/image.jpg
+ *
+ * If axios uses an absolute backend baseURL, an application
+ * relative /uploads URL is resolved against the backend
+ * origin.
+ */
+
+function resolveHeroMediaUrl(value) {
+  const url = cleanText(value);
+
+  if (!url) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(url)) {
+    return url;
+  }
+
+  if (!url.startsWith("/")) {
+    return url;
+  }
+
+  const apiBase = cleanText(API?.defaults?.baseURL);
+
+  if (/^https?:\/\//i.test(apiBase)) {
+    try {
+      return `${new URL(apiBase).origin}${url}`;
+    } catch {
+      return url;
+    }
+  }
+
+  return url;
+}
+
+function normalizeHeroSettings(response) {
+  const data = response?.data?.data || {};
+
+  const images = Array.isArray(data.slideshow_images)
+    ? data.slideshow_images
+        .map((value) => resolveHeroMediaUrl(value))
+        .filter(Boolean)
+        .slice(0, 5)
+    : [];
+
+  const rotationSeconds = Number(data.rotation_seconds);
+
+  return {
+    isEnabled: data.is_enabled === true,
+
+    mode: data.mode === "video" ? "video" : "slideshow",
+
+    images,
+
+    videoUrl: resolveHeroMediaUrl(data.video_url),
+
+    posterUrl: resolveHeroMediaUrl(data.video_poster_url),
+
+    rotationSeconds:
+      Number.isInteger(rotationSeconds) &&
+      rotationSeconds >= 3 &&
+      rotationSeconds <= 30
+        ? rotationSeconds
+        : 6,
+  };
+}
+
+/*=========================================================
+Discovery Normalization
+=========================================================*/
+
+function normalizeDiscoveryTerm(item) {
+  if (!item || typeof item !== "object") {
+    return null;
+  }
+
+  const id = cleanText(item.id);
+
+  const name = cleanText(item.name);
+
+  const slug = cleanText(item.slug);
+
+  if (!id || !name || !slug) {
+    return null;
+  }
+
+  return {
+    id,
+
+    name,
+
+    slug,
+
+    /*
+    searchTerm remains useful only for selecting a visual
+    preview for Trending cards.
+
+    It is NOT used for Showcase filtering.
+    */
+
+    searchTerm: cleanText(item.search_term, name),
+
+    emoji: cleanText(item.emoji),
+
+    description: cleanText(item.description),
+
+    sortOrder: Number.isFinite(Number(item.sort_order))
+      ? Number(item.sort_order)
+      : 0,
+  };
+}
+
+function normalizeDiscoveryArray(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const result = [];
+
+  const seen = new Set();
+
+  for (const item of value) {
+    const normalized = normalizeDiscoveryTerm(item);
+
+    if (!normalized || seen.has(normalized.id)) {
+      continue;
+    }
+
+    seen.add(normalized.id);
+
+    result.push(normalized);
+  }
+
+  return result;
+}
+
+function normalizeDiscoveryResponse(response) {
+  const data = response?.data?.data || {};
+
+  return {
+    styles: normalizeDiscoveryArray(data.styles),
+
+    garments: normalizeDiscoveryArray(data.garments),
+
+    occasions: normalizeDiscoveryArray(data.occasions),
+
+    trending: normalizeDiscoveryArray(data.trending),
+  };
+}
+
+/*=========================================================
+Design Helpers
+=========================================================*/
+
+function getDesignKey(design, index = 0) {
+  return design?.design_id || design?.slug || `design-${index}`;
+}
+
+function mergeDesigns(current, incoming) {
+  const map = new Map();
+
+  current.forEach((design, index) => {
+    map.set(
+      String(getDesignKey(design, index)),
+
+      design,
+    );
+  });
+
+  incoming.forEach((design, index) => {
+    map.set(
+      String(getDesignKey(design, index)),
+
+      design,
+    );
+  });
+
+  return Array.from(map.values());
+}
+
+function getOwnerName(design) {
+  return design?.owner_name || design?.designer_name || "DesignByYou Creator";
+}
+
+function getOwnerAvatar(design) {
+  return design?.owner_avatar || design?.designer_avatar || "";
+}
+
+function isDesignerOwned(design) {
+  return (
+    design?.owner_role === "designer" ||
+    design?.can_book_designer === true ||
+    design?.can_book_designer === "true"
+  );
+}
+
+function getDesignerRating(design) {
+  if (!isDesignerOwned(design)) {
+    return null;
+  }
+
+  const rating = Number.parseFloat(design?.designer_avg_rating);
+
+  if (!Number.isFinite(rating) || rating <= 0) {
+    return null;
+  }
+
+  return rating;
+}
+
+/*=========================================================
+Booking URL
+=========================================================*/
+
+function buildBookingUrl(design) {
+  if (!isDesignerOwned(design)) {
+    return null;
+  }
+
+  const designerId = design?.designer_id;
+
+  const designId = design?.design_id;
+
+  if (!designerId || !designId) {
+    return null;
+  }
+
+  const params = new URLSearchParams({
+    designer_id: String(designerId),
+
+    design_id: String(designId),
+  });
+
+  return `/creator/bookings/new?${params.toString()}`;
+}
+
+/*=========================================================
+Trending Visual Matching
+=========================================================*/
+
+function designMatchesTerm(design, term) {
+  if (!design || !term) {
+    return false;
+  }
+
+  const needles = [term.name, term.searchTerm]
+    .map((value) => cleanText(value).toLowerCase())
+    .filter(Boolean);
+
+  if (needles.length === 0) {
+    return false;
+  }
+
+  const searchable = [
+    design.title,
+
+    design.description,
+
+    design.style_category,
+
+    design.category_name,
+
+    design.category_slug,
+
+    ...(Array.isArray(design.tags) ? design.tags : []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return needles.some((needle) => searchable.includes(needle));
+}
+
+/*=========================================================
+Section Heading
+=========================================================*/
+
+function SectionHeading({ eyebrow, title, description, action = null }) {
+  return (
+    <div
+      className="
+        mb-7
+        flex
+        flex-col
+        gap-4
+
+        md:flex-row
+        md:items-end
+        md:justify-between
+      "
+    >
+      <div>
+        {eyebrow && (
+          <p
+            className="
+              text-[9px]
+              font-black
+              uppercase
+              tracking-[0.3em]
+              text-[#e5c67d]
+            "
+          >
+            {eyebrow}
+          </p>
+        )}
+
+        <h2
+          className="
+            mt-2
+            font-serif
+            text-3xl
+            tracking-tight
+
+            sm:text-4xl
+          "
+        >
+          {title}
+        </h2>
+
+        {description && (
+          <p
+            className="
+              mt-3
+              max-w-2xl
+              text-sm
+              leading-6
+              text-white/42
+            "
+          >
+            {description}
+          </p>
+        )}
+      </div>
+
+      {action}
+    </div>
+  );
+}
+
+/*=========================================================
+Discovery Loading
+=========================================================*/
+
+function DiscoveryLoading() {
+  return (
+    <div
+      className="
+        flex
+        min-h-[160px]
+        items-center
+        justify-center
+        rounded-[1.75rem]
+        border
+        border-white/[0.07]
+        bg-white/[0.02]
+      "
+    >
+      <div
+        className="
+          flex
+          items-center
+          gap-3
+          text-[9px]
+          font-black
+          uppercase
+          tracking-[0.2em]
+          text-white/35
+        "
+      >
+        <Loader2
+          size={15}
+          className="
+            animate-spin
+            text-[#e5c67d]
+          "
+        />
+        Loading Discovery
+      </div>
+    </div>
+  );
+}
+
+/*=========================================================
+Creator Showcase
+=========================================================*/
 
 export default function CreatorShowcase() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const isCreator = user?.role === 'creator';
-  
-  // FIX: Safely check if user exists before converting the ID to a string
-  const currentUserId = user ? String(user.id || user._id) : null;
+
+  /*=======================================================
+  Showcase State
+  =======================================================*/
 
   const [items, setItems] = useState([]);
-  const [topDesigners, setTopDesigners] = useState([]);
-  const [topDesigns, setTopDesigns] = useState([]);
+
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const carouselRef = useRef(null);
 
-  const scrollCarousel = (direction) => {
-    if (carouselRef.current) {
-      const scrollAmount = window.innerWidth > 768 ? 680 : 300;
-      carouselRef.current.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const [showcaseError, setShowcaseError] = useState("");
+
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const [hasMore, setHasMore] = useState(false);
+
+  /*=======================================================
+  Discovery State
+  =======================================================*/
+
+  const [discovery, setDiscovery] = useState({
+    styles: [],
+    garments: [],
+    occasions: [],
+    trending: [],
+  });
+
+  const [discoveryLoading, setDiscoveryLoading] = useState(true);
+
+  const [discoveryError, setDiscoveryError] = useState("");
+
+  const [activeDiscovery, setActiveDiscovery] = useState(null);
+
+  /*=======================================================
+  Featured Designers
+  =======================================================*/
+
+  const [topDesigners, setTopDesigners] = useState([]);
+
+  const [topDesignersLoading, setTopDesignersLoading] = useState(true);
+
+  const [topDesignersError, setTopDesignersError] = useState("");
+
+  /*=======================================================
+  Shared Showcase Hero
+  =======================================================*/
+
+  const [heroSettings, setHeroSettings] = useState({
+    isEnabled: false,
+
+    mode: "slideshow",
+
+    images: [],
+
+    videoUrl: "",
+
+    posterUrl: "",
+
+    rotationSeconds: 6,
+  });
+
+  const [heroSlideIndex, setHeroSlideIndex] = useState(0);
+
+  const [heroVideoFailed, setHeroVideoFailed] = useState(false);
+
+  const [heroImageFailed, setHeroImageFailed] = useState(false);
+
+  /*=======================================================
+  Refs
+  =======================================================*/
+
+  const showcaseRequestRef = useRef(null);
+
+  const discoveryRequestRef = useRef(null);
+
+  const trendingRef = useRef(null);
+
+  const arrivalsRef = useRef(null);
+
+  /*=======================================================
+  Active Relational Discovery Slug
+  =======================================================*/
+
+  const activeDiscoveryTerm = activeDiscovery?.slug || "";
+
+  /*=======================================================
+  Existing Hero Fallback Design
+  =======================================================*/
+
+  const heroDesign = useMemo(
+    () => items.find((item) => Boolean(item?.watermarked_preview_url)) || null,
+
+    [items],
+  );
+
+  const fallbackHeroImage =
+    heroDesign?.watermarked_preview_url || FALLBACK_HERO;
+
+  /*=======================================================
+  Shared Hero Active Media
+  =======================================================*/
+
+  const heroSlideshowActive =
+    heroSettings.isEnabled &&
+    heroSettings.mode === "slideshow" &&
+    heroSettings.images.length > 0;
+
+  const heroVideoActive =
+    heroSettings.isEnabled &&
+    heroSettings.mode === "video" &&
+    Boolean(heroSettings.videoUrl) &&
+    !heroVideoFailed;
+
+  const currentHeroSlide = heroSlideshowActive
+    ? heroSettings.images[
+        heroSlideIndex % Math.max(heroSettings.images.length, 1)
+      ] || ""
+    : "";
+
+  const heroBackgroundImage =
+    heroSettings.isEnabled &&
+    heroSettings.mode === "video" &&
+    heroSettings.posterUrl
+      ? heroSettings.posterUrl
+      : currentHeroSlide || fallbackHeroImage;
+
+  /*=======================================================
+  Trending Styles
+  =======================================================*/
+
+  const trendingStyles = useMemo(() => {
+    if (discovery.trending.length > 0) {
+      return discovery.trending;
     }
-  };
 
-  // Preserve the existing carousel timing and all data behaviour.
+    return discovery.styles.slice(0, 5);
+  }, [discovery]);
+
+  /*=======================================================
+  Trending Cards
+  =======================================================*/
+
+  const trendingCards = useMemo(() => {
+    return trendingStyles.map((term, index) => {
+      const matchingDesign = items.find((item) =>
+        designMatchesTerm(item, term),
+      );
+
+      return {
+        ...term,
+
+        image:
+          matchingDesign?.watermarked_preview_url ||
+          STYLE_FALLBACKS[index % STYLE_FALLBACKS.length],
+      };
+    });
+  }, [items, trendingStyles]);
+
+  /*=======================================================
+  Load Shared Showcase Hero
+  =======================================================*/
+
   useEffect(() => {
-    const timer = setInterval(() => setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length), 7000);
-    return () => clearInterval(timer);
-  }, [currentSlide]);
+    const controller = new AbortController();
 
-  // Preserve the existing endpoints, filtering, debounce and ranking behaviour.
-  useEffect(() => {
-    if (!isCreator) {
-      setLoading(false);
-      return;
-    }
-
-    const fetchShowcaseAndNetwork = async () => {
+    const loadHeroSettings = async () => {
       try {
-        setLoading(true);
-        const params = {};
-        if (searchQuery.trim()) params.search = searchQuery;
-        if (selectedCategory !== 'All') params.style = selectedCategory;
+        const response = await API.get(HERO_ENDPOINT, {
+          signal: controller.signal,
+        });
 
-        const [pipelineRes, usersRes] = await Promise.all([
-          API.get('/creator-showcase/pipeline', { params }),
-          API.get('/users'),
-        ]);
+        if (controller.signal.aborted) {
+          return;
+        }
 
-        const fetchedItems = pipelineRes.data?.data || [];
-        setItems(fetchedItems);
-        setTopDesigns([...fetchedItems].sort((a, b) => (parseFloat(b.avg_rating) || 0) - (parseFloat(a.avg_rating) || 0)).slice(0, 5));
+        setHeroSettings(normalizeHeroSettings(response));
 
-        const allUsers = Array.isArray(usersRes.data) ? usersRes.data : usersRes.data?.data || [];
-        setTopDesigners(allUsers
-          .filter((networkUser) => networkUser.role === 'designer')
-          .sort((a, b) => (parseInt(b.total_completed_bookings, 10) || 0) - (parseInt(a.total_completed_bookings, 10) || 0))
-          .slice(0, 5));
-        setError(null);
-      } catch (requestError) {
-        console.error('Failed to load showcase network:', requestError);
-        setError('Unable to connect to the secure showcase network.');
-      } finally {
-        setLoading(false);
+        setHeroSlideIndex(0);
+
+        setHeroVideoFailed(false);
+
+        setHeroImageFailed(false);
+      } catch (error) {
+        if (controller.signal.aborted || isRequestCanceled(error)) {
+          return;
+        }
+
+        if (import.meta.env.DEV) {
+          console.error(
+            "Showcase Hero settings request failed:",
+            error?.response?.data || error,
+          );
+        }
+
+        /*
+          Hero presentation failure must not break the
+          Showcase page.
+          */
+
+        setHeroSettings({
+          isEnabled: false,
+
+          mode: "slideshow",
+
+          images: [],
+
+          videoUrl: "",
+
+          posterUrl: "",
+
+          rotationSeconds: 6,
+        });
+
+        setHeroSlideIndex(0);
+
+        setHeroVideoFailed(false);
+
+        setHeroImageFailed(false);
       }
     };
 
-    const delayDebounceFn = setTimeout(fetchShowcaseAndNetwork, 500);
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, selectedCategory, isCreator]);
+    void loadHeroSettings();
 
-  if (!isCreator) {
-    return (
-      <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#070707] p-6 text-white">
-        <div className="absolute -left-36 -top-36 h-96 w-96 rounded-full bg-rose-500/10 blur-[120px]" />
-        <div className="relative w-full max-w-md rounded-[2rem] border border-white/10 bg-white/[0.035] p-10 text-center shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur-xl">
-          <ShieldAlert className="mx-auto mb-6 text-rose-400" size={52} />
-          <h2 className="font-serif text-3xl tracking-tight">Access restricted</h2>
-          <p className="mt-3 text-sm leading-6 text-white/50">The Inspiration Directory is exclusively reserved for verified creators.</p>
-          <button type="button" onClick={() => navigate('/')} className="mt-8 w-full rounded-full border border-white/15 bg-white/[0.06] py-4 text-[10px] font-black uppercase tracking-[0.24em] transition hover:bg-white hover:text-black">Return to safety</button>
-        </div>
-      </div>
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
+  /*=======================================================
+  Shared Hero Slideshow Rotation
+  =======================================================*/
+
+  useEffect(() => {
+    if (
+      !heroSettings.isEnabled ||
+      heroSettings.mode !== "slideshow" ||
+      heroSettings.images.length < 2
+    ) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(
+      () => {
+        setHeroSlideIndex(
+          (current) => (current + 1) % heroSettings.images.length,
+        );
+
+        setHeroImageFailed(false);
+      },
+
+      heroSettings.rotationSeconds * 1000,
     );
-  }
 
-  const aspectRatios = ['3/4', '4/5', '1/1', '16/9', '2/3'];
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [
+    heroSettings.images.length,
+    heroSettings.isEnabled,
+    heroSettings.mode,
+    heroSettings.rotationSeconds,
+  ]);
+
+  /*=======================================================
+  Load Discovery Taxonomy
+  =======================================================*/
+
+  const loadDiscovery = useCallback(async () => {
+    discoveryRequestRef.current?.abort();
+
+    const controller = new AbortController();
+
+    discoveryRequestRef.current = controller;
+
+    setDiscoveryLoading(true);
+
+    setDiscoveryError("");
+
+    try {
+      const response = await API.get(DISCOVERY_ENDPOINT, {
+        signal: controller.signal,
+      });
+
+      if (controller.signal.aborted) {
+        return;
+      }
+
+      setDiscovery(normalizeDiscoveryResponse(response));
+    } catch (error) {
+      if (controller.signal.aborted || isRequestCanceled(error)) {
+        return;
+      }
+
+      if (import.meta.env.DEV) {
+        console.error(
+          "Showcase discovery request failed:",
+          error?.response?.data || error,
+        );
+      }
+
+      setDiscovery({
+        styles: [],
+        garments: [],
+        occasions: [],
+        trending: [],
+      });
+
+      setDiscoveryError(
+        getErrorMessage(
+          error,
+
+          "Showcase discovery options could not be loaded.",
+        ),
+      );
+    } finally {
+      if (discoveryRequestRef.current === controller) {
+        discoveryRequestRef.current = null;
+
+        setDiscoveryLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadDiscovery();
+
+    return () => {
+      discoveryRequestRef.current?.abort();
+    };
+  }, [loadDiscovery]);
+
+  /*=======================================================
+  Load Showcase Designs
+  =======================================================*/
+
+  useEffect(() => {
+    showcaseRequestRef.current?.abort();
+
+    const controller = new AbortController();
+
+    showcaseRequestRef.current = controller;
+
+    const load = async () => {
+      setLoading(true);
+
+      setLoadingMore(false);
+
+      setShowcaseError("");
+
+      setCurrentPage(1);
+
+      setHasMore(false);
+
+      try {
+        const params = {
+          page: 1,
+
+          limit: SHOWCASE_PAGE_SIZE,
+        };
+
+        if (activeDiscoveryTerm) {
+          params.term = activeDiscoveryTerm;
+        }
+
+        const response = await API.get(SHOWCASE_ENDPOINT, {
+          params,
+
+          signal: controller.signal,
+        });
+
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setItems(extractArray(response));
+
+        setHasMore(Boolean(response?.data?.pagination?.hasMore));
+      } catch (error) {
+        if (controller.signal.aborted || isRequestCanceled(error)) {
+          return;
+        }
+
+        if (import.meta.env.DEV) {
+          console.error(
+            "Creator Showcase request failed:",
+            error?.response?.data || error,
+          );
+        }
+
+        setItems([]);
+
+        setHasMore(false);
+
+        setShowcaseError(
+          getErrorMessage(
+            error,
+
+            "Unable to load the Showcase right now.",
+          ),
+        );
+      } finally {
+        if (showcaseRequestRef.current === controller) {
+          showcaseRequestRef.current = null;
+
+          setLoading(false);
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      controller.abort();
+    };
+  }, [activeDiscoveryTerm]);
+
+  /*=======================================================
+  Load Featured Designers
+  =======================================================*/
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const loadDesigners = async () => {
+      setTopDesignersLoading(true);
+
+      setTopDesignersError("");
+
+      try {
+        const response = await API.get(TOP_DESIGNERS_ENDPOINT, {
+          signal: controller.signal,
+        });
+
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setTopDesigners(extractArray(response));
+      } catch (error) {
+        if (controller.signal.aborted || isRequestCanceled(error)) {
+          return;
+        }
+
+        if (import.meta.env.DEV) {
+          console.error(
+            "Featured designers request failed:",
+            error?.response?.data || error,
+          );
+        }
+
+        setTopDesigners([]);
+
+        setTopDesignersError(
+          getErrorMessage(
+            error,
+
+            "Featured designers are temporarily unavailable.",
+          ),
+        );
+      } finally {
+        if (!controller.signal.aborted) {
+          setTopDesignersLoading(false);
+        }
+      }
+    };
+
+    void loadDesigners();
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
+  /*=======================================================
+  Apply Discovery Term
+  =======================================================*/
+
+  const applyDiscovery = useCallback((term) => {
+    if (!term) {
+      return;
+    }
+
+    const id = cleanText(term.id);
+
+    const label = cleanText(term.name);
+
+    const slug = cleanText(term.slug).toLowerCase();
+
+    if (!id || !label || !slug) {
+      return;
+    }
+
+    setActiveDiscovery({
+      id,
+
+      label,
+
+      slug,
+    });
+
+    window.setTimeout(
+      () => {
+        arrivalsRef.current?.scrollIntoView({
+          behavior: "smooth",
+
+          block: "start",
+        });
+      },
+
+      80,
+    );
+  }, []);
+
+  const clearDiscovery = useCallback(() => {
+    setActiveDiscovery(null);
+  }, []);
+
+  /*=======================================================
+  Load More
+  =======================================================*/
+
+  const handleLoadMore = async () => {
+    if (loading || loadingMore || !hasMore) {
+      return;
+    }
+
+    showcaseRequestRef.current?.abort();
+
+    const controller = new AbortController();
+
+    showcaseRequestRef.current = controller;
+
+    const nextPage = currentPage + 1;
+
+    setLoadingMore(true);
+
+    setShowcaseError("");
+
+    try {
+      const params = {
+        page: nextPage,
+
+        limit: SHOWCASE_PAGE_SIZE,
+      };
+
+      if (activeDiscoveryTerm) {
+        params.term = activeDiscoveryTerm;
+      }
+
+      const response = await API.get(SHOWCASE_ENDPOINT, {
+        params,
+
+        signal: controller.signal,
+      });
+
+      if (controller.signal.aborted) {
+        return;
+      }
+
+      setItems((current) =>
+        mergeDesigns(
+          current,
+
+          extractArray(response),
+        ),
+      );
+
+      setCurrentPage(nextPage);
+
+      setHasMore(Boolean(response?.data?.pagination?.hasMore));
+    } catch (error) {
+      if (controller.signal.aborted || isRequestCanceled(error)) {
+        return;
+      }
+
+      setShowcaseError(
+        getErrorMessage(
+          error,
+
+          "Unable to load more Showcase work.",
+        ),
+      );
+    } finally {
+      if (showcaseRequestRef.current === controller) {
+        showcaseRequestRef.current = null;
+
+        setLoadingMore(false);
+      }
+    }
+  };
+
+  /*=======================================================
+  Trending Scroll
+  =======================================================*/
+
+  const scrollTrending = useCallback((direction) => {
+    if (!trendingRef.current) {
+      return;
+    }
+
+    trendingRef.current.scrollBy({
+      left: direction === "left" ? -430 : 430,
+
+      behavior: "smooth",
+    });
+  }, []);
+
+  /*=======================================================
+  Design Detail
+  =======================================================*/
+
+  const openDesign = useCallback(
+    (slug) => {
+      if (!slug) {
+        return;
+      }
+
+      navigate(`/creator/showcase/${encodeURIComponent(slug)}`);
+    },
+    [navigate],
+  );
+
+  /*=======================================================
+  Render
+  =======================================================*/
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#080808] pb-28 text-white selection:bg-[#d7b66a] selection:text-black">
-      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
-        <div className="absolute -left-48 -top-48 h-[38rem] w-[38rem] rounded-full bg-[#d7b66a]/[0.07] blur-[150px]" />
-        <div className="absolute -bottom-40 -right-32 h-[34rem] w-[34rem] rounded-full bg-indigo-500/[0.06] blur-[150px]" />
+    <div
+      className="
+        relative
+        min-h-screen
+        overflow-x-hidden
+        bg-[#080808]
+        pb-28
+        text-white
+        selection:bg-[#e5c67d]
+        selection:text-black
+      "
+    >
+      {/*===================================================
+      Ambient Background
+      ===================================================*/}
+
+      <div
+        aria-hidden="true"
+        className="
+          pointer-events-none
+          fixed
+          inset-0
+          overflow-hidden
+        "
+      >
+        <div
+          className="
+            absolute
+            -left-56
+            top-[30rem]
+            h-[42rem]
+            w-[42rem]
+            rounded-full
+            bg-[#e5c67d]/[0.055]
+            blur-[170px]
+          "
+        />
+
+        <div
+          className="
+            absolute
+            -right-52
+            top-[95rem]
+            h-[38rem]
+            w-[38rem]
+            rounded-full
+            bg-violet-500/[0.05]
+            blur-[160px]
+          "
+        />
       </div>
 
-      <main className="relative z-10 mx-auto max-w-[1800px] px-4 pt-6 sm:px-6 md:px-10 lg:px-12">
-        <section className="relative min-h-[570px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#101010] shadow-[0_36px_120px_rgba(0,0,0,0.68)] sm:min-h-[620px] sm:rounded-[2.75rem] lg:min-h-[700px]">
-          {HERO_SLIDES.map((slide, index) => {
-            const isActive = index === currentSlide;
-            return (
-              <div key={slide.highlight} className={`absolute inset-0 transition-opacity duration-1000 ease-out ${isActive ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}>
-                <img src={slide.image} alt="" className={`absolute inset-0 h-full w-full object-cover opacity-55 transition-transform duration-[10000ms] ease-out ${isActive ? 'scale-100' : 'scale-110'}`} />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_76%_28%,rgba(229,198,125,0.18),transparent_27%)]" />
-                <div className="absolute inset-0 bg-gradient-to-r from-[#080808] via-[#080808]/85 to-[#080808]/10" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#080808]/90 via-transparent to-black/20" />
-                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#e5c67d]/60 to-transparent" />
+      {/*===================================================
+      FULL-WIDTH HERO
 
-                <div className={`relative flex min-h-[570px] max-w-4xl flex-col justify-center px-7 py-20 transition duration-700 sm:min-h-[620px] sm:px-12 md:px-20 lg:min-h-[700px] ${isActive ? 'translate-y-0 opacity-100' : 'translate-y-5 opacity-0'}`}>
-                  <div className="mb-7 flex items-center gap-4">
-                    <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.34em] text-[#e5c67d]"><Sparkles size={14} className="animate-pulse" /> {slide.subtitle}</span>
-                    <span className="h-px w-10 bg-[#e5c67d]/50" />
-                    <span className="text-[10px] font-bold tracking-[0.2em] text-white/35">0{index + 1} / 0{HERO_SLIDES.length}</span>
-                  </div>
-                  <h1 className="max-w-3xl font-serif text-[3.3rem] leading-[0.88] tracking-[-0.045em] text-white sm:text-7xl lg:text-[6.8rem]">{slide.title}<br /><span className="italic text-[#e5c67d] drop-shadow-[0_0_28px_rgba(229,198,125,0.16)]">{slide.highlight}</span></h1>
-                  <p className="mt-8 max-w-xl border-l border-[#e5c67d]/55 pl-5 text-sm leading-7 text-white/70 sm:text-lg sm:leading-8">{slide.desc}</p>
-                  <button type="button" onClick={() => navigate('/creator/bookings/new')} className="mt-10 flex w-fit items-center gap-3 rounded-full bg-[#e5c67d] px-7 py-4 text-[10px] font-black uppercase tracking-[0.22em] text-[#17120a] transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_0_42px_rgba(229,198,125,0.44)]"><Zap size={15} fill="currentColor" /> Direct commission <ArrowRight size={14} /></button>
-                </div>
+      IMPORTANT:
+      Hero is intentionally outside the max-w-[1800px]
+      content container.
 
-                <div className={`absolute bottom-24 right-10 hidden w-[260px] border-l border-white/20 pl-6 transition duration-700 lg:block xl:right-16 ${isActive ? 'translate-x-0 opacity-100 delay-300' : 'translate-x-5 opacity-0'}`}>
-                  <p className="text-[9px] font-black uppercase tracking-[0.28em] text-[#e5c67d]">Private curation</p>
-                  <p className="mt-3 font-serif text-2xl leading-tight text-white/90">Built for the next remarkable idea.</p>
-                  <p className="mt-4 text-xs leading-6 text-white/50">Explore a considered collection of designs from creators shaping the culture.</p>
-                </div>
-              </div>
-            );
-          })}
-          <div className="absolute bottom-8 left-7 right-7 z-20 flex items-end justify-between gap-5 sm:left-12 sm:right-12 md:left-20 md:right-20">
-            <div className="flex items-center gap-2.5">
-              {HERO_SLIDES.map((slide, index) => <button key={slide.highlight} type="button" aria-label={`Show slide ${index + 1}`} onClick={() => setCurrentSlide(index)} className={`h-1.5 rounded-full transition-all duration-500 ${index === currentSlide ? 'w-10 bg-[#e5c67d] shadow-[0_0_16px_rgba(229,198,125,0.8)]' : 'w-3 bg-white/30 hover:bg-white/70'}`} />)}
+      The Hero media therefore fills 100% of the available
+      page width edge-to-edge.
+      ===================================================*/}
+
+      <div
+        className="
+          relative
+          z-10
+          w-full
+          max-w-none
+          pt-6
+        "
+      >
+        <section
+          className="
+            relative
+            min-h-[610px]
+            w-full
+            max-w-none
+            overflow-hidden
+            border-y
+            border-white/10
+            bg-[#101010]
+            shadow-[0_36px_120px_rgba(0,0,0,0.7)]
+
+            sm:min-h-[680px]
+
+            lg:min-h-[720px]
+          "
+        >
+          {/*===============================================
+          Hero Media
+
+          VIDEO:
+              selected video only
+
+          SLIDESHOW:
+              selected image only
+
+          DISABLED / FAILURE:
+              existing design/fallback Hero
+          ===============================================*/}
+
+          {heroVideoActive ? (
+            <video
+              key={heroSettings.videoUrl}
+              src={heroSettings.videoUrl}
+              poster={heroSettings.posterUrl || fallbackHeroImage}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              aria-hidden="true"
+              onError={() => setHeroVideoFailed(true)}
+              className="
+                absolute
+                inset-0
+                h-full
+                w-full
+                object-cover
+                opacity-55
+              "
+            />
+          ) : (
+            <img
+              key={heroBackgroundImage}
+              src={heroImageFailed ? fallbackHeroImage : heroBackgroundImage}
+              alt=""
+              onError={() => setHeroImageFailed(true)}
+              className="
+                absolute
+                inset-0
+                h-full
+                w-full
+                object-cover
+                opacity-50
+                transition-opacity
+                duration-700
+              "
+            />
+          )}
+
+          {/*===============================================
+          Hero Overlays
+          ===============================================*/}
+
+          <div
+            className="
+              absolute
+              inset-0
+              bg-gradient-to-r
+              from-[#070707]
+              via-[#070707]/85
+              to-[#070707]/15
+            "
+          />
+
+          <div
+            className="
+              absolute
+              inset-0
+              bg-gradient-to-t
+              from-[#080808]/90
+              via-transparent
+              to-black/25
+            "
+          />
+
+          <div
+            className="
+              absolute
+              inset-0
+              bg-[radial-gradient(circle_at_75%_25%,rgba(229,198,125,0.2),transparent_30%)]
+            "
+          />
+
+          {/*===============================================
+          Hero Copy
+
+          Background is full width.
+          Copy remains aligned to the main content grid.
+          ===============================================*/}
+
+          <div
+            className="
+              relative
+              z-10
+              mx-auto
+              flex
+              min-h-[610px]
+              w-full
+              max-w-[1800px]
+              flex-col
+              justify-center
+              px-7
+              py-20
+
+              sm:min-h-[680px]
+              sm:px-12
+
+              md:px-16
+
+              lg:min-h-[720px]
+              lg:px-20
+            "
+          >
+            <p
+              className="
+                flex
+                items-center
+                gap-2
+                text-[10px]
+                font-black
+                uppercase
+                tracking-[0.34em]
+                text-[#e5c67d]
+              "
+            >
+              <Sparkles size={14} />
+              DesignByYou
+            </p>
+
+            <h1
+              className="
+                mt-7
+                max-w-5xl
+                font-serif
+                text-[3.8rem]
+                leading-[0.9]
+                tracking-[-0.055em]
+
+                sm:text-7xl
+
+                lg:text-[7.4rem]
+              "
+            >
+              Design
+              <br />
+              <span
+                className="
+                  italic
+                  text-[#e5c67d]
+                "
+              >
+                Without Limits
+              </span>
+            </h1>
+
+            <p
+              className="
+                mt-8
+                max-w-xl
+                border-l
+                border-[#e5c67d]/50
+                pl-5
+                text-base
+                leading-8
+                text-white/65
+
+                sm:text-lg
+              "
+            >
+              Wear your identity. Discover ideas, find your style, connect with
+              designers, or bring your own vision to life.
+            </p>
+
+            <div
+              className="
+                mt-10
+                flex
+                flex-wrap
+                gap-3
+              "
+            >
+              <button
+                type="button"
+                onClick={() =>
+                  arrivalsRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                  })
+                }
+                className="
+                  inline-flex
+                  items-center
+                  gap-2
+                  rounded-full
+                  bg-[#e5c67d]
+                  px-7
+                  py-4
+                  text-[10px]
+                  font-black
+                  uppercase
+                  tracking-[0.2em]
+                  text-black
+                  transition
+
+                  hover:-translate-y-0.5
+                  hover:bg-white
+                "
+              >
+                Explore Designs
+                <ArrowRight size={14} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate(CREATE_ROUTE)}
+                className="
+                  inline-flex
+                  items-center
+                  gap-2
+                  rounded-full
+                  border
+                  border-white/20
+                  bg-white/[0.06]
+                  px-7
+                  py-4
+                  text-[10px]
+                  font-black
+                  uppercase
+                  tracking-[0.2em]
+                  text-white
+                  backdrop-blur
+                  transition
+
+                  hover:border-[#e5c67d]
+                  hover:text-[#e5c67d]
+                "
+              >
+                <PencilRuler size={14} />
+                Create Your Own
+              </button>
             </div>
-            <div className="hidden w-40 sm:block">
-              <div className="mb-2 flex justify-between text-[8px] font-black uppercase tracking-[0.18em] text-white/35"><span>Collection</span><span>{currentSlide + 1} of {HERO_SLIDES.length}</span></div>
-              <div className="h-px overflow-hidden bg-white/20"><div className="h-full bg-[#e5c67d] transition-all duration-700" style={{ width: `${((currentSlide + 1) / HERO_SLIDES.length) * 100}%` }} /></div>
-            </div>
+
+            <p
+              className="
+                mt-10
+                max-w-lg
+                font-serif
+                text-xl
+                italic
+                text-white/38
+
+                sm:text-2xl
+              "
+            >
+              “You don&apos;t just wear it. You create it.”
+            </p>
           </div>
         </section>
+      </div>
 
-        {topDesigns.length > 0 && (
-          <section className="relative z-20 mx-2 -mt-16 mb-14 rounded-[1.75rem] border border-white/10 bg-[#111]/90 p-5 shadow-[0_24px_75px_rgba(0,0,0,0.55)] backdrop-blur-2xl sm:mx-8 sm:-mt-20 sm:p-7 lg:mx-14">
-            <div className="mb-6 flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#e5c67d]">The weekly edit</p>
-                <h2 className="mt-1 flex items-center gap-2 font-serif text-2xl"><Flame size={20} className="text-rose-400" /> Trending designs</h2>
-              </div>
-              <div className="flex gap-2">
-                <button type="button" aria-label="Previous designs" onClick={() => scrollCarousel('left')} className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-white/60 transition hover:border-[#e5c67d] hover:bg-[#e5c67d] hover:text-black"><ChevronLeft size={17} /></button>
-                <button type="button" aria-label="Next designs" onClick={() => scrollCarousel('right')} className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-white/60 transition hover:border-[#e5c67d] hover:bg-[#e5c67d] hover:text-black"><ChevronRight size={17} /></button>
-              </div>
+      {/*===================================================
+      Normal Page Content
+
+      Everything below Hero remains inside the original
+      max-width content container.
+      ===================================================*/}
+
+      <div
+        className="
+          relative
+          z-10
+          mx-auto
+          max-w-[1800px]
+          px-4
+
+          sm:px-6
+          md:px-10
+          lg:px-12
+        "
+      >
+        {/*=================================================
+        Discovery Error
+        =================================================*/}
+
+        {discoveryError && (
+          <div
+            role="alert"
+            className="
+              mt-8
+              flex
+              flex-col
+              gap-4
+              rounded-2xl
+              border
+              border-rose-400/20
+              bg-rose-400/[0.08]
+              p-4
+
+              sm:flex-row
+              sm:items-center
+              sm:justify-between
+            "
+          >
+            <div
+              className="
+                flex
+                items-center
+                gap-3
+                text-sm
+                text-rose-200
+              "
+            >
+              <ShieldAlert
+                size={17}
+                className="
+                  shrink-0
+                "
+              />
+
+              {discoveryError}
             </div>
-            <div ref={carouselRef} className="flex snap-x gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-5">
-              {topDesigns.map((design, idx) => <button key={design.id || idx} type="button" onClick={() => navigate(`/creator/showcase/${design.slug}`)} className="group min-w-[235px] snap-start text-left sm:min-w-[300px]"><div className="relative h-40 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] sm:h-52">{design.watermarked_preview_url ? <img src={design.watermarked_preview_url} alt={design.title || 'Design preview'} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" /> : <Sparkles size={27} className="absolute inset-0 m-auto text-white/15" />}<div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" /><span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-black/50 px-2.5 py-1 text-[9px] font-black tracking-wider text-[#f1d995] backdrop-blur-md"><Star size={10} fill="currentColor" /> {parseFloat(design.avg_rating || 5).toFixed(1)}</span><span className="absolute bottom-3 right-3 grid h-8 w-8 place-items-center rounded-full border border-white/15 bg-white/10 text-white opacity-0 backdrop-blur-md transition group-hover:opacity-100"><ArrowRight size={14} /></span></div><p className="mt-3 truncate font-serif text-base text-white/90 transition group-hover:text-[#e5c67d]">{design.title}</p><p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">By {design.owner_name || design.designer_name || 'Anonymous'}</p></button>)}
-            </div>
-          </section>
+
+            <button
+              type="button"
+              onClick={() => void loadDiscovery()}
+              className="
+                inline-flex
+                h-9
+                items-center
+                justify-center
+                gap-2
+                rounded-xl
+                border
+                border-rose-400/20
+                px-4
+                text-[8px]
+                font-black
+                uppercase
+                tracking-[0.15em]
+                text-rose-200
+              "
+            >
+              <RefreshCw size={11} />
+              Retry
+            </button>
+          </div>
         )}
 
-        <section className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px] xl:gap-12">
-          <div className="min-w-0">
-            <div className="mb-8 flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#e5c67d]">The inspiration directory</p>
-                <h2 className="mt-2 font-serif text-3xl sm:text-4xl">Discover what&apos;s next.</h2>
-              </div>
-              <label className="relative block w-full xl:w-[360px]"><span className="sr-only">Search the inspiration directory</span><Search className="absolute left-5 top-1/2 -translate-y-1/2 text-white/35" size={16} /><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search concepts or designers" className="w-full rounded-full border border-white/10 bg-white/[0.04] py-3.5 pl-12 pr-5 text-sm text-white outline-none transition placeholder:text-white/28 focus:border-[#e5c67d] focus:bg-white/[0.07]" /></label>
+        {/*=================================================
+        TRENDING STYLES
+        =================================================*/}
+
+        <section
+          className="
+            py-20
+
+            sm:py-24
+          "
+        >
+          <SectionHeading
+            eyebrow="Now Inspiring"
+            title="Trending Styles"
+            description="Explore creative directions shaping the DesignByYou community."
+            action={
+              !discoveryLoading && trendingCards.length > 1 ? (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    aria-label="Previous trending styles"
+                    onClick={() => scrollTrending("left")}
+                    className="
+                      grid
+                      h-11
+                      w-11
+                      place-items-center
+                      rounded-full
+                      border
+                      border-white/10
+                      bg-white/[0.04]
+                      text-white/55
+                      transition
+
+                      hover:border-[#e5c67d]
+                      hover:text-[#e5c67d]
+                    "
+                  >
+                    <ChevronLeft size={17} />
+                  </button>
+
+                  <button
+                    type="button"
+                    aria-label="Next trending styles"
+                    onClick={() => scrollTrending("right")}
+                    className="
+                      grid
+                      h-11
+                      w-11
+                      place-items-center
+                      rounded-full
+                      border
+                      border-white/10
+                      bg-white/[0.04]
+                      text-white/55
+                      transition
+
+                      hover:border-[#e5c67d]
+                      hover:text-[#e5c67d]
+                    "
+                  >
+                    <ChevronRight size={17} />
+                  </button>
+                </div>
+              ) : null
+            }
+          />
+
+          {discoveryLoading ? (
+            <DiscoveryLoading />
+          ) : trendingCards.length === 0 ? (
+            <div
+              className="
+                rounded-[1.75rem]
+                border
+                border-dashed
+                border-white/10
+                bg-white/[0.02]
+                p-8
+                text-center
+                text-sm
+                text-white/30
+              "
+            >
+              Trending styles are currently unavailable.
             </div>
-            <div className="mb-8 flex flex-wrap gap-2">{CATEGORIES.map((category) => <button key={category} type="button" onClick={() => setSelectedCategory(category)} className={`rounded-full px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] transition ${selectedCategory === category ? 'bg-[#e5c67d] text-black shadow-[0_0_24px_rgba(229,198,125,0.25)]' : 'border border-white/10 bg-white/[0.03] text-white/48 hover:border-white/25 hover:text-white'}`}>{category}</button>)}</div>
+          ) : (
+            <div
+              ref={trendingRef}
+              className="
+                flex
+                snap-x
+                gap-5
+                overflow-x-auto
+                pb-3
+                [scrollbar-width:none]
 
-            {error && <div className="mb-7 flex items-center gap-3 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-5 py-4 text-sm text-rose-200"><ShieldAlert size={18} /> {error}</div>}
-            {loading ? <div className="flex min-h-[380px] flex-col items-center justify-center gap-4"><div className="relative"><div className="absolute inset-0 rounded-full border-t-2 border-[#e5c67d] animate-spin" /><Loader2 className="animate-spin text-white/20" size={44} /></div><span className="text-[10px] font-black uppercase tracking-[0.28em] text-white/45">Curating the edit</span></div> : items.length === 0 ? <div className="flex min-h-[380px] flex-col items-center justify-center rounded-[2rem] border border-dashed border-white/15 bg-white/[0.02] px-6 text-center"><Sparkles className="mb-5 text-[#e5c67d]/60" size={38} /><p className="font-serif text-2xl italic">No portfolios found.</p><p className="mt-2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/35">Adjust your search parameters.</p></div> : <div className="columns-1 gap-5 space-y-5 sm:columns-2 xl:columns-3">{items.map((item, index) => {
-              const dynamicRatio = aspectRatios[index % aspectRatios.length];
-              const ownerId = String(item.owner_id || item.designer_id);
-              const isOwnItem = ownerId === currentUserId;
-              return (
-                <article key={item.id || index} className="group relative mb-5 break-inside-avoid overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#111] shadow-[0_14px_35px_rgba(0,0,0,0.32)] transition duration-500 hover:-translate-y-1.5 hover:border-[#e5c67d]/55 hover:shadow-[0_24px_55px_rgba(0,0,0,0.55)]">
-                  <div onClick={() => navigate(`/creator/showcase/${item.slug}`)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') navigate(`/creator/showcase/${item.slug}`); }} role="button" tabIndex={0} className="relative cursor-pointer overflow-hidden" style={{ aspectRatio: dynamicRatio }}>
-                    {item.watermarked_preview_url ? <img src={item.watermarked_preview_url} alt={item.title || 'Design preview'} className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.06]" /> : <div className="flex h-full w-full items-center justify-center bg-white/[0.03]"><Sparkles size={32} className="text-white/15" /></div>}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/15 to-transparent opacity-75 transition group-hover:opacity-100" />
-                    <div className="absolute inset-x-0 bottom-0 translate-y-3 p-5 opacity-0 transition duration-500 group-hover:translate-y-0 group-hover:opacity-100">
-                      <h3 className="truncate font-serif text-xl text-white">{item.title}</h3>
-                      <div className="mt-2 flex items-center gap-2">
-                        <div className="h-6 w-6 overflow-hidden rounded-full border border-white/20 bg-white/10">
-                          {item.owner_avatar || item.designer_avatar ? <img src={item.owner_avatar || item.designer_avatar} alt="" className="h-full w-full object-cover" /> : <User size={12} className="m-auto mt-[5px] text-white/55" />}
-                        </div>
-                        <p className="truncate text-[9px] font-black uppercase tracking-[0.15em] text-white/70">{item.owner_name || item.designer_name || 'Anonymous'}</p>
-                      </div>
-                      
-                      {/* 🚀 FIXED: Grid columns adapt based on whether Book button is present */}
-                      <div className={`mt-5 grid gap-2.5 ${isOwnItem ? 'grid-cols-2' : 'grid-cols-3'}`}>
-                        <span className="rounded-xl border border-white/15 bg-white/10 py-3 text-center text-[9px] font-black uppercase tracking-[0.16em] text-white backdrop-blur-md">Details</span>
-                        
-                        {/* 🚀 FIXED: Remix Button Navigates to Studio */}
-                        <button 
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            // Ensure this URL perfectly matches your Route path for the CAD Studio
-                            navigate(`/creator/sketch?remix=${item.slug}`); 
-                          }} 
-                          className="flex items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/5 py-3 text-[9px] font-black uppercase tracking-[0.16em] text-white transition hover:bg-white/20"
+                [&::-webkit-scrollbar]:hidden
+              "
+            >
+              {trendingCards.map((term, index) => (
+                <button
+                  key={term.id}
+                  type="button"
+                  onClick={() => applyDiscovery(term)}
+                  className="
+                      group
+                      relative
+                      min-w-[310px]
+                      snap-start
+                      overflow-hidden
+                      rounded-[1.75rem]
+                      border
+                      border-white/10
+                      bg-[#111]
+                      text-left
+                      transition
+
+                      hover:-translate-y-1
+                      hover:border-[#e5c67d]/60
+
+                      sm:min-w-[420px]
+
+                      lg:min-w-[500px]
+                    "
+                >
+                  <div
+                    className="
+                        relative
+                        h-[250px]
+
+                        sm:h-[300px]
+                      "
+                  >
+                    <img
+                      src={term.image}
+                      alt=""
+                      loading="lazy"
+                      className="
+                          h-full
+                          w-full
+                          object-cover
+                          opacity-70
+                          transition
+                          duration-700
+
+                          group-hover:scale-105
+                        "
+                    />
+
+                    <div
+                      className="
+                          absolute
+                          inset-0
+                          bg-gradient-to-t
+                          from-black
+                          via-black/20
+                          to-transparent
+                        "
+                    />
+
+                    <div
+                      className="
+                          absolute
+                          inset-x-0
+                          bottom-0
+                          p-6
+
+                          sm:p-7
+                        "
+                    >
+                      <p
+                        className="
+                            text-[9px]
+                            font-black
+                            uppercase
+                            tracking-[0.22em]
+                            text-[#e5c67d]
+                          "
+                      >
+                        {term.description || `Trending style ${index + 1}`}
+                      </p>
+
+                      <div
+                        className="
+                            mt-2
+                            flex
+                            items-end
+                            justify-between
+                            gap-4
+                          "
+                      >
+                        <h3
+                          className="
+                              font-serif
+                              text-3xl
+
+                              sm:text-4xl
+                            "
                         >
-                          <Edit2 size={12} /> Remix
-                        </button>
+                          {term.name}
+                        </h3>
 
-                        {!isOwnItem && (
-                          <Link to={`/creator/bookings/new?designer_id=${ownerId}&design_id=${item.id}&budget=${item.starting_price || item.base_price || 0}`} onClick={(event) => event.stopPropagation()} className="flex items-center justify-center gap-1.5 rounded-xl bg-[#e5c67d] py-3 text-[9px] font-black uppercase tracking-[0.16em] text-black transition hover:bg-white">
-                            <Zap size={12} /> Book
-                          </Link>
+                        <span
+                          className="
+                              grid
+                              h-10
+                              w-10
+                              place-items-center
+                              rounded-full
+                              border
+                              border-white/20
+                              bg-white/10
+                              transition
+
+                              group-hover:bg-[#e5c67d]
+                              group-hover:text-black
+                            "
+                        >
+                          <ArrowRight size={15} />
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/*=================================================
+        BROWSE BY STYLE
+        =================================================*/}
+
+        <section
+          className="
+            border-t
+            border-white/[0.07]
+            py-20
+
+            sm:py-24
+          "
+        >
+          <SectionHeading
+            eyebrow="Find Your Language"
+            title="Browse by Style"
+            description="Start with the visual identity that feels most like you."
+          />
+
+          {discoveryLoading ? (
+            <DiscoveryLoading />
+          ) : (
+            <div
+              className="
+                grid
+                grid-cols-2
+                gap-3
+
+                sm:grid-cols-4
+
+                xl:grid-cols-8
+              "
+            >
+              {discovery.styles.map((style, index) => (
+                <button
+                  key={style.id}
+                  type="button"
+                  onClick={() => applyDiscovery(style)}
+                  className="
+                      group
+                      min-h-[135px]
+                      rounded-[1.5rem]
+                      border
+                      border-white/10
+                      bg-white/[0.025]
+                      p-4
+                      text-left
+                      transition
+
+                      hover:-translate-y-1
+                      hover:border-[#e5c67d]/55
+                      hover:bg-[#e5c67d]/[0.07]
+                    "
+                >
+                  <span
+                    className="
+                        text-[9px]
+                        font-black
+                        tracking-[0.15em]
+                        text-white/20
+                      "
+                  >
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+
+                  <Palette
+                    size={18}
+                    className="
+                        mt-6
+                        text-[#e5c67d]/70
+                      "
+                  />
+
+                  <p
+                    className="
+                        mt-3
+                        font-serif
+                        text-lg
+                        transition
+
+                        group-hover:text-[#e5c67d]
+                      "
+                  >
+                    {style.name}
+                  </p>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/*=================================================
+        BROWSE BY GARMENT
+        =================================================*/}
+
+        <section
+          className="
+            border-t
+            border-white/[0.07]
+            py-20
+
+            sm:py-24
+          "
+        >
+          <SectionHeading
+            eyebrow="Choose the Piece"
+            title="Browse by Garment"
+            description="Explore ideas around the kind of piece you want to create."
+          />
+
+          {discoveryLoading ? (
+            <DiscoveryLoading />
+          ) : (
+            <div
+              className="
+                grid
+                grid-cols-2
+                gap-4
+
+                sm:grid-cols-3
+
+                lg:grid-cols-6
+              "
+            >
+              {discovery.garments.map((garment) => (
+                <button
+                  key={garment.id}
+                  type="button"
+                  onClick={() => applyDiscovery(garment)}
+                  className="
+                      group
+                      flex
+                      min-h-[160px]
+                      flex-col
+                      items-center
+                      justify-center
+                      rounded-[1.5rem]
+                      border
+                      border-white/10
+                      bg-white/[0.025]
+                      p-5
+                      text-center
+                      transition
+
+                      hover:-translate-y-1
+                      hover:border-[#e5c67d]/50
+                      hover:bg-white/[0.05]
+                    "
+                >
+                  <span
+                    className="
+                        text-4xl
+                        transition
+                        duration-300
+
+                        group-hover:scale-110
+                      "
+                  >
+                    {garment.emoji || "✦"}
+                  </span>
+
+                  <p
+                    className="
+                        mt-4
+                        font-serif
+                        text-lg
+                        transition
+
+                        group-hover:text-[#e5c67d]
+                      "
+                  >
+                    {garment.name}
+                  </p>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/*=================================================
+        BROWSE BY OCCASION
+        =================================================*/}
+
+        <section
+          className="
+            border-t
+            border-white/[0.07]
+            py-20
+
+            sm:py-24
+          "
+        >
+          <SectionHeading
+            eyebrow="Dress for the Moment"
+            title="Browse by Occasion"
+            description="Start with where you're going, then make the look completely yours."
+          />
+
+          {discoveryLoading ? (
+            <DiscoveryLoading />
+          ) : (
+            <div
+              className="
+                grid
+                grid-cols-2
+                gap-3
+
+                sm:grid-cols-4
+
+                xl:grid-cols-8
+              "
+            >
+              {discovery.occasions.map((occasion) => (
+                <button
+                  key={occasion.id}
+                  type="button"
+                  onClick={() => applyDiscovery(occasion)}
+                  className="
+                      group
+                      min-h-[130px]
+                      rounded-[1.5rem]
+                      border
+                      border-white/10
+                      bg-white/[0.025]
+                      p-4
+                      text-center
+                      transition
+
+                      hover:-translate-y-1
+                      hover:border-[#e5c67d]/50
+                    "
+                >
+                  <div className="text-3xl">{occasion.emoji || "✦"}</div>
+
+                  <p
+                    className="
+                        mt-4
+                        font-serif
+                        text-base
+                        transition
+
+                        group-hover:text-[#e5c67d]
+                      "
+                  >
+                    {occasion.name}
+                  </p>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/*=================================================
+        FEATURED DESIGNERS
+        =================================================*/}
+
+        <section
+          className="
+            border-t
+            border-white/[0.07]
+            py-20
+
+            sm:py-24
+          "
+        >
+          <SectionHeading
+            eyebrow="The Network"
+            title="Featured Designers"
+            description="Discover approved designers and explore the creative minds behind the work."
+          />
+
+          {topDesignersLoading ? (
+            <div
+              className="
+                flex
+                min-h-[230px]
+                items-center
+                justify-center
+              "
+            >
+              <Loader2
+                size={28}
+                className="
+                  animate-spin
+                  text-[#e5c67d]
+                "
+              />
+            </div>
+          ) : topDesignersError ? (
+            <div
+              className="
+                rounded-2xl
+                border
+                border-rose-400/20
+                bg-rose-400/10
+                p-5
+                text-sm
+                text-rose-200
+              "
+            >
+              {topDesignersError}
+            </div>
+          ) : topDesigners.length === 0 ? (
+            <div
+              className="
+                rounded-[1.75rem]
+                border
+                border-dashed
+                border-white/10
+                bg-white/[0.02]
+                p-8
+                text-center
+                text-sm
+                text-white/30
+              "
+            >
+              No featured designers are available yet.
+            </div>
+          ) : (
+            <div
+              className="
+                grid
+                gap-4
+
+                sm:grid-cols-2
+
+                lg:grid-cols-3
+
+                xl:grid-cols-5
+              "
+            >
+              {topDesigners.map((designer, index) => {
+                const designerId = designer?.designer_id;
+
+                const rating = Number.parseFloat(designer?.avg_rating);
+
+                const bookings =
+                  Number.parseInt(designer?.total_completed_bookings, 10) || 0;
+
+                return (
+                  <article
+                    key={designerId || `designer-${index}`}
+                    className="
+                        group
+                        rounded-[1.75rem]
+                        border
+                        border-white/10
+                        bg-[#111]
+                        p-5
+                        transition
+
+                        hover:-translate-y-1
+                        hover:border-[#e5c67d]/50
+                      "
+                  >
+                    <div
+                      className="
+                          flex
+                          items-start
+                          justify-between
+                          gap-4
+                        "
+                    >
+                      <div
+                        className="
+                            flex
+                            h-16
+                            w-16
+                            items-center
+                            justify-center
+                            overflow-hidden
+                            rounded-full
+                            border
+                            border-white/10
+                            bg-white/[0.05]
+                          "
+                      >
+                        {designer?.designer_avatar ? (
+                          <img
+                            src={designer.designer_avatar}
+                            alt=""
+                            className="
+                                h-full
+                                w-full
+                                object-cover
+                              "
+                          />
+                        ) : (
+                          <User
+                            size={22}
+                            className="
+                                text-white/30
+                              "
+                          />
                         )}
                       </div>
 
+                      {index === 0 && (
+                        <Crown
+                          size={17}
+                          className="
+                              text-[#e5c67d]
+                            "
+                        />
+                      )}
                     </div>
-                  </div>
-                </article>
-              );
-            })}</div>}
-          </div>
 
-          <aside className="h-fit rounded-[2rem] border border-white/10 bg-[#111]/80 p-6 shadow-[0_18px_50px_rgba(0,0,0,0.32)] backdrop-blur-xl lg:sticky lg:top-8">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#e5c67d]">The network</p>
-            <h2 className="mt-2 flex items-center gap-2 font-serif text-2xl"><Crown size={20} className="text-[#e5c67d]" /> Top visionaries</h2>
-            <p className="mt-3 border-b border-white/10 pb-6 text-sm leading-6 text-white/45">Meet the designers earning the strongest community response.</p>
-            <div className="mt-5 space-y-2">{topDesigners.length === 0 && !loading ? <p className="py-8 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-white/35">No data available</p> : topDesigners.map((designer, idx) => <button key={designer.id || idx} type="button" onClick={() => navigate(`/directory/${designer.id || designer._id}`)} className="group flex w-full items-center justify-between gap-3 rounded-2xl p-3 text-left transition hover:bg-white/[0.06]"><div className="flex min-w-0 items-center gap-3"><div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-white/10 bg-white/10"><img src={designer.profile_image_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${designer.id}`} alt="" className="h-full w-full object-cover" />{idx === 0 && <span className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full bg-[#e5c67d] text-[8px] font-black text-black">1</span>}</div><div className="min-w-0"><p className="truncate font-serif text-base text-white transition group-hover:text-[#e5c67d]">{designer.full_name || designer.username || 'Visionary'}</p><p className="mt-1 text-[9px] font-black uppercase tracking-[0.14em] text-white/40">{designer.total_completed_bookings || 0} bookings</p></div></div><ChevronRight size={16} className="shrink-0 text-white/35 transition group-hover:translate-x-0.5 group-hover:text-[#e5c67d]" /></button>)}</div>
-          </aside>
+                    <h3
+                      className="
+                          mt-5
+                          truncate
+                          font-serif
+                          text-xl
+                        "
+                    >
+                      {designer?.designer_name || "Designer"}
+                    </h3>
+
+                    <div
+                      className="
+                          mt-3
+                          flex
+                          flex-wrap
+                          gap-2
+                        "
+                    >
+                      {Number.isFinite(rating) && rating > 0 && (
+                        <span
+                          className="
+                                inline-flex
+                                items-center
+                                gap-1
+                                rounded-full
+                                bg-[#e5c67d]/10
+                                px-2.5
+                                py-1
+                                text-[9px]
+                                font-bold
+                                text-[#e5c67d]
+                              "
+                        >
+                          <Star size={9} fill="currentColor" />
+
+                          {rating.toFixed(1)}
+                        </span>
+                      )}
+
+                      <span
+                        className="
+                            rounded-full
+                            bg-white/[0.05]
+                            px-2.5
+                            py-1
+                            text-[9px]
+                            text-white/40
+                          "
+                      >
+                        {bookings} {bookings === 1 ? "booking" : "bookings"}
+                      </span>
+                    </div>
+
+                    <div
+                      className="
+                          mt-5
+                          grid
+                          grid-cols-2
+                          gap-2
+                        "
+                    >
+                      <button
+                        type="button"
+                        disabled={!designerId}
+                        onClick={() => {
+                          if (!designerId) {
+                            return;
+                          }
+
+                          navigate(
+                            `/creator/studio/${encodeURIComponent(designerId)}`,
+                          );
+                        }}
+                        className="
+                            rounded-xl
+                            border
+                            border-white/10
+                            py-3
+                            text-[8px]
+                            font-black
+                            uppercase
+                            tracking-[0.13em]
+                            text-white/65
+                            transition
+
+                            hover:border-white/30
+                            hover:text-white
+
+                            disabled:cursor-not-allowed
+                            disabled:opacity-40
+                          "
+                      >
+                        View Profile
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={!designerId}
+                        onClick={() => {
+                          if (!designerId) {
+                            return;
+                          }
+
+                          navigate(
+                            `/creator/bookings/new?designer_id=${encodeURIComponent(
+                              designerId,
+                            )}`,
+                          );
+                        }}
+                        className="
+                            rounded-xl
+                            bg-[#e5c67d]
+                            py-3
+                            text-[8px]
+                            font-black
+                            uppercase
+                            tracking-[0.13em]
+                            text-black
+                            transition
+
+                            hover:bg-white
+
+                            disabled:cursor-not-allowed
+                            disabled:opacity-40
+                          "
+                      >
+                        Commission
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </section>
-      </main>
+
+        {/*=================================================
+        NEW ARRIVALS
+        =================================================*/}
+
+        <section
+          ref={arrivalsRef}
+          className="
+            scroll-mt-28
+            border-t
+            border-white/[0.07]
+            py-20
+
+            sm:py-24
+          "
+        >
+          <SectionHeading
+            eyebrow="Fresh From the Community"
+            title={
+              activeDiscovery
+                ? `Explore ${activeDiscovery.label}`
+                : "New Arrivals"
+            }
+            description={
+              activeDiscovery
+                ? `Showing designs classified as ${activeDiscovery.label}.`
+                : "Recently published creative work from Creators and approved Designers."
+            }
+            action={
+              activeDiscovery ? (
+                <button
+                  type="button"
+                  onClick={clearDiscovery}
+                  className="
+                    rounded-full
+                    border
+                    border-white/10
+                    bg-white/[0.04]
+                    px-5
+                    py-2.5
+                    text-[9px]
+                    font-black
+                    uppercase
+                    tracking-[0.16em]
+                    text-white/55
+                    transition
+
+                    hover:border-[#e5c67d]
+                    hover:text-[#e5c67d]
+                  "
+                >
+                  View All
+                </button>
+              ) : null
+            }
+          />
+
+          {showcaseError && (
+            <div
+              role="alert"
+              className="
+                mb-7
+                flex
+                items-center
+                gap-3
+                rounded-2xl
+                border
+                border-rose-400/20
+                bg-rose-400/10
+                px-5
+                py-4
+                text-sm
+                text-rose-200
+              "
+            >
+              <ShieldAlert size={18} />
+
+              {showcaseError}
+            </div>
+          )}
+
+          {loading ? (
+            <div
+              className="
+                flex
+                min-h-[380px]
+                flex-col
+                items-center
+                justify-center
+                gap-4
+              "
+            >
+              <Loader2
+                size={38}
+                className="
+                  animate-spin
+                  text-[#e5c67d]
+                "
+              />
+
+              <span
+                className="
+                  text-[9px]
+                  font-black
+                  uppercase
+                  tracking-[0.26em]
+                  text-white/35
+                "
+              >
+                Loading Showcase
+              </span>
+            </div>
+          ) : items.length === 0 ? (
+            <div
+              className="
+                flex
+                min-h-[330px]
+                flex-col
+                items-center
+                justify-center
+                rounded-[2rem]
+                border
+                border-dashed
+                border-white/15
+                bg-white/[0.02]
+                px-6
+                text-center
+              "
+            >
+              <Sparkles
+                size={36}
+                className="
+                  text-[#e5c67d]/50
+                "
+              />
+
+              <h3
+                className="
+                  mt-5
+                  font-serif
+                  text-2xl
+                "
+              >
+                No designs found.
+              </h3>
+
+              <p
+                className="
+                  mt-2
+                  text-sm
+                  text-white/35
+                "
+              >
+                {activeDiscovery
+                  ? `No Showcase designs are currently assigned to ${activeDiscovery.label}.`
+                  : "No Showcase designs are available right now."}
+              </p>
+
+              {activeDiscovery && (
+                <button
+                  type="button"
+                  onClick={clearDiscovery}
+                  className="
+                    mt-6
+                    rounded-full
+                    bg-[#e5c67d]
+                    px-5
+                    py-3
+                    text-[9px]
+                    font-black
+                    uppercase
+                    tracking-[0.16em]
+                    text-black
+                  "
+                >
+                  View All
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              <div
+                className="
+                  grid
+                  gap-5
+
+                  sm:grid-cols-2
+
+                  lg:grid-cols-3
+
+                  xl:grid-cols-4
+                "
+              >
+                {items.map((item, index) => {
+                  const ownerName = getOwnerName(item);
+
+                  const ownerAvatar = getOwnerAvatar(item);
+
+                  const designerOwned = isDesignerOwned(item);
+
+                  const rating = getDesignerRating(item);
+
+                  const bookingUrl = buildBookingUrl(item);
+
+                  return (
+                    <article
+                      key={getDesignKey(item, index)}
+                      className="
+                          group
+                          overflow-hidden
+                          rounded-[1.75rem]
+                          border
+                          border-white/10
+                          bg-[#111]
+                          transition
+                          duration-500
+
+                          hover:-translate-y-1
+                          hover:border-[#e5c67d]/50
+                          hover:shadow-[0_24px_60px_rgba(0,0,0,0.45)]
+                        "
+                    >
+                      <button
+                        type="button"
+                        onClick={() => openDesign(item.slug)}
+                        disabled={!item.slug}
+                        className="
+                            relative
+                            block
+                            aspect-[4/5]
+                            w-full
+                            overflow-hidden
+                            text-left
+
+                            disabled:cursor-default
+                          "
+                      >
+                        {item.watermarked_preview_url ? (
+                          <img
+                            src={item.watermarked_preview_url}
+                            alt={item.title || "Showcase design"}
+                            loading="lazy"
+                            decoding="async"
+                            className="
+                                h-full
+                                w-full
+                                object-cover
+                                transition
+                                duration-700
+
+                                group-hover:scale-[1.05]
+                              "
+                          />
+                        ) : (
+                          <div
+                            className="
+                                flex
+                                h-full
+                                items-center
+                                justify-center
+                                bg-white/[0.03]
+                              "
+                          >
+                            <Sparkles
+                              size={30}
+                              className="
+                                  text-white/15
+                                "
+                            />
+                          </div>
+                        )}
+
+                        <div
+                          className="
+                              absolute
+                              inset-0
+                              bg-gradient-to-t
+                              from-black/80
+                              via-transparent
+                              to-transparent
+                            "
+                        />
+
+                        <span
+                          className="
+                              absolute
+                              left-4
+                              top-4
+                              rounded-full
+                              border
+                              border-white/15
+                              bg-black/45
+                              px-3
+                              py-1.5
+                              text-[8px]
+                              font-black
+                              uppercase
+                              tracking-[0.13em]
+                              text-white/75
+                              backdrop-blur
+                            "
+                        >
+                          {designerOwned ? "Designer" : "Creator"}
+                        </span>
+
+                        {item?.category_name && (
+                          <span
+                            className="
+                                absolute
+                                bottom-4
+                                left-4
+                                rounded-full
+                                bg-black/55
+                                px-3
+                                py-1.5
+                                text-[8px]
+                                font-bold
+                                text-[#e5c67d]
+                                backdrop-blur
+                              "
+                          >
+                            {item.category_name}
+                          </span>
+                        )}
+                      </button>
+
+                      <div className="p-5">
+                        <h3
+                          className="
+                              truncate
+                              font-serif
+                              text-xl
+                            "
+                        >
+                          {item.title || "Untitled Design"}
+                        </h3>
+
+                        <div
+                          className="
+                              mt-3
+                              flex
+                              items-center
+                              justify-between
+                              gap-3
+                            "
+                        >
+                          <div
+                            className="
+                                flex
+                                min-w-0
+                                items-center
+                                gap-2.5
+                              "
+                          >
+                            <div
+                              className="
+                                  flex
+                                  h-8
+                                  w-8
+                                  shrink-0
+                                  items-center
+                                  justify-center
+                                  overflow-hidden
+                                  rounded-full
+                                  border
+                                  border-white/10
+                                  bg-white/[0.05]
+                                "
+                            >
+                              {ownerAvatar ? (
+                                <img
+                                  src={ownerAvatar}
+                                  alt=""
+                                  className="
+                                      h-full
+                                      w-full
+                                      object-cover
+                                    "
+                                />
+                              ) : (
+                                <User
+                                  size={13}
+                                  className="
+                                      text-white/35
+                                    "
+                                />
+                              )}
+                            </div>
+
+                            <div className="min-w-0">
+                              <p
+                                className="
+                                    truncate
+                                    text-[10px]
+                                    font-semibold
+                                    text-white/65
+                                  "
+                              >
+                                {ownerName}
+                              </p>
+
+                              <p
+                                className="
+                                    mt-0.5
+                                    truncate
+                                    text-[8px]
+                                    uppercase
+                                    tracking-[0.13em]
+                                    text-white/25
+                                  "
+                              >
+                                {item?.style_category || "Creative work"}
+                              </p>
+                            </div>
+                          </div>
+
+                          {rating && (
+                            <span
+                              className="
+                                  inline-flex
+                                  shrink-0
+                                  items-center
+                                  gap-1
+                                  text-[9px]
+                                  font-bold
+                                  text-[#e5c67d]
+                                "
+                            >
+                              <Star size={9} fill="currentColor" />
+
+                              {rating.toFixed(1)}
+                            </span>
+                          )}
+                        </div>
+
+                        <div
+                          className={`
+                              mt-5
+                              grid
+                              gap-2
+
+                              ${bookingUrl ? "grid-cols-2" : "grid-cols-1"}
+                            `}
+                        >
+                          <button
+                            type="button"
+                            disabled={!item.slug}
+                            onClick={() => openDesign(item.slug)}
+                            className="
+                                rounded-xl
+                                border
+                                border-white/10
+                                py-3
+                                text-[8px]
+                                font-black
+                                uppercase
+                                tracking-[0.15em]
+                                text-white/65
+                                transition
+
+                                hover:border-white/30
+                                hover:text-white
+
+                                disabled:cursor-not-allowed
+                                disabled:opacity-40
+                              "
+                          >
+                            View Details
+                          </button>
+
+                          {bookingUrl && (
+                            <Link
+                              to={bookingUrl}
+                              className="
+                                  flex
+                                  items-center
+                                  justify-center
+                                  gap-1.5
+                                  rounded-xl
+                                  bg-[#e5c67d]
+                                  py-3
+                                  text-[8px]
+                                  font-black
+                                  uppercase
+                                  tracking-[0.15em]
+                                  text-black
+                                  transition
+
+                                  hover:bg-white
+                                "
+                            >
+                              <Zap size={11} />
+                              Book
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+
+              {hasMore && (
+                <div
+                  className="
+                    mt-10
+                    flex
+                    justify-center
+                  "
+                >
+                  <button
+                    type="button"
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                    className="
+                      inline-flex
+                      min-w-[180px]
+                      items-center
+                      justify-center
+                      gap-2
+                      rounded-full
+                      border
+                      border-[#e5c67d]/30
+                      bg-[#e5c67d]/10
+                      px-6
+                      py-3.5
+                      text-[9px]
+                      font-black
+                      uppercase
+                      tracking-[0.2em]
+                      text-[#e5c67d]
+                      transition
+
+                      hover:bg-[#e5c67d]
+                      hover:text-black
+
+                      disabled:cursor-not-allowed
+                      disabled:opacity-50
+                    "
+                  >
+                    {loadingMore ? (
+                      <>
+                        <Loader2
+                          size={14}
+                          className="
+                            animate-spin
+                          "
+                        />
+                        Loading
+                      </>
+                    ) : (
+                      <>
+                        Load More
+                        <ChevronRight size={14} />
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+
+        {/*=================================================
+        CREATE YOUR OWN DESIGN
+        =================================================*/}
+
+        <section
+          className="
+            relative
+            mt-8
+            overflow-hidden
+            rounded-[2.5rem]
+            border
+            border-[#e5c67d]/20
+            bg-[#111]
+            px-6
+            py-16
+            text-center
+
+            sm:px-10
+            sm:py-20
+
+            lg:px-16
+            lg:py-24
+          "
+        >
+          <div
+            aria-hidden="true"
+            className="
+              absolute
+              left-1/2
+              top-1/2
+              h-[32rem]
+              w-[32rem]
+              -translate-x-1/2
+              -translate-y-1/2
+              rounded-full
+              bg-[#e5c67d]/[0.08]
+              blur-[120px]
+            "
+          />
+
+          <div
+            className="
+              relative
+              z-10
+              mx-auto
+              max-w-4xl
+            "
+          >
+            <Sparkles
+              size={24}
+              className="
+                mx-auto
+                text-[#e5c67d]
+              "
+            />
+
+            <p
+              className="
+                mt-5
+                text-[9px]
+                font-black
+                uppercase
+                tracking-[0.32em]
+                text-[#e5c67d]
+              "
+            >
+              Your Idea Starts Here
+            </p>
+
+            <h2
+              className="
+                mt-4
+                font-serif
+                text-4xl
+                leading-tight
+
+                sm:text-5xl
+
+                lg:text-6xl
+              "
+            >
+              Create Your Own
+              <span
+                className="
+                  italic
+                  text-[#e5c67d]
+                "
+              >
+                {" "}
+                Design
+              </span>
+            </h2>
+
+            <p
+              className="
+                mx-auto
+                mt-6
+                max-w-2xl
+                text-base
+                leading-8
+                text-white/50
+              "
+            >
+              I don&apos;t need something that someone already has. Just dream
+              it. Build something that feels like you.
+            </p>
+
+            <div
+              className="
+                mt-8
+                flex
+                flex-wrap
+                justify-center
+                gap-x-6
+                gap-y-3
+                font-serif
+                text-lg
+                italic
+                text-white/30
+
+                sm:text-xl
+              "
+            >
+              <span>Wear your identity.</span>
+
+              <span>You create it.</span>
+
+              <span>Just dream it.</span>
+
+              <span>It&apos;s not just about the logo.</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => navigate(CREATE_ROUTE)}
+              className="
+                mt-10
+                inline-flex
+                items-center
+                gap-2
+                rounded-full
+                bg-[#e5c67d]
+                px-8
+                py-4
+                text-[10px]
+                font-black
+                uppercase
+                tracking-[0.2em]
+                text-black
+                transition
+
+                hover:-translate-y-0.5
+                hover:bg-white
+                hover:shadow-[0_0_45px_rgba(229,198,125,0.25)]
+              "
+            >
+              <PencilRuler size={15} />
+              Start Creating
+              <ArrowRight size={14} />
+            </button>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

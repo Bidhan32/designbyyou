@@ -1,417 +1,4141 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom'; 
-import { Search, Sparkles, DollarSign, Calendar, FileText, Loader2, Plus, CheckCircle2, Lock, X, AlertCircle, Compass, ShieldAlert, ArrowLeft } from 'lucide-react';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import API from '../../api/axios'; 
-import { useAuth } from '../../context/AuthContext';
+"use strict";
 
-import SubscriptionPaywall from './SubscriptionPaywall'; 
+/*
+=========================================================
+DesignByYou
+Creator Create Booking
+Version 4.1
+=========================================================
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+Responsibilities:
 
-function CheckoutForm({ clientSecret, totalAmount, onSuccess }) {
+1. Select an available approved designer
+2. Create a direct/showcase commission
+3. Collect project terms
+4. Create an idempotent booking request
+5. Present the authoritative backend payment total
+6. Confirm Stripe PaymentIntent
+7. Reconcile escrow with the backend
+8. Surface Creator subscription benefits
+
+=========================================================
+IMPORTANT SECURITY / FINANCIAL RULES
+=========================================================
+
+- AuthContext is the frontend identity source.
+- Backend authentication remains authoritative.
+- Designer discovery uses the safe P2P directory endpoint.
+- client_request_id is reused for the SAME booking attempt.
+- Frontend does NOT decide the final Stripe charge.
+- Backend response is authoritative for:
+    - base amount
+    - connection fee
+    - total charge
+    - fee waiver
+- Stripe payment success does NOT directly mutate escrow.
+- Backend verification / signed webhook processing owns
+  escrow state.
+- Creator subscription management lives in Creator Wallet.
+=========================================================
+*/
+
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
+import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  BadgeDollarSign,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  Compass,
+  CreditCard,
+  FileText,
+  Loader2,
+  LockKeyhole,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  UserRound,
+  WalletCards,
+  X,
+} from "lucide-react";
+
+import {
+  CardElement,
+  Elements,
+  useElements,
+  useStripe,
+} from "@stripe/react-stripe-js";
+
+import { loadStripe } from "@stripe/stripe-js";
+
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+
+import API from "../../api/axios";
+
+import { useAuth } from "../../context/AuthContext";
+
+/*=========================================================
+Stripe
+=========================================================
+
+Canonical frontend environment variable:
+
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
+
+VITE_STRIPE_PUBLIC_KEY is temporarily accepted as a
+backward-compatible fallback.
+
+Once every environment has migrated, the old fallback can
+be removed.
+=========================================================*/
+
+const STRIPE_PUBLISHABLE_KEY = String(
+  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ||
+    import.meta.env.VITE_STRIPE_PUBLIC_KEY ||
+    "",
+).trim();
+
+const stripePromise = STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(STRIPE_PUBLISHABLE_KEY)
+  : null;
+
+/*=========================================================
+Stripe Card Styling
+=========================================================*/
+
+const CARD_ELEMENT_OPTIONS = {
+  hidePostalCode: false,
+
+  style: {
+    base: {
+      fontSize: "16px",
+
+      color: "#f8fafc",
+
+      fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
+
+      "::placeholder": {
+        color: "#64748b",
+      },
+
+      iconColor: "#D4AF37",
+    },
+
+    invalid: {
+      color: "#fb7185",
+
+      iconColor: "#fb7185",
+    },
+  },
+};
+
+/*=========================================================
+General Helpers
+=========================================================*/
+
+function cleanParam(searchParams, key) {
+  const value = searchParams.get(key)?.trim();
+
+  if (!value || ["undefined", "null"].includes(value.toLowerCase())) {
+    return null;
+  }
+
+  return value;
+}
+
+function normalize(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
+function parseMoney(value) {
+  const amount = Number(value);
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return null;
+  }
+
+  return Number(amount.toFixed(2));
+}
+
+function formatMoney(value, currency = "usd") {
+  const amount = Number(value);
+
+  const safeAmount = Number.isFinite(amount) ? amount : 0;
+
+  let normalizedCurrency = String(currency || "usd")
+    .trim()
+    .toUpperCase();
+
+  if (normalizedCurrency.length !== 3) {
+    normalizedCurrency = "USD";
+  }
+
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+
+      currency: normalizedCurrency,
+
+      minimumFractionDigits: 2,
+
+      maximumFractionDigits: 2,
+    }).format(safeAmount);
+  } catch {
+    return `$${safeAmount.toFixed(2)}`;
+  }
+}
+
+function localDateInput(date = new Date()) {
+  const year = date.getFullYear();
+
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function localDateTimeInput(date = new Date()) {
+  const year = date.getFullYear();
+
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+
+  const day = String(date.getDate()).padStart(2, "0");
+
+  const hours = String(date.getHours()).padStart(2, "0");
+
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function deadlineToIso(value) {
+  if (!value) {
+    return null;
+  }
+
+  const [year, month, day] = value.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  /*
+  Deadline represents the END of the selected local date.
+  */
+
+  const date = new Date(year, month - 1, day, 23, 59, 59, 999);
+
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function dateTimeToIso(value) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function apiError(error, fallback) {
+  return error?.response?.data?.message || error?.message || fallback;
+}
+
+function isCancelledRequest(error) {
+  return (
+    error?.code === "ERR_CANCELED" ||
+    error?.name === "CanceledError" ||
+    error?.name === "AbortError"
+  );
+}
+
+function createClientRequestId() {
+  const cryptoApi = globalThis.crypto;
+
+  if (!cryptoApi?.getRandomValues) {
+    throw new Error(
+      "Secure request identity generation is unavailable in this browser.",
+    );
+  }
+
+  if (typeof cryptoApi.randomUUID === "function") {
+    return cryptoApi.randomUUID();
+  }
+
+  const bytes = new Uint8Array(16);
+
+  cryptoApi.getRandomValues(bytes);
+
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+  const hex = Array.from(bytes, (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    hex.slice(12, 16),
+    hex.slice(16, 20),
+    hex.slice(20),
+  ].join("-");
+}
+
+/*=========================================================
+Designer Helpers
+=========================================================*/
+
+function usersFrom(response) {
+  if (Array.isArray(response?.data)) {
+    return response.data;
+  }
+
+  if (Array.isArray(response?.data?.data)) {
+    return response.data.data;
+  }
+
+  if (Array.isArray(response?.data?.users)) {
+    return response.data.users;
+  }
+
+  return [];
+}
+
+function designerId(designer) {
+  return designer?.id || designer?._id || null;
+}
+
+function designerName(designer) {
+  return (
+    designer?.full_name ||
+    designer?.name ||
+    designer?.username ||
+    "Unnamed Designer"
+  );
+}
+
+function designerAvatar(designer) {
+  return (
+    designer?.profile_image_url ||
+    designer?.profile_image ||
+    designer?.avatar_url ||
+    null
+  );
+}
+
+function approvedDesigner(candidate) {
+  if (normalize(candidate?.role) !== "designer") {
+    return false;
+  }
+
+  const approval = normalize(candidate?.approval_status);
+
+  /*
+  The safe P2P directory currently returns approval_status.
+
+  The booking controller still performs the authoritative
+  approval check again when creating a booking.
+  */
+
+  return !approval || approval === "approved";
+}
+
+/*=========================================================
+Subscription Helpers
+=========================================================*/
+
+function subscriptionPlanLabel(plan) {
+  switch (normalize(plan)) {
+    case "monthly":
+      return "Monthly Creator";
+
+    case "quarterly":
+      return "Quarterly Creator";
+
+    case "yearly":
+      return "Yearly Creator";
+
+    default:
+      return "Free Creator";
+  }
+}
+
+/*=========================================================
+Checkout Form
+=========================================================*/
+
+function CheckoutForm({
+  clientSecret,
+
+  bookingId,
+
+  payment,
+
+  billingName,
+
+  billingEmail,
+
+  verifying,
+
+  verificationError,
+
+  onPaymentSuccess,
+}) {
   const stripe = useStripe();
-  const elements = useElements();
-  const [processing, setProcessing] = useState(false);
-  const [paymentError, setPaymentError] = useState(null);
 
-  const handleCardPaymentSubmit = async (e) => {
-    e.preventDefault();
-    if (!stripe || !elements) return;
+  const elements = useElements();
+
+  const [processing, setProcessing] = useState(false);
+
+  const [cardError, setCardError] = useState("");
+
+  const paymentCurrency = payment?.currency || "usd";
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!stripe || !elements || processing || verifying) {
+      return;
+    }
+
+    const card = elements.getElement(CardElement);
+
+    if (!card) {
+      setCardError("The secure card field could not be loaded.");
+
+      return;
+    }
+
     setProcessing(true);
-    setPaymentError(null);
+
+    setCardError("");
 
     try {
       const result = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: { card: elements.getElement(CardElement) }
+        payment_method: {
+          card,
+
+          billing_details: {
+            name: billingName || undefined,
+
+            email: billingEmail || undefined,
+          },
+        },
       });
+
       if (result.error) {
-        setPaymentError(result.error.message);
-        setProcessing(false);
-      } else if (result.paymentIntent.status === 'succeeded') {
-        onSuccess();
+        setCardError(
+          result.error.message || "Stripe could not complete the payment.",
+        );
+
+        return;
       }
-    } catch (err) {
-      setPaymentError("Network connection dropped.");
+
+      if (result?.paymentIntent?.status !== "succeeded") {
+        setCardError(
+          `Stripe returned payment status ${
+            result?.paymentIntent?.status || "unknown"
+          }.`,
+        );
+
+        return;
+      }
+
+      await onPaymentSuccess(result.paymentIntent);
+    } catch (error) {
+      setCardError(
+        apiError(error, "The Stripe payment connection was interrupted."),
+      );
+    } finally {
       setProcessing(false);
     }
   };
 
   return (
-    <form onSubmit={handleCardPaymentSubmit} className="space-y-5">
-      <div className="p-4 bg-[#030303] border border-white/10 rounded-xl focus-within:border-[#D4AF37]/50 focus-within:shadow-[0_0_15px_rgba(212,175,55,0.1)] transition-all shadow-inner">
-        <CardElement options={{ 
-            style: { 
-                base: { 
-                    fontSize: '14px', 
-                    color: '#ffffff',
-                    fontFamily: 'system-ui, sans-serif',
-                    '::placeholder': { color: '#ffffff40' },
-                    iconColor: '#D4AF37'
-                },
-                invalid: { color: '#ef4444', iconColor: '#ef4444' }
-            } 
-        }} />
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Card */}
+
+      <div>
+        <p
+          className="
+            mb-2
+            text-[9px]
+            font-black
+            uppercase
+            tracking-[0.18em]
+            text-slate-400
+
+            dark:text-white/35
+          "
+        >
+          Card Details
+        </p>
+
+        <div
+          className="
+            rounded-2xl
+            border
+            border-slate-200
+            bg-slate-950
+            p-4
+            shadow-inner
+            transition
+
+            focus-within:border-[#D4AF37]/60
+            focus-within:ring-4
+            focus-within:ring-[#D4AF37]/10
+
+            dark:border-white/10
+            dark:bg-[#050505]
+          "
+        >
+          <CardElement options={CARD_ELEMENT_OPTIONS} />
+        </div>
       </div>
-      {paymentError && (
-          <div className="text-[10px] uppercase tracking-widest text-rose-400 font-bold bg-rose-500/10 p-3 rounded-lg border border-rose-500/20 text-center flex items-center justify-center gap-2">
-              <AlertCircle size={14} /> {paymentError}
-          </div>
+
+      {/* Errors */}
+
+      {(cardError || verificationError) && (
+        <div
+          className="
+            flex
+            items-start
+            gap-3
+            rounded-xl
+            border
+            border-rose-200
+            bg-rose-50
+            p-4
+            text-sm
+            leading-6
+            text-rose-700
+
+            dark:border-rose-400/20
+            dark:bg-rose-400/10
+            dark:text-rose-200
+          "
+        >
+          <AlertCircle
+            size={17}
+            className="
+              mt-0.5
+              shrink-0
+            "
+          />
+
+          <p>{verificationError || cardError}</p>
+        </div>
       )}
-      <button type="submit" disabled={!stripe || processing} className="w-full py-4 bg-[#D4AF37] hover:bg-white text-black font-black uppercase tracking-[0.2em] text-[10px] rounded-xl flex items-center justify-center gap-2 transition-all duration-300 shadow-[0_0_20px_rgba(212,175,55,0.2)] disabled:bg-[#111] disabled:text-white/30 disabled:border border-white/5 disabled:shadow-none">
-        {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
-        Authorize Payment (${Number(totalAmount).toFixed(2)})
+
+      {/* Authoritative Payment */}
+
+      <div
+        className="
+          overflow-hidden
+          rounded-2xl
+          border
+          border-slate-200
+          bg-slate-50
+
+          dark:border-white/[0.06]
+          dark:bg-white/[0.025]
+        "
+      >
+        <div
+          className="
+            flex
+            items-center
+            justify-between
+            gap-4
+            border-b
+            border-slate-200
+            px-5
+            py-4
+
+            dark:border-white/[0.06]
+          "
+        >
+          <div>
+            <p
+              className="
+                text-[8px]
+                font-black
+                uppercase
+                tracking-[0.18em]
+                text-slate-400
+
+                dark:text-white/30
+              "
+            >
+              Contract Reference
+            </p>
+
+            <p
+              className="
+                mt-1
+                font-mono
+                text-xs
+                text-slate-700
+
+                dark:text-white/60
+              "
+            >
+              #
+              {String(bookingId || "")
+                .slice(0, 8)
+                .toUpperCase()}
+            </p>
+          </div>
+
+          <ShieldCheck size={21} className="text-emerald-500" />
+        </div>
+
+        <div
+          className="
+            space-y-3
+            px-5
+            py-4
+            text-sm
+          "
+        >
+          <div
+            className="
+              flex
+              justify-between
+              gap-4
+            "
+          >
+            <span
+              className="
+                text-slate-500
+
+                dark:text-white/40
+              "
+            >
+              Designer escrow
+            </span>
+
+            <span className="font-mono">
+              {formatMoney(payment?.baseAmount, paymentCurrency)}
+            </span>
+          </div>
+
+          <div
+            className="
+              flex
+              justify-between
+              gap-4
+            "
+          >
+            <span
+              className="
+                text-slate-500
+
+                dark:text-white/40
+              "
+            >
+              Connection fee
+            </span>
+
+            {payment?.connectionFeeWaived ? (
+              <span
+                className="
+                  text-[9px]
+                  font-black
+                  uppercase
+                  tracking-[0.15em]
+                  text-emerald-600
+
+                  dark:text-emerald-300
+                "
+              >
+                Waived
+              </span>
+            ) : (
+              <span className="font-mono">
+                {formatMoney(payment?.connectionFee, paymentCurrency)}
+              </span>
+            )}
+          </div>
+
+          <div
+            className="
+              flex
+              items-end
+              justify-between
+              gap-4
+              border-t
+              border-slate-200
+              pt-4
+
+              dark:border-white/[0.06]
+            "
+          >
+            <div>
+              <p
+                className="
+                  text-[8px]
+                  font-black
+                  uppercase
+                  tracking-[0.18em]
+                  text-slate-400
+
+                  dark:text-white/30
+                "
+              >
+                Stripe Authorization
+              </p>
+
+              <p
+                className="
+                  mt-1
+                  text-[10px]
+                  text-slate-500
+
+                  dark:text-white/35
+                "
+              >
+                Final backend-confirmed amount
+              </p>
+            </div>
+
+            <strong
+              className="
+                font-mono
+                text-2xl
+                text-[#98761A]
+
+                dark:text-[#D4AF37]
+              "
+            >
+              {formatMoney(payment?.totalCharged, paymentCurrency)}
+            </strong>
+          </div>
+        </div>
+      </div>
+
+      {/* Payment Button */}
+
+      <button
+        type="submit"
+        disabled={!stripe || !elements || processing || verifying}
+        className="
+          flex
+          h-[54px]
+          w-full
+          items-center
+          justify-center
+          gap-2
+          rounded-xl
+          bg-[#D4AF37]
+          px-5
+          text-[9px]
+          font-black
+          uppercase
+          tracking-[0.2em]
+          text-black
+          shadow-[0_14px_35px_rgba(212,175,55,0.25)]
+          transition
+
+          hover:-translate-y-0.5
+          hover:bg-[#E4C65D]
+
+          disabled:cursor-not-allowed
+          disabled:bg-slate-200
+          disabled:text-slate-400
+          disabled:shadow-none
+
+          dark:disabled:bg-white/5
+          dark:disabled:text-white/25
+        "
+      >
+        {processing || verifying ? (
+          <Loader2 size={15} className="animate-spin" />
+        ) : (
+          <LockKeyhole size={15} />
+        )}
+
+        {verifying
+          ? "Securing Escrow"
+          : processing
+            ? "Processing Stripe Payment"
+            : `Pay ${formatMoney(payment?.totalCharged, paymentCurrency)}`}
       </button>
+
+      <p
+        className="
+          text-center
+          text-[9px]
+          leading-5
+          text-slate-400
+
+          dark:text-white/25
+        "
+      >
+        Stripe processes the card payment. Designer payout remains governed by
+        the booking workflow and final approval.
+      </p>
     </form>
   );
 }
 
+/*=========================================================
+Creator Create Booking
+=========================================================*/
+
 export default function CreatorCreateBooking() {
-  const [searchParams] = useSearchParams(); 
+  const [searchParams] = useSearchParams();
+
   const navigate = useNavigate();
+
   const { user } = useAuth();
-  
-  const isCreator = user?.role === 'creator';
-  const isSubscribed = user?.subscription_tier && user?.subscription_tier !== 'free';
 
-  // 🚀 THE FIX: Aggressive URL Parameter Sanitization
-  const cleanParam = (param) => {
-      const val = searchParams.get(param);
-      if (!val) return null;
-      const cleanVal = val.trim().toLowerCase();
-      if (cleanVal === 'undefined' || cleanVal === 'null') return null;
-      return val.trim();
-  };
+  /*=======================================================
+  URL Context
+  =======================================================*/
 
-  const showcaseDesignerId = cleanParam('designer_id');
-  const showcaseDesignId = cleanParam('design_id');
-  
-  // 🚀 THE FIX: Ensure Budget is strictly a number or an empty string
-  const rawBudget = cleanParam('budget');
-  const parsedBudget = parseFloat(rawBudget);
-  const showcaseBudget = isNaN(parsedBudget) ? '' : parsedBudget.toString();
+  const designerIdFromUrl = cleanParam(searchParams, "designer_id");
 
-  const isDirectMode = !!showcaseDesignerId;
+  const designIdFromUrl = cleanParam(searchParams, "design_id");
 
-  const [availablePeers, setAvailablePeers] = useState([]);
-  const [loadingPeers, setLoadingPeers] = useState(true);
-  const [peerError, setPeerError] = useState(null);
-  
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedPeer, setSelectedPeer] = useState(null);
-  
-  const [agreedPrice, setAgreedPrice] = useState(showcaseBudget);
-  const [deadline, setDeadline] = useState('');
-  const [briefText, setBriefText] = useState('');
-  const [formError, setFormError] = useState(null); 
+  const budgetFromUrl = parseMoney(cleanParam(searchParams, "budget"));
 
-  const [checkoutSecret, setCheckoutSecret] = useState(null);
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const directMode = Boolean(designerIdFromUrl);
+
+  /*=======================================================
+  Designer State
+  =======================================================*/
+
+  const [designers, setDesigners] = useState([]);
+
+  const [loadingDesigners, setLoadingDesigners] = useState(true);
+
+  const [designerError, setDesignerError] = useState("");
+
+  const [designerRefreshKey, setDesignerRefreshKey] = useState(0);
+
+  const [query, setQuery] = useState("");
+
+  const [selectedDesigner, setSelectedDesigner] = useState(null);
+
+  /*=======================================================
+  Subscription State
+  =======================================================*/
+
+  const [subscription, setSubscription] = useState(null);
+
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+
+  const [subscriptionError, setSubscriptionError] = useState("");
+
+  /*=======================================================
+  Contract Form
+  =======================================================*/
+
+  const [agreedPrice, setAgreedPrice] = useState(
+    budgetFromUrl ? String(budgetFromUrl) : "",
+  );
+
+  const [deadline, setDeadline] = useState("");
+
+  const [scheduledAt, setScheduledAt] = useState("");
+
+  const [brief, setBrief] = useState("");
+
+  const [formError, setFormError] = useState("");
+
   const [submitting, setSubmitting] = useState(false);
-  const [successState, setSuccessState] = useState(false);
 
-  const [showPaywall, setShowPaywall] = useState(false);
+  /*=======================================================
+  Persistent Booking Request Identity
 
-  const today = new Date().toISOString().split('T')[0];
+  One UUID represents ONE logical booking creation attempt.
+
+  It survives component re-renders and is reused for safe
+  retries of the same booking request.
+  =======================================================*/
+
+  const clientRequestIdRef = useRef(null);
+
+  if (!clientRequestIdRef.current) {
+    clientRequestIdRef.current = createClientRequestId();
+  }
+
+  /*=======================================================
+  Created Booking / Stripe
+  =======================================================*/
+
+  const [createdBooking, setCreatedBooking] = useState(null);
+
+  const [clientSecret, setClientSecret] = useState("");
+
+  const [payment, setPayment] = useState(null);
+
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+
+  const [verifying, setVerifying] = useState(false);
+
+  const [verificationError, setVerificationError] = useState("");
+
+  const [success, setSuccess] = useState(false);
+
+  /*=======================================================
+  Date Minimums
+  =======================================================*/
+
+  const minimumDeadline = localDateInput();
+
+  const minimumSchedule = localDateTimeInput(
+    new Date(Date.now() + 30 * 60 * 1000),
+  );
+
+  /*=======================================================
+  Subscription Status
+
+  Use the same authoritative subscription API as
+  CreatorWallet rather than trusting a possibly stale user
+  object.
+  =======================================================*/
 
   useEffect(() => {
-    if (!isCreator) {
-        setLoadingPeers(false);
-        return;
-    }
+    const controller = new AbortController();
 
-    const currentUserId = String(user?.id || user?._id);
-    if (showcaseDesignerId && showcaseDesignerId === currentUserId) {
-        setPeerError("Protocol Violation: You cannot initiate an escrow contract with your own account.");
-        setLoadingPeers(false);
-        return;
-    }
+    const loadSubscription = async () => {
+      setSubscriptionLoading(true);
 
-    API.get('/users')
-      .then(res => {
-        const users = Array.isArray(res.data) ? res.data : res.data?.data || [];
-        const designersOnly = users.filter(u => u.role === 'designer');
-        setAvailablePeers(designersOnly);
-        
-        if (showcaseDesignerId) {
-            const matchedPeer = designersOnly.find(u => String(u.id || u._id) === String(showcaseDesignerId));
-            if (matchedPeer) {
-                setSelectedPeer(matchedPeer);
-            } else {
-                setPeerError("The selected Visionary could not be found in the network.");
-            }
+      setSubscriptionError("");
+
+      try {
+        const response = await API.get("/subscription/status", {
+          signal: controller.signal,
+        });
+
+        if (controller.signal.aborted) {
+          return;
         }
-      })
-      .catch(() => setPeerError("Failed to fetch designer network from secure connection."))
-      .finally(() => setLoadingPeers(false));
-  }, [showcaseDesignerId, isCreator, user]); 
 
-  const filteredPeers = availablePeers.filter(p => {
-    const search = searchQuery.toLowerCase();
-    return (p.name || p.username || p.full_name || '').toLowerCase().includes(search);
-  });
+        setSubscription(response?.data?.data || null);
+      } catch (error) {
+        if (isCancelledRequest(error)) {
+          return;
+        }
 
-  const handleInitEscrowRequest = async (e) => {
-    e.preventDefault();
-    if (!selectedPeer) return;
-    
-    setFormError(null); 
-    setSubmitting(true);
-    
-    try {
-      const response = await API.post('/p2p-bookings/create', {
-        receiver_id: selectedPeer.id || selectedPeer._id,
-        design_id: showcaseDesignId || null, 
-        agreed_price: parseFloat(agreedPrice),
-        deadline,
-        brief_text: briefText
-      });
-      if (response.data?.clientSecret) {
-        setCheckoutSecret(response.data.clientSecret);
-        setIsCheckoutOpen(true);
+        if (import.meta.env.DEV) {
+          console.error(
+            "Creator subscription status failed:",
+            error?.response?.data || error,
+          );
+        }
+
+        setSubscriptionError(
+          apiError(error, "Membership status could not be loaded."),
+        );
+      } finally {
+        if (!controller.signal.aborted) {
+          setSubscriptionLoading(false);
+        }
       }
-    } catch (err) {
-      setFormError(err.response?.data?.message || "Escrow pipeline error. Please verify your inputs.");
+    };
+
+    void loadSubscription();
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
+  const subscribed = Boolean(subscription?.is_active);
+
+  /*=======================================================
+  Load Safe Designer Directory
+
+  Uses:
+
+  GET /api/v1/p2p-bookings/designers
+
+  instead of the broad generic /users endpoint.
+
+  Backend already restricts the endpoint to Creators and
+  returns approved Designers using safe public fields.
+  =======================================================*/
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const loadDesigners = async () => {
+      setLoadingDesigners(true);
+
+      setDesignerError("");
+
+      try {
+        if (
+          designerIdFromUrl &&
+          user?.id &&
+          String(designerIdFromUrl) === String(user.id)
+        ) {
+          setSelectedDesigner(null);
+
+          setDesignerError(
+            "You cannot create a commission with your own account.",
+          );
+
+          return;
+        }
+
+        const response = await API.get("/p2p-bookings/designers", {
+          signal: controller.signal,
+        });
+
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        /*
+          The backend endpoint already limits results to
+          approved Designers.
+
+          Frontend filtering remains defensive only.
+          */
+
+        const available = usersFrom(response)
+          .filter(approvedDesigner)
+          .filter(
+            (candidate) =>
+              !user?.id || String(designerId(candidate)) !== String(user.id),
+          );
+
+        setDesigners(available);
+
+        if (designerIdFromUrl) {
+          const match = available.find(
+            (candidate) =>
+              String(designerId(candidate)) === String(designerIdFromUrl),
+          );
+
+          if (match) {
+            setSelectedDesigner(match);
+          } else {
+            setSelectedDesigner(null);
+
+            setDesignerError(
+              "The selected designer could not be found or is not currently available for booking.",
+            );
+          }
+        }
+      } catch (error) {
+        if (isCancelledRequest(error)) {
+          return;
+        }
+
+        if (import.meta.env.DEV) {
+          console.error(
+            "Designer directory request failed:",
+            error?.response?.data || error,
+          );
+        }
+
+        setDesignerError(
+          apiError(error, "The designer directory could not be loaded."),
+        );
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoadingDesigners(false);
+        }
+      }
+    };
+
+    void loadDesigners();
+
+    return () => {
+      controller.abort();
+    };
+  }, [designerIdFromUrl, designerRefreshKey, user?.id]);
+
+  /*=======================================================
+  Filter Designers
+
+  Email is deliberately NOT used as searchable/public
+  Creator-facing directory information.
+  =======================================================*/
+
+  const filteredDesigners = useMemo(() => {
+    const search = query.trim().toLowerCase();
+
+    if (!search) {
+      return designers;
+    }
+
+    return designers.filter((designer) =>
+      [
+        designerName(designer),
+
+        designer?.city,
+
+        designer?.country,
+
+        designer?.tier,
+
+        designer?.bio,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(search),
+    );
+  }, [designers, query]);
+
+  /*=======================================================
+  Payment Preview
+  =======================================================*/
+
+  const baseAmount = parseMoney(agreedPrice) || 0;
+
+  /*
+  Do NOT hard-code the platform connection fee here.
+
+  P2P_CONNECTION_FEE_RATE belongs to backend configuration.
+
+  Before booking creation:
+
+  - active subscriber
+      → fee can safely display as waived
+
+  - free creator
+      → backend calculates final fee
+
+  After booking creation:
+
+  payment is the authoritative backend response.
+  */
+
+  const displayedPayment = payment || {
+    currency: "usd",
+
+    baseAmount,
+
+    connectionFee: subscribed ? 0 : null,
+
+    totalCharged: subscribed ? baseAmount : null,
+
+    connectionFeeWaived: subscribed,
+  };
+
+  /*=======================================================
+  Form Completion
+  =======================================================*/
+
+  const completion = useMemo(() => {
+    let completed = 0;
+
+    const total = 4;
+
+    if (selectedDesigner) {
+      completed += 1;
+    }
+
+    if (baseAmount > 0) {
+      completed += 1;
+    }
+
+    if (deadline) {
+      completed += 1;
+    }
+
+    if (brief.trim().length >= 20) {
+      completed += 1;
+    }
+
+    return Math.round((completed / total) * 100);
+  }, [selectedDesigner, baseAmount, deadline, brief]);
+
+  /*=======================================================
+  Validation
+  =======================================================*/
+
+  const validate = () => {
+    if (!selectedDesigner || !designerId(selectedDesigner)) {
+      return "Select a valid designer.";
+    }
+
+    if (user?.id && String(designerId(selectedDesigner)) === String(user.id)) {
+      return "You cannot create a commission with your own account.";
+    }
+
+    if (!baseAmount) {
+      return "Enter an agreed contract value greater than zero.";
+    }
+
+    if (brief.trim().length < 20) {
+      return "Provide a project brief containing at least 20 characters.";
+    }
+
+    const deadlineIso = deadlineToIso(deadline);
+
+    if (!deadlineIso || new Date(deadlineIso).getTime() <= Date.now()) {
+      return "Select a valid future project deadline.";
+    }
+
+    if (scheduledAt) {
+      const scheduleIso = dateTimeToIso(scheduledAt);
+
+      if (!scheduleIso || new Date(scheduleIso).getTime() <= Date.now()) {
+        return "Select a valid future preferred start time.";
+      }
+
+      if (new Date(scheduleIso).getTime() >= new Date(deadlineIso).getTime()) {
+        return "The preferred start time must be earlier than the final deadline.";
+      }
+    }
+
+    if (!STRIPE_PUBLISHABLE_KEY) {
+      return "Stripe card payments are not configured. Add VITE_STRIPE_PUBLISHABLE_KEY to the frontend environment.";
+    }
+
+    return "";
+  };
+
+  /*=======================================================
+  Create Booking
+  =======================================================*/
+
+  const createBooking = async (event) => {
+    event.preventDefault();
+
+    /*
+      Once a durable booking has been created, never create
+      another booking from the same form.
+
+      Reopen the existing payment instead.
+      */
+
+    if (createdBooking) {
+      setCheckoutOpen(true);
+
+      return;
+    }
+
+    const validationError = validate();
+
+    if (validationError) {
+      setFormError(validationError);
+
+      return;
+    }
+
+    setSubmitting(true);
+
+    setFormError("");
+
+    setVerificationError("");
+
+    try {
+      const response = await API.post("/p2p-bookings/create", {
+        client_request_id: clientRequestIdRef.current,
+
+        receiver_id: designerId(selectedDesigner),
+
+        design_id: designIdFromUrl || null,
+
+        brief_text: brief.trim(),
+
+        agreed_price: baseAmount,
+
+        deadline: deadlineToIso(deadline),
+
+        scheduled_at: scheduledAt ? dateTimeToIso(scheduledAt) : null,
+
+        /*
+              Backend database still uses "marketplace" as
+              the legacy booking-origin value for bookings
+              initiated from published showcase designs.
+
+              Creator-facing UI calls this:
+
+              Showcase Commission
+              */
+
+        booking_type: designIdFromUrl ? "marketplace" : "commission",
+      });
+
+      const booking = response?.data?.booking;
+
+      const secret = response?.data?.clientSecret;
+
+      const authoritativePayment = response?.data?.payment;
+
+      if (!booking?.id || !secret || !authoritativePayment) {
+        throw new Error(
+          "The server did not return the complete booking payment context.",
+        );
+      }
+
+      setCreatedBooking(booking);
+
+      setClientSecret(secret);
+
+      setPayment({
+        currency: authoritativePayment?.currency || "usd",
+
+        baseAmount: Number(authoritativePayment?.baseAmount ?? baseAmount),
+
+        connectionFee: Number(authoritativePayment?.connectionFee ?? 0),
+
+        totalCharged: Number(authoritativePayment?.totalCharged ?? 0),
+
+        connectionFeeWaived: Boolean(authoritativePayment?.connectionFeeWaived),
+      });
+
+      setCheckoutOpen(true);
+    } catch (requestError) {
+      if (import.meta.env.DEV) {
+        console.error(
+          "Booking creation failed:",
+          requestError?.response?.data || requestError,
+        );
+      }
+
+      const code = requestError?.response?.data?.code;
+
+      if (code === "CLIENT_REQUEST_ID_REUSED") {
+        setFormError(
+          "This booking request identity was already used with different contract details. Refresh the page before starting a different commission.",
+        );
+      } else if (code === "PAYMENT_INTENT_ALREADY_CANCELLED") {
+        setFormError(
+          "The Stripe payment for this booking attempt was already cancelled. Refresh the page before starting a new contract attempt.",
+        );
+      } else {
+        setFormError(
+          apiError(
+            requestError,
+            "The commission contract could not be created.",
+          ),
+        );
+      }
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (!isCreator) {
-      return (
-          <div className="min-h-screen bg-[#030303] flex items-center justify-center p-6 relative overflow-hidden">
-              <div className="absolute inset-0 bg-rose-500/5 blur-[150px] rounded-full w-[50vw] h-[50vw] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0"></div>
-              <div className="max-w-md w-full bg-[#0a0a0a] border border-white/5 rounded-3xl p-10 text-center shadow-2xl relative z-10">
-                  <ShieldAlert className="w-16 h-16 text-rose-500/50 mx-auto mb-6" />
-                  <h2 className="text-2xl font-serif text-white tracking-wide mb-2">Access Restricted</h2>
-                  <p className="text-[10px] text-white/50 uppercase tracking-[0.2em] font-bold mb-8 leading-relaxed">Only Verified Creators are authorized to initiate commissioning contracts.</p>
-                  <button onClick={() => navigate('/')} className="w-full py-4 bg-white/5 hover:bg-white/10 text-white text-[10px] font-bold uppercase tracking-[0.2em] rounded-full transition-all border border-white/10">Return to Safety</button>
-              </div>
-          </div>
-      );
-  }
+  /*=======================================================
+  Verify Escrow
 
-  if (successState) {
+  This reconciliation endpoint remains safe to retry after
+  Stripe succeeds.
+  =======================================================*/
+
+  const verifyEscrow = useCallback(async () => {
+    if (!createdBooking?.id) {
+      return;
+    }
+
+    setVerifying(true);
+
+    setVerificationError("");
+
+    try {
+      const response = await API.post("/p2p-bookings/verify-escrow", {
+        bookingId: createdBooking.id,
+      });
+
+      if (response?.data?.status !== "success") {
+        throw new Error("Escrow verification did not complete.");
+      }
+
+      setCheckoutOpen(false);
+
+      setSuccess(true);
+
+      /*
+          A future booking attempt requires a new UUID.
+
+          The completed booking itself permanently keeps its
+          original request identity in the backend.
+          */
+
+      clientRequestIdRef.current = createClientRequestId();
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error(
+          "Escrow verification failed:",
+          error?.response?.data || error,
+        );
+      }
+
+      setVerificationError(
+        apiError(
+          error,
+          "Stripe accepted the payment, but escrow has not been synchronized yet. Retry verification using this same booking.",
+        ),
+      );
+    } finally {
+      setVerifying(false);
+    }
+  }, [createdBooking?.id]);
+
+  /*=======================================================
+  Success Screen
+  =======================================================*/
+
+  if (success && createdBooking) {
     return (
-      <div className="min-h-screen bg-[#030303] flex items-center justify-center p-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[#D4AF37]/5 blur-[150px] rounded-full w-[50vw] h-[50vw] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0"></div>
-        <div className="max-w-md w-full bg-[#0a0a0a] border border-white/10 rounded-3xl p-10 text-center shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative z-10 animate-fade-in-up">
-          <div className="w-20 h-20 bg-[#D4AF37]/10 rounded-full flex items-center justify-center mx-auto mb-8 border border-[#D4AF37]/30 shadow-[0_0_30px_rgba(212,175,55,0.2)]">
-              <CheckCircle2 className="w-10 h-10 text-[#D4AF37]" />
+      <div
+        className="
+          relative
+          flex
+          min-h-[calc(100vh-5rem)]
+          items-center
+          justify-center
+          overflow-hidden
+          bg-slate-50
+          px-4
+          py-14
+          text-slate-950
+
+          dark:bg-[#030303]
+          dark:text-white
+        "
+      >
+        <div
+          className="
+            pointer-events-none
+            absolute
+            left-1/2
+            top-1/2
+            h-[38rem]
+            w-[38rem]
+            -translate-x-1/2
+            -translate-y-1/2
+            rounded-full
+            bg-[#D4AF37]/15
+            blur-[170px]
+          "
+        />
+
+        <section
+          className="
+            relative
+            z-10
+            w-full
+            max-w-xl
+            overflow-hidden
+            rounded-[2rem]
+            border
+            border-slate-200
+            bg-white
+            p-7
+            text-center
+            shadow-[0_35px_100px_rgba(15,23,42,0.12)]
+
+            sm:p-10
+
+            dark:border-white/[0.08]
+            dark:bg-[#090909]
+            dark:shadow-[0_40px_120px_rgba(0,0,0,0.65)]
+          "
+        >
+          <div
+            className="
+              pointer-events-none
+              absolute
+              -right-20
+              -top-20
+              h-56
+              w-56
+              rounded-full
+              bg-emerald-400/10
+              blur-[70px]
+            "
+          />
+
+          <div
+            className="
+              relative
+              mx-auto
+              grid
+              h-20
+              w-20
+              place-items-center
+              rounded-3xl
+              border
+              border-emerald-200
+              bg-emerald-50
+              text-emerald-600
+
+              dark:border-emerald-400/20
+              dark:bg-emerald-400/10
+              dark:text-emerald-300
+            "
+          >
+            <ShieldCheck size={35} />
           </div>
-          <h2 className="text-3xl font-serif text-white tracking-wide mb-3">Escrow Secured</h2>
-          <p className="text-[10px] text-white/50 uppercase tracking-[0.2em] leading-relaxed font-bold mb-10">Your contract valuation funds have been safely deposited in the vault.</p>
-          <button onClick={() => navigate('/creator/bookings')} className="w-full py-4 bg-[#D4AF37] hover:bg-white text-black text-[10px] font-black uppercase tracking-[0.2em] rounded-full transition-all duration-300 shadow-[0_0_20px_rgba(212,175,55,0.2)]">Enter Pipeline</button>
-        </div>
+
+          <p
+            className="
+              relative
+              mt-7
+              text-[9px]
+              font-black
+              uppercase
+              tracking-[0.28em]
+              text-[#997619]
+
+              dark:text-[#D4AF37]
+            "
+          >
+            Stripe Payment Verified
+          </p>
+
+          <h1
+            className="
+              relative
+              mt-3
+              font-serif
+              text-4xl
+              font-light
+
+              sm:text-5xl
+            "
+          >
+            Escrow{" "}
+            <span
+              className="
+                italic
+                text-[#A17D1C]
+
+                dark:text-[#D4AF37]
+              "
+            >
+              secured.
+            </span>
+          </h1>
+
+          <p
+            className="
+              relative
+              mx-auto
+              mt-4
+              max-w-md
+              text-sm
+              leading-7
+              text-slate-500
+
+              dark:text-white/45
+            "
+          >
+            Your payment has been reconciled with the booking. The commission
+            will now continue through the designer workflow.
+          </p>
+
+          <div
+            className="
+              relative
+              mt-8
+              overflow-hidden
+              rounded-2xl
+              border
+              border-slate-200
+              bg-slate-50
+              text-left
+
+              dark:border-white/[0.06]
+              dark:bg-white/[0.025]
+            "
+          >
+            <div
+              className="
+                flex
+                justify-between
+                gap-4
+                border-b
+                border-slate-200
+                p-4
+                text-xs
+
+                dark:border-white/[0.06]
+              "
+            >
+              <span
+                className="
+                  text-slate-500
+
+                  dark:text-white/40
+                "
+              >
+                Booking
+              </span>
+
+              <span
+                className="
+                  font-mono
+                  text-slate-900
+
+                  dark:text-white/75
+                "
+              >
+                #{String(createdBooking.id).slice(0, 8).toUpperCase()}
+              </span>
+            </div>
+
+            <div
+              className="
+                flex
+                justify-between
+                gap-4
+                p-4
+              "
+            >
+              <span
+                className="
+                  text-xs
+                  text-slate-500
+
+                  dark:text-white/40
+                "
+              >
+                Stripe total
+              </span>
+
+              <strong
+                className="
+                  font-mono
+                  text-lg
+                  text-[#997619]
+
+                  dark:text-[#D4AF37]
+                "
+              >
+                {formatMoney(payment?.totalCharged, payment?.currency)}
+              </strong>
+            </div>
+          </div>
+
+          <div
+            className="
+              relative
+              mt-8
+              grid
+              gap-3
+
+              sm:grid-cols-2
+            "
+          >
+            <button
+              type="button"
+              onClick={() => navigate("/creator/bookings")}
+              className="
+                h-12
+                rounded-xl
+                border
+                border-slate-200
+                bg-white
+                text-[9px]
+                font-black
+                uppercase
+                tracking-[0.18em]
+                text-slate-600
+                transition
+
+                hover:border-[#D4AF37]/50
+                hover:text-[#98751B]
+
+                dark:border-white/10
+                dark:bg-white/[0.04]
+                dark:text-white/60
+                dark:hover:text-[#D4AF37]
+              "
+            >
+              View Pipeline
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate(`/creator/bookings/${createdBooking.id}`)}
+              className="
+                flex
+                h-12
+                items-center
+                justify-center
+                gap-2
+                rounded-xl
+                bg-[#D4AF37]
+                text-[9px]
+                font-black
+                uppercase
+                tracking-[0.18em]
+                text-black
+                transition
+
+                hover:bg-[#E4C65D]
+              "
+            >
+              Open Contract
+              <ArrowRight size={14} />
+            </button>
+          </div>
+        </section>
       </div>
     );
   }
 
-  const baseValue = parseFloat(agreedPrice) || 0;
-  const platformFee = isSubscribed ? 0 : baseValue * 0.10;
-  const totalValue = baseValue + platformFee;
+  /*=======================================================
+  Main Page
+  =======================================================*/
 
   return (
-    <div className="min-h-screen bg-[#030303] text-white selection:bg-[#D4AF37] selection:text-black pb-16 antialiased relative">
-      
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-          <div className="absolute top-[10%] left-[-10%] w-[50vw] h-[50vw] bg-[#D4AF37]/5 blur-[150px] rounded-full"></div>
-      </div>
+    <>
+      <div
+        className="
+          relative
+          min-h-screen
+          overflow-hidden
+          bg-slate-50
+          pb-24
+          text-slate-950
 
-      <div className="bg-[#0a0a0a]/80 border-b border-white/5 sticky top-0 z-40 px-6 py-6 backdrop-blur-2xl shadow-2xl">
-        <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10 animate-fade-in-up">
-          <div>
-            <div className="flex items-center gap-2 text-[9px] font-bold text-[#D4AF37] uppercase tracking-[0.4em] mb-2">
-                <Compass size={12} /> Command Center
-            </div>
-            <h1 className="text-3xl md:text-4xl font-serif font-light tracking-tight drop-shadow-xl">
-                Initialize <span className="italic text-[#D4AF37]">Commission</span>
-            </h1>
-            {isDirectMode && (
-                <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-[9px] text-white/40 uppercase tracking-[0.3em] font-bold mt-3 hover:text-white transition-colors">
-                    <ArrowLeft size={10} /> Back to Showcase
-                </button>
-            )}
-          </div>
-          <span className="text-[9px] font-black uppercase tracking-[0.3em] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-5 py-2.5 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.1)] flex items-center gap-2 w-max">
-            <Lock size={12} /> Secure Network Sync
-          </span>
+          dark:bg-[#030303]
+          dark:text-white
+        "
+      >
+        {/*===============================================
+        Ambient Background
+        ===============================================*/}
+
+        <div
+          className="
+            pointer-events-none
+            fixed
+            inset-0
+            z-0
+            overflow-hidden
+          "
+        >
+          <div
+            className="
+              absolute
+              -left-[15rem]
+              top-[6rem]
+              h-[40rem]
+              w-[40rem]
+              rounded-full
+              bg-[#D4AF37]/10
+              blur-[170px]
+
+              dark:bg-[#D4AF37]/10
+            "
+          />
+
+          <div
+            className="
+              absolute
+              -right-[18rem]
+              bottom-[-10rem]
+              h-[42rem]
+              w-[42rem]
+              rounded-full
+              bg-indigo-500/[0.04]
+              blur-[180px]
+
+              dark:bg-indigo-500/[0.07]
+            "
+          />
+
+          <div
+            className="
+              absolute
+              inset-0
+              bg-[linear-gradient(to_right,rgba(15,23,42,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.02)_1px,transparent_1px)]
+              bg-[size:42px_42px]
+
+              dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.014)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.014)_1px,transparent_1px)]
+            "
+          />
         </div>
-      </div>
 
-      <div className={`max-w-[1400px] mx-auto px-6 mt-12 grid grid-cols-1 ${isDirectMode ? 'place-items-center' : 'lg:grid-cols-12'} gap-10 relative z-10`}>
-        
-        {!isDirectMode && (
-            <div className="lg:col-span-4 bg-[#0a0a0a] border border-white/5 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col min-h-[500px] lg:h-[800px] relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/5 blur-[40px] rounded-full pointer-events-none"></div>
-            
-            <div className="relative mb-6 group z-10 shrink-0">
-                <Search className="w-4 h-4 text-white/30 absolute left-5 top-1/2 -translate-y-1/2 group-focus-within:text-[#D4AF37] transition-colors" />
-                <input type="text" placeholder="QUERY DESIGNER DIRECTORY..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-[#111] border border-white/10 rounded-xl pl-12 pr-5 py-4 text-xs font-light text-white focus:outline-none focus:border-[#D4AF37]/50 focus:shadow-[0_0_15px_rgba(212,175,55,0.05)] transition-all placeholder:text-white/30 tracking-wider shadow-inner" />
-            </div>
-            
-            <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar relative z-10">
-                {loadingPeers ? (
-                <div className="h-full flex flex-col items-center justify-center text-[10px] uppercase tracking-[0.2em] font-bold text-[#D4AF37] gap-3"><Loader2 className="w-6 h-6 animate-spin" /> Querying Matrix...</div>
-                ) : peerError ? (
-                <div className="text-[10px] uppercase tracking-widest text-rose-400 p-5 text-center bg-rose-500/10 rounded-xl border border-rose-500/20 shadow-inner">{peerError}</div>
-                ) : filteredPeers.length === 0 ? (
-                <div className="text-[10px] uppercase tracking-widest text-white/40 p-5 text-center bg-white/5 rounded-xl border border-white/5 shadow-inner">No Verified Designers Found.</div>
-                ) : filteredPeers.map(peer => {
-                const isSelected = String(selectedPeer?.id || selectedPeer?._id) === String(peer.id || peer._id);
-                return (
-                    <div key={peer.id || peer._id} onClick={() => setSelectedPeer(peer)} className={`p-5 rounded-2xl border text-xs cursor-pointer flex justify-between items-center transition-all duration-300 ${isSelected ? 'border-[#D4AF37]/50 bg-[#D4AF37]/10 shadow-[0_0_20px_rgba(212,175,55,0.15)] translate-x-1' : 'border-white/5 bg-[#111] hover:bg-white/5 hover:border-white/10'}`}>
-                    <div>
-                        <span className={`block font-serif text-lg leading-none mb-1 ${isSelected ? 'text-white' : 'text-white/80'}`}>{peer.name || peer.full_name || peer.username}</span>
-                        <span className={`block text-[8px] font-black uppercase tracking-[0.2em] ${isSelected ? 'text-[#D4AF37]' : 'text-white/30'}`}>Verified Pro</span>
-                    </div>
-                    <div className={`flex items-center justify-center w-5 h-5 rounded-full border transition-colors ${isSelected ? 'border-[#D4AF37] bg-transparent' : 'border-white/10 bg-[#030303]'}`}>
-                        {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#D4AF37] shadow-[0_0_8px_rgba(212,175,55,1)]"></div>}
-                    </div>
-                    </div>
-                );
-                })}
-            </div>
-            </div>
-        )}
+        <div
+          className="
+            relative
+            z-10
+            mx-auto
+            max-w-[1450px]
+            px-4
+            pt-9
 
-        <div className={`${isDirectMode ? 'w-full max-w-4xl' : 'lg:col-span-8'} bg-[#0a0a0a] border border-white/5 rounded-3xl p-8 md:p-10 shadow-2xl flex flex-col justify-between min-h-[600px] relative overflow-hidden`}>
-          <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/5 blur-[80px] rounded-full pointer-events-none"></div>
-          
-          <form onSubmit={handleInitEscrowRequest} className="space-y-6 flex flex-col h-full justify-between relative z-10">
-            <div className="space-y-6">
-              
-              {formError && (
-                <div className="p-5 bg-rose-500/5 border border-rose-500/20 text-[10px] uppercase tracking-widest text-rose-400 rounded-2xl font-bold flex items-center gap-3 backdrop-blur-md shadow-inner">
-                  <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
-                  <p>{formError}</p>
-                </div>
-              )}
+            sm:px-6
 
-              {loadingPeers && isDirectMode ? (
-                  <div className="p-8 bg-[#111] border border-white/5 rounded-2xl flex flex-col items-center justify-center gap-3 shadow-inner">
-                      <Loader2 className="w-6 h-6 animate-spin text-[#D4AF37]" />
-                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#D4AF37]">Locking Target Visionary...</span>
-                  </div>
-              ) : selectedPeer ? (
-                <div className="p-6 bg-[#D4AF37]/5 border border-[#D4AF37]/20 rounded-2xl flex items-center justify-between shadow-[0_0_30px_rgba(212,175,55,0.05)] backdrop-blur-md animate-fade-in">
-                  <div>
-                      <span className="text-[#D4AF37] font-black uppercase tracking-[0.3em] text-[9px] block mb-2">Direct Commission Target</span>
-                      <span className="font-serif text-2xl sm:text-3xl text-white">{selectedPeer.name || selectedPeer.full_name || selectedPeer.username}</span>
-                  </div>
-                  <div className="w-12 h-12 rounded-full bg-[#D4AF37]/10 flex items-center justify-center border border-[#D4AF37]/30 shadow-[0_0_15px_rgba(212,175,55,0.2)] shrink-0">
-                      <CheckCircle2 className="text-[#D4AF37] w-6 h-6" />
-                  </div>
-                </div>
-              ) : (
-                <div className="p-8 bg-[#111] border border-dashed border-white/10 text-[10px] uppercase tracking-[0.2em] font-bold text-white/30 rounded-2xl text-center shadow-inner">
-                    {peerError || "Please select a Visionary from the directory to begin protocol."}
-                </div>
-              )}
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase text-white/40 tracking-[0.2em] flex items-center gap-2"><DollarSign className="w-3.5 h-3.5 text-[#D4AF37]" /> Valuation Allocation</label>
-                  {/* 🚀 THE FIX: We fallback to empty string so React never forces "undefined" into the DOM */}
-                  <input type="number" required disabled={!selectedPeer} min="1" placeholder="Amount ($)" value={agreedPrice} onChange={(e) => setAgreedPrice(e.target.value)} className="w-full bg-[#111] border border-white/5 rounded-xl px-5 py-4 text-sm text-white focus:outline-none focus:border-[#D4AF37]/50 focus:shadow-[0_0_15px_rgba(212,175,55,0.05)] transition-all disabled:opacity-30 disabled:cursor-not-allowed placeholder:text-white/20 tracking-wider shadow-inner" />
-                </div>
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase text-white/40 tracking-[0.2em] flex items-center gap-2"><Calendar className="w-3.5 h-3.5 text-[#D4AF37]" /> Target Deadline</label>
-                  <input 
-                    type="date" 
-                    required 
-                    disabled={!selectedPeer} 
-                    min={today} 
-                    value={deadline} 
-                    onChange={(e) => {
-                      setDeadline(e.target.value);
-                      setFormError(null); 
-                    }} 
-                    className="w-full bg-[#111] border border-white/5 rounded-xl px-5 py-4 text-sm text-white focus:outline-none focus:border-[#D4AF37]/50 focus:shadow-[0_0_15px_rgba(212,175,55,0.05)] transition-all disabled:opacity-30 disabled:cursor-not-allowed tracking-wider shadow-inner [color-scheme:dark]" 
-                  />
-                </div>
-              </div>
+            lg:px-10
+            lg:pt-12
+          "
+        >
+          {/*=============================================
+          Hero
+          =============================================*/}
 
-              <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase text-white/40 tracking-[0.2em] flex items-center gap-2"><FileText className="w-3.5 h-3.5 text-[#D4AF37]" /> Contract Brief & Specifications</label>
-                <textarea required disabled={!selectedPeer} rows={4} placeholder={isDirectMode ? "Provide details on how you want this concept adapted for your brand..." : "Describe the aesthetic, layout, features, and technical requirements..."} value={briefText} onChange={(e) => setBriefText(e.target.value)} className="w-full bg-[#111] border border-white/5 rounded-xl px-5 py-4 text-sm text-white focus:outline-none focus:border-[#D4AF37]/50 focus:shadow-[0_0_15px_rgba(212,175,55,0.05)] transition-all resize-none disabled:opacity-30 disabled:cursor-not-allowed placeholder:text-white/20 tracking-wide font-light leading-relaxed shadow-inner custom-scrollbar" />
-              </div>
+          <section
+            className="
+              relative
+              mb-8
+              overflow-hidden
+              rounded-[2rem]
+              border
+              border-slate-200/80
+              bg-white/85
+              p-6
+              shadow-[0_24px_70px_rgba(15,23,42,0.06)]
+              backdrop-blur-xl
 
-              <div className="bg-[#111] border border-white/5 rounded-2xl p-6 shadow-inner space-y-4">
-                  <div className="flex justify-between items-center text-[10px] text-white/50 font-bold uppercase tracking-widest">
-                      <span>Escrow Allocation</span>
-                      <span className="text-white font-mono">${baseValue.toFixed(2)}</span>
-                  </div>
-                  
-                  <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
-                      <span className="text-white/50">Platform Connection Fee</span>
-                      {isSubscribed ? (
-                          <span className="text-[#D4AF37]">Waived (Pro)</span>
-                      ) : (
-                          <span className="text-white font-mono">${platformFee.toFixed(2)}</span>
-                      )}
-                  </div>
+              sm:p-8
 
-                  {!isSubscribed && (
-                      <div className="pt-2">
-                          <button 
-                              type="button" 
-                              onClick={() => setShowPaywall(true)}
-                              className="w-full py-3 bg-[#D4AF37]/10 hover:bg-[#D4AF37]/20 border border-[#D4AF37]/30 text-[#D4AF37] text-[9px] uppercase tracking-[0.2em] font-black rounded-xl transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(212,175,55,0.1)]"
-                          >
-                              <Sparkles size={12} /> Subscribe to Waive All Fees
-                          </button>
-                      </div>
-                  )}
+              lg:p-10
 
-                  <div className="h-px w-full bg-white/5"></div>
-                  
-                  <div className="flex justify-between items-center text-xs font-black uppercase tracking-[0.2em] text-[#D4AF37]">
-                      <span>Total Authorization</span>
-                      <span className="font-mono">${totalValue.toFixed(2)}</span>
-                  </div>
-              </div>
+              dark:border-white/[0.06]
+              dark:bg-[#090909]/90
+              dark:shadow-[0_30px_90px_rgba(0,0,0,0.45)]
+            "
+          >
+            <div
+              className="
+                pointer-events-none
+                absolute
+                -right-24
+                -top-24
+                h-72
+                w-72
+                rounded-full
+                bg-[#D4AF37]/10
+                blur-[80px]
+              "
+            />
 
-            </div>
+            <div
+              className="
+                relative
+                z-10
+                flex
+                flex-col
+                gap-7
 
-            <button type="submit" disabled={submitting || !selectedPeer} className="w-full py-5 mt-4 bg-[#D4AF37] hover:bg-white disabled:bg-[#111] disabled:text-white/20 disabled:border border-white/5 disabled:shadow-none text-black font-black text-[10px] tracking-[0.3em] uppercase rounded-xl flex items-center justify-center gap-2 transition-all duration-300 shadow-[0_0_30px_rgba(212,175,55,0.2)] shrink-0">
-              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Initialize Escrow Request
-            </button>
-          </form>
-        </div>
-      </div>
+                lg:flex-row
+                lg:items-end
+                lg:justify-between
+              "
+            >
+              <div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    directMode ? navigate(-1) : navigate("/creator/bookings")
+                  }
+                  className="
+                    mb-5
+                    inline-flex
+                    items-center
+                    gap-2
+                    text-[8px]
+                    font-black
+                    uppercase
+                    tracking-[0.2em]
+                    text-slate-400
+                    transition
 
-      {isCheckoutOpen && (
-        <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#030303]/90 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="min-h-screen flex items-center justify-center p-4 py-12">
-            <div className="bg-[#0a0a0a] border border-white/10 w-full max-w-md rounded-3xl shadow-[0_30px_60px_rgba(0,0,0,0.8)] overflow-hidden p-8 space-y-8 relative">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/10 blur-[50px] rounded-full pointer-events-none"></div>
-              
-              <div className="flex items-center justify-between border-b border-white/5 pb-5 relative z-10">
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Secure Gateway</span>
-                <button 
-                  onClick={() => setIsCheckoutOpen(false)} 
-                  className="p-2 text-white/30 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+                    hover:text-[#98751A]
+
+                    dark:text-white/30
+                    dark:hover:text-[#D4AF37]
+                  "
                 >
-                  <X className="w-4 h-4" />
+                  <ArrowLeft size={12} />
+
+                  {directMode ? "Back to discovery" : "Back to bookings"}
                 </button>
+
+                <div
+                  className="
+                    mb-4
+                    flex
+                    items-center
+                    gap-2
+                    text-[9px]
+                    font-black
+                    uppercase
+                    tracking-[0.28em]
+                    text-[#98751A]
+
+                    dark:text-[#D4AF37]
+                  "
+                >
+                  <Compass size={13} />
+                  Creator Commission Desk
+                </div>
+
+                <h1
+                  className="
+                    max-w-3xl
+                    font-serif
+                    text-4xl
+                    font-light
+                    leading-[1.05]
+                    tracking-tight
+
+                    sm:text-5xl
+
+                    lg:text-6xl
+                  "
+                >
+                  Build a{" "}
+                  <span
+                    className="
+                      italic
+                      text-[#A17D1C]
+
+                      dark:text-[#D4AF37]
+                    "
+                  >
+                    commission.
+                  </span>
+                </h1>
+
+                <p
+                  className="
+                    mt-5
+                    max-w-2xl
+                    text-sm
+                    leading-7
+                    text-slate-500
+
+                    dark:text-white/42
+                  "
+                >
+                  Choose a designer, define the project terms, review the
+                  backend-confirmed payment amount, and secure the contract
+                  through Stripe.
+                </p>
               </div>
-              <div className="relative z-10">
-                  <Elements stripe={stripePromise}>
-                    <CheckoutForm clientSecret={checkoutSecret} totalAmount={totalValue} onSuccess={() => { setIsCheckoutOpen(false); setSuccessState(true); }} />
-                  </Elements>
+
+              <div
+                className="
+                  flex
+                  flex-wrap
+                  gap-2
+                "
+              >
+                <div
+                  className="
+                    inline-flex
+                    items-center
+                    gap-2
+                    rounded-full
+                    border
+                    border-emerald-200
+                    bg-emerald-50
+                    px-4
+                    py-2
+                    text-[8px]
+                    font-black
+                    uppercase
+                    tracking-[0.17em]
+                    text-emerald-700
+
+                    dark:border-emerald-400/20
+                    dark:bg-emerald-400/10
+                    dark:text-emerald-300
+                  "
+                >
+                  <LockKeyhole size={12} />
+                  Stripe Secured
+                </div>
+
+                {designIdFromUrl && (
+                  <div
+                    className="
+                      inline-flex
+                      items-center
+                      gap-2
+                      rounded-full
+                      border
+                      border-[#D4AF37]/25
+                      bg-[#D4AF37]/10
+                      px-4
+                      py-2
+                      text-[8px]
+                      font-black
+                      uppercase
+                      tracking-[0.17em]
+                      text-[#98751A]
+
+                      dark:text-[#D4AF37]
+                    "
+                  >
+                    <Sparkles size={12} />
+                    Showcase Reference
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* Progress */}
+
+            <div
+              className="
+                relative
+                z-10
+                mt-9
+              "
+            >
+              <div
+                className="
+                  mb-2
+                  flex
+                  items-center
+                  justify-between
+                  gap-4
+                "
+              >
+                <span
+                  className="
+                    text-[8px]
+                    font-black
+                    uppercase
+                    tracking-[0.18em]
+                    text-slate-400
+
+                    dark:text-white/25
+                  "
+                >
+                  Contract setup
+                </span>
+
+                <span
+                  className="
+                    font-mono
+                    text-[9px]
+                    text-slate-500
+
+                    dark:text-white/35
+                  "
+                >
+                  {completion}%
+                </span>
+              </div>
+
+              <div
+                className="
+                  h-1
+                  overflow-hidden
+                  rounded-full
+                  bg-slate-100
+
+                  dark:bg-white/[0.05]
+                "
+              >
+                <div
+                  className="
+                    h-full
+                    rounded-full
+                    bg-gradient-to-r
+                    from-[#A98520]
+                    via-[#D4AF37]
+                    to-[#E7CE74]
+                    transition-all
+                    duration-500
+                  "
+                  style={{
+                    width: `${completion}%`,
+                  }}
+                />
+              </div>
+            </div>
+          </section>
+
+          {/*=============================================
+          Workspace
+          =============================================*/}
+
+          <div
+            className={`
+              grid
+              gap-7
+
+              ${
+                directMode
+                  ? "mx-auto max-w-5xl"
+                  : "xl:grid-cols-[360px_minmax(0,1fr)]"
+              }
+            `}
+          >
+            {/*===========================================
+            Designer Directory
+            ===========================================*/}
+
+            {!directMode && (
+              <aside
+                className="
+                  flex
+                  max-h-[780px]
+                  min-h-[600px]
+                  flex-col
+                  overflow-hidden
+                  rounded-[2rem]
+                  border
+                  border-slate-200/80
+                  bg-white/90
+                  shadow-sm
+                  backdrop-blur
+
+                  dark:border-white/[0.06]
+                  dark:bg-[#090909]/90
+                  dark:shadow-[0_25px_70px_rgba(0,0,0,0.4)]
+                "
+              >
+                <div
+                  className="
+                    border-b
+                    border-slate-200/80
+                    p-6
+
+                    dark:border-white/[0.06]
+                  "
+                >
+                  <div
+                    className="
+                      flex
+                      items-start
+                      justify-between
+                      gap-4
+                    "
+                  >
+                    <div>
+                      <p
+                        className="
+                          text-[8px]
+                          font-black
+                          uppercase
+                          tracking-[0.2em]
+                          text-[#98751A]
+
+                          dark:text-[#D4AF37]
+                        "
+                      >
+                        Step 01
+                      </p>
+
+                      <h2
+                        className="
+                          mt-2
+                          font-serif
+                          text-2xl
+                        "
+                      >
+                        Choose a designer
+                      </h2>
+                    </div>
+
+                    <UserRound
+                      size={21}
+                      className="
+                        text-slate-300
+
+                        dark:text-white/20
+                      "
+                    />
+                  </div>
+
+                  <label
+                    className="
+                      relative
+                      mt-5
+                      block
+                    "
+                  >
+                    <span className="sr-only">Search designers</span>
+
+                    <Search
+                      size={15}
+                      className="
+                        pointer-events-none
+                        absolute
+                        left-4
+                        top-1/2
+                        -translate-y-1/2
+                        text-slate-400
+                      "
+                    />
+
+                    <input
+                      type="search"
+                      value={query}
+                      maxLength={100}
+                      onChange={(event) => setQuery(event.target.value)}
+                      placeholder="Search designers"
+                      className="
+                        h-11
+                        w-full
+                        rounded-xl
+                        border
+                        border-slate-200
+                        bg-slate-50
+                        pl-11
+                        pr-10
+                        text-sm
+                        outline-none
+                        transition
+
+                        focus:border-[#D4AF37]/55
+                        focus:bg-white
+                        focus:ring-4
+                        focus:ring-[#D4AF37]/10
+
+                        dark:border-white/10
+                        dark:bg-white/[0.035]
+                        dark:text-white
+                      "
+                    />
+
+                    {query && (
+                      <button
+                        type="button"
+                        onClick={() => setQuery("")}
+                        aria-label="Clear designer search"
+                        className="
+                          absolute
+                          right-3
+                          top-1/2
+                          grid
+                          h-7
+                          w-7
+                          -translate-y-1/2
+                          place-items-center
+                          rounded-full
+                          text-slate-400
+                          transition
+
+                          hover:bg-slate-200
+                          hover:text-slate-700
+
+                          dark:hover:bg-white/10
+                          dark:hover:text-white
+                        "
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </label>
+                </div>
+
+                <div
+                  className="
+                    custom-scrollbar
+                    flex-1
+                    space-y-3
+                    overflow-y-auto
+                    p-4
+                  "
+                >
+                  {loadingDesigners ? (
+                    <div
+                      className="
+                        flex
+                        min-h-80
+                        flex-col
+                        items-center
+                        justify-center
+                        gap-3
+                        text-[#98751A]
+
+                        dark:text-[#D4AF37]
+                      "
+                    >
+                      <Loader2 size={24} className="animate-spin" />
+
+                      <p
+                        className="
+                          text-[8px]
+                          font-black
+                          uppercase
+                          tracking-[0.2em]
+                        "
+                      >
+                        Loading designers
+                      </p>
+                    </div>
+                  ) : designerError ? (
+                    <div
+                      className="
+                        rounded-2xl
+                        border
+                        border-rose-200
+                        bg-rose-50
+                        p-5
+
+                        dark:border-rose-400/20
+                        dark:bg-rose-400/[0.08]
+                      "
+                    >
+                      <div
+                        className="
+                          flex
+                          items-start
+                          gap-3
+                          text-sm
+                          leading-6
+                          text-rose-700
+
+                          dark:text-rose-200
+                        "
+                      >
+                        <AlertCircle
+                          size={17}
+                          className="
+                            mt-0.5
+                            shrink-0
+                          "
+                        />
+
+                        <p>{designerError}</p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDesignerRefreshKey((value) => value + 1)
+                        }
+                        className="
+                          mt-4
+                          inline-flex
+                          items-center
+                          gap-2
+                          text-[8px]
+                          font-black
+                          uppercase
+                          tracking-[0.16em]
+                          text-rose-700
+
+                          dark:text-rose-200
+                        "
+                      >
+                        <RefreshCw size={12} />
+                        Retry
+                      </button>
+                    </div>
+                  ) : filteredDesigners.length === 0 ? (
+                    <div
+                      className="
+                        flex
+                        min-h-80
+                        flex-col
+                        items-center
+                        justify-center
+                        rounded-2xl
+                        border
+                        border-dashed
+                        border-slate-200
+                        p-6
+                        text-center
+
+                        dark:border-white/10
+                      "
+                    >
+                      <UserRound
+                        size={29}
+                        className="
+                          text-slate-300
+
+                          dark:text-white/20
+                        "
+                      />
+
+                      <p
+                        className="
+                          mt-4
+                          font-serif
+                          text-xl
+                        "
+                      >
+                        No designers found
+                      </p>
+
+                      <p
+                        className="
+                          mt-2
+                          text-xs
+                          leading-5
+                          text-slate-500
+
+                          dark:text-white/35
+                        "
+                      >
+                        Try another name or tier.
+                      </p>
+                    </div>
+                  ) : (
+                    filteredDesigners.map((candidate) => {
+                      const id = designerId(candidate);
+
+                      const selected =
+                        String(designerId(selectedDesigner)) === String(id);
+
+                      const avatar = designerAvatar(candidate);
+
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          disabled={Boolean(createdBooking)}
+                          onClick={() => {
+                            setSelectedDesigner(candidate);
+
+                            setFormError("");
+                          }}
+                          className={`
+                              group
+                              flex
+                              w-full
+                              items-center
+                              gap-3
+                              rounded-2xl
+                              border
+                              p-3.5
+                              text-left
+                              transition
+                              duration-200
+
+                              disabled:cursor-not-allowed
+                              disabled:opacity-50
+
+                              ${
+                                selected
+                                  ? "border-[#D4AF37]/50 bg-[#D4AF37]/10 shadow-[0_10px_30px_rgba(212,175,55,0.08)]"
+                                  : "border-slate-200 bg-slate-50/70 hover:border-[#D4AF37]/25 hover:bg-white dark:border-white/[0.06] dark:bg-white/[0.025] dark:hover:bg-white/[0.05]"
+                              }
+                            `}
+                        >
+                          <div
+                            className="
+                                grid
+                                h-12
+                                w-12
+                                shrink-0
+                                place-items-center
+                                overflow-hidden
+                                rounded-xl
+                                border
+                                border-slate-200
+                                bg-white
+                                font-serif
+                                text-lg
+                                text-slate-500
+
+                                dark:border-white/10
+                                dark:bg-white/5
+                                dark:text-white/50
+                              "
+                          >
+                            {avatar ? (
+                              <img
+                                src={avatar}
+                                alt=""
+                                loading="lazy"
+                                className="
+                                    h-full
+                                    w-full
+                                    object-cover
+                                  "
+                              />
+                            ) : (
+                              designerName(candidate).charAt(0).toUpperCase()
+                            )}
+                          </div>
+
+                          <div
+                            className="
+                                min-w-0
+                                flex-1
+                              "
+                          >
+                            <p
+                              className="
+                                  truncate
+                                  font-serif
+                                  text-base
+                                "
+                            >
+                              {designerName(candidate)}
+                            </p>
+
+                            <div
+                              className="
+                                  mt-1
+                                  flex
+                                  flex-wrap
+                                  items-center
+                                  gap-1.5
+                                  text-[8px]
+                                  font-black
+                                  uppercase
+                                  tracking-[0.13em]
+                                  text-slate-400
+
+                                  dark:text-white/28
+                                "
+                            >
+                              <span>Designer</span>
+
+                              {candidate?.tier && (
+                                <>
+                                  <span>•</span>
+
+                                  <span
+                                    className="
+                                        text-[#9B791D]
+
+                                        dark:text-[#D4AF37]
+                                      "
+                                  >
+                                    {candidate.tier}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          <div
+                            className={`
+                                grid
+                                h-6
+                                w-6
+                                shrink-0
+                                place-items-center
+                                rounded-full
+                                border
+                                transition
+
+                                ${
+                                  selected
+                                    ? "border-[#D4AF37] bg-[#D4AF37] text-black"
+                                    : "border-slate-300 text-transparent dark:border-white/15"
+                                }
+                              `}
+                          >
+                            <CheckCircle2 size={13} />
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div
+                  className="
+                    border-t
+                    border-slate-200
+                    p-4
+
+                    dark:border-white/[0.06]
+                  "
+                >
+                  <Link
+                    to="/creator/directory"
+                    className="
+                      flex
+                      items-center
+                      justify-center
+                      gap-2
+                      rounded-xl
+                      border
+                      border-slate-200
+                      bg-slate-50
+                      py-3
+                      text-[8px]
+                      font-black
+                      uppercase
+                      tracking-[0.17em]
+                      text-slate-500
+                      transition
+
+                      hover:border-[#D4AF37]/30
+                      hover:text-[#967319]
+
+                      dark:border-white/10
+                      dark:bg-white/[0.03]
+                      dark:text-white/40
+                      dark:hover:text-[#D4AF37]
+                    "
+                  >
+                    Explore Full Directory
+                    <ArrowRight size={12} />
+                  </Link>
+                </div>
+              </aside>
+            )}
+
+            {/*===========================================
+            Contract Form
+            ===========================================*/}
+
+            <section
+              className="
+                overflow-hidden
+                rounded-[2rem]
+                border
+                border-slate-200/80
+                bg-white/90
+                shadow-sm
+                backdrop-blur
+
+                dark:border-white/[0.06]
+                dark:bg-[#090909]/90
+                dark:shadow-[0_25px_75px_rgba(0,0,0,0.4)]
+              "
+            >
+              <form
+                onSubmit={createBooking}
+                className="
+                  p-5
+
+                  sm:p-7
+
+                  lg:p-9
+                "
+              >
+                {/* Form Heading */}
+
+                <div
+                  className="
+                    flex
+                    flex-col
+                    gap-5
+                    border-b
+                    border-slate-200
+                    pb-7
+
+                    sm:flex-row
+                    sm:items-start
+                    sm:justify-between
+
+                    dark:border-white/[0.06]
+                  "
+                >
+                  <div>
+                    <p
+                      className="
+                        text-[8px]
+                        font-black
+                        uppercase
+                        tracking-[0.2em]
+                        text-[#98751A]
+
+                        dark:text-[#D4AF37]
+                      "
+                    >
+                      Step 02
+                    </p>
+
+                    <h2
+                      className="
+                        mt-2
+                        font-serif
+                        text-3xl
+
+                        sm:text-4xl
+                      "
+                    >
+                      Define the contract
+                    </h2>
+
+                    <p
+                      className="
+                        mt-3
+                        max-w-xl
+                        text-sm
+                        leading-6
+                        text-slate-500
+
+                        dark:text-white/40
+                      "
+                    >
+                      Set the agreed project value, timing, and creative
+                      requirements before Stripe funding.
+                    </p>
+                  </div>
+
+                  <div
+                    className={`
+                      inline-flex
+                      w-fit
+                      items-center
+                      gap-2
+                      rounded-full
+                      border
+                      px-4
+                      py-2
+                      text-[8px]
+                      font-black
+                      uppercase
+                      tracking-[0.15em]
+
+                      ${
+                        subscribed
+                          ? "border-[#D4AF37]/25 bg-[#D4AF37]/10 text-[#8F7118] dark:text-[#D4AF37]"
+                          : "border-slate-200 bg-slate-50 text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-white/40"
+                      }
+                    `}
+                  >
+                    {subscriptionLoading ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : (
+                      <Sparkles size={12} />
+                    )}
+
+                    {subscriptionLoading
+                      ? "Checking membership"
+                      : subscribed
+                        ? `${subscriptionPlanLabel(
+                            subscription?.plan,
+                          )} • Fee waived`
+                        : "Pay-as-you-go"}
+                  </div>
+                </div>
+
+                {subscriptionError && (
+                  <div
+                    className="
+                      mt-6
+                      flex
+                      items-start
+                      gap-3
+                      rounded-xl
+                      border
+                      border-amber-200
+                      bg-amber-50
+                      p-4
+                      text-xs
+                      leading-5
+                      text-amber-700
+
+                      dark:border-amber-400/20
+                      dark:bg-amber-400/[0.08]
+                      dark:text-amber-200
+                    "
+                  >
+                    <AlertCircle
+                      size={15}
+                      className="
+                        mt-0.5
+                        shrink-0
+                      "
+                    />
+
+                    <div>
+                      <p>{subscriptionError}</p>
+
+                      <p
+                        className="
+                          mt-1
+                          opacity-75
+                        "
+                      >
+                        The backend will still determine your actual connection
+                        fee before payment.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {formError && (
+                  <div
+                    role="alert"
+                    className="
+                      mt-6
+                      flex
+                      items-start
+                      gap-3
+                      rounded-2xl
+                      border
+                      border-rose-200
+                      bg-rose-50
+                      p-5
+                      text-sm
+                      leading-6
+                      text-rose-700
+
+                      dark:border-rose-400/20
+                      dark:bg-rose-400/[0.08]
+                      dark:text-rose-200
+                    "
+                  >
+                    <AlertCircle
+                      size={17}
+                      className="
+                        mt-0.5
+                        shrink-0
+                      "
+                    />
+
+                    <p>{formError}</p>
+                  </div>
+                )}
+
+                {createdBooking && (
+                  <div
+                    className="
+                      mt-6
+                      flex
+                      flex-col
+                      gap-4
+                      rounded-2xl
+                      border
+                      border-amber-200
+                      bg-amber-50
+                      p-5
+
+                      sm:flex-row
+                      sm:items-center
+                      sm:justify-between
+
+                      dark:border-amber-400/20
+                      dark:bg-amber-400/[0.08]
+                    "
+                  >
+                    <div
+                      className="
+                        flex
+                        items-start
+                        gap-3
+                      "
+                    >
+                      <Clock3
+                        size={18}
+                        className="
+                          mt-0.5
+                          shrink-0
+                          text-amber-700
+
+                          dark:text-amber-300
+                        "
+                      />
+
+                      <div>
+                        <h3
+                          className="
+                            font-semibold
+                            text-amber-900
+
+                            dark:text-amber-100
+                          "
+                        >
+                          Contract created — payment pending
+                        </h3>
+
+                        <p
+                          className="
+                            mt-1
+                            text-xs
+                            leading-5
+                            text-amber-700/75
+
+                            dark:text-amber-200/65
+                          "
+                        >
+                          Booking #
+                          {String(createdBooking.id).slice(0, 8).toUpperCase()}{" "}
+                          already exists. Continue that Stripe payment instead
+                          of creating another contract.
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setCheckoutOpen(true)}
+                      className="
+                        inline-flex
+                        h-10
+                        shrink-0
+                        items-center
+                        justify-center
+                        gap-2
+                        rounded-xl
+                        bg-amber-700
+                        px-4
+                        text-[8px]
+                        font-black
+                        uppercase
+                        tracking-[0.15em]
+                        text-white
+
+                        dark:bg-amber-300
+                        dark:text-black
+                      "
+                    >
+                      <CreditCard size={13} />
+                      Continue Payment
+                    </button>
+                  </div>
+                )}
+
+                {/* Fields */}
+
+                <div
+                  className="
+                    mt-7
+                    space-y-7
+                  "
+                >
+                  {/* Selected Designer */}
+
+                  <div
+                    className="
+                      relative
+                      overflow-hidden
+                      rounded-2xl
+                      border
+                      border-slate-200
+                      bg-slate-50
+                      p-5
+
+                      dark:border-white/[0.06]
+                      dark:bg-white/[0.025]
+                    "
+                  >
+                    <div
+                      className="
+                        pointer-events-none
+                        absolute
+                        -right-10
+                        -top-10
+                        h-32
+                        w-32
+                        rounded-full
+                        bg-[#D4AF37]/10
+                        blur-[50px]
+                      "
+                    />
+
+                    <div
+                      className="
+                        relative
+                        flex
+                        items-center
+                        justify-between
+                        gap-4
+                      "
+                    >
+                      <div>
+                        <p
+                          className="
+                            text-[8px]
+                            font-black
+                            uppercase
+                            tracking-[0.18em]
+                            text-slate-400
+
+                            dark:text-white/28
+                          "
+                        >
+                          Selected Designer
+                        </p>
+
+                        {loadingDesigners && directMode ? (
+                          <div
+                            className="
+                              mt-3
+                              flex
+                              items-center
+                              gap-2
+                              text-sm
+                              text-[#98751A]
+
+                              dark:text-[#D4AF37]
+                            "
+                          >
+                            <Loader2 size={15} className="animate-spin" />
+                            Loading designer
+                          </div>
+                        ) : selectedDesigner ? (
+                          <div
+                            className="
+                              mt-3
+                              flex
+                              min-w-0
+                              items-center
+                              gap-3
+                            "
+                          >
+                            <div
+                              className="
+                                grid
+                                h-12
+                                w-12
+                                shrink-0
+                                place-items-center
+                                overflow-hidden
+                                rounded-xl
+                                border
+                                border-[#D4AF37]/25
+                                bg-[#D4AF37]/10
+                                font-serif
+                                text-lg
+                                text-[#98751A]
+
+                                dark:text-[#D4AF37]
+                              "
+                            >
+                              {designerAvatar(selectedDesigner) ? (
+                                <img
+                                  src={designerAvatar(selectedDesigner)}
+                                  alt=""
+                                  className="
+                                    h-full
+                                    w-full
+                                    object-cover
+                                  "
+                                />
+                              ) : (
+                                designerName(selectedDesigner)
+                                  .charAt(0)
+                                  .toUpperCase()
+                              )}
+                            </div>
+
+                            <div className="min-w-0">
+                              <h3
+                                className="
+                                  truncate
+                                  font-serif
+                                  text-xl
+
+                                  sm:text-2xl
+                                "
+                              >
+                                {designerName(selectedDesigner)}
+                              </h3>
+
+                              <p
+                                className="
+                                  mt-1
+                                  text-[8px]
+                                  font-black
+                                  uppercase
+                                  tracking-[0.16em]
+                                  text-[#98751A]
+
+                                  dark:text-[#D4AF37]
+                                "
+                              >
+                                {designIdFromUrl
+                                  ? "Showcase commission"
+                                  : "Direct commission"}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <p
+                            className="
+                              mt-3
+                              text-sm
+                              text-slate-500
+
+                              dark:text-white/35
+                            "
+                          >
+                            {designerError || "Select a designer to continue."}
+                          </p>
+                        )}
+                      </div>
+
+                      {selectedDesigner && (
+                        <CheckCircle2
+                          size={22}
+                          className="
+                            shrink-0
+                            text-emerald-500
+                          "
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Amount + Deadline */}
+
+                  <div
+                    className="
+                      grid
+                      gap-5
+
+                      md:grid-cols-2
+                    "
+                  >
+                    <label className="block">
+                      <span
+                        className="
+                          mb-2.5
+                          flex
+                          items-center
+                          gap-2
+                          text-[9px]
+                          font-black
+                          uppercase
+                          tracking-[0.17em]
+                          text-slate-500
+
+                          dark:text-white/40
+                        "
+                      >
+                        <BadgeDollarSign
+                          size={13}
+                          className="
+                            text-[#A17D1C]
+
+                            dark:text-[#D4AF37]
+                          "
+                        />
+                        Agreed Contract Value
+                      </span>
+
+                      <div className="relative">
+                        <span
+                          className="
+                            absolute
+                            left-4
+                            top-1/2
+                            -translate-y-1/2
+                            font-serif
+                            text-lg
+                            text-[#98751A]
+
+                            dark:text-[#D4AF37]
+                          "
+                        >
+                          $
+                        </span>
+
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          inputMode="decimal"
+                          required
+                          disabled={
+                            !selectedDesigner || Boolean(createdBooking)
+                          }
+                          value={agreedPrice}
+                          onChange={(event) => {
+                            setAgreedPrice(event.target.value);
+
+                            setFormError("");
+                          }}
+                          placeholder="500.00"
+                          className="
+                            h-[54px]
+                            w-full
+                            rounded-xl
+                            border
+                            border-slate-200
+                            bg-slate-50
+                            pl-10
+                            pr-4
+                            text-sm
+                            outline-none
+                            transition
+
+                            focus:border-[#D4AF37]/60
+                            focus:bg-white
+                            focus:ring-4
+                            focus:ring-[#D4AF37]/10
+
+                            disabled:cursor-not-allowed
+                            disabled:opacity-50
+
+                            dark:border-white/10
+                            dark:bg-white/[0.035]
+                            dark:text-white
+                            dark:focus:bg-white/[0.05]
+                          "
+                        />
+                      </div>
+
+                      {budgetFromUrl && !createdBooking && (
+                        <p
+                          className="
+                              mt-2
+                              text-[9px]
+                              leading-4
+                              text-slate-400
+
+                              dark:text-white/25
+                            "
+                        >
+                          Pre-filled from the designer's indicative commission
+                          starting budget. You may adjust it before creating the
+                          contract.
+                        </p>
+                      )}
+                    </label>
+
+                    <label className="block">
+                      <span
+                        className="
+                          mb-2.5
+                          flex
+                          items-center
+                          gap-2
+                          text-[9px]
+                          font-black
+                          uppercase
+                          tracking-[0.17em]
+                          text-slate-500
+
+                          dark:text-white/40
+                        "
+                      >
+                        <CalendarDays
+                          size={13}
+                          className="
+                            text-[#A17D1C]
+
+                            dark:text-[#D4AF37]
+                          "
+                        />
+                        Final Deadline
+                      </span>
+
+                      <input
+                        type="date"
+                        min={minimumDeadline}
+                        required
+                        disabled={!selectedDesigner || Boolean(createdBooking)}
+                        value={deadline}
+                        onChange={(event) => {
+                          setDeadline(event.target.value);
+
+                          setFormError("");
+                        }}
+                        className="
+                          h-[54px]
+                          w-full
+                          rounded-xl
+                          border
+                          border-slate-200
+                          bg-slate-50
+                          px-4
+                          text-sm
+                          outline-none
+                          transition
+
+                          focus:border-[#D4AF37]/60
+                          focus:bg-white
+                          focus:ring-4
+                          focus:ring-[#D4AF37]/10
+
+                          disabled:cursor-not-allowed
+                          disabled:opacity-50
+
+                          dark:border-white/10
+                          dark:bg-white/[0.035]
+                          dark:text-white
+                          dark:[color-scheme:dark]
+                        "
+                      />
+                    </label>
+                  </div>
+
+                  {/* Schedule */}
+
+                  <label className="block">
+                    <span
+                      className="
+                        mb-2.5
+                        flex
+                        flex-wrap
+                        items-center
+                        gap-2
+                        text-[9px]
+                        font-black
+                        uppercase
+                        tracking-[0.17em]
+                        text-slate-500
+
+                        dark:text-white/40
+                      "
+                    >
+                      <Clock3
+                        size={13}
+                        className="
+                          text-[#A17D1C]
+
+                          dark:text-[#D4AF37]
+                        "
+                      />
+                      Preferred Start Time
+                      <span
+                        className="
+                          rounded-full
+                          bg-slate-100
+                          px-2
+                          py-0.5
+                          text-[7px]
+                          tracking-[0.12em]
+                          text-slate-400
+
+                          dark:bg-white/5
+                          dark:text-white/25
+                        "
+                      >
+                        Optional
+                      </span>
+                    </span>
+
+                    <input
+                      type="datetime-local"
+                      min={minimumSchedule}
+                      disabled={!selectedDesigner || Boolean(createdBooking)}
+                      value={scheduledAt}
+                      onChange={(event) => {
+                        setScheduledAt(event.target.value);
+
+                        setFormError("");
+                      }}
+                      className="
+                        h-[54px]
+                        w-full
+                        rounded-xl
+                        border
+                        border-slate-200
+                        bg-slate-50
+                        px-4
+                        text-sm
+                        outline-none
+                        transition
+
+                        focus:border-[#D4AF37]/60
+                        focus:bg-white
+                        focus:ring-4
+                        focus:ring-[#D4AF37]/10
+
+                        disabled:cursor-not-allowed
+                        disabled:opacity-50
+
+                        dark:border-white/10
+                        dark:bg-white/[0.035]
+                        dark:text-white
+                        dark:[color-scheme:dark]
+                      "
+                    />
+
+                    <p
+                      className="
+                        mt-2
+                        text-[9px]
+                        text-slate-400
+
+                        dark:text-white/25
+                      "
+                    >
+                      Designer availability is revalidated by the backend when
+                      the booking is created.
+                    </p>
+                  </label>
+
+                  {/* Brief */}
+
+                  <label className="block">
+                    <span
+                      className="
+                        mb-2.5
+                        flex
+                        items-center
+                        justify-between
+                        gap-4
+                        text-[9px]
+                        font-black
+                        uppercase
+                        tracking-[0.17em]
+                        text-slate-500
+
+                        dark:text-white/40
+                      "
+                    >
+                      <span
+                        className="
+                          flex
+                          items-center
+                          gap-2
+                        "
+                      >
+                        <FileText
+                          size={13}
+                          className="
+                            text-[#A17D1C]
+
+                            dark:text-[#D4AF37]
+                          "
+                        />
+                        Project Brief
+                      </span>
+
+                      <span
+                        className="
+                          font-mono
+                          text-[8px]
+                          text-slate-400
+
+                          dark:text-white/25
+                        "
+                      >
+                        {brief.length}
+                        /20,000
+                      </span>
+                    </span>
+
+                    <textarea
+                      required
+                      rows={7}
+                      minLength={20}
+                      maxLength={20000}
+                      disabled={!selectedDesigner || Boolean(createdBooking)}
+                      value={brief}
+                      onChange={(event) => {
+                        setBrief(event.target.value);
+
+                        setFormError("");
+                      }}
+                      placeholder="Describe the concept, style direction, intended use, deliverables, dimensions, references, technical requirements and anything the designer should know..."
+                      className="
+                        w-full
+                        resize-none
+                        rounded-xl
+                        border
+                        border-slate-200
+                        bg-slate-50
+                        p-4
+                        text-sm
+                        leading-7
+                        outline-none
+                        transition
+
+                        focus:border-[#D4AF37]/60
+                        focus:bg-white
+                        focus:ring-4
+                        focus:ring-[#D4AF37]/10
+
+                        disabled:cursor-not-allowed
+                        disabled:opacity-50
+
+                        dark:border-white/10
+                        dark:bg-white/[0.035]
+                        dark:text-white
+                        dark:placeholder:text-white/20
+                      "
+                    />
+
+                    <div
+                      className="
+                        mt-2
+                        flex
+                        items-center
+                        justify-between
+                        gap-4
+                      "
+                    >
+                      <p
+                        className={`
+                          text-[9px]
+
+                          ${
+                            brief.length > 0 && brief.trim().length < 20
+                              ? "text-amber-600 dark:text-amber-300"
+                              : "text-slate-400 dark:text-white/25"
+                          }
+                        `}
+                      >
+                        Minimum 20 characters.
+                      </p>
+
+                      {brief.trim().length >= 20 && (
+                        <span
+                          className="
+                            inline-flex
+                            items-center
+                            gap-1
+                            text-[8px]
+                            font-black
+                            uppercase
+                            tracking-[0.14em]
+                            text-emerald-600
+
+                            dark:text-emerald-300
+                          "
+                        >
+                          <CheckCircle2 size={10} />
+                          Ready
+                        </span>
+                      )}
+                    </div>
+                  </label>
+
+                  {/* Payment Preview */}
+
+                  <section
+                    className="
+                      relative
+                      overflow-hidden
+                      rounded-2xl
+                      border
+                      border-slate-200
+                      bg-slate-50
+                      p-5
+
+                      dark:border-white/[0.06]
+                      dark:bg-white/[0.025]
+                    "
+                  >
+                    <div
+                      className="
+                        pointer-events-none
+                        absolute
+                        -right-12
+                        -top-12
+                        h-36
+                        w-36
+                        rounded-full
+                        bg-emerald-400/[0.08]
+                        blur-[50px]
+                      "
+                    />
+
+                    <div
+                      className="
+                        relative
+                        flex
+                        items-start
+                        justify-between
+                        gap-4
+                      "
+                    >
+                      <div>
+                        <p
+                          className="
+                            text-[8px]
+                            font-black
+                            uppercase
+                            tracking-[0.2em]
+                            text-[#98751A]
+
+                            dark:text-[#D4AF37]
+                          "
+                        >
+                          Step 03
+                        </p>
+
+                        <h3
+                          className="
+                            mt-2
+                            font-serif
+                            text-2xl
+                          "
+                        >
+                          Payment preview
+                        </h3>
+
+                        <p
+                          className="
+                            mt-2
+                            max-w-lg
+                            text-xs
+                            leading-5
+                            text-slate-500
+
+                            dark:text-white/35
+                          "
+                        >
+                          The exact connection fee and Stripe charge are
+                          calculated by the backend before you enter payment.
+                        </p>
+                      </div>
+
+                      <WalletCards
+                        size={23}
+                        className="
+                          shrink-0
+                          text-emerald-500
+                        "
+                      />
+                    </div>
+
+                    <div
+                      className="
+                        relative
+                        mt-5
+                        space-y-3
+                        text-sm
+                      "
+                    >
+                      <div
+                        className="
+                          flex
+                          items-center
+                          justify-between
+                          gap-4
+                        "
+                      >
+                        <span
+                          className="
+                            text-slate-500
+
+                            dark:text-white/40
+                          "
+                        >
+                          Agreed designer value
+                        </span>
+
+                        <span className="font-mono">
+                          {formatMoney(baseAmount)}
+                        </span>
+                      </div>
+
+                      <div
+                        className="
+                          flex
+                          items-center
+                          justify-between
+                          gap-4
+                        "
+                      >
+                        <span
+                          className="
+                            text-slate-500
+
+                            dark:text-white/40
+                          "
+                        >
+                          Platform connection fee
+                        </span>
+
+                        {createdBooking ? (
+                          displayedPayment.connectionFeeWaived ? (
+                            <span
+                              className="
+                                text-[8px]
+                                font-black
+                                uppercase
+                                tracking-[0.14em]
+                                text-emerald-600
+
+                                dark:text-emerald-300
+                              "
+                            >
+                              Waived
+                            </span>
+                          ) : (
+                            <span className="font-mono">
+                              {formatMoney(
+                                displayedPayment.connectionFee,
+                                displayedPayment.currency,
+                              )}
+                            </span>
+                          )
+                        ) : subscribed ? (
+                          <span
+                            className="
+                              text-[8px]
+                              font-black
+                              uppercase
+                              tracking-[0.14em]
+                              text-emerald-600
+
+                              dark:text-emerald-300
+                            "
+                          >
+                            Membership Waiver
+                          </span>
+                        ) : subscriptionLoading ? (
+                          <span
+                            className="
+                              inline-flex
+                              items-center
+                              gap-1.5
+                              text-[9px]
+                              text-slate-400
+                            "
+                          >
+                            <Loader2 size={11} className="animate-spin" />
+                            Checking
+                          </span>
+                        ) : (
+                          <span
+                            className="
+                              text-[9px]
+                              font-semibold
+                              text-slate-500
+
+                              dark:text-white/35
+                            "
+                          >
+                            Calculated by backend
+                          </span>
+                        )}
+                      </div>
+
+                      <div
+                        className="
+                          flex
+                          items-end
+                          justify-between
+                          gap-4
+                          border-t
+                          border-slate-200
+                          pt-4
+
+                          dark:border-white/[0.06]
+                        "
+                      >
+                        <div>
+                          <p
+                            className="
+                              text-[8px]
+                              font-black
+                              uppercase
+                              tracking-[0.18em]
+                              text-slate-400
+
+                              dark:text-white/28
+                            "
+                          >
+                            Total Charge
+                          </p>
+
+                          <p
+                            className="
+                              mt-1
+                              text-[9px]
+                              text-slate-400
+
+                              dark:text-white/25
+                            "
+                          >
+                            Confirmed before card payment
+                          </p>
+                        </div>
+
+                        {createdBooking || subscribed ? (
+                          <strong
+                            className="
+                              font-mono
+                              text-xl
+                              text-[#98751A]
+
+                              dark:text-[#D4AF37]
+                            "
+                          >
+                            {formatMoney(
+                              displayedPayment.totalCharged,
+                              displayedPayment.currency,
+                            )}
+                          </strong>
+                        ) : (
+                          <strong
+                            className="
+                              text-xs
+                              font-semibold
+                              text-slate-500
+
+                              dark:text-white/40
+                            "
+                          >
+                            Finalized at checkout
+                          </strong>
+                        )}
+                      </div>
+                    </div>
+
+                    {!subscribed && !createdBooking && !subscriptionLoading && (
+                      <Link
+                        to="/creator/wallet"
+                        className="
+                            relative
+                            mt-5
+                            flex
+                            items-center
+                            justify-center
+                            gap-2
+                            rounded-xl
+                            border
+                            border-[#D4AF37]/30
+                            bg-[#D4AF37]/10
+                            px-4
+                            py-3
+                            text-[8px]
+                            font-black
+                            uppercase
+                            tracking-[0.17em]
+                            text-[#8F7118]
+                            transition
+
+                            hover:bg-[#D4AF37]/15
+
+                            dark:text-[#D4AF37]
+                          "
+                      >
+                        <Sparkles size={12} />
+                        Explore Creator Membership
+                      </Link>
+                    )}
+                  </section>
+                </div>
+
+                {/* Footer */}
+
+                <div
+                  className="
+                    mt-8
+                    flex
+                    flex-col
+                    gap-5
+                    border-t
+                    border-slate-200
+                    pt-7
+
+                    sm:flex-row
+                    sm:items-center
+                    sm:justify-between
+
+                    dark:border-white/[0.06]
+                  "
+                >
+                  <div
+                    className="
+                      flex
+                      max-w-xl
+                      items-start
+                      gap-3
+                    "
+                  >
+                    <ShieldCheck
+                      size={16}
+                      className="
+                        mt-0.5
+                        shrink-0
+                        text-emerald-500
+                      "
+                    />
+
+                    <p
+                      className="
+                        text-xs
+                        leading-5
+                        text-slate-500
+
+                        dark:text-white/35
+                      "
+                    >
+                      Creating the contract prepares a Stripe PaymentIntent. You
+                      will see the backend-confirmed total before submitting
+                      your card payment.
+                    </p>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={submitting || !selectedDesigner}
+                    className="
+                      inline-flex
+                      h-12
+                      shrink-0
+                      items-center
+                      justify-center
+                      gap-2
+                      rounded-xl
+                      bg-[#D4AF37]
+                      px-6
+                      text-[9px]
+                      font-black
+                      uppercase
+                      tracking-[0.18em]
+                      text-black
+                      shadow-[0_14px_35px_rgba(212,175,55,0.22)]
+                      transition
+
+                      hover:-translate-y-0.5
+                      hover:bg-[#E4C65D]
+
+                      disabled:cursor-not-allowed
+                      disabled:bg-slate-200
+                      disabled:text-slate-400
+                      disabled:shadow-none
+
+                      dark:disabled:bg-white/5
+                      dark:disabled:text-white/25
+                    "
+                  >
+                    {submitting ? (
+                      <Loader2 size={15} className="animate-spin" />
+                    ) : createdBooking ? (
+                      <CreditCard size={15} />
+                    ) : (
+                      <LockKeyhole size={15} />
+                    )}
+
+                    {submitting
+                      ? "Preparing Contract"
+                      : createdBooking
+                        ? "Continue Payment"
+                        : "Review & Fund"}
+                  </button>
+                </div>
+              </form>
+            </section>
+          </div>
+        </div>
+      </div>
+
+      {/*===================================================
+      Stripe Checkout Modal
+      ===================================================*/}
+
+      {checkoutOpen && createdBooking && clientSecret && payment && (
+        <div
+          className="
+              fixed
+              inset-0
+              z-[100]
+              overflow-y-auto
+              bg-slate-950/80
+              p-4
+              backdrop-blur-md
+
+              dark:bg-black/85
+            "
+          onMouseDown={() => {
+            if (!verifying) {
+              setCheckoutOpen(false);
+            }
+          }}
+        >
+          <div
+            className="
+                flex
+                min-h-full
+                items-center
+                justify-center
+                py-8
+              "
+          >
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-label="Fund booking escrow"
+              onMouseDown={(event) => event.stopPropagation()}
+              className="
+                  relative
+                  w-full
+                  max-w-lg
+                  overflow-hidden
+                  rounded-[2rem]
+                  border
+                  border-white/10
+                  bg-white
+                  p-6
+                  shadow-[0_40px_120px_rgba(0,0,0,0.5)]
+
+                  sm:p-8
+
+                  dark:bg-[#090909]
+                "
+            >
+              <div
+                className="
+                    pointer-events-none
+                    absolute
+                    -right-20
+                    -top-20
+                    h-56
+                    w-56
+                    rounded-full
+                    bg-[#D4AF37]/15
+                    blur-[70px]
+                  "
+              />
+
+              <div className="relative z-10">
+                <div
+                  className="
+                      flex
+                      items-start
+                      justify-between
+                      gap-5
+                      border-b
+                      border-slate-200
+                      pb-5
+
+                      dark:border-white/[0.06]
+                    "
+                >
+                  <div>
+                    <p
+                      className="
+                          text-[8px]
+                          font-black
+                          uppercase
+                          tracking-[0.2em]
+                          text-[#98751A]
+
+                          dark:text-[#D4AF37]
+                        "
+                    >
+                      Stripe Secure Checkout
+                    </p>
+
+                    <h2
+                      className="
+                          mt-2
+                          font-serif
+                          text-3xl
+                        "
+                    >
+                      Fund escrow
+                    </h2>
+
+                    <p
+                      className="
+                          mt-2
+                          text-xs
+                          leading-5
+                          text-slate-500
+
+                          dark:text-white/40
+                        "
+                    >
+                      Review the final backend-confirmed amount before
+                      authorizing your card.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={verifying}
+                    onClick={() => setCheckoutOpen(false)}
+                    aria-label="Close checkout"
+                    className="
+                        grid
+                        h-10
+                        w-10
+                        shrink-0
+                        place-items-center
+                        rounded-xl
+                        border
+                        border-slate-200
+                        text-slate-500
+                        transition
+
+                        hover:bg-slate-100
+
+                        disabled:cursor-not-allowed
+                        disabled:opacity-40
+
+                        dark:border-white/10
+                        dark:hover:bg-white/5
+                      "
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div className="mt-6">
+                  {stripePromise ? (
+                    <Elements key={clientSecret} stripe={stripePromise}>
+                      <CheckoutForm
+                        clientSecret={clientSecret}
+                        bookingId={createdBooking.id}
+                        payment={payment}
+                        billingName={user?.full_name || user?.name}
+                        billingEmail={user?.email}
+                        verifying={verifying}
+                        verificationError={verificationError}
+                        onPaymentSuccess={verifyEscrow}
+                      />
+                    </Elements>
+                  ) : (
+                    <div
+                      className="
+                          rounded-2xl
+                          border
+                          border-rose-200
+                          bg-rose-50
+                          p-5
+                          text-sm
+                          leading-6
+                          text-rose-700
+
+                          dark:border-rose-400/20
+                          dark:bg-rose-400/10
+                          dark:text-rose-200
+                        "
+                    >
+                      Stripe card payments are unavailable because
+                      VITE_STRIPE_PUBLISHABLE_KEY is not configured.
+                    </div>
+                  )}
+                </div>
+
+                {verificationError && (
+                  <button
+                    type="button"
+                    onClick={verifyEscrow}
+                    disabled={verifying}
+                    className="
+                        mt-4
+                        flex
+                        h-11
+                        w-full
+                        items-center
+                        justify-center
+                        gap-2
+                        rounded-xl
+                        border
+                        border-amber-300
+                        bg-amber-50
+                        text-[8px]
+                        font-black
+                        uppercase
+                        tracking-[0.17em]
+                        text-amber-800
+
+                        disabled:opacity-50
+
+                        dark:border-amber-400/25
+                        dark:bg-amber-400/10
+                        dark:text-amber-200
+                      "
+                  >
+                    {verifying ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <RefreshCw size={14} />
+                    )}
+                    Retry Escrow Verification
+                  </button>
+                )}
+              </div>
+            </section>
           </div>
         </div>
       )}
-
-      <SubscriptionPaywall 
-          isOpen={showPaywall} 
-          onClose={() => setShowPaywall(false)} 
-      />
-
-    </div>
+    </>
   );
 }

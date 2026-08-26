@@ -1,20 +1,110 @@
-import { Navigate, useLocation } from 'react-router-dom';
+"use strict";
+
+/*
+=========================================================
+DesignByYou Protected Route
+Authentication & Role Authorization
+Version 2.0
+=========================================================
+*/
+
+import { Navigate, Outlet, useLocation } from "react-router-dom";
+
+import { Loader2 } from "lucide-react";
+
+import { useAuth } from "../context/AuthContext";
+
+/*
+IMPORTANT:
+
+If ProtectedRoute.jsx is not located where this import works:
+
+    ../context/AuthContext
+
+adjust ONLY that import path to match your project structure.
+*/
 
 export const ProtectedRoute = ({ children, requiredRole }) => {
-    const token = localStorage.getItem('token');
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const location = useLocation();
+  const location = useLocation();
 
-    // 1. If no token, kick them to login
-    if (!token) {
-        return <Navigate to="/login" state={{ from: location }} replace />;
-    }
+  const { user, loading } = useAuth();
 
-    // 2. If a role is required (e.g., 'superadmin') and they don't have it
-    if (requiredRole && user.role !== requiredRole) {
-        // Send them to a "Not Authorized" page or back to their own dashboard
-        return <Navigate to="/unauthorized" replace />;
-    }
+  /*=====================================================
+    Wait Until AuthContext Validates Existing JWT
 
-    return children;
+    This prevents:
+
+    browser refresh
+        ↓
+    user temporarily null
+        ↓
+    incorrect redirect to /login
+    =====================================================*/
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2
+            className="animate-spin text-[#D4AF37]"
+            size={28}
+            aria-hidden="true"
+          />
+
+          <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-gray-400">
+            Restoring Session
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  /*=====================================================
+    Not Authenticated
+
+    We do NOT trust localStorage token existence here.
+
+    AuthContext already called /auth/me and validated:
+
+    - JWT signature
+    - expiry
+    - token_version
+    - current database user
+    =====================================================*/
+
+  if (!user) {
+    return (
+      <Navigate
+        to="/login"
+        state={{
+          from: location,
+        }}
+        replace
+      />
+    );
+  }
+
+  /*=====================================================
+    Role Authorization
+    =====================================================*/
+
+  if (requiredRole && user.role !== requiredRole) {
+    return <Navigate to="/unauthorized" replace />;
+  }
+
+  /*=====================================================
+    Render Protected Content
+
+    Supports BOTH:
+
+    <ProtectedRoute>
+        <SomePage />
+    </ProtectedRoute>
+
+    and nested React Router routes using <Outlet />.
+    =====================================================*/
+
+  return children || <Outlet />;
 };
+
+export default ProtectedRoute;

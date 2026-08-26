@@ -50,91 +50,271 @@ const db = require('../config/db');
 //     }
 // };
 
-// @desc    Get All Published Designs (With Optimized Native Search & Filter)
+/*=========================================================
+Get Public Marketplace Designs
+
+Returns only public presentation metadata.
+
+It does not expose:
+- canvas_state
+- high_res_file_url
+- private editor project JSON
+=========================================================*/
+
 exports.getMarketplace = async (req, res) => {
-    try {
-        const { style, minPrice, maxPrice, search } = req.query;
-        
-        let query = `
-            SELECT 
-                d.id, 
-                d.owner_id, -- 🌟 FIXED: Added d.owner_id so the frontend can retrieve the designer's target user ID!
-                d.title, 
-                d.slug, 
-                d.sku, 
-                d.base_price, 
-                d.discount_price,
-                d.watermarked_preview_url, 
-                d.style_category, 
-                d.tags, 
-                d.product_type,
-                u.full_name as designer_name, 
-                u.profile_image_url as designer_avatar
-            FROM designs d
-            JOIN users u ON d.owner_id = u.id
-            WHERE d.is_published = true AND d.is_public = true
-        `;
-        
-        const params = [];
+  try {
+    const style = String(req.query?.style || "").trim();
 
-        if (style) {
-            params.push(style);
-            query += ` AND d.style_category ILIKE $${params.length}`;
-        }
-        if (minPrice) {
-            params.push(parseFloat(minPrice));
-            query += ` AND COALESCE(d.discount_price, d.base_price) >= $${params.length}`;
-        }
-        if (maxPrice) {
-            params.push(parseFloat(maxPrice));
-            query += ` AND COALESCE(d.discount_price, d.base_price) <= $${params.length}`;
-        }
-        if (search) {
-            params.push(`%${search}%`);
-            const searchIndex = params.length;
-            
-            params.push([search.toLowerCase()]);
-            const arrayIndex = params.length;
+    const search = String(req.query?.search || "").trim();
 
-            // PERFORMANCE FIX: Swapped out slow text casting (d.tags::text) for optimized native array indexing ($5 && d.tags)
-            query += ` AND (d.title ILIKE $${searchIndex} OR d.description ILIKE $${searchIndex} OR d.tags && $${arrayIndex})`;
-        }
+    const minPriceText = String(req.query?.minPrice || "").trim();
 
-        query += ` ORDER BY d.created_at DESC`;
+    const maxPriceText = String(req.query?.maxPrice || "").trim();
 
-        const result = await db.query(query, params);
-        res.status(200).json({ status: 'success', results: result.rows.length, data: result.rows });
-    } catch (error) {
-        console.error("Database query error:", error);
-        res.status(500).json({ message: "Marketplace is currently unavailable." });
+    const minPrice = minPriceText ? Number(minPriceText) : null;
+
+    const maxPrice = maxPriceText ? Number(maxPriceText) : null;
+
+    if (minPrice !== null && (!Number.isFinite(minPrice) || minPrice < 0)) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Minimum price must be a valid non-negative number.",
+      });
     }
+
+    if (maxPrice !== null && (!Number.isFinite(maxPrice) || maxPrice < 0)) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Maximum price must be a valid non-negative number.",
+      });
+    }
+
+    if (minPrice !== null && maxPrice !== null && minPrice > maxPrice) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Minimum price cannot be greater than maximum price.",
+      });
+    }
+
+    let query = `
+      SELECT
+        d.id,
+        d.owner_id,
+        d.title,
+        d.slug,
+        d.sku,
+        d.description,
+        d.base_price,
+        d.discount_price,
+        d.watermarked_preview_url,
+        d.style_category,
+        d.tags,
+        d.product_type,
+        d.license_type,
+        d.is_public,
+        d.is_published,
+
+        d.source_type,
+        d.editor_project_id,
+        d.is_editable,
+        d.allow_remix,
+        d.original_design_id,
+
+        d.created_at,
+        d.updated_at,
+
+        u.full_name AS designer_name,
+        u.profile_image_url AS designer_avatar,
+        u.role AS owner_role
+
+      FROM designs d
+
+      JOIN users u
+        ON d.owner_id = u.id
+
+      WHERE d.is_published = TRUE
+        AND d.is_public = TRUE
+    `;
+
+    const params = [];
+
+    if (style) {
+      params.push(style);
+
+      query += `
+        AND d.style_category ILIKE $${params.length}
+      `;
+    }
+
+    if (minPrice !== null) {
+      params.push(minPrice);
+
+      query += `
+        AND COALESCE(
+          d.discount_price,
+          d.base_price,
+          0
+        ) >= $${params.length}
+      `;
+    }
+
+    if (maxPrice !== null) {
+      params.push(maxPrice);
+
+      query += `
+        AND COALESCE(
+          d.discount_price,
+          d.base_price,
+          0
+        ) <= $${params.length}
+      `;
+    }
+
+    if (search) {
+      params.push(`%${search}%`);
+
+      const textSearchIndex = params.length;
+
+      params.push([search.toLowerCase()]);
+
+      const tagSearchIndex = params.length;
+
+      query += `
+        AND (
+          d.title ILIKE $${textSearchIndex}
+          OR d.description ILIKE $${textSearchIndex}
+          OR d.style_category ILIKE $${textSearchIndex}
+          OR u.full_name ILIKE $${textSearchIndex}
+          OR COALESCE(d.tags, ARRAY[]::varchar[])
+             && $${tagSearchIndex}::varchar[]
+        )
+      `;
+    }
+
+    query += `
+      ORDER BY
+        d.created_at DESC
+    `;
+
+    const result = await db.query(query, params);
+
+    return res.status(200).json({
+      status: "success",
+      results: result.rows.length,
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error("Marketplace database query failed:", error);
+
+    return res.status(500).json({
+      status: "error",
+      message: "Marketplace is currently unavailable.",
+    });
+  }
 };
 
 // @desc    Get Single Design Details (Excludes high-res download keys)
-exports.getDesignDetails = async (req, res) => {
-    const { slug } = req.params;
-    try {
-        const result = await db.query(`
-            SELECT 
-                d.id, d.owner_id, d.sku, d.title, d.slug, d.description, 
-                d.canvas_state, d.watermarked_preview_url, d.base_price, 
-                d.discount_price, d.product_type, d.license_type, d.tags, 
-                d.style_category, d.created_at,
-                u.full_name as designer_name, u.profile_image_url as designer_avatar
-            FROM designs d
-            JOIN users u ON d.owner_id = u.id
-            WHERE d.slug = $1 AND d.is_published = true AND d.is_public = true
-        `, [slug]);
+/*=========================================================
+Get Public Design Details
 
-        if (result.rows.length === 0) {
-            return res.status(404).json({ message: "Design not found or no longer available." });
-        }
-        
-        res.status(200).json({ status: 'success', data: result.rows[0] });
-    } catch (error) {
-        console.error("Error retrieving public product records:", error);
-        res.status(500).json({ message: "Error loading product details." });
+This endpoint returns the information required to decide:
+
+- View only
+- Edit Original
+- Remix Design
+
+It intentionally does not expose canvas_state or private
+Fashion Editor project JSON.
+=========================================================*/
+
+exports.getDesignDetails = async (req, res) => {
+  const slug = String(req.params?.slug || "").trim();
+
+  if (!slug) {
+    return res.status(400).json({
+      status: "fail",
+      message: "A design slug is required.",
+    });
+  }
+
+  try {
+    const result = await db.query(
+      `
+        SELECT
+          d.id,
+          d.owner_id,
+          d.sku,
+          d.title,
+          d.slug,
+          d.description,
+          d.watermarked_preview_url,
+          d.base_price,
+          d.discount_price,
+          d.product_type,
+          d.license_type,
+          d.tags,
+          d.style_category,
+          d.is_public,
+          d.is_published,
+
+          d.source_type,
+          d.editor_project_id,
+          d.is_editable,
+          d.allow_remix,
+          d.original_design_id,
+
+          d.created_at,
+          d.updated_at,
+
+          u.full_name AS designer_name,
+          u.profile_image_url AS designer_avatar,
+          u.role AS owner_role,
+
+          original_design.title AS original_design_title,
+          original_design.slug AS original_design_slug,
+          original_owner.full_name AS original_designer_name
+
+        FROM designs d
+
+        JOIN users u
+          ON d.owner_id = u.id
+
+        LEFT JOIN designs original_design
+          ON d.original_design_id =
+             original_design.id
+
+        LEFT JOIN users original_owner
+          ON original_design.owner_id =
+             original_owner.id
+
+        WHERE d.slug = $1
+          AND d.is_published = TRUE
+          AND d.is_public = TRUE
+
+        LIMIT 1
+      `,
+      [slug],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Design not found or no longer available.",
+      });
     }
+
+    return res.status(200).json({
+      status: "success",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Public design-detail retrieval failed:", error);
+
+    return res.status(500).json({
+      status: "error",
+      message: "Error loading design details.",
+    });
+  }
 };
 
 // @desc    Purchase Design Asset & Update Digital Ledgers (Exploit Protected)

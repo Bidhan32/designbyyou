@@ -1,276 +1,1152 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Loader2, Search, ArrowRight, PlayCircle, CheckCircle2, Clock, Upload, Lock, Calendar, Compass, User, Sparkles } from 'lucide-react';
-import API from '../../api/axios';
+/*
+=========================================================
+FashionVision Designer Bookings
+Designer Contract Pipeline
+Version 2.0
+=========================================================
+*/
 
-const DesignerBookings = () => {
-    const [bookings, setBookings] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('active');
+import React, {
+    useCallback,
+    useEffect,
+    useMemo,
+    useState
+} from "react";
 
-    // Bulletproof ID Grabber
-    const getUserId = () => {
-        const directId = localStorage.getItem('userId');
-        if (directId) return directId;
-        const userObj = localStorage.getItem('user');
-        if (userObj) {
-            const parsed = JSON.parse(userObj);
-            return parsed.id || parsed._id; 
-        }
+import {
+    AlertCircle,
+    ArrowRight,
+    BadgeDollarSign,
+    Ban,
+    CalendarDays,
+    CheckCircle2,
+    Clock3,
+    Compass,
+    FileCheck2,
+    Hourglass,
+    Inbox,
+    Loader2,
+    LockKeyhole,
+    PlayCircle,
+    RefreshCw,
+    Search,
+    ShieldCheck,
+    Sparkles,
+    UploadCloud,
+    UserRound
+} from "lucide-react";
+
+import {
+    Link
+} from "react-router-dom";
+
+import API from "../../api/axios";
+
+/*=========================================================
+Booking Status Configuration
+=========================================================*/
+
+const BOOKING_STATUS = Object.freeze({
+    PENDING: "pending",
+    AWAITING_PAYMENT: "awaiting_payment",
+    FUNDED: "funded",
+    ACCEPTED: "accepted",
+    PROGRESS: "progress",
+    REVIEW_PROTOTYPE: "review_prototype",
+    FINAL_PRODUCTION: "final_production",
+    REVIEW_FINAL: "review_final",
+    REVIEW: "review",
+    CANCELLATION_PENDING: "cancellation_pending",
+    COMPLETED: "completed",
+    DELIVERED: "delivered",
+    CANCELLED: "cancelled"
+});
+
+const TAB_DEFINITIONS = Object.freeze([
+    {
+        id: "pending",
+        label: "New Requests",
+        statuses: [
+            BOOKING_STATUS.PENDING,
+            BOOKING_STATUS.FUNDED
+        ]
+    },
+    {
+        id: "active",
+        label: "In Progress",
+        statuses: [
+            BOOKING_STATUS.AWAITING_PAYMENT,
+            BOOKING_STATUS.ACCEPTED,
+            BOOKING_STATUS.PROGRESS,
+            BOOKING_STATUS.REVIEW_PROTOTYPE,
+            BOOKING_STATUS.FINAL_PRODUCTION,
+            BOOKING_STATUS.REVIEW_FINAL,
+            BOOKING_STATUS.REVIEW,
+            BOOKING_STATUS.CANCELLATION_PENDING
+        ]
+    },
+    {
+        id: "completed",
+        label: "Archive",
+        statuses: [
+            BOOKING_STATUS.COMPLETED,
+            BOOKING_STATUS.DELIVERED,
+            BOOKING_STATUS.CANCELLED
+        ]
+    }
+]);
+
+const STATUS_PROGRESS = Object.freeze({
+    [BOOKING_STATUS.PENDING]: 8,
+    [BOOKING_STATUS.AWAITING_PAYMENT]: 18,
+    [BOOKING_STATUS.FUNDED]: 24,
+    [BOOKING_STATUS.ACCEPTED]: 32,
+    [BOOKING_STATUS.PROGRESS]: 42,
+    [BOOKING_STATUS.REVIEW_PROTOTYPE]: 56,
+    [BOOKING_STATUS.FINAL_PRODUCTION]: 72,
+    [BOOKING_STATUS.REVIEW_FINAL]: 88,
+    [BOOKING_STATUS.REVIEW]: 88,
+    [BOOKING_STATUS.CANCELLATION_PENDING]: 92,
+    [BOOKING_STATUS.COMPLETED]: 100,
+    [BOOKING_STATUS.DELIVERED]: 100,
+    [BOOKING_STATUS.CANCELLED]: 100
+});
+
+/*=========================================================
+Helpers
+=========================================================*/
+
+function safelyParseJson(value) {
+    if (!value) {
         return null;
-    };
-    
-    const currentUserId = getUserId();
+    }
 
-    useEffect(() => {
-        const fetchDesignerBookings = async () => {
-            try {
-                setLoading(true);
-                const { data } = await API.get('/p2p-bookings/pipeline');
-                setBookings(data.data || []);
-            } catch (err) {
-                console.error("Error fetching pipeline:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        
-        if (currentUserId) fetchDesignerBookings();
-    }, [currentUserId]);
+    try {
+        return JSON.parse(value);
+    } catch {
+        return null;
+    }
+}
 
-    const filteredBookings = bookings.filter(booking => {
-        if (activeTab === 'pending') return booking.status === 'pending';
-        if (activeTab === 'active') return ['accepted', 'progress', 'review_prototype', 'final_production', 'review_final', 'review'].includes(booking.status);
-        if (activeTab === 'completed') return ['completed', 'delivered', 'cancelled'].includes(booking.status);
-        return true;
-    });
+function getStoredUserId() {
+    const directId =
+        localStorage.getItem("userId");
 
-    // 🚀 UPGRADED: Light & Dark Mode Status Badges
-    const getStatusDetails = (status, isClient, oppositeName) => {
-        const shortName = oppositeName.split(' ')[0]; 
+    if (directId) {
+        return directId;
+    }
 
-        switch (status) {
-            case 'pending': 
-                return { text: isClient ? 'Awaiting Your Funding' : 'Waiting on Client Funds', style: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/20 shadow-sm dark:shadow-[0_0_15px_rgba(245,158,11,0.1)]' };
-            case 'accepted':
-            case 'progress': 
-                return { text: isClient ? `${shortName} is Building Prototype` : 'Phase 1: Build Prototype', style: 'bg-[#D4AF37]/5 dark:bg-[#D4AF37]/10 text-[#b59220] dark:text-[#D4AF37] border-[#D4AF37]/30 ring-1 ring-[#D4AF37]/20 shadow-sm dark:shadow-[0_0_15px_rgba(212,175,55,0.15)]' };
-            case 'review_prototype': 
-                return { text: isClient ? 'Action Required: Review Prototype' : 'Waiting on Client Review', style: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/30 shadow-sm dark:shadow-[0_0_15px_rgba(99,102,241,0.15)]' };
-            case 'final_production':
-                return { text: isClient ? `${shortName} is Building Final Assets` : 'Phase 2: Build Final Assets', style: 'bg-[#D4AF37]/5 dark:bg-[#D4AF37]/10 text-[#b59220] dark:text-[#D4AF37] border-[#D4AF37]/30 ring-1 ring-[#D4AF37]/20 shadow-sm dark:shadow-[0_0_15px_rgba(212,175,55,0.15)]' };
-            case 'review_final':
-            case 'review':
-                return { text: isClient ? 'Action Required: Final Review' : 'Waiting for Final Payout', style: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/30 shadow-sm dark:shadow-[0_0_15px_rgba(99,102,241,0.15)]' };
-            case 'completed':
-            case 'delivered': 
-                return { text: 'Settled & Paid', style: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20' };
-            case 'cancelled':
-                return { text: 'Cancelled / Rejected', style: 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-500/20' };
-            default: 
-                return { text: status, style: 'bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/60 border-slate-200 dark:border-white/10' };
-        }
-    };
-
-    const formatDeadline = (dateString) => {
-        if (!dateString) return 'TBD';
-        const date = new Date(dateString);
-        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); 
-    };
+    const storedUser =
+        safelyParseJson(
+            localStorage.getItem("user")
+        );
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-[#030303] text-slate-900 dark:text-white selection:bg-[#D4AF37] selection:text-black pb-16 antialiased relative overflow-hidden transition-colors duration-300">
-            
-            {/* AMBIENT BACKGROUND GLOW */}
-            <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-                <div className="absolute top-[-10%] right-[-5%] w-[40vw] h-[40vw] bg-[#D4AF37]/5 dark:bg-[#D4AF37]/10 blur-[150px] rounded-full animate-pulse" style={{ animationDuration: '10s' }}></div>
-                <div className="absolute bottom-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-[#6b5818]/5 blur-[150px] rounded-full animate-pulse" style={{ animationDuration: '14s' }}></div>
-            </div>
+        storedUser?.id ||
+        storedUser?._id ||
+        null
+    );
+}
 
-            {/* STICKY GLASS HEADER */}
-            <div className="bg-white/80 dark:bg-[#0a0a0a]/80 border-b border-slate-200 dark:border-white/5 sticky top-0 z-40 px-6 py-8 backdrop-blur-2xl shadow-sm dark:shadow-2xl transition-colors duration-300">
-                <div className="max-w-[1200px] mx-auto flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-10 animate-fade-in-up">
-                    <div>
-                        <div className="flex items-center gap-2 text-[9px] font-bold text-[#D4AF37] uppercase tracking-[0.4em] mb-3">
-                            <Compass size={12} /> Unified Workspace
-                        </div>
-                        <h1 className="text-4xl md:text-5xl font-serif font-light tracking-tighter drop-shadow-sm dark:drop-shadow-xl transition-colors">
-                            Active Contracts <span className="italic text-[#D4AF37]">Pipeline</span>
-                        </h1>
-                    </div>
-                </div>
-            </div>
+function normalizeStatus(value) {
+    return String(value || "")
+        .trim()
+        .toLowerCase();
+}
 
-            <div className="max-w-[1200px] mx-auto px-6 mt-12 space-y-8 relative z-10">
-                
-                {/* ATELIER TABS */}
-                <div className="flex border-b border-slate-200 dark:border-white/10 gap-8 overflow-x-auto scrollbar-hide transition-colors duration-300">
-                    {['pending', 'active', 'completed'].map((tab) => {
-                        const count = bookings.filter(b => {
-                            if (tab === 'pending') return b.status === 'pending';
-                            if (tab === 'active') return ['accepted', 'progress', 'review_prototype', 'final_production', 'review_final', 'review'].includes(b.status);
-                            if (tab === 'completed') return ['completed', 'delivered', 'cancelled'].includes(b.status);
-                            return false;
-                        }).length;
+function getFirstName(value) {
+    const name = String(value || "")
+        .trim();
 
-                        return (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={`pb-4 text-[10px] font-bold uppercase tracking-[0.25em] transition-all duration-300 relative flex items-center gap-2 whitespace-nowrap ${
-                                    activeTab === tab 
-                                        ? 'border-b-2 border-[#D4AF37] text-slate-900 dark:text-white' 
-                                        : 'border-b-2 border-transparent text-slate-400 dark:text-white/40 hover:text-slate-600 dark:hover:text-white/80'
-                                }`}
-                            >
-                                {tab}
-                                <span className={`text-[9px] px-2.5 py-0.5 rounded-full transition-colors ${
-                                    activeTab === tab 
-                                        ? 'bg-[#D4AF37]/10 dark:bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/30' 
-                                        : 'bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-white/40 border border-slate-200 dark:border-white/5'
-                                }`}>
-                                    {count}
-                                </span>
-                            </button>
+    return name
+        ? name.split(/\s+/)[0]
+        : "Creator";
+}
+
+function formatCurrency(value) {
+    const amount = Number(value);
+
+    return new Intl.NumberFormat(
+        "en-US",
+        {
+            style: "currency",
+            currency: "USD",
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }
+    ).format(
+        Number.isFinite(amount)
+            ? amount
+            : 0
+    );
+}
+
+function formatDate(value) {
+    if (!value) {
+        return "Not scheduled";
+    }
+
+    const date = new Date(value);
+
+    if (
+        Number.isNaN(
+            date.getTime()
+        )
+    ) {
+        return "Invalid date";
+    }
+
+    return date.toLocaleDateString(
+        undefined,
+        {
+            month: "short",
+            day: "numeric",
+            year: "numeric"
+        }
+    );
+}
+
+function getDeadlineMessage(value) {
+    if (!value) {
+        return "Deadline not set";
+    }
+
+    const deadline = new Date(value);
+
+    if (
+        Number.isNaN(
+            deadline.getTime()
+        )
+    ) {
+        return "Deadline unavailable";
+    }
+
+    const difference =
+        deadline.getTime() -
+        Date.now();
+
+    const days = Math.ceil(
+        difference /
+        86400000
+    );
+
+    if (days < 0) {
+        return `${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"} overdue`;
+    }
+
+    if (days === 0) {
+        return "Due today";
+    }
+
+    if (days === 1) {
+        return "Due tomorrow";
+    }
+
+    return `${days} days remaining`;
+}
+
+function getApiErrorMessage(error) {
+    return (
+        error?.response?.data?.message ||
+        error?.message ||
+        "The contract pipeline could not be loaded."
+    );
+}
+
+function getStatusDetails(status) {
+    switch (
+        normalizeStatus(status)
+    ) {
+        case BOOKING_STATUS.PENDING:
+            return {
+                label: "New Request",
+                description: "Review the creator's brief and decide whether to accept this contract.",
+                badgeClass: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300",
+                icon: Hourglass
+            };
+
+        case BOOKING_STATUS.AWAITING_PAYMENT:
+            return {
+                label: "Awaiting Escrow",
+                description: "You accepted this project. Work begins after the creator funds escrow.",
+                badgeClass: "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-400/20 dark:bg-orange-400/10 dark:text-orange-300",
+                icon: LockKeyhole
+            };
+
+        case BOOKING_STATUS.FUNDED:
+            return {
+                label: "Escrow Funded",
+                description: "The payment is secured. Accept the project to begin prototype production.",
+                badgeClass: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300",
+                icon: ShieldCheck
+            };
+
+        case BOOKING_STATUS.ACCEPTED:
+        case BOOKING_STATUS.PROGRESS:
+            return {
+                label: "Prototype Production",
+                description: "Build and submit the first prototype for creator review.",
+                badgeClass: "border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#8f7118] dark:text-[#e4c760]",
+                icon: PlayCircle
+            };
+
+        case BOOKING_STATUS.REVIEW_PROTOTYPE:
+            return {
+                label: "Prototype Review",
+                description: "Your prototype is with the creator. No action is needed right now.",
+                badgeClass: "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-400/20 dark:bg-indigo-400/10 dark:text-indigo-300",
+                icon: Clock3
+            };
+
+        case BOOKING_STATUS.FINAL_PRODUCTION:
+            return {
+                label: "Final Production",
+                description: "The prototype was approved. Prepare and submit the final deliverables.",
+                badgeClass: "border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#8f7118] dark:text-[#e4c760]",
+                icon: UploadCloud
+            };
+
+        case BOOKING_STATUS.REVIEW_FINAL:
+        case BOOKING_STATUS.REVIEW:
+            return {
+                label: "Final Review",
+                description: "The creator is reviewing your final delivery before payout release.",
+                badgeClass: "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300",
+                icon: FileCheck2
+            };
+
+        case BOOKING_STATUS.CANCELLATION_PENDING:
+            return {
+                label: "Cancellation Processing",
+                description: "Cancellation and any required refund reconciliation are being processed.",
+                badgeClass: "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-300",
+                icon: Ban
+            };
+
+        case BOOKING_STATUS.COMPLETED:
+        case BOOKING_STATUS.DELIVERED:
+            return {
+                label: "Completed & Paid",
+                description: "The contract is complete and the payout has been released.",
+                badgeClass: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300",
+                icon: CheckCircle2
+            };
+
+        case BOOKING_STATUS.CANCELLED:
+            return {
+                label: "Cancelled",
+                description: "This contract is closed and no further work is required.",
+                badgeClass: "border-slate-200 bg-slate-100 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/45",
+                icon: Ban
+            };
+
+        default:
+            return {
+                label: status || "Unknown",
+                description: "Open the contract to review its current state.",
+                badgeClass: "border-slate-200 bg-slate-100 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/50",
+                icon: Clock3
+            };
+    }
+}
+
+function getNextAction(status) {
+    switch (
+        normalizeStatus(status)
+    ) {
+        case BOOKING_STATUS.PENDING:
+            return {
+                label: "Review Request",
+                detail: "Accept or reject",
+                icon: ArrowRight,
+                accentClass: "text-amber-700 dark:text-amber-300",
+                panelClass: "border-amber-200 bg-amber-50/80 dark:border-amber-400/15 dark:bg-amber-400/5"
+            };
+
+        case BOOKING_STATUS.FUNDED:
+            return {
+                label: "Accept & Begin",
+                detail: "Escrow is secured",
+                icon: ShieldCheck,
+                accentClass: "text-emerald-700 dark:text-emerald-300",
+                panelClass: "border-emerald-200 bg-emerald-50/80 dark:border-emerald-400/15 dark:bg-emerald-400/5"
+            };
+
+        case BOOKING_STATUS.ACCEPTED:
+        case BOOKING_STATUS.PROGRESS:
+            return {
+                label: "Submit Prototype",
+                detail: "Phase one deliverable",
+                icon: PlayCircle,
+                accentClass: "text-[#9b791d] dark:text-[#D4AF37]",
+                panelClass: "border-[#D4AF37]/25 bg-[#D4AF37]/5"
+            };
+
+        case BOOKING_STATUS.FINAL_PRODUCTION:
+            return {
+                label: "Submit Final Files",
+                detail: "Complete the contract",
+                icon: UploadCloud,
+                accentClass: "text-[#9b791d] dark:text-[#D4AF37]",
+                panelClass: "border-[#D4AF37]/25 bg-[#D4AF37]/5"
+            };
+
+        case BOOKING_STATUS.AWAITING_PAYMENT:
+            return {
+                label: "Awaiting Creator",
+                detail: "Escrow payment pending",
+                icon: LockKeyhole,
+                accentClass: "text-orange-700 dark:text-orange-300",
+                panelClass: "border-orange-200 bg-orange-50/80 dark:border-orange-400/15 dark:bg-orange-400/5"
+            };
+
+        case BOOKING_STATUS.REVIEW_PROTOTYPE:
+            return {
+                label: "Awaiting Review",
+                detail: "Prototype submitted",
+                icon: Clock3,
+                accentClass: "text-indigo-700 dark:text-indigo-300",
+                panelClass: "border-indigo-200 bg-indigo-50/80 dark:border-indigo-400/15 dark:bg-indigo-400/5"
+            };
+
+        case BOOKING_STATUS.REVIEW_FINAL:
+        case BOOKING_STATUS.REVIEW:
+            return {
+                label: "Awaiting Payout",
+                detail: "Final approval pending",
+                icon: FileCheck2,
+                accentClass: "text-violet-700 dark:text-violet-300",
+                panelClass: "border-violet-200 bg-violet-50/80 dark:border-violet-400/15 dark:bg-violet-400/5"
+            };
+
+        case BOOKING_STATUS.CANCELLATION_PENDING:
+            return {
+                label: "Processing",
+                detail: "Cancellation reconciliation",
+                icon: Loader2,
+                accentClass: "text-rose-700 dark:text-rose-300",
+                panelClass: "border-rose-200 bg-rose-50/80 dark:border-rose-400/15 dark:bg-rose-400/5",
+                spinning: true
+            };
+
+        case BOOKING_STATUS.COMPLETED:
+        case BOOKING_STATUS.DELIVERED:
+            return {
+                label: "View Record",
+                detail: "Completed contract",
+                icon: CheckCircle2,
+                accentClass: "text-emerald-700 dark:text-emerald-300",
+                panelClass: "border-emerald-200 bg-emerald-50/80 dark:border-emerald-400/15 dark:bg-emerald-400/5"
+            };
+
+        default:
+            return {
+                label: "View Contract",
+                detail: "Open full workspace",
+                icon: ArrowRight,
+                accentClass: "text-slate-700 dark:text-white/70",
+                panelClass: "border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.03]"
+            };
+    }
+}
+
+/*=========================================================
+Component
+=========================================================*/
+
+function DesignerBookings() {
+    const currentUserId =
+        useMemo(
+            () => getStoredUserId(),
+            []
+        );
+
+    const [bookings, setBookings] =
+        useState([]);
+
+    const [loading, setLoading] =
+        useState(true);
+
+    const [refreshing, setRefreshing] =
+        useState(false);
+
+    const [error, setError] =
+        useState("");
+
+    const [activeTab, setActiveTab] =
+        useState("active");
+
+    const [searchQuery, setSearchQuery] =
+        useState("");
+
+    const fetchBookings =
+        useCallback(
+            async ({ silent = false } = {}) => {
+                if (!currentUserId) {
+                    setLoading(false);
+                    setError(
+                        "Your account session could not be identified. Please sign in again."
+                    );
+
+                    return;
+                }
+
+                if (silent) {
+                    setRefreshing(true);
+                } else {
+                    setLoading(true);
+                }
+
+                setError("");
+
+                try {
+                    const response =
+                        await API.get(
+                            "/p2p-bookings/pipeline"
                         );
-                    })}
+
+                    const pipeline =
+                        Array.isArray(
+                            response?.data?.data
+                        )
+                            ? response.data.data
+                            : [];
+
+                    const designerBookings =
+                        pipeline.filter(
+                            booking =>
+                                String(
+                                    booking?.designer_id ||
+                                    ""
+                                ) ===
+                                String(currentUserId)
+                        );
+
+                    setBookings(
+                        designerBookings
+                    );
+                } catch (requestError) {
+                    console.error(
+                        "Unable to load designer bookings:",
+                        requestError
+                    );
+
+                    setError(
+                        getApiErrorMessage(
+                            requestError
+                        )
+                    );
+                } finally {
+                    setLoading(false);
+                    setRefreshing(false);
+                }
+            },
+            [currentUserId]
+        );
+
+    useEffect(
+        () => {
+            fetchBookings();
+        },
+        [fetchBookings]
+    );
+
+    const tabCounts =
+        useMemo(
+            () => {
+                return TAB_DEFINITIONS.reduce(
+                    (counts, tab) => {
+                        counts[tab.id] =
+                            bookings.filter(
+                                booking =>
+                                    tab.statuses.includes(
+                                        normalizeStatus(
+                                            booking.status
+                                        )
+                                    )
+                            ).length;
+
+                        return counts;
+                    },
+                    {}
+                );
+            },
+            [bookings]
+        );
+
+    const summary =
+        useMemo(
+            () => ({
+                total:
+                    bookings.length,
+
+                actionRequired:
+                    bookings.filter(
+                        booking =>
+                            [
+                                BOOKING_STATUS.PENDING,
+                                BOOKING_STATUS.FUNDED,
+                                BOOKING_STATUS.PROGRESS,
+                                BOOKING_STATUS.ACCEPTED,
+                                BOOKING_STATUS.FINAL_PRODUCTION
+                            ].includes(
+                                normalizeStatus(
+                                    booking.status
+                                )
+                            )
+                    ).length,
+
+                awaitingCreator:
+                    bookings.filter(
+                        booking =>
+                            [
+                                BOOKING_STATUS.AWAITING_PAYMENT,
+                                BOOKING_STATUS.REVIEW_PROTOTYPE,
+                                BOOKING_STATUS.REVIEW_FINAL,
+                                BOOKING_STATUS.REVIEW
+                            ].includes(
+                                normalizeStatus(
+                                    booking.status
+                                )
+                            )
+                    ).length,
+
+                completed:
+                    bookings.filter(
+                        booking =>
+                            [
+                                BOOKING_STATUS.COMPLETED,
+                                BOOKING_STATUS.DELIVERED
+                            ].includes(
+                                normalizeStatus(
+                                    booking.status
+                                )
+                            )
+                    ).length
+            }),
+            [bookings]
+        );
+
+    const visibleBookings =
+        useMemo(
+            () => {
+                const activeDefinition =
+                    TAB_DEFINITIONS.find(
+                        tab =>
+                            tab.id ===
+                            activeTab
+                    ) ||
+                    TAB_DEFINITIONS[1];
+
+                const query =
+                    searchQuery
+                        .trim()
+                        .toLowerCase();
+
+                return [...bookings]
+                    .filter(
+                        booking =>
+                            activeDefinition.statuses.includes(
+                                normalizeStatus(
+                                    booking.status
+                                )
+                            )
+                    )
+                    .filter(
+                        booking => {
+                            if (!query) {
+                                return true;
+                            }
+
+                            const searchableText = [
+                                booking.id,
+                                booking.reference_design_title,
+                                booking.brief_text,
+                                booking.sender_name,
+                                booking.creator_name,
+                                booking.booking_type,
+                                booking.status
+                            ]
+                                .filter(Boolean)
+                                .join(" ")
+                                .toLowerCase();
+
+                            return searchableText.includes(
+                                query
+                            );
+                        }
+                    )
+                    .sort(
+                        (first, second) =>
+                            new Date(
+                                second.created_at ||
+                                0
+                            ).getTime() -
+                            new Date(
+                                first.created_at ||
+                                0
+                            ).getTime()
+                    );
+            },
+            [
+                activeTab,
+                bookings,
+                searchQuery
+            ]
+        );
+
+    return (
+        <main className="relative min-h-screen overflow-hidden bg-slate-50 pb-20 text-slate-950 antialiased transition-colors duration-300 dark:bg-[#030303] dark:text-white">
+            <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+                <div className="absolute -right-[12rem] -top-[14rem] h-[34rem] w-[34rem] rounded-full bg-[#D4AF37]/10 blur-[150px] dark:bg-[#D4AF37]/15" />
+                <div className="absolute -bottom-[16rem] -left-[15rem] h-[38rem] w-[38rem] rounded-full bg-violet-500/5 blur-[170px] dark:bg-violet-500/10" />
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(15,23,42,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.025)_1px,transparent_1px)] bg-[size:38px_38px] dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.018)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.018)_1px,transparent_1px)]" />
+            </div>
+
+            <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/80 backdrop-blur-2xl dark:border-white/5 dark:bg-[#070707]/80">
+                <div className="mx-auto flex max-w-[1280px] flex-col gap-6 px-5 py-7 sm:px-8 lg:flex-row lg:items-end lg:justify-between lg:px-10">
+                    <div>
+                        <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.35em] text-[#B89122] dark:text-[#D4AF37]">
+                            <Compass size={14} />
+                            Designer Operations
+                        </div>
+
+                        <h1 className="font-serif text-4xl font-light tracking-tight sm:text-5xl">
+                            Contract
+                            <span className="ml-3 italic text-[#B89122] dark:text-[#D4AF37]">
+                                Pipeline
+                            </span>
+                        </h1>
+
+                        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500 dark:text-white/45">
+                            Review new requests, track escrow milestones and deliver every project from one focused workspace.
+                        </p>
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={() =>
+                            fetchBookings({
+                                silent: true
+                            })
+                        }
+                        disabled={refreshing}
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-black uppercase tracking-[0.18em] text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-[#D4AF37]/50 hover:text-[#9B791D] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/70 dark:hover:text-[#D4AF37]"
+                    >
+                        <RefreshCw
+                            size={15}
+                            className={
+                                refreshing
+                                    ? "animate-spin"
+                                    : ""
+                            }
+                        />
+                        Refresh
+                    </button>
                 </div>
+            </header>
 
-                {/* LIST / PIPELINE */}
-                {loading ? (
-                    <div className="space-y-4 pt-4">
-                        {[1, 2, 3].map(n => (
-                            <div key={n} className="h-36 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-3xl animate-pulse"></div>
-                        ))}
-                    </div>
-                ) : filteredBookings.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center border border-slate-200 dark:border-white/5 rounded-3xl py-32 bg-white dark:bg-[#0a0a0a] space-y-6 shadow-md dark:shadow-2xl backdrop-blur-sm transition-colors duration-300">
-                        <div className="w-16 h-16 bg-slate-50 dark:bg-[#111] rounded-2xl flex items-center justify-center border border-slate-200 dark:border-white/10 shadow-inner">
-                            <Sparkles size={28} className="text-[#D4AF37]/50" />
-                        </div>
-                        <div className="text-center space-y-2">
-                            <p className="text-slate-900 dark:text-white text-2xl font-serif tracking-wide transition-colors">No {activeTab} contracts</p>
-                            <p className="text-slate-500 dark:text-white/40 text-[10px] uppercase tracking-[0.2em] font-bold transition-colors">Your operational queue for this phase is currently empty.</p>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="space-y-5 pt-2">
-                        {filteredBookings.map((order) => {
-                            const isClient = currentUserId === order.creator_id;
-                            const isProvider = currentUserId === order.designer_id;
-                            
-                            const oppositeUser = isClient 
-                                ? { name: order.receiver_name || order.designer_name || 'Hired Partner', avatar: order.receiver_avatar || order.designer_avatar, label: "Hired Partner" }
-                                : { name: order.sender_name || order.creator_name || 'Network Client', avatar: order.sender_avatar || order.creator_avatar, label: "Project Client" };
-
-                            const statusConfig = getStatusDetails(order.status, isClient, oppositeUser.name);
+            <div className="relative z-10 mx-auto max-w-[1280px] space-y-8 px-5 pt-8 sm:px-8 lg:px-10">
+                <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    {[
+                        {
+                            label: "All Contracts",
+                            value: summary.total,
+                            icon: Inbox,
+                            helper: "Designer assignments"
+                        },
+                        {
+                            label: "Action Required",
+                            value: summary.actionRequired,
+                            icon: Sparkles,
+                            helper: "Ready for your input"
+                        },
+                        {
+                            label: "Awaiting Creator",
+                            value: summary.awaitingCreator,
+                            icon: Clock3,
+                            helper: "Payment or review pending"
+                        },
+                        {
+                            label: "Completed",
+                            value: summary.completed,
+                            icon: CheckCircle2,
+                            helper: "Paid and archived"
+                        }
+                    ].map(
+                        item => {
+                            const Icon = item.icon;
 
                             return (
-                                <Link 
-                                    to={`/designer/bookings/${order.id}`} 
-                                    key={order.id} 
-                                    className="bg-white dark:bg-[#0a0a0a] rounded-3xl border border-slate-200 dark:border-white/5 p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-[#D4AF37]/50 dark:hover:border-[#D4AF37]/30 hover:bg-slate-50 dark:hover:bg-[#111] hover:-translate-y-1 transition-all duration-500 group block shadow-md dark:shadow-xl hover:shadow-lg dark:hover:shadow-[0_20px_40px_rgba(212,175,55,0.1)]"
+                                <article
+                                    key={item.label}
+                                    className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md dark:border-white/5 dark:bg-[#0B0B0B]/90 dark:shadow-2xl"
                                 >
-                                    <div className="space-y-5 flex-1">
-                                        
-                                        {/* Status Header */}
-                                        <div className="flex items-center gap-3 flex-wrap">
-                                            <span className={`text-[9px] font-black px-3.5 py-1.5 rounded-full border uppercase tracking-[0.2em] transition-colors duration-300 ${statusConfig.style}`}>
-                                                {statusConfig.text}
-                                            </span>
-                                            <span className="text-[10px] font-mono text-slate-500 dark:text-white/30 bg-slate-100 dark:bg-white/5 px-3 py-1 rounded-md border border-slate-200 dark:border-white/5 transition-colors duration-300">
-                                                ID: {String(order.id).substring(0, 8).toUpperCase()}
-                                            </span>
-                                            <span className={`text-[9px] font-black px-3.5 py-1.5 rounded-full uppercase tracking-[0.2em] border transition-colors duration-300 ${isClient ? 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-white/70 border-slate-200 dark:border-white/10' : 'bg-[#D4AF37]/10 text-[#b59220] dark:text-[#D4AF37] border-[#D4AF37]/20'}`}>
-                                                Role: {isClient ? 'Client' : 'Creator'}
-                                            </span>
-                                        </div>
-
-                                        {/* Body */}
+                                    <div className="flex items-start justify-between gap-4">
                                         <div>
-                                            <h3 className="font-serif text-2xl md:text-3xl text-slate-900 dark:text-white group-hover:text-[#D4AF37] dark:group-hover:text-[#D4AF37] transition-colors flex items-center gap-3 tracking-wide">
-                                                {order.reference_design_title || 'Bespoke Studio Contract'}
-                                                <ArrowRight size={20} className="text-[#D4AF37] opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-500 ease-out" />
-                                            </h3>
-                                            <p className="text-[11px] md:text-xs text-slate-500 dark:text-white/50 mt-3 leading-relaxed line-clamp-2 max-w-3xl font-light tracking-wide transition-colors">
-                                                {order.brief_text}
+                                            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400 dark:text-white/35">
+                                                {item.label}
+                                            </p>
+                                            <p className="mt-3 text-3xl font-semibold tracking-tight">
+                                                {item.value}
+                                            </p>
+                                            <p className="mt-1 text-xs text-slate-500 dark:text-white/40">
+                                                {item.helper}
                                             </p>
                                         </div>
 
-                                        {/* Metadata Footer */}
-                                        <div className="pt-5 flex flex-wrap items-center gap-6 text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500 dark:text-white/40 border-t border-slate-200 dark:border-white/5 transition-colors duration-300">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-[#111] border border-slate-300 dark:border-white/20 flex items-center justify-center overflow-hidden shadow-inner transition-colors duration-300">
-                                                    {oppositeUser.avatar ? <img src={oppositeUser.avatar} alt="avatar" className="w-full h-full object-cover" /> : <User size={12} className="text-slate-400 dark:text-white/30" />}
-                                                </div>
-                                                <span>{oppositeUser.label}: <strong className="text-slate-900 dark:text-white">{oppositeUser.name}</strong></span>
-                                            </div>
-                                            
-                                            <span className="hidden sm:block h-4 w-px bg-slate-200 dark:bg-white/10 transition-colors"></span>
-                                            
-                                            <span>Valuation: <strong className="text-[#D4AF37] font-mono text-[12px] ml-1.5">${parseFloat(order.agreed_price || 0).toFixed(2)}</strong></span>
-
-                                            <span className="hidden sm:block h-4 w-px bg-slate-200 dark:bg-white/10 transition-colors"></span>
-                                            
-                                            <span className="flex items-center gap-1.5">
-                                                <Calendar size={12} className="text-slate-400 dark:text-white/30" />
-                                                Due: <strong className="text-slate-900 dark:text-white text-[11px] ml-1">{formatDeadline(order.deadline)}</strong>
-                                            </span>
+                                        <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/10 text-[#9B791D] dark:text-[#D4AF37]">
+                                            <Icon size={20} />
                                         </div>
                                     </div>
-
-                                    {/* QUICK ACTIONS PANEL */}
-                                    <div className="min-w-[220px] flex flex-col justify-center bg-slate-50 dark:bg-[#111] p-5 rounded-2xl border border-slate-200 dark:border-white/5 self-stretch md:self-center items-center md:items-end shadow-inner group-hover:border-slate-300 dark:group-hover:border-white/10 transition-colors duration-300">
-                                        
-                                        {/* Provider Action Prompts */}
-                                        {isProvider && ['accepted', 'progress'].includes(order.status) && (
-                                            <div className="text-[9px] text-[#D4AF37] font-black uppercase tracking-[0.2em] flex items-center gap-2 bg-[#D4AF37]/10 px-5 py-3 rounded-full border border-[#D4AF37]/30 shadow-sm dark:shadow-[0_0_15px_rgba(212,175,55,0.15)]">
-                                                <PlayCircle size={14} /> Submit Prototype
-                                            </div>
-                                        )}
-                                        {isProvider && order.status === 'final_production' && (
-                                            <div className="text-[9px] text-[#D4AF37] font-black uppercase tracking-[0.2em] flex items-center gap-2 bg-[#D4AF37]/10 px-5 py-3 rounded-full border border-[#D4AF37]/30 shadow-sm dark:shadow-[0_0_15px_rgba(212,175,55,0.15)]">
-                                                <Upload size={14} /> Submit Final Files
-                                            </div>
-                                        )}
-                                        {isProvider && ['review_prototype', 'review_final', 'review'].includes(order.status) && (
-                                            <div className="text-[9px] text-slate-500 dark:text-white/50 font-bold uppercase tracking-[0.2em] flex items-center gap-2 bg-white dark:bg-white/5 px-5 py-3 rounded-full border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-none transition-colors">
-                                                <Clock size={14} /> Awaiting Client
-                                            </div>
-                                        )}
-
-                                        {/* Client Action Prompts */}
-                                        {isClient && order.status === 'pending' && (
-                                            <div className="text-[9px] text-amber-600 dark:text-amber-400 font-black uppercase tracking-[0.2em] flex items-center gap-2 bg-amber-50 dark:bg-amber-500/10 px-5 py-3 rounded-full border border-amber-200 dark:border-amber-500/30">
-                                                <Lock size={14} /> Fund Escrow
-                                            </div>
-                                        )}
-                                        {isClient && ['review_prototype', 'review_final', 'review'].includes(order.status) && (
-                                            <div className="text-[9px] text-indigo-700 dark:text-white font-black uppercase tracking-[0.2em] flex items-center gap-2 bg-indigo-100 dark:bg-indigo-500/40 px-5 py-3 rounded-full border border-indigo-300 dark:border-indigo-400 shadow-sm dark:shadow-[0_0_15px_rgba(99,102,241,0.3)]">
-                                                <CheckCircle2 size={14} /> Review Needed
-                                            </div>
-                                        )}
-                                        {isClient && ['accepted', 'progress', 'final_production'].includes(order.status) && (
-                                            <div className="text-[9px] text-slate-500 dark:text-white/50 font-bold uppercase tracking-[0.2em] flex items-center gap-2 bg-white dark:bg-white/5 px-5 py-3 rounded-full border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-none transition-colors">
-                                                <Clock size={14} /> Artist is Working
-                                            </div>
-                                        )}
-                                        
-                                        {/* Fallback for statuses with no explicit action */}
-                                        {['completed', 'delivered', 'cancelled'].includes(order.status) && (
-                                            <div className="text-[9px] text-slate-400 dark:text-white/30 font-bold uppercase tracking-[0.2em] transition-colors">
-                                                View Record
-                                            </div>
-                                        )}
-                                    </div>
-                                </Link>
+                                </article>
                             );
-                        })}
+                        }
+                    )}
+                </section>
+
+                <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-sm backdrop-blur dark:border-white/5 dark:bg-[#0A0A0A]/90 dark:shadow-2xl">
+                    <div className="border-b border-slate-200 p-5 dark:border-white/5 sm:p-6">
+                        <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+                            <div className="flex gap-7 overflow-x-auto border-b border-slate-200 dark:border-white/10">
+                                {TAB_DEFINITIONS.map(
+                                    tab => (
+                                        <button
+                                            key={tab.id}
+                                            type="button"
+                                            onClick={() =>
+                                                setActiveTab(
+                                                    tab.id
+                                                )
+                                            }
+                                            className={`relative flex shrink-0 items-center gap-2 pb-4 text-[10px] font-black uppercase tracking-[0.2em] transition ${
+                                                activeTab === tab.id
+                                                    ? "text-slate-950 dark:text-white"
+                                                    : "text-slate-400 hover:text-slate-700 dark:text-white/35 dark:hover:text-white/70"
+                                            }`}
+                                        >
+                                            {tab.label}
+
+                                            <span className={`rounded-full border px-2 py-0.5 text-[9px] ${
+                                                activeTab === tab.id
+                                                    ? "border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#9B791D] dark:text-[#D4AF37]"
+                                                    : "border-slate-200 bg-slate-100 text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-white/35"
+                                            }`}>
+                                                {tabCounts[tab.id] || 0}
+                                            </span>
+
+                                            {activeTab === tab.id && (
+                                                <span className="absolute inset-x-0 -bottom-px h-0.5 bg-[#D4AF37]" />
+                                            )}
+                                        </button>
+                                    )
+                                )}
+                            </div>
+
+                            <label className="relative block w-full xl:max-w-sm">
+                                <Search
+                                    size={16}
+                                    className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30"
+                                />
+
+                                <input
+                                    type="search"
+                                    value={searchQuery}
+                                    onChange={event =>
+                                        setSearchQuery(
+                                            event.target.value
+                                        )
+                                    }
+                                    placeholder="Search contracts, clients or IDs"
+                                    className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25 dark:focus:bg-white/[0.06]"
+                                />
+                            </label>
+                        </div>
                     </div>
-                )}
+
+                    {error ? (
+                        <div className="m-5 rounded-2xl border border-rose-200 bg-rose-50 p-6 dark:border-rose-400/20 dark:bg-rose-400/10 sm:m-6">
+                            <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex items-start gap-4">
+                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700 dark:bg-rose-400/10 dark:text-rose-300">
+                                        <AlertCircle size={21} />
+                                    </div>
+
+                                    <div>
+                                        <h2 className="font-semibold text-rose-900 dark:text-rose-100">
+                                            Could not load contracts
+                                        </h2>
+                                        <p className="mt-1 text-sm leading-6 text-rose-700/80 dark:text-rose-200/70">
+                                            {error}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        fetchBookings()
+                                    }
+                                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-xs font-black uppercase tracking-[0.16em] text-white transition hover:bg-rose-800"
+                                >
+                                    <RefreshCw size={14} />
+                                    Retry
+                                </button>
+                            </div>
+                        </div>
+                    ) : loading ? (
+                        <div className="space-y-4 p-5 sm:p-6">
+                            {[1, 2, 3].map(
+                                item => (
+                                    <div
+                                        key={item}
+                                        className="h-56 animate-pulse rounded-2xl border border-slate-200 bg-slate-100 dark:border-white/5 dark:bg-white/[0.035]"
+                                    />
+                                )
+                            )}
+                        </div>
+                    ) : visibleBookings.length === 0 ? (
+                        <div className="flex min-h-[420px] flex-col items-center justify-center px-6 py-20 text-center">
+                            <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-slate-200 bg-slate-50 text-[#B89122] shadow-inner dark:border-white/10 dark:bg-white/[0.03] dark:text-[#D4AF37]">
+                                {searchQuery ? (
+                                    <Search size={30} />
+                                ) : (
+                                    <Inbox size={30} />
+                                )}
+                            </div>
+
+                            <h2 className="mt-6 font-serif text-3xl font-light">
+                                {searchQuery
+                                    ? "No matching contracts"
+                                    : `No ${TAB_DEFINITIONS.find(tab => tab.id === activeTab)?.label.toLowerCase()} yet`}
+                            </h2>
+
+                            <p className="mt-3 max-w-lg text-sm leading-6 text-slate-500 dark:text-white/40">
+                                {searchQuery
+                                    ? "Try a different client name, booking ID, project title or status."
+                                    : "Contracts for this stage will appear here automatically as your booking workflow moves forward."}
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4 p-5 sm:p-6">
+                            {visibleBookings.map(
+                                booking => {
+                                    const status =
+                                        normalizeStatus(
+                                            booking.status
+                                        );
+
+                                    const statusDetails =
+                                        getStatusDetails(
+                                            status
+                                        );
+
+                                    const actionDetails =
+                                        getNextAction(
+                                            status
+                                        );
+
+                                    const StatusIcon =
+                                        statusDetails.icon;
+
+                                    const ActionIcon =
+                                        actionDetails.icon;
+
+                                    const creatorName =
+                                        booking.sender_name ||
+                                        booking.creator_name ||
+                                        "Project Creator";
+
+                                    const creatorAvatar =
+                                        booking.sender_avatar ||
+                                        booking.creator_avatar ||
+                                        null;
+
+                                    const projectTitle =
+                                        booking.reference_design_title ||
+                                        "Bespoke Design Commission";
+
+                                    const progress =
+                                        STATUS_PROGRESS[status] ??
+                                        0;
+
+                                    return (
+                                        <Link
+                                            key={booking.id}
+                                            to={`/designer/bookings/${booking.id}`}
+                                            className="group block overflow-hidden rounded-2xl border border-slate-200 bg-white transition duration-300 hover:-translate-y-0.5 hover:border-[#D4AF37]/45 hover:shadow-xl dark:border-white/5 dark:bg-[#0D0D0D] dark:hover:border-[#D4AF37]/25 dark:hover:shadow-[0_24px_70px_rgba(0,0,0,0.45)]"
+                                        >
+                                            <div className="grid gap-0 xl:grid-cols-[1fr_270px]">
+                                                <div className="p-5 sm:p-7">
+                                                    <div className="flex flex-wrap items-center gap-2.5">
+                                                        <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.17em] ${statusDetails.badgeClass}`}>
+                                                            <StatusIcon size={13} />
+                                                            {statusDetails.label}
+                                                        </span>
+
+                                                        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.15em] text-slate-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-white/35">
+                                                            {String(booking.id || "").slice(0, 8).toUpperCase()}
+                                                        </span>
+
+                                                        <span className="rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/5 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.17em] text-[#8F7118] dark:text-[#D4AF37]">
+                                                            {booking.booking_type || "commission"}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="mt-5">
+                                                        <div className="flex items-start justify-between gap-5">
+                                                            <div>
+                                                                <h2 className="font-serif text-2xl font-light tracking-tight text-slate-950 transition group-hover:text-[#9B791D] dark:text-white dark:group-hover:text-[#D4AF37] sm:text-3xl">
+                                                                    {projectTitle}
+                                                                </h2>
+
+                                                                <p className="mt-3 line-clamp-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-white/45">
+                                                                    {booking.brief_text ||
+                                                                        "No project brief was supplied."}
+                                                                </p>
+                                                            </div>
+
+                                                            <ArrowRight className="hidden shrink-0 -translate-x-2 text-[#D4AF37] opacity-0 transition duration-300 group-hover:translate-x-0 group-hover:opacity-100 sm:block" />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 dark:border-white/5 dark:bg-white/[0.025]">
+                                                            <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-white/30">
+                                                                <UserRound size={13} />
+                                                                Creator
+                                                            </div>
+
+                                                            <div className="mt-2 flex items-center gap-2.5">
+                                                                <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-white dark:border-white/10 dark:bg-white/5">
+                                                                    {creatorAvatar ? (
+                                                                        <img
+                                                                            src={creatorAvatar}
+                                                                            alt={creatorName}
+                                                                            className="h-full w-full object-cover"
+                                                                        />
+                                                                    ) : (
+                                                                        <span className="text-xs font-bold text-slate-500 dark:text-white/40">
+                                                                            {getFirstName(creatorName).charAt(0).toUpperCase()}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+
+                                                                <span className="truncate text-sm font-semibold">
+                                                                    {creatorName}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 dark:border-white/5 dark:bg-white/[0.025]">
+                                                            <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-white/30">
+                                                                <BadgeDollarSign size={13} />
+                                                                Contract Value
+                                                            </div>
+                                                            <p className="mt-2 font-mono text-lg font-semibold text-[#9B791D] dark:text-[#D4AF37]">
+                                                                {formatCurrency(booking.agreed_price)}
+                                                            </p>
+                                                        </div>
+
+                                                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 dark:border-white/5 dark:bg-white/[0.025]">
+                                                            <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-white/30">
+                                                                <CalendarDays size={13} />
+                                                                Deadline
+                                                            </div>
+                                                            <p className="mt-2 text-sm font-semibold">
+                                                                {formatDate(booking.deadline)}
+                                                            </p>
+                                                            <p className="mt-0.5 text-[11px] text-slate-500 dark:text-white/35">
+                                                                {getDeadlineMessage(booking.deadline)}
+                                                            </p>
+                                                        </div>
+
+                                                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 dark:border-white/5 dark:bg-white/[0.025]">
+                                                            <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-white/30">
+                                                                <ShieldCheck size={13} />
+                                                                Escrow
+                                                            </div>
+                                                            <p className={`mt-2 text-sm font-semibold ${
+                                                                booking.escrow_locked
+                                                                    ? "text-emerald-700 dark:text-emerald-300"
+                                                                    : "text-slate-600 dark:text-white/55"
+                                                            }`}>
+                                                                {booking.escrow_locked
+                                                                    ? "Secured"
+                                                                    : "Not funded"}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="mt-6">
+                                                        <div className="mb-2 flex items-center justify-between gap-4">
+                                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/30">
+                                                                Workflow Progress
+                                                            </p>
+                                                            <p className="text-[10px] font-semibold text-slate-500 dark:text-white/35">
+                                                                {progress}%
+                                                            </p>
+                                                        </div>
+
+                                                        <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/5">
+                                                            <div
+                                                                className="h-full rounded-full bg-gradient-to-r from-[#A88620] to-[#E2C45D] transition-all duration-700"
+                                                                style={{
+                                                                    width: `${progress}%`
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <aside className={`flex flex-col justify-between border-t p-5 dark:border-white/5 xl:border-l xl:border-t-0 ${actionDetails.panelClass}`}>
+                                                    <div>
+                                                        <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border border-current/15 bg-white/60 ${actionDetails.accentClass} dark:bg-black/20`}>
+                                                            <ActionIcon
+                                                                size={22}
+                                                                className={
+                                                                    actionDetails.spinning
+                                                                        ? "animate-spin"
+                                                                        : ""
+                                                                }
+                                                            />
+                                                        </div>
+
+                                                        <p className={`mt-5 text-[10px] font-black uppercase tracking-[0.2em] ${actionDetails.accentClass}`}>
+                                                            Next Step
+                                                        </p>
+
+                                                        <h3 className="mt-2 text-lg font-semibold">
+                                                            {actionDetails.label}
+                                                        </h3>
+
+                                                        <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-white/40">
+                                                            {actionDetails.detail}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="mt-6 border-t border-current/10 pt-4">
+                                                        <p className="text-xs leading-5 text-slate-500 dark:text-white/40">
+                                                            {statusDetails.description}
+                                                        </p>
+
+                                                        <div className="mt-4 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-700 transition group-hover:text-[#9B791D] dark:text-white/65 dark:group-hover:text-[#D4AF37]">
+                                                            Open workspace
+                                                            <ArrowRight size={14} />
+                                                        </div>
+                                                    </div>
+                                                </aside>
+                                            </div>
+                                        </Link>
+                                    );
+                                }
+                            )}
+                        </div>
+                    )}
+                </section>
             </div>
-        </div>
+        </main>
     );
-};
+}
 
 export default DesignerBookings;

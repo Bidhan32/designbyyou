@@ -1,378 +1,4375 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Search, Loader2, Sparkles, Zap, User, ShieldAlert, Crown, Flame, Star, ChevronRight, ChevronLeft, ArrowRight, Edit2, ShieldCheck, Eye, Compass } from 'lucide-react';
-import API from '../../api/axios';
-import { useAuth } from '../../context/AuthContext';
+"use strict";
 
-const CATEGORIES = ['All', 'Concept Art', 'Avant-Garde', 'Minimalist', 'Streetwear', 'High-Fashion', 'Textiles'];
+/*
+=========================================================
+DesignByYou
+Designer Marketplace / Showcase
+Version 5.2
+=========================================================
 
-const HERO_SLIDES = [
+PURPOSE
+---------------------------------------------------------
+
+Designer-facing public Showcase discovery.
+
+This version supports the DesignerLayout global theme:
+
+LIGHT MODE
+- light page background
+- white cards
+- dark readable typography
+- subtle neutral borders
+
+DARK MODE
+- original dark luxury presentation
+- dark cards
+- white typography
+
+The main media Hero intentionally remains cinematic/dark
+in BOTH themes so image/video contrast and Hero copy remain
+consistent and readable.
+
+=========================================================
+SHARED SHOWCASE HERO
+=========================================================
+
+GET
+/api/v1/showcase-hero
+
+Super Admin may choose:
+
+1. slideshow
+   - 3 to 5 images
+   - configurable rotation time
+
+OR
+
+2. video
+   - one muted looping background video
+   - optional poster image
+
+Only one mode runs at a time.
+
+The same Hero configuration is consumed by:
+
+- CreatorShowcase.jsx
+- DesignerMarketplace.jsx
+
+If the shared Hero is disabled or unavailable, this page
+falls back to its existing featured-design Hero image.
+
+=========================================================
+IMPORTANT
+=========================================================
+
+This file preserves the existing Designer Marketplace
+backend behavior.
+
+GET
+/marketplace
+
+Designer Marketplace remains VIEW / DISCOVERY oriented.
+
+Designers are NOT routed into:
+
+- Creator Fashion Editor
+- Creator booking flow
+- removed Designer Fashion Editor routes
+
+Designer-owned work may be identified visually, but the
+primary action remains View Design.
+=========================================================
+*/
+
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
+import { useNavigate } from "react-router-dom";
+
+import {
+  ArrowRight,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Compass,
+  Eye,
+  ImageOff,
+  Layers3,
+  Loader2,
+  Palette,
+  RefreshCw,
+  Search,
+  ShieldAlert,
+  Sparkles,
+  Star,
+  Tag,
+  UploadCloud,
+  User,
+  X,
+} from "lucide-react";
+
+import API from "../../api/axios";
+
+import { useAuth } from "../../context/AuthContext";
+
+/*=========================================================
+Configuration
+=========================================================*/
+
+const SHOWCASE_ENDPOINT = "/marketplace";
+
+const HERO_ENDPOINT = "/showcase-hero";
+
+const SEARCH_DELAY_MS = 400;
+
+/*
+This controls only the featured DESIGN metadata rotation.
+
+The Super Admin slideshow background uses its own
+rotation_seconds setting returned by /showcase-hero.
+*/
+
+const HERO_ROTATION_MS = 7000;
+
+const FEATURED_DESIGN_LIMIT = 3;
+
+const TRENDING_DESIGN_LIMIT = 8;
+
+const STYLE_CATEGORIES = [
+  "All",
+  "Minimalist / Basics",
+  "Streetwear",
+  "Classic",
+  "Modern",
+  "Luxury",
+  "Vintage",
+  "Bohemian",
+  "Avant-Garde",
+  "Sporty",
+  "Preppy",
+  "Y2K",
+  "Sustainable / Organic",
+];
+
+const SORT_OPTIONS = [
   {
-    subtitle: 'Welcome to DesignByYou',
-    title: 'Design',
-    highlight: 'Reimagined.',
-    desc: 'Connect with world-class digital architects and bring your concepts to reality.',
-    image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop',
+    value: "newest",
+    label: "Newest First",
   },
+
   {
-    subtitle: 'The Inspiration Directory',
-    title: 'Escrow',
-    highlight: 'Secured.',
-    desc: 'Explore a secure vault of exclusive design concepts ready for instant commissioning.',
-    image: 'https://images.unsplash.com/photo-1600607686527-6fb886090705?q=80&w=2500&auto=format&fit=crop',
+    value: "highest-rated",
+    label: "Highest Rated",
   },
+
   {
-    subtitle: 'Elite Network',
-    title: 'Scale',
-    highlight: 'Boundless.',
-    desc: 'Initiate zero-fee escrow contracts instantly with verified pro designers.',
-    image: 'https://images.unsplash.com/photo-1634084462412-254141397efb?q=80&w=2500&auto=format&fit=crop',
+    value: "oldest",
+    label: "Oldest First",
+  },
+
+  {
+    value: "title",
+    label: "Title A–Z",
   },
 ];
 
-export default function DesignerMarketplace() {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const isCreator = user?.role === 'creator';
-  
-  // Safely check if user exists before converting the ID to a string
-  const currentUserId = user ? String(user.id || user._id) : null;
+/*=========================================================
+Helpers
+=========================================================*/
 
-  const [items, setItems] = useState([]);
-  const [topDesigners, setTopDesigners] = useState([]);
-  const [topDesigns, setTopDesigns] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const carouselRef = useRef(null);
+function cleanText(value, fallback = "") {
+  const text = String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
 
-  const scrollCarousel = (direction) => {
-    if (carouselRef.current) {
-      const scrollAmount = window.innerWidth > 768 ? 680 : 300;
-      carouselRef.current.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+  return text || fallback;
+}
+
+function toBoolean(value, fallback = false) {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "number") {
+    return value === 1;
+  }
+
+  const normalized = cleanText(value).toLowerCase();
+
+  if (["true", "1", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+
+  if (["false", "0", "no", "off"].includes(normalized)) {
+    return false;
+  }
+
+  return fallback;
+}
+
+function parseNumericValue(value, fallback = 0) {
+  const number = Number(value);
+
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function parseTags(value) {
+  if (Array.isArray(value)) {
+    return value.map((tag) => cleanText(tag)).filter(Boolean);
+  }
+
+  const text = cleanText(value);
+
+  if (!text) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(text);
+
+    if (Array.isArray(parsed)) {
+      return parsed.map((tag) => cleanText(tag)).filter(Boolean);
     }
+  } catch {
+    /*
+    Continue with PostgreSQL-array / CSV parsing.
+    */
+  }
+
+  const content =
+    text.startsWith("{") && text.endsWith("}")
+      ? text.slice(1, -1)
+      : text;
+
+  return content
+    .split(",")
+    .map((tag) => tag.replace(/^"(.*)"$/, "$1").trim())
+    .filter(Boolean);
+}
+
+function uniqueTags(values) {
+  const seen = new Set();
+
+  return values.filter((value) => {
+    const key = cleanText(value).toLowerCase();
+
+    if (!key || seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+
+    return true;
+  });
+}
+
+function getBackendOrigin() {
+  const configuredUrl = cleanText(
+    import.meta.env.VITE_BACKEND_URL ||
+      import.meta.env.VITE_API_BASE_URL,
+  );
+
+  if (/^https?:\/\//i.test(configuredUrl)) {
+    return configuredUrl
+      .replace(/\/api(?:\/v\d+)?\/?$/i, "")
+      .replace(/\/+$/, "");
+  }
+
+  if (
+    typeof window !== "undefined" &&
+    window.location.hostname === "localhost"
+  ) {
+    return "http://localhost:8080";
+  }
+
+  return typeof window !== "undefined"
+    ? window.location.origin
+    : "";
+}
+
+function resolveMediaUrl(value) {
+  const path = cleanText(value);
+
+  if (!path) {
+    return "";
+  }
+
+  if (
+    path.startsWith("data:") ||
+    path.startsWith("blob:")
+  ) {
+    return path;
+  }
+
+  if (/^https?:\/\//i.test(path)) {
+    return path
+      .replace("localhost:5000", "localhost:8080")
+      .replace("localhost:8000", "localhost:8080")
+      .replace(/\\/g, "/");
+  }
+
+  return `${getBackendOrigin()}/${path
+    .replace(/\\/g, "/")
+    .replace(/^\/+/, "")}`;
+}
+
+function extractShowcaseItems(response) {
+  const body = response?.data;
+
+  const candidates = [
+    body?.data,
+
+    body?.data?.designs,
+
+    body?.data?.items,
+
+    body?.designs,
+
+    body?.items,
+
+    body?.results,
+  ];
+
+  return candidates.find(Array.isArray) || [];
+}
+
+function normalizeShowcaseItem(item, index) {
+  const id = cleanText(
+    item?.id ||
+      item?.design_id ||
+      item?.slug ||
+      `showcase-${index}`,
+  );
+
+  const sourceType = cleanText(
+    item?.source_type,
+    "upload",
+  ).toLowerCase();
+
+  return {
+    raw: item,
+
+    id,
+
+    slug: cleanText(
+      item?.slug ||
+        item?.id ||
+        item?.design_id,
+    ),
+
+    ownerId: cleanText(
+      item?.owner_id ||
+        item?.designer_id ||
+        item?.user_id,
+    ),
+
+    ownerRole: cleanText(
+      item?.owner_role,
+    ),
+
+    title: cleanText(
+      item?.title,
+      "Untitled Design",
+    ),
+
+    description: cleanText(
+      item?.description,
+      "A published fashion concept from the DesignByYou Showcase.",
+    ),
+
+    image: resolveMediaUrl(
+      item?.watermarked_preview_url ||
+        item?.preview_url ||
+        item?.display_image_url ||
+        item?.image_url ||
+        item?.thumbnail_url,
+    ),
+
+    ownerName: cleanText(
+      item?.owner_name ||
+        item?.designer_name ||
+        item?.full_name ||
+        item?.username,
+
+      "Independent Designer",
+    ),
+
+    ownerAvatar: resolveMediaUrl(
+      item?.owner_avatar ||
+        item?.designer_avatar ||
+        item?.profile_image_url ||
+        item?.profile_image,
+    ),
+
+    styleCategory: cleanText(
+      item?.style_category ||
+        item?.style_aesthetic,
+
+      "Modern",
+    ),
+
+    tags: uniqueTags(
+      parseTags(item?.tags),
+    ),
+
+    rating: parseNumericValue(
+      item?.avg_rating ||
+        item?.rating,
+
+      0,
+    ),
+
+    reviewCount: parseNumericValue(
+      item?.review_count ||
+        item?.total_reviews,
+
+      0,
+    ),
+
+    createdAt:
+      item?.created_at ||
+      item?.published_at ||
+      null,
+
+    isPublic: toBoolean(
+      item?.is_public,
+      true,
+    ),
+
+    isPublished: toBoolean(
+      item?.is_published,
+      true,
+    ),
+
+    sourceType,
+
+    editorProjectId: cleanText(
+      item?.editor_project_id,
+    ),
+
+    isEditable: toBoolean(
+      item?.is_editable,
+      false,
+    ),
+
+    allowRemix: toBoolean(
+      item?.allow_remix,
+      false,
+    ),
+
+    originalDesignId: cleanText(
+      item?.original_design_id,
+    ),
   };
+}
 
-  // Preserve the existing carousel timing
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length), 7000);
-    return () => clearInterval(timer);
-  }, [currentSlide]);
+/*=========================================================
+Shared Hero Helpers
+=========================================================*/
 
-  // Fetch Marketplace Items and Top Designers
-  useEffect(() => {
-    const fetchShowcaseAndNetwork = async () => {
-      try {
-        setLoading(true);
-        const params = {};
-        if (searchQuery.trim()) params.search = searchQuery;
-        if (selectedCategory !== 'All') params.style = selectedCategory;
+function normalizeHeroSettings(response) {
+  const data =
+    response?.data?.data || {};
 
-        // 🚀 Hit the optimized /marketplace endpoint + users
-        const [pipelineRes, usersRes] = await Promise.all([
-          API.get('/marketplace', { params }),
-          API.get('/users'),
-        ]);
+  const images = Array.isArray(
+    data.slideshow_images,
+  )
+    ? data.slideshow_images
+        .map((value) =>
+          resolveMediaUrl(value),
+        )
+        .filter(Boolean)
+        .slice(0, 5)
+    : [];
 
-        const fetchedItems = pipelineRes.data?.data || [];
-        setItems(fetchedItems);
-        
-        // Grab top 5 designs based on ratings
-        setTopDesigns([...fetchedItems].sort((a, b) => (parseFloat(b.avg_rating) || 0) - (parseFloat(a.avg_rating) || 0)).slice(0, 5));
+  const rotationSeconds = Number(
+    data.rotation_seconds,
+  );
 
-        // Grab top 5 visionary designers
-        const allUsers = Array.isArray(usersRes.data) ? usersRes.data : usersRes.data?.data || [];
-        setTopDesigners(allUsers
-          .filter((networkUser) => networkUser.role === 'designer')
-          .sort((a, b) => (parseInt(b.total_completed_bookings, 10) || 0) - (parseInt(a.total_completed_bookings, 10) || 0))
-          .slice(0, 5));
-          
-        setError(null);
-      } catch (requestError) {
-        console.error('Failed to load showcase network:', requestError);
-        setError('Unable to connect to the secure showcase network.');
-      } finally {
-        setLoading(false);
-      }
-    };
+  return {
+    isEnabled:
+      data.is_enabled === true,
 
-    const delayDebounceFn = setTimeout(fetchShowcaseAndNetwork, 500);
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, selectedCategory]);
+    mode:
+      data.mode === "video"
+        ? "video"
+        : "slideshow",
 
-  const aspectRatios = ['3/4', '4/5', '1/1', '16/9', '2/3'];
+    images,
+
+    videoUrl: resolveMediaUrl(
+      data.video_url,
+    ),
+
+    posterUrl: resolveMediaUrl(
+      data.video_poster_url,
+    ),
+
+    rotationSeconds:
+      Number.isInteger(rotationSeconds) &&
+      rotationSeconds >= 3 &&
+      rotationSeconds <= 30
+        ? rotationSeconds
+        : 6,
+  };
+}
+
+function isFashionEditorDesign(design) {
+  return Boolean(
+    design?.sourceType === "fashion_editor" &&
+      design?.isEditable === true &&
+      design?.editorProjectId,
+  );
+}
+
+function getDesignAction(
+  design,
+  currentUserId,
+) {
+  const isOwnDesign = Boolean(
+    currentUserId &&
+      design?.ownerId &&
+      currentUserId === design.ownerId,
+  );
+
+  return {
+    type: "view",
+
+    label: "View Design",
+
+    Icon: Eye,
+
+    isOwnDesign,
+
+    editorDesign:
+      isFashionEditorDesign(design),
+  };
+}
+
+function getShowcaseRoute(design) {
+  const identifier =
+    design?.slug ||
+    design?.id;
+
+  if (!identifier) {
+    return "/designer/explore";
+  }
+
+  return `/designer/showcase/${encodeURIComponent(
+    identifier,
+  )}`;
+}
+
+function formatPublishedDate(value) {
+  if (!value) {
+    return "Recently published";
+  }
+
+  const date = new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return "Recently published";
+  }
+
+  return new Intl.DateTimeFormat(
+    "en-US",
+    {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    },
+  ).format(date);
+}
+
+function getRequestErrorMessage(error) {
+  if (
+    error?.code === "ERR_CANCELED" ||
+    error?.name === "CanceledError" ||
+    error?.name === "AbortError"
+  ) {
+    return "";
+  }
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-slate-50 dark:bg-[#080808] pb-28 text-slate-900 dark:text-white selection:bg-[#d7b66a] selection:text-black transition-colors duration-300">
-      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
-        <div className="absolute -left-48 -top-48 h-[38rem] w-[38rem] rounded-full bg-[#d7b66a]/[0.07] blur-[150px]" />
-        <div className="absolute -bottom-40 -right-32 h-[34rem] w-[34rem] rounded-full bg-indigo-500/[0.06] blur-[150px]" />
+    error?.response?.data?.message ||
+    error?.response?.data?.error ||
+    error?.message ||
+    "Unable to connect to the Showcase."
+  );
+}
+
+/*=========================================================
+Reusable Components
+=========================================================*/
+
+function ShowcaseImage({
+  src,
+  alt,
+  className = "",
+  priority = false,
+}) {
+  const [failed, setFailed] =
+    useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
+
+  if (!src || failed) {
+    return (
+      <div
+        className={`
+          flex
+          h-full
+          w-full
+          items-center
+          justify-center
+          bg-slate-100
+          text-slate-300
+
+          dark:bg-white/[0.035]
+          dark:text-white/15
+
+          ${className}
+        `}
+      >
+        <ImageOff
+          size={34}
+          aria-hidden="true"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading={
+        priority
+          ? "eager"
+          : "lazy"
+      }
+      fetchPriority={
+        priority
+          ? "high"
+          : "auto"
+      }
+      decoding="async"
+      onError={() =>
+        setFailed(true)
+      }
+      className={className}
+    />
+  );
+}
+
+function ShowcaseSkeleton() {
+  return (
+    <div
+      className="
+        overflow-hidden
+        rounded-[1.75rem]
+        border
+        border-slate-200
+        bg-white
+        shadow-sm
+
+        dark:border-white/10
+        dark:bg-[#111]
+        dark:shadow-none
+      "
+    >
+      <div
+        className="
+          aspect-[4/5]
+          animate-pulse
+          bg-slate-100
+
+          dark:bg-white/[0.07]
+        "
+      />
+
+      <div className="space-y-4 p-5">
+        <div
+          className="
+            h-3
+            w-24
+            animate-pulse
+            rounded-full
+            bg-slate-100
+
+            dark:bg-white/[0.07]
+          "
+        />
+
+        <div
+          className="
+            h-6
+            w-4/5
+            animate-pulse
+            rounded-full
+            bg-slate-100
+
+            dark:bg-white/[0.07]
+          "
+        />
+
+        <div
+          className="
+            h-3
+            w-1/2
+            animate-pulse
+            rounded-full
+            bg-slate-100
+
+            dark:bg-white/[0.07]
+          "
+        />
+
+        <div
+          className="
+            h-11
+            w-full
+            animate-pulse
+            rounded-xl
+            bg-slate-100
+
+            dark:bg-white/[0.07]
+          "
+        />
+      </div>
+    </div>
+  );
+}
+
+function SourceBadge({ design }) {
+  const editorDesign =
+    isFashionEditorDesign(design);
+
+  /*
+  SourceBadge appears over artwork, therefore it remains a
+  dark translucent overlay in both page themes.
+  */
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] backdrop-blur-md ${
+        editorDesign
+          ? "border-violet-300/30 bg-violet-500/20 text-violet-100"
+          : "border-white/15 bg-black/45 text-white/80"
+      }`}
+    >
+      {editorDesign ? (
+        <Layers3 size={10} />
+      ) : (
+        <ImageOff size={10} />
+      )}
+
+      {editorDesign
+        ? "Fashion Editor"
+        : "Image Upload"}
+    </span>
+  );
+}
+
+function PrimaryActionButton({
+  design,
+  currentUserId,
+  onAction,
+  compact = false,
+}) {
+  const action =
+    getDesignAction(
+      design,
+      currentUserId,
+    );
+
+  const Icon = action.Icon;
+
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+
+        onAction(design);
+      }}
+      className={`inline-flex items-center justify-center gap-2 bg-[#e5c67d] font-black uppercase tracking-[0.16em] text-black transition hover:bg-amber-200 dark:hover:bg-white ${
+        compact
+          ? "h-10 rounded-xl px-4 text-[8px]"
+          : "h-12 rounded-full px-7 text-[9px] hover:-translate-y-0.5"
+      }`}
+    >
+      <Icon
+        size={
+          compact
+            ? 12
+            : 14
+        }
+      />
+
+      {action.label}
+
+      <ArrowRight size={13} />
+    </button>
+  );
+}
+
+function SectionHeading({
+  eyebrow,
+  title,
+  description,
+  action = null,
+}) {
+  return (
+    <div
+      className="
+        mb-7
+        flex
+        flex-col
+        gap-4
+
+        md:flex-row
+        md:items-end
+        md:justify-between
+      "
+    >
+      <div>
+        {eyebrow && (
+          <p
+            className="
+              text-[9px]
+              font-black
+              uppercase
+              tracking-[0.3em]
+              text-[#b88b20]
+
+              dark:text-[#e5c67d]
+            "
+          >
+            {eyebrow}
+          </p>
+        )}
+
+        <h2
+          className="
+            mt-2
+            font-serif
+            text-3xl
+            tracking-tight
+            text-slate-900
+
+            dark:text-white
+
+            sm:text-4xl
+          "
+        >
+          {title}
+        </h2>
+
+        {description && (
+          <p
+            className="
+              mt-3
+              max-w-2xl
+              text-sm
+              leading-6
+              text-slate-500
+
+              dark:text-white/42
+            "
+          >
+            {description}
+          </p>
+        )}
       </div>
 
-      <main className="relative z-10 mx-auto max-w-[1800px] px-4 pt-6 sm:px-6 md:px-10 lg:px-12">
-        
-        {/* HERO SECTION */}
-        <section className="relative min-h-[570px] overflow-hidden rounded-[2rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-[#101010] shadow-[0_36px_120px_rgba(0,0,0,0.1)] dark:shadow-[0_36px_120px_rgba(0,0,0,0.68)] sm:min-h-[620px] sm:rounded-[2.75rem] lg:min-h-[700px] transition-colors duration-300">
-          {HERO_SLIDES.map((slide, index) => {
-            const isActive = index === currentSlide;
-            return (
-              <div key={slide.highlight} className={`absolute inset-0 transition-opacity duration-1000 ease-out ${isActive ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}>
-                <img src={slide.image} alt="" className={`absolute inset-0 h-full w-full object-cover opacity-30 dark:opacity-55 transition-transform duration-[10000ms] ease-out ${isActive ? 'scale-100' : 'scale-110'}`} />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_76%_28%,rgba(229,198,125,0.18),transparent_27%)]" />
-                <div className="absolute inset-0 bg-gradient-to-r from-slate-50 dark:from-[#080808] via-slate-50/85 dark:via-[#080808]/85 to-transparent dark:to-[#080808]/10" />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-50/90 dark:from-[#080808]/90 via-transparent to-slate-900/10 dark:to-black/20" />
-                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#e5c67d]/60 to-transparent" />
+      {action}
+    </div>
+  );
+}
 
-                <div className={`relative flex min-h-[570px] max-w-4xl flex-col justify-center px-7 py-20 transition duration-700 sm:min-h-[620px] sm:px-12 md:px-20 lg:min-h-[700px] ${isActive ? 'translate-y-0 opacity-100' : 'translate-y-5 opacity-0'}`}>
-                  <div className="mb-7 flex items-center gap-4">
-                    <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.34em] text-[#e5c67d]"><Sparkles size={14} className="animate-pulse" /> {slide.subtitle}</span>
-                    <span className="h-px w-10 bg-[#e5c67d]/50" />
-                    <span className="text-[10px] font-bold tracking-[0.2em] text-slate-500 dark:text-white/35">0{index + 1} / 0{HERO_SLIDES.length}</span>
-                  </div>
-                  <h1 className="max-w-3xl font-serif text-[3.3rem] leading-[0.88] tracking-[-0.045em] text-slate-900 dark:text-white sm:text-7xl lg:text-[6.8rem]">{slide.title}<br /><span className="italic text-[#e5c67d] drop-shadow-[0_0_28px_rgba(229,198,125,0.16)]">{slide.highlight}</span></h1>
-                  <p className="mt-8 max-w-xl border-l border-[#e5c67d]/55 pl-5 text-sm leading-7 text-slate-600 dark:text-white/70 sm:text-lg sm:leading-8">{slide.desc}</p>
-                </div>
+/*=========================================================
+Designer Marketplace
+=========================================================*/
 
-                <div className={`absolute bottom-24 right-10 hidden w-[260px] border-l border-slate-300 dark:border-white/20 pl-6 transition duration-700 lg:block xl:right-16 ${isActive ? 'translate-x-0 opacity-100 delay-300' : 'translate-x-5 opacity-0'}`}>
-                  <p className="text-[9px] font-black uppercase tracking-[0.28em] text-[#e5c67d]">Private curation</p>
-                  <p className="mt-3 font-serif text-2xl leading-tight text-slate-800 dark:text-white/90">Built for the next remarkable idea.</p>
-                  <p className="mt-4 text-xs leading-6 text-slate-500 dark:text-white/50">Explore a considered collection of designs from creators shaping the culture.</p>
-                </div>
-              </div>
+export default function DesignerMarketplace() {
+  const navigate =
+    useNavigate();
+
+  const { user } =
+    useAuth();
+
+  const currentUserId =
+    cleanText(
+      user?.id ||
+        user?._id,
+    );
+
+  /*=======================================================
+  Showcase State
+  =======================================================*/
+
+  const [
+    showcaseItems,
+    setShowcaseItems,
+  ] = useState([]);
+
+  const [
+    searchQuery,
+    setSearchQuery,
+  ] = useState("");
+
+  const [
+    debouncedSearch,
+    setDebouncedSearch,
+  ] = useState("");
+
+  const [
+    selectedCategory,
+    setSelectedCategory,
+  ] = useState("All");
+
+  const [
+    selectedSort,
+    setSelectedSort,
+  ] = useState("newest");
+
+  const [
+    currentSlide,
+    setCurrentSlide,
+  ] = useState(0);
+
+  const [
+    initialLoading,
+    setInitialLoading,
+  ] = useState(true);
+
+  const [
+    refreshing,
+    setRefreshing,
+  ] = useState(false);
+
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState("");
+
+  const [
+    refreshVersion,
+    setRefreshVersion,
+  ] = useState(0);
+
+  /*=======================================================
+  Shared Showcase Hero
+  =======================================================*/
+
+  const [
+    heroSettings,
+    setHeroSettings,
+  ] = useState({
+    isEnabled: false,
+
+    mode: "slideshow",
+
+    images: [],
+
+    videoUrl: "",
+
+    posterUrl: "",
+
+    rotationSeconds: 6,
+  });
+
+  const [
+    heroSlideIndex,
+    setHeroSlideIndex,
+  ] = useState(0);
+
+  const [
+    heroVideoFailed,
+    setHeroVideoFailed,
+  ] = useState(false);
+
+  const [
+    heroImageFailed,
+    setHeroImageFailed,
+  ] = useState(false);
+
+  /*=======================================================
+  Refs
+  =======================================================*/
+
+  const trendingCarouselRef =
+    useRef(null);
+
+  const directoryRef =
+    useRef(null);
+
+  const hasLoadedRef =
+    useRef(false);
+
+  /*=======================================================
+  Debounced Search
+  =======================================================*/
+
+  useEffect(() => {
+    const timer =
+      window.setTimeout(
+        () => {
+          setDebouncedSearch(
+            searchQuery.trim(),
+          );
+        },
+
+        SEARCH_DELAY_MS,
+      );
+
+    return () =>
+      window.clearTimeout(timer);
+  }, [searchQuery]);
+
+  /*=======================================================
+  Fetch Shared Showcase Hero
+  =======================================================*/
+
+  useEffect(() => {
+    const controller =
+      new AbortController();
+
+    const loadHero =
+      async () => {
+        try {
+          const response =
+            await API.get(
+              HERO_ENDPOINT,
+              {
+                signal:
+                  controller.signal,
+              },
             );
-          })}
-          <div className="absolute bottom-8 left-7 right-7 z-20 flex items-end justify-between gap-5 sm:left-12 sm:right-12 md:left-20 md:right-20">
-            <div className="flex items-center gap-2.5">
-              {HERO_SLIDES.map((slide, index) => <button key={slide.highlight} type="button" aria-label={`Show slide ${index + 1}`} onClick={() => setCurrentSlide(index)} className={`h-1.5 rounded-full transition-all duration-500 ${index === currentSlide ? 'w-10 bg-[#e5c67d] shadow-[0_0_16px_rgba(229,198,125,0.8)]' : 'w-3 bg-slate-300 dark:bg-white/30 hover:bg-slate-400 dark:hover:bg-white/70'}`} />)}
+
+          if (
+            controller.signal.aborted
+          ) {
+            return;
+          }
+
+          setHeroSettings(
+            normalizeHeroSettings(
+              response,
+            ),
+          );
+
+          setHeroSlideIndex(0);
+
+          setHeroVideoFailed(
+            false,
+          );
+
+          setHeroImageFailed(
+            false,
+          );
+        } catch (error) {
+          if (
+            controller.signal.aborted ||
+            error?.code ===
+              "ERR_CANCELED" ||
+            error?.name ===
+              "CanceledError" ||
+            error?.name ===
+              "AbortError"
+          ) {
+            return;
+          }
+
+          if (
+            import.meta.env.DEV
+          ) {
+            console.error(
+              "Designer Marketplace Hero settings request failed:",
+              error?.response?.data ||
+                error,
+            );
+          }
+
+          setHeroSettings({
+            isEnabled: false,
+
+            mode: "slideshow",
+
+            images: [],
+
+            videoUrl: "",
+
+            posterUrl: "",
+
+            rotationSeconds: 6,
+          });
+
+          setHeroSlideIndex(0);
+
+          setHeroVideoFailed(
+            false,
+          );
+
+          setHeroImageFailed(
+            false,
+          );
+        }
+      };
+
+    void loadHero();
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
+  /*=======================================================
+  Shared Hero Slideshow Rotation
+  =======================================================*/
+
+  useEffect(() => {
+    if (
+      !heroSettings.isEnabled ||
+      heroSettings.mode !==
+        "slideshow" ||
+      heroSettings.images.length <
+        2
+    ) {
+      return undefined;
+    }
+
+    const timer =
+      window.setInterval(
+        () => {
+          setHeroSlideIndex(
+            (current) =>
+              (current + 1) %
+              heroSettings.images.length,
+          );
+
+          setHeroImageFailed(
+            false,
+          );
+        },
+
+        heroSettings.rotationSeconds *
+          1000,
+      );
+
+    return () => {
+      window.clearInterval(
+        timer,
+      );
+    };
+  }, [
+    heroSettings.images.length,
+    heroSettings.isEnabled,
+    heroSettings.mode,
+    heroSettings.rotationSeconds,
+  ]);
+
+  /*=======================================================
+  Fetch Showcase
+  =======================================================*/
+
+  useEffect(() => {
+    const controller =
+      new AbortController();
+
+    let active = true;
+
+    async function fetchShowcase() {
+      if (
+        hasLoadedRef.current
+      ) {
+        setRefreshing(true);
+      } else {
+        setInitialLoading(true);
+      }
+
+      setErrorMessage("");
+
+      const params = {};
+
+      if (debouncedSearch) {
+        params.search =
+          debouncedSearch;
+      }
+
+      if (
+        selectedCategory !==
+        "All"
+      ) {
+        params.style =
+          selectedCategory;
+      }
+
+      try {
+        const response =
+          await API.get(
+            SHOWCASE_ENDPOINT,
+            {
+              params,
+
+              signal:
+                controller.signal,
+            },
+          );
+
+        if (!active) {
+          return;
+        }
+
+        const normalized =
+          extractShowcaseItems(
+            response,
+          )
+            .map(
+              normalizeShowcaseItem,
+            )
+            .filter(
+              (design) =>
+                design.isPublic &&
+                design.isPublished,
+            );
+
+        const uniqueDesigns =
+          Array.from(
+            new Map(
+              normalized.map(
+                (design) => [
+                  design.id ||
+                    design.slug,
+
+                  design,
+                ],
+              ),
+            ).values(),
+          );
+
+        setShowcaseItems(
+          uniqueDesigns,
+        );
+
+        hasLoadedRef.current =
+          true;
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+
+        const message =
+          getRequestErrorMessage(
+            error,
+          );
+
+        if (message) {
+          setErrorMessage(
+            message,
+          );
+        }
+      } finally {
+        if (active) {
+          setInitialLoading(
+            false,
+          );
+
+          setRefreshing(
+            false,
+          );
+        }
+      }
+    }
+
+    void fetchShowcase();
+
+    return () => {
+      active = false;
+
+      controller.abort();
+    };
+  }, [
+    debouncedSearch,
+    selectedCategory,
+    refreshVersion,
+  ]);
+
+  /*=======================================================
+  Filtering + Sorting
+  =======================================================*/
+
+  const visibleDesigns =
+    useMemo(() => {
+      const search =
+        debouncedSearch.toLowerCase();
+
+      const filtered =
+        showcaseItems.filter(
+          (design) => {
+            const categoryMatches =
+              selectedCategory ===
+                "All" ||
+              design.styleCategory
+                .toLowerCase() ===
+                selectedCategory.toLowerCase();
+
+            if (
+              !categoryMatches
+            ) {
+              return false;
+            }
+
+            if (!search) {
+              return true;
+            }
+
+            const searchableText =
+              [
+                design.title,
+                design.description,
+                design.ownerName,
+                design.styleCategory,
+                design.sourceType,
+                ...design.tags,
+              ]
+                .join(" ")
+                .toLowerCase();
+
+            return searchableText.includes(
+              search,
+            );
+          },
+        );
+
+      return [...filtered].sort(
+        (a, b) => {
+          if (
+            selectedSort ===
+            "highest-rated"
+          ) {
+            return (
+              b.rating -
+              a.rating
+            );
+          }
+
+          if (
+            selectedSort ===
+            "oldest"
+          ) {
+            return (
+              new Date(
+                a.createdAt || 0,
+              ).getTime() -
+              new Date(
+                b.createdAt || 0,
+              ).getTime()
+            );
+          }
+
+          if (
+            selectedSort ===
+            "title"
+          ) {
+            return a.title.localeCompare(
+              b.title,
+            );
+          }
+
+          return (
+            new Date(
+              b.createdAt || 0,
+            ).getTime() -
+            new Date(
+              a.createdAt || 0,
+            ).getTime()
+          );
+        },
+      );
+    }, [
+      showcaseItems,
+      debouncedSearch,
+      selectedCategory,
+      selectedSort,
+    ]);
+
+  const featuredDesigns =
+    useMemo(
+      () =>
+        visibleDesigns
+          .filter((design) =>
+            Boolean(
+              design.image,
+            ),
+          )
+          .slice(
+            0,
+            FEATURED_DESIGN_LIMIT,
+          ),
+
+      [visibleDesigns],
+    );
+
+  const trendingDesigns =
+    useMemo(
+      () =>
+        [...visibleDesigns]
+          .sort((a, b) => {
+            if (
+              b.rating !==
+              a.rating
+            ) {
+              return (
+                b.rating -
+                a.rating
+              );
+            }
+
+            return (
+              new Date(
+                b.createdAt || 0,
+              ).getTime() -
+              new Date(
+                a.createdAt || 0,
+              ).getTime()
+            );
+          })
+          .slice(
+            0,
+            TRENDING_DESIGN_LIMIT,
+          ),
+
+      [visibleDesigns],
+    );
+
+  const statistics =
+    useMemo(() => {
+      const designers =
+        new Set(
+          visibleDesigns
+            .map(
+              (design) =>
+                design.ownerId,
+            )
+            .filter(Boolean),
+        );
+
+      const editorDesigns =
+        visibleDesigns.filter(
+          isFashionEditorDesign,
+        );
+
+      return {
+        designs:
+          visibleDesigns.length,
+
+        designers:
+          designers.size,
+
+        editorProjects:
+          editorDesigns.length,
+      };
+    }, [visibleDesigns]);
+
+  const activeHeroDesign =
+    featuredDesigns[
+      currentSlide
+    ] || null;
+
+  /*=======================================================
+  Shared Hero Active Background
+  =======================================================*/
+
+  const sharedSlideshowActive =
+    heroSettings.isEnabled &&
+    heroSettings.mode ===
+      "slideshow" &&
+    heroSettings.images.length >
+      0;
+
+  const sharedVideoActive =
+    heroSettings.isEnabled &&
+    heroSettings.mode ===
+      "video" &&
+    Boolean(
+      heroSettings.videoUrl,
+    ) &&
+    !heroVideoFailed;
+
+  const currentSharedSlide =
+    sharedSlideshowActive
+      ? heroSettings.images[
+          heroSlideIndex %
+            Math.max(
+              heroSettings.images.length,
+              1,
+            )
+        ] || ""
+      : "";
+
+  const existingHeroImage =
+    activeHeroDesign?.image ||
+    "";
+
+  const heroFallbackImage =
+    heroSettings.isEnabled &&
+    heroSettings.mode ===
+      "video" &&
+    heroSettings.posterUrl
+      ? heroSettings.posterUrl
+      : currentSharedSlide ||
+        existingHeroImage;
+
+  /*=======================================================
+  Featured Design Metadata Rotation
+  =======================================================*/
+
+  useEffect(() => {
+    if (
+      currentSlide >=
+      featuredDesigns.length
+    ) {
+      setCurrentSlide(0);
+    }
+  }, [
+    currentSlide,
+    featuredDesigns.length,
+  ]);
+
+  useEffect(() => {
+    if (
+      featuredDesigns.length <=
+      1
+    ) {
+      return undefined;
+    }
+
+    const timer =
+      window.setInterval(
+        () => {
+          setCurrentSlide(
+            (previous) =>
+              (previous + 1) %
+              featuredDesigns.length,
+          );
+        },
+
+        HERO_ROTATION_MS,
+      );
+
+    return () =>
+      window.clearInterval(timer);
+  }, [
+    featuredDesigns.length,
+  ]);
+
+  useEffect(() => {
+    setHeroImageFailed(
+      false,
+    );
+  }, [heroFallbackImage]);
+
+  /*=======================================================
+  Actions
+  =======================================================*/
+
+  const openDesign =
+    (design) => {
+      navigate(
+        getShowcaseRoute(
+          design,
+        ),
+      );
+    };
+
+  const performPrimaryAction =
+    (design) => {
+      openDesign(design);
+    };
+
+  const refreshShowcase =
+    () => {
+      setRefreshVersion(
+        (version) =>
+          version + 1,
+      );
+    };
+
+  const clearFilters =
+    () => {
+      setSearchQuery("");
+
+      setDebouncedSearch("");
+
+      setSelectedCategory(
+        "All",
+      );
+
+      setSelectedSort(
+        "newest",
+      );
+    };
+
+  const applyCategory =
+    (category) => {
+      setSelectedCategory(
+        category,
+      );
+
+      window.setTimeout(
+        () => {
+          directoryRef.current
+            ?.scrollIntoView({
+              behavior: "smooth",
+
+              block: "start",
+            });
+        },
+
+        80,
+      );
+    };
+
+  const previousHeroSlide =
+    () => {
+      if (
+        featuredDesigns.length <=
+        1
+      ) {
+        return;
+      }
+
+      setCurrentSlide(
+        (previous) =>
+          (previous -
+            1 +
+            featuredDesigns.length) %
+          featuredDesigns.length,
+      );
+    };
+
+  const nextHeroSlide =
+    () => {
+      if (
+        featuredDesigns.length <=
+        1
+      ) {
+        return;
+      }
+
+      setCurrentSlide(
+        (previous) =>
+          (previous + 1) %
+          featuredDesigns.length,
+      );
+    };
+
+  const scrollTrending =
+    (direction) => {
+      const carousel =
+        trendingCarouselRef.current;
+
+      if (!carousel) {
+        return;
+      }
+
+      const distance =
+        Math.min(
+          carousel.clientWidth *
+            0.8,
+
+          720,
+        );
+
+      carousel.scrollBy({
+        left:
+          direction === "left"
+            ? -distance
+            : distance,
+
+        behavior: "smooth",
+      });
+    };
+
+  /*=======================================================
+  Render
+  =======================================================*/
+
+  return (
+    <div
+      className="
+        relative
+        min-h-screen
+        overflow-x-hidden
+        bg-[#f7f7f5]
+        pb-28
+        text-slate-900
+        transition-colors
+        duration-300
+        selection:bg-[#e5c67d]
+        selection:text-black
+
+        dark:bg-[#080808]
+        dark:text-white
+      "
+    >
+      {/*===================================================
+      Ambient Background
+      ===================================================*/}
+
+      <div
+        aria-hidden="true"
+        className="
+          pointer-events-none
+          fixed
+          inset-0
+          overflow-hidden
+        "
+      >
+        <div
+          className="
+            absolute
+            -left-56
+            top-[28rem]
+            h-[42rem]
+            w-[42rem]
+            rounded-full
+            bg-[#e5c67d]/[0.10]
+            blur-[170px]
+
+            dark:bg-[#e5c67d]/[0.055]
+          "
+        />
+
+        <div
+          className="
+            absolute
+            -right-52
+            top-[90rem]
+            h-[38rem]
+            w-[38rem]
+            rounded-full
+            bg-violet-400/[0.07]
+            blur-[160px]
+
+            dark:bg-violet-500/[0.05]
+          "
+        />
+      </div>
+
+      {/*===================================================
+      FULL-WIDTH HERO
+
+      Hero intentionally stays dark/cinematic regardless
+      of global Designer theme.
+      ===================================================*/}
+
+      <div
+        className="
+          relative
+          z-10
+          w-full
+          max-w-none
+          pt-6
+        "
+      >
+        <section
+          className="
+            relative
+            min-h-[610px]
+            w-full
+            max-w-none
+            overflow-hidden
+            border-y
+            border-white/10
+            bg-[#101010]
+            text-white
+            shadow-[0_36px_120px_rgba(0,0,0,0.45)]
+
+            dark:shadow-[0_36px_120px_rgba(0,0,0,0.7)]
+
+            sm:min-h-[680px]
+
+            lg:min-h-[720px]
+          "
+        >
+          {/* Shared / Fallback Hero Media */}
+
+          {sharedVideoActive ? (
+            <video
+              key={
+                heroSettings.videoUrl
+              }
+              src={
+                heroSettings.videoUrl
+              }
+              poster={
+                heroSettings.posterUrl ||
+                existingHeroImage ||
+                undefined
+              }
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              aria-hidden="true"
+              onError={() =>
+                setHeroVideoFailed(
+                  true,
+                )
+              }
+              className="
+                absolute
+                inset-0
+                h-full
+                w-full
+                object-cover
+                opacity-55
+              "
+            />
+          ) : heroFallbackImage &&
+            !heroImageFailed ? (
+            <img
+              key={
+                heroFallbackImage
+              }
+              src={
+                heroFallbackImage
+              }
+              alt=""
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
+              onError={() =>
+                setHeroImageFailed(
+                  true,
+                )
+              }
+              className="
+                absolute
+                inset-0
+                h-full
+                w-full
+                object-cover
+                opacity-50
+                transition-opacity
+                duration-700
+              "
+            />
+          ) : null}
+
+          {/* Hero overlays */}
+
+          <div
+            className="
+              absolute
+              inset-0
+              bg-gradient-to-r
+              from-[#070707]
+              via-[#070707]/90
+              to-[#070707]/20
+            "
+          />
+
+          <div
+            className="
+              absolute
+              inset-0
+              bg-gradient-to-t
+              from-[#080808]/95
+              via-transparent
+              to-black/25
+            "
+          />
+
+          <div
+            className="
+              absolute
+              inset-0
+              bg-[radial-gradient(circle_at_75%_25%,rgba(229,198,125,0.2),transparent_30%)]
+            "
+          />
+
+          {/* Hero content */}
+
+          {activeHeroDesign ? (
+            <>
+              <div
+                className="
+                  relative
+                  z-10
+                  mx-auto
+                  flex
+                  min-h-[610px]
+                  w-full
+                  max-w-[1800px]
+                  flex-col
+                  justify-center
+                  px-7
+                  py-20
+
+                  sm:min-h-[680px]
+                  sm:px-12
+
+                  md:px-16
+
+                  lg:min-h-[720px]
+                  lg:px-20
+                "
+              >
+                <div
+                  className="
+                    flex
+                    flex-wrap
+                    items-center
+                    gap-3
+                  "
+                >
+                  <span
+                    className="
+                      inline-flex
+                      items-center
+                      gap-2
+                      text-[10px]
+                      font-black
+                      uppercase
+                      tracking-[0.34em]
+                      text-[#e5c67d]
+                    "
+                  >
+                    <Sparkles
+                      size={14}
+                    />
+
+                    Designer Showcase
+                  </span>
+
+                  <span
+                    className="
+                      rounded-full
+                      border
+                      border-white/10
+                      bg-white/[0.05]
+                      px-3
+                      py-1.5
+                      text-[8px]
+                      font-black
+                      uppercase
+                      tracking-[0.16em]
+                      text-white/50
+                      backdrop-blur
+                    "
+                  >
+                    {
+                      activeHeroDesign.styleCategory
+                    }
+                  </span>
+
+                  {getDesignAction(
+                    activeHeroDesign,
+                    currentUserId,
+                  ).isOwnDesign && (
+                    <span
+                      className="
+                        inline-flex
+                        items-center
+                        gap-1.5
+                        rounded-full
+                        border
+                        border-[#e5c67d]/30
+                        bg-[#e5c67d]/10
+                        px-3
+                        py-1.5
+                        text-[8px]
+                        font-black
+                        uppercase
+                        tracking-[0.15em]
+                        text-[#e5c67d]
+                      "
+                    >
+                      <CheckCircle2
+                        size={11}
+                      />
+
+                      Your Design
+                    </span>
+                  )}
+                </div>
+
+                <h1
+                  className="
+                    mt-7
+                    max-w-5xl
+                    font-serif
+                    text-[3.8rem]
+                    leading-[0.9]
+                    tracking-[-0.055em]
+
+                    sm:text-7xl
+
+                    lg:text-[7rem]
+                  "
+                >
+                  Discover
+                  <br />
+
+                  <span
+                    className="
+                      italic
+                      text-[#e5c67d]
+                    "
+                  >
+                    Creative Vision
+                  </span>
+                </h1>
+
+                <p
+                  className="
+                    mt-8
+                    max-w-xl
+                    border-l
+                    border-[#e5c67d]/50
+                    pl-5
+                    text-base
+                    leading-8
+                    text-white/65
+
+                    sm:text-lg
+                  "
+                >
+                  Explore published fashion concepts, discover creative
+                  direction across the community, and share your own work.
+                </p>
+
+                <div
+                  className="
+                    mt-7
+                    flex
+                    flex-wrap
+                    items-center
+                    gap-x-5
+                    gap-y-3
+                    text-[9px]
+                    font-bold
+                    uppercase
+                    tracking-[0.15em]
+                    text-white/40
+                  "
+                >
+                  <span
+                    className="
+                      flex
+                      items-center
+                      gap-2
+                    "
+                  >
+                    <User size={13} />
+
+                    {
+                      activeHeroDesign.ownerName
+                    }
+                  </span>
+
+                  <span
+                    className="
+                      flex
+                      items-center
+                      gap-2
+                    "
+                  >
+                    <Clock3 size={13} />
+
+                    {formatPublishedDate(
+                      activeHeroDesign.createdAt,
+                    )}
+                  </span>
+
+                  {activeHeroDesign.rating >
+                    0 && (
+                    <span
+                      className="
+                        flex
+                        items-center
+                        gap-2
+                        text-[#e5c67d]
+                      "
+                    >
+                      <Star
+                        size={13}
+                        fill="currentColor"
+                      />
+
+                      {activeHeroDesign.rating.toFixed(
+                        1,
+                      )}
+                    </span>
+                  )}
+                </div>
+
+                <div
+                  className="
+                    mt-10
+                    flex
+                    flex-wrap
+                    gap-3
+                  "
+                >
+                  <PrimaryActionButton
+                    design={
+                      activeHeroDesign
+                    }
+                    currentUserId={
+                      currentUserId
+                    }
+                    onAction={
+                      performPrimaryAction
+                    }
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      directoryRef.current?.scrollIntoView(
+                        {
+                          behavior:
+                            "smooth",
+                        },
+                      )
+                    }
+                    className="
+                      inline-flex
+                      h-12
+                      items-center
+                      justify-center
+                      rounded-full
+                      border
+                      border-white/20
+                      bg-white/[0.06]
+                      px-7
+                      text-[9px]
+                      font-black
+                      uppercase
+                      tracking-[0.18em]
+                      text-white
+                      backdrop-blur
+                      transition
+
+                      hover:border-[#e5c67d]
+                      hover:text-[#e5c67d]
+                    "
+                  >
+                    Browse Collection
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(
+                        "/designer/upload",
+                      )
+                    }
+                    className="
+                      inline-flex
+                      h-12
+                      items-center
+                      justify-center
+                      gap-2
+                      rounded-full
+                      border
+                      border-white/20
+                      bg-white/[0.06]
+                      px-7
+                      text-[9px]
+                      font-black
+                      uppercase
+                      tracking-[0.18em]
+                      text-white
+                      backdrop-blur
+                      transition
+
+                      hover:border-[#e5c67d]
+                      hover:text-[#e5c67d]
+                    "
+                  >
+                    <UploadCloud
+                      size={14}
+                    />
+
+                    Publish Work
+                  </button>
+                </div>
+
+                <p
+                  className="
+                    mt-10
+                    max-w-lg
+                    font-serif
+                    text-xl
+                    italic
+                    text-white/38
+
+                    sm:text-2xl
+                  "
+                >
+                  “Create the work people remember.”
+                </p>
+              </div>
+
+              {featuredDesigns.length >
+                1 && (
+                <div
+                  className="
+                    absolute
+                    bottom-7
+                    left-0
+                    right-0
+                    z-20
+                    mx-auto
+                    flex
+                    w-full
+                    max-w-[1800px]
+                    items-center
+                    justify-between
+                    gap-4
+                    px-7
+
+                    sm:px-12
+
+                    lg:px-20
+                  "
+                >
+                  <div
+                    className="
+                      flex
+                      items-center
+                      gap-2
+                    "
+                  >
+                    {featuredDesigns.map(
+                      (
+                        design,
+                        index,
+                      ) => (
+                        <button
+                          key={
+                            design.id
+                          }
+                          type="button"
+                          onClick={() =>
+                            setCurrentSlide(
+                              index,
+                            )
+                          }
+                          aria-label={`Show featured design ${
+                            index +
+                            1
+                          }`}
+                          aria-current={
+                            currentSlide ===
+                            index
+                          }
+                          className={`h-1.5 rounded-full transition-all duration-500 ${
+                            currentSlide ===
+                            index
+                              ? "w-10 bg-[#e5c67d]"
+                              : "w-3 bg-white/25 hover:bg-white/50"
+                          }`}
+                        />
+                      ),
+                    )}
+                  </div>
+
+                  <div
+                    className="
+                      flex
+                      items-center
+                      gap-2
+                    "
+                  >
+                    <button
+                      type="button"
+                      onClick={
+                        previousHeroSlide
+                      }
+                      aria-label="Previous featured design"
+                      className="
+                        grid
+                        h-11
+                        w-11
+                        place-items-center
+                        rounded-full
+                        border
+                        border-white/10
+                        bg-black/30
+                        text-white/55
+                        backdrop-blur
+                        transition
+
+                        hover:border-[#e5c67d]
+                        hover:bg-[#e5c67d]
+                        hover:text-black
+                      "
+                    >
+                      <ChevronLeft
+                        size={17}
+                      />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={
+                        nextHeroSlide
+                      }
+                      aria-label="Next featured design"
+                      className="
+                        grid
+                        h-11
+                        w-11
+                        place-items-center
+                        rounded-full
+                        border
+                        border-white/10
+                        bg-black/30
+                        text-white/55
+                        backdrop-blur
+                        transition
+
+                        hover:border-[#e5c67d]
+                        hover:bg-[#e5c67d]
+                        hover:text-black
+                      "
+                    >
+                      <ChevronRight
+                        size={17}
+                      />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div
+              className="
+                relative
+                z-10
+                mx-auto
+                flex
+                min-h-[610px]
+                w-full
+                max-w-[1800px]
+                flex-col
+                items-center
+                justify-center
+                px-8
+                text-center
+
+                sm:min-h-[680px]
+
+                lg:min-h-[720px]
+              "
+            >
+              <div
+                className="
+                  relative
+                  z-10
+                  flex
+                  h-20
+                  w-20
+                  items-center
+                  justify-center
+                  rounded-full
+                  border
+                  border-[#e5c67d]/25
+                  bg-[#e5c67d]/10
+                  text-[#e5c67d]
+                "
+              >
+                {initialLoading ? (
+                  <Loader2
+                    size={32}
+                    className="animate-spin"
+                  />
+                ) : (
+                  <Sparkles
+                    size={32}
+                  />
+                )}
+              </div>
+
+              <p
+                className="
+                  relative
+                  z-10
+                  mt-7
+                  text-[10px]
+                  font-black
+                  uppercase
+                  tracking-[0.3em]
+                  text-[#e5c67d]
+                "
+              >
+                DesignByYou Showcase
+              </p>
+
+              <h1
+                className="
+                  relative
+                  z-10
+                  mt-4
+                  max-w-3xl
+                  font-serif
+                  text-5xl
+                  leading-tight
+                  tracking-tight
+
+                  sm:text-6xl
+                "
+              >
+                Fashion concepts worth discovering.
+              </h1>
+
+              <p
+                className="
+                  relative
+                  z-10
+                  mt-5
+                  max-w-xl
+                  text-sm
+                  leading-7
+                  text-white/40
+                "
+              >
+                Published work from across the DesignByYou community will appear
+                here.
+              </p>
+
+              {!initialLoading && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(
+                      "/designer/upload",
+                    )
+                  }
+                  className="
+                    relative
+                    z-10
+                    mt-8
+                    inline-flex
+                    h-12
+                    items-center
+                    justify-center
+                    gap-2
+                    rounded-full
+                    bg-[#e5c67d]
+                    px-7
+                    text-[9px]
+                    font-black
+                    uppercase
+                    tracking-[0.2em]
+                    text-black
+                    transition
+
+                    hover:bg-white
+                  "
+                >
+                  <UploadCloud
+                    size={15}
+                  />
+
+                  Publish a Design
+                </button>
+              )}
             </div>
-            <div className="hidden w-40 sm:block">
-              <div className="mb-2 flex justify-between text-[8px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/35"><span>Collection</span><span>{currentSlide + 1} of {HERO_SLIDES.length}</span></div>
-              <div className="h-px overflow-hidden bg-slate-200 dark:bg-white/20"><div className="h-full bg-[#e5c67d] transition-all duration-700" style={{ width: `${((currentSlide + 1) / HERO_SLIDES.length) * 100}%` }} /></div>
-            </div>
+          )}
+        </section>
+      </div>
+
+      {/*===================================================
+      NORMAL THEME-AWARE PAGE CONTENT
+      ===================================================*/}
+
+      <div
+        className="
+          relative
+          z-10
+          mx-auto
+          max-w-[1800px]
+          px-4
+
+          sm:px-6
+          md:px-10
+          lg:px-12
+        "
+      >
+        {/*=================================================
+        STATISTICS
+        =================================================*/}
+
+        <section
+          className="
+            relative
+            z-20
+            mx-3
+            -mt-8
+            grid
+            grid-cols-3
+            overflow-hidden
+            rounded-2xl
+            border
+            border-slate-200
+            bg-white/95
+            shadow-xl
+            backdrop-blur-2xl
+
+            dark:border-white/10
+            dark:bg-[#101010]/95
+
+            sm:mx-8
+
+            lg:mx-16
+          "
+        >
+          {[
+            {
+              label:
+                "Published Designs",
+
+              value:
+                statistics.designs,
+            },
+
+            {
+              label:
+                "Creative Profiles",
+
+              value:
+                statistics.designers,
+            },
+
+            {
+              label:
+                "Editor Projects",
+
+              value:
+                statistics.editorProjects,
+            },
+          ].map(
+            (
+              statistic,
+              index,
+            ) => (
+              <div
+                key={
+                  statistic.label
+                }
+                className={`px-3 py-5 text-center sm:px-6 sm:py-6 ${
+                  index > 0
+                    ? "border-l border-slate-200 dark:border-white/10"
+                    : ""
+                }`}
+              >
+                <p
+                  className="
+                    font-serif
+                    text-2xl
+                    text-slate-900
+
+                    dark:text-white
+
+                    sm:text-3xl
+                  "
+                >
+                  {
+                    statistic.value
+                  }
+                </p>
+
+                <p
+                  className="
+                    mt-1
+                    text-[7px]
+                    font-black
+                    uppercase
+                    tracking-[0.16em]
+                    text-slate-400
+
+                    dark:text-white/30
+
+                    sm:text-[9px]
+                    sm:tracking-[0.2em]
+                  "
+                >
+                  {
+                    statistic.label
+                  }
+                </p>
+              </div>
+            ),
+          )}
+        </section>
+
+        {/*=================================================
+        TRENDING SHOWCASE
+        =================================================*/}
+
+        {!initialLoading &&
+          trendingDesigns.length >
+            0 && (
+            <section
+              className="
+                py-20
+
+                sm:py-24
+              "
+            >
+              <SectionHeading
+                eyebrow="Now Inspiring"
+                title="Trending Showcase"
+                description="Creative work currently standing out across the DesignByYou community."
+                action={
+                  trendingDesigns.length >
+                  1 ? (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          scrollTrending(
+                            "left",
+                          )
+                        }
+                        aria-label="Scroll trending designs left"
+                        className="
+                          grid
+                          h-11
+                          w-11
+                          place-items-center
+                          rounded-full
+                          border
+                          border-slate-200
+                          bg-white
+                          text-slate-500
+                          shadow-sm
+                          transition
+
+                          hover:border-[#c99f3d]
+                          hover:text-[#9f7314]
+
+                          dark:border-white/10
+                          dark:bg-white/[0.04]
+                          dark:text-white/55
+                          dark:shadow-none
+                          dark:hover:border-[#e5c67d]
+                          dark:hover:text-[#e5c67d]
+                        "
+                      >
+                        <ChevronLeft
+                          size={17}
+                        />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          scrollTrending(
+                            "right",
+                          )
+                        }
+                        aria-label="Scroll trending designs right"
+                        className="
+                          grid
+                          h-11
+                          w-11
+                          place-items-center
+                          rounded-full
+                          border
+                          border-slate-200
+                          bg-white
+                          text-slate-500
+                          shadow-sm
+                          transition
+
+                          hover:border-[#c99f3d]
+                          hover:text-[#9f7314]
+
+                          dark:border-white/10
+                          dark:bg-white/[0.04]
+                          dark:text-white/55
+                          dark:shadow-none
+                          dark:hover:border-[#e5c67d]
+                          dark:hover:text-[#e5c67d]
+                        "
+                      >
+                        <ChevronRight
+                          size={17}
+                        />
+                      </button>
+                    </div>
+                  ) : null
+                }
+              />
+
+              {/*
+              Trending cards are image cards, so their
+              overlays remain cinematic in both themes.
+              */}
+
+              <div
+                ref={
+                  trendingCarouselRef
+                }
+                className="
+                  flex
+                  snap-x
+                  gap-5
+                  overflow-x-auto
+                  pb-3
+                  [scrollbar-width:none]
+
+                  [&::-webkit-scrollbar]:hidden
+                "
+              >
+                {trendingDesigns.map(
+                  (design) => {
+                    const action =
+                      getDesignAction(
+                        design,
+                        currentUserId,
+                      );
+
+                    return (
+                      <article
+                        key={
+                          design.id
+                        }
+                        className="
+                          group
+                          min-w-[300px]
+                          snap-start
+                          overflow-hidden
+                          rounded-[1.75rem]
+                          border
+                          border-slate-200
+                          bg-white
+                          shadow-sm
+                          transition
+
+                          hover:-translate-y-1
+                          hover:border-[#d1ab52]
+                          hover:shadow-lg
+
+                          dark:border-white/10
+                          dark:bg-[#111]
+                          dark:shadow-none
+                          dark:hover:border-[#e5c67d]/50
+
+                          sm:min-w-[420px]
+                        "
+                      >
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openDesign(
+                              design,
+                            )
+                          }
+                          className="
+                            relative
+                            block
+                            aspect-[16/10]
+                            w-full
+                            overflow-hidden
+                            text-left
+                          "
+                        >
+                          <ShowcaseImage
+                            src={
+                              design.image
+                            }
+                            alt={
+                              design.title
+                            }
+                            className="
+                              h-full
+                              w-full
+                              object-cover
+                              opacity-90
+                              transition
+                              duration-700
+
+                              group-hover:scale-105
+
+                              dark:opacity-80
+                            "
+                          />
+
+                          <div
+                            className="
+                              absolute
+                              inset-0
+                              bg-gradient-to-t
+                              from-black
+                              via-black/15
+                              to-transparent
+                            "
+                          />
+
+                          <div
+                            className="
+                              absolute
+                              left-4
+                              top-4
+                              flex
+                              flex-wrap
+                              gap-2
+                            "
+                          >
+                            <SourceBadge
+                              design={
+                                design
+                              }
+                            />
+
+                            {action.isOwnDesign && (
+                              <span
+                                className="
+                                  inline-flex
+                                  items-center
+                                  gap-1
+                                  rounded-full
+                                  border
+                                  border-[#e5c67d]/40
+                                  bg-black/50
+                                  px-2.5
+                                  py-1
+                                  text-[8px]
+                                  font-black
+                                  uppercase
+                                  tracking-[0.14em]
+                                  text-[#e5c67d]
+                                  backdrop-blur
+                                "
+                              >
+                                <CheckCircle2
+                                  size={10}
+                                />
+
+                                Yours
+                              </span>
+                            )}
+                          </div>
+
+                          <div
+                            className="
+                              absolute
+                              inset-x-0
+                              bottom-0
+                              p-5
+                              text-white
+                            "
+                          >
+                            <p
+                              className="
+                                text-[8px]
+                                font-black
+                                uppercase
+                                tracking-[0.18em]
+                                text-[#e5c67d]
+                              "
+                            >
+                              {
+                                design.styleCategory
+                              }
+                            </p>
+
+                            <div
+                              className="
+                                mt-2
+                                flex
+                                items-end
+                                justify-between
+                                gap-4
+                              "
+                            >
+                              <div className="min-w-0">
+                                <h3
+                                  className="
+                                    truncate
+                                    font-serif
+                                    text-2xl
+                                  "
+                                >
+                                  {
+                                    design.title
+                                  }
+                                </h3>
+
+                                <p
+                                  className="
+                                    mt-1
+                                    truncate
+                                    text-[9px]
+                                    font-bold
+                                    uppercase
+                                    tracking-[0.14em]
+                                    text-white/50
+                                  "
+                                >
+                                  By{" "}
+                                  {
+                                    design.ownerName
+                                  }
+                                </p>
+                              </div>
+
+                              <span
+                                className="
+                                  grid
+                                  h-10
+                                  w-10
+                                  shrink-0
+                                  place-items-center
+                                  rounded-full
+                                  border
+                                  border-white/20
+                                  bg-white/10
+                                  transition
+
+                                  group-hover:bg-[#e5c67d]
+                                  group-hover:text-black
+                                "
+                              >
+                                <ArrowRight
+                                  size={15}
+                                />
+                              </span>
+                            </div>
+                          </div>
+                        </button>
+                      </article>
+                    );
+                  },
+                )}
+              </div>
+            </section>
+          )}
+
+        {/*=================================================
+        BROWSE BY STYLE
+        =================================================*/}
+
+        <section
+          className="
+            border-t
+            border-slate-200
+            py-20
+
+            dark:border-white/[0.07]
+
+            sm:py-24
+          "
+        >
+          <SectionHeading
+            eyebrow="Find Your Language"
+            title="Browse by Style"
+            description="Explore the Showcase through different visual identities and creative directions."
+          />
+
+          <div
+            className="
+              grid
+              grid-cols-2
+              gap-3
+
+              sm:grid-cols-4
+
+              xl:grid-cols-7
+            "
+          >
+            {STYLE_CATEGORIES.filter(
+              (category) =>
+                category !==
+                "All",
+            ).map(
+              (
+                category,
+                index,
+              ) => (
+                <button
+                  key={
+                    category
+                  }
+                  type="button"
+                  onClick={() =>
+                    applyCategory(
+                      category,
+                    )
+                  }
+                  className={`group min-h-[135px] rounded-[1.5rem] border p-4 text-left shadow-sm transition hover:-translate-y-1 dark:shadow-none ${
+                    selectedCategory ===
+                    category
+                      ? "border-[#c89f3d] bg-[#fff8e5] dark:border-[#e5c67d] dark:bg-[#e5c67d]/10"
+                      : "border-slate-200 bg-white hover:border-[#d1ab52] hover:bg-[#fffaf0] dark:border-white/10 dark:bg-white/[0.025] dark:hover:border-[#e5c67d]/55 dark:hover:bg-[#e5c67d]/[0.07]"
+                  }`}
+                >
+                  <span
+                    className="
+                      text-[9px]
+                      font-black
+                      tracking-[0.15em]
+                      text-slate-300
+
+                      dark:text-white/20
+                    "
+                  >
+                    {String(
+                      index + 1,
+                    ).padStart(
+                      2,
+                      "0",
+                    )}
+                  </span>
+
+                  <Palette
+                    size={18}
+                    className="
+                      mt-6
+                      text-[#b88b20]
+
+                      dark:text-[#e5c67d]/70
+                    "
+                  />
+
+                  <p
+                    className="
+                      mt-3
+                      font-serif
+                      text-base
+                      text-slate-800
+                      transition
+
+                      group-hover:text-[#9f7314]
+
+                      dark:text-white
+                      dark:group-hover:text-[#e5c67d]
+                    "
+                  >
+                    {category}
+                  </p>
+                </button>
+              ),
+            )}
           </div>
         </section>
 
-        {/* TRENDING SECTION */}
-        {topDesigns.length > 0 && (
-          <section className="relative z-20 mx-2 -mt-16 mb-14 rounded-[1.75rem] border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-[#111]/90 p-5 shadow-xl dark:shadow-[0_24px_75px_rgba(0,0,0,0.55)] backdrop-blur-2xl sm:mx-8 sm:-mt-20 sm:p-7 lg:mx-14 transition-colors duration-300">
-            <div className="mb-6 flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#e5c67d]">The weekly edit</p>
-                <h2 className="mt-1 flex items-center gap-2 font-serif text-2xl text-slate-900 dark:text-white"><Flame size={20} className="text-rose-400" /> Trending designs</h2>
-              </div>
-              <div className="flex gap-2">
-                <button type="button" aria-label="Previous designs" onClick={() => scrollCarousel('left')} className="grid h-10 w-10 place-items-center rounded-full border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.06] text-slate-500 dark:text-white/60 transition hover:border-[#e5c67d] hover:bg-[#e5c67d] hover:text-white dark:hover:text-black"><ChevronLeft size={17} /></button>
-                <button type="button" aria-label="Next designs" onClick={() => scrollCarousel('right')} className="grid h-10 w-10 place-items-center rounded-full border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.06] text-slate-500 dark:text-white/60 transition hover:border-[#e5c67d] hover:bg-[#e5c67d] hover:text-white dark:hover:text-black"><ChevronRight size={17} /></button>
-              </div>
-            </div>
-            <div ref={carouselRef} className="flex snap-x gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-5">
-              {topDesigns.map((design, idx) => (
-                <button key={design.id || idx} type="button" onClick={() => navigate(`/designer/showcase/${design.slug}`)} className="group min-w-[235px] snap-start text-left sm:min-w-[300px]">
-                  <div className="relative h-40 overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/[0.03] sm:h-52">
-                    {design.watermarked_preview_url ? (
-                      <img src={design.watermarked_preview_url} alt={design.title || 'Design preview'} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
-                    ) : (
-                      <Sparkles size={27} className="absolute inset-0 m-auto text-slate-300 dark:text-white/15" />
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                    <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-black/50 px-2.5 py-1 text-[9px] font-black tracking-wider text-[#f1d995] backdrop-blur-md">
-                      <Star size={10} fill="currentColor" /> {parseFloat(design.avg_rating || 5).toFixed(1)}
-                    </span>
-                    <span className="absolute bottom-3 right-3 grid h-8 w-8 place-items-center rounded-full border border-white/15 bg-white/10 text-white opacity-0 backdrop-blur-md transition group-hover:opacity-100">
-                      <ArrowRight size={14} />
-                    </span>
-                  </div>
-                  <p className="mt-3 truncate font-serif text-base text-slate-800 dark:text-white/90 transition group-hover:text-[#e5c67d]">{design.title}</p>
-                  <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-white/40">By {design.owner_name || design.designer_name || 'Anonymous'}</p>
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
+        {/*=================================================
+        INSPIRATION DIRECTORY
+        =================================================*/}
 
-        {/* MAIN MASONRY + SIDEBAR SECTION */}
-        <section className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px] xl:gap-12">
-          
-          <div className="min-w-0">
-            {/* Search and Filters */}
-            <div className="mb-8 flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#e5c67d]">The inspiration directory</p>
-                <h2 className="mt-2 font-serif text-3xl sm:text-4xl text-slate-900 dark:text-white">Discover what&apos;s next.</h2>
+        <section
+          ref={directoryRef}
+          id="showcase-directory"
+          className="
+            scroll-mt-28
+            border-t
+            border-slate-200
+            py-20
+
+            dark:border-white/[0.07]
+
+            sm:py-24
+          "
+        >
+          <div
+            className="
+              flex
+              flex-col
+              gap-6
+
+              xl:flex-row
+              xl:items-end
+              xl:justify-between
+            "
+          >
+            <div>
+              <div
+                className="
+                  flex
+                  items-center
+                  gap-2
+                  text-[9px]
+                  font-black
+                  uppercase
+                  tracking-[0.3em]
+                  text-[#b88b20]
+
+                  dark:text-[#e5c67d]
+                "
+              >
+                <Compass size={13} />
+
+                The Inspiration Directory
               </div>
-              <label className="relative block w-full xl:w-[360px]">
-                <span className="sr-only">Search the inspiration directory</span>
-                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/35" size={16} />
-                <input 
-                  value={searchQuery} 
-                  onChange={(event) => setSearchQuery(event.target.value)} 
-                  placeholder="Search concepts or designers" 
-                  className="w-full rounded-full border border-slate-300 dark:border-white/10 bg-white dark:bg-white/[0.04] py-3.5 pl-12 pr-5 text-sm text-slate-900 dark:text-white outline-none transition placeholder:text-slate-400 dark:placeholder:text-white/28 focus:border-[#e5c67d] focus:ring-1 focus:ring-[#e5c67d] shadow-sm dark:shadow-none" 
-                />
-              </label>
+
+              <h2
+                className="
+                  mt-3
+                  font-serif
+                  text-4xl
+                  tracking-tight
+                  text-slate-900
+
+                  dark:text-white
+
+                  sm:text-5xl
+                "
+              >
+                Discover what&apos;s next.
+              </h2>
+
+              <p
+                className="
+                  mt-3
+                  max-w-xl
+                  text-sm
+                  leading-7
+                  text-slate-500
+
+                  dark:text-white/40
+                "
+              >
+                Browse published work from across the platform and discover new
+                creative directions.
+              </p>
             </div>
-            
-            <div className="mb-8 flex flex-wrap gap-2">
-              {CATEGORIES.map((category) => (
-                <button 
-                  key={category} 
-                  type="button" 
-                  onClick={() => setSelectedCategory(category)} 
-                  className={`rounded-full px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] transition ${selectedCategory === category ? 'bg-[#e5c67d] text-black shadow-[0_0_24px_rgba(229,198,125,0.25)]' : 'border border-slate-300 dark:border-white/10 bg-white dark:bg-white/[0.03] text-slate-600 dark:text-white/48 hover:border-slate-400 dark:hover:border-white/25 hover:text-slate-900 dark:hover:text-white'}`}
+
+            <div
+              className="
+                flex
+                w-full
+                flex-col
+                gap-3
+
+                sm:flex-row
+
+                xl:w-auto
+              "
+            >
+              <label
+                className="
+                  relative
+                  block
+                  w-full
+
+                  sm:min-w-[320px]
+
+                  xl:w-[380px]
+                "
+              >
+                <span className="sr-only">
+                  Search Showcase designs
+                </span>
+
+                <Search
+                  size={16}
+                  className="
+                    pointer-events-none
+                    absolute
+                    left-5
+                    top-1/2
+                    -translate-y-1/2
+                    text-slate-400
+
+                    dark:text-white/30
+                  "
+                />
+
+                <input
+                  type="search"
+                  value={
+                    searchQuery
+                  }
+                  onChange={(event) =>
+                    setSearchQuery(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="Search designs or creators"
+                  autoComplete="off"
+                  className="
+                    h-[52px]
+                    w-full
+                    rounded-full
+                    border
+                    border-slate-200
+                    bg-white
+                    py-3.5
+                    pl-12
+                    pr-12
+                    text-sm
+                    text-slate-900
+                    shadow-sm
+                    outline-none
+                    transition
+                    placeholder:text-slate-400
+
+                    focus:border-[#c89f3d]
+                    focus:ring-4
+                    focus:ring-[#e5c67d]/10
+
+                    dark:border-white/10
+                    dark:bg-white/[0.04]
+                    dark:text-white
+                    dark:shadow-none
+                    dark:placeholder:text-white/25
+                    dark:focus:border-[#e5c67d]
+                  "
+                />
+
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSearchQuery("")
+                    }
+                    aria-label="Clear search"
+                    className="
+                      absolute
+                      right-4
+                      top-1/2
+                      flex
+                      h-7
+                      w-7
+                      -translate-y-1/2
+                      items-center
+                      justify-center
+                      rounded-full
+                      text-slate-400
+                      transition
+
+                      hover:bg-slate-100
+                      hover:text-slate-800
+
+                      dark:text-white/30
+                      dark:hover:bg-white/10
+                      dark:hover:text-white
+                    "
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </label>
+
+              <select
+                value={
+                  selectedSort
+                }
+                onChange={(event) =>
+                  setSelectedSort(
+                    event.target.value,
+                  )
+                }
+                aria-label="Sort Showcase designs"
+                className="
+                  min-h-[52px]
+                  w-full
+                  rounded-full
+                  border
+                  border-slate-200
+                  bg-white
+                  px-5
+                  text-[10px]
+                  font-black
+                  uppercase
+                  tracking-[0.15em]
+                  text-slate-600
+                  shadow-sm
+                  outline-none
+                  transition
+
+                  focus:border-[#c89f3d]
+                  focus:ring-4
+                  focus:ring-[#e5c67d]/10
+
+                  dark:border-white/10
+                  dark:bg-[#111]
+                  dark:text-white/60
+                  dark:shadow-none
+                  dark:focus:border-[#e5c67d]
+
+                  sm:w-[190px]
+                "
+              >
+                {SORT_OPTIONS.map(
+                  (option) => (
+                    <option
+                      key={
+                        option.value
+                      }
+                      value={
+                        option.value
+                      }
+                    >
+                      {option.label}
+                    </option>
+                  ),
+                )}
+              </select>
+            </div>
+          </div>
+
+          {/* Category Chips */}
+
+          <div
+            className="
+              mt-7
+              flex
+              items-center
+              gap-2
+              overflow-x-auto
+              pb-2
+              [scrollbar-width:none]
+
+              [&::-webkit-scrollbar]:hidden
+            "
+          >
+            {STYLE_CATEGORIES.map(
+              (category) => (
+                <button
+                  key={
+                    category
+                  }
+                  type="button"
+                  onClick={() =>
+                    setSelectedCategory(
+                      category,
+                    )
+                  }
+                  className={`shrink-0 rounded-full border px-4 py-2.5 text-[9px] font-black uppercase tracking-[0.14em] transition ${
+                    selectedCategory ===
+                    category
+                      ? "border-[#c89f3d] bg-[#e5c67d] text-black"
+                      : "border-slate-200 bg-white text-slate-500 hover:border-[#c89f3d] hover:text-[#9f7314] dark:border-white/10 dark:bg-white/[0.035] dark:text-white/40 dark:hover:border-[#e5c67d]/50 dark:hover:text-[#e5c67d]"
+                  }`}
                 >
                   {category}
                 </button>
-              ))}
-            </div>
+              ),
+            )}
+          </div>
 
-            {/* Error / Loading / Empty States */}
-            {error && <div className="mb-7 flex items-center gap-3 rounded-2xl border border-rose-400/20 bg-rose-50 dark:bg-rose-400/10 px-5 py-4 text-sm text-rose-600 dark:text-rose-200"><ShieldAlert size={18} /> {error}</div>}
-            
-            {loading ? (
-              <div className="flex min-h-[380px] flex-col items-center justify-center gap-4">
-                <div className="relative">
-                  <div className="absolute inset-0 rounded-full border-t-2 border-[#e5c67d] animate-spin" />
-                  <Loader2 className="animate-spin text-slate-300 dark:text-white/20" size={44} />
+          {/* Status Bar */}
+
+          <div
+            className="
+              mt-8
+              flex
+              flex-wrap
+              items-center
+              justify-between
+              gap-4
+              border-y
+              border-slate-200
+              py-4
+
+              dark:border-white/[0.07]
+            "
+          >
+            <p
+              className="
+                text-[9px]
+                font-black
+                uppercase
+                tracking-[0.18em]
+                text-slate-400
+
+                dark:text-white/30
+              "
+            >
+              {initialLoading
+                ? "Loading collection"
+                : `${visibleDesigns.length} design${
+                    visibleDesigns.length ===
+                    1
+                      ? ""
+                      : "s"
+                  } found`}
+            </p>
+
+            <div
+              className="
+                flex
+                items-center
+                gap-3
+              "
+            >
+              {refreshing && (
+                <span
+                  className="
+                    inline-flex
+                    items-center
+                    gap-2
+                    text-[8px]
+                    font-bold
+                    uppercase
+                    tracking-[0.14em]
+                    text-[#b88b20]
+
+                    dark:text-[#e5c67d]
+                  "
+                >
+                  <Loader2
+                    size={12}
+                    className="animate-spin"
+                  />
+
+                  Refreshing
+                </span>
+              )}
+
+              <button
+                type="button"
+                onClick={
+                  refreshShowcase
+                }
+                disabled={
+                  refreshing
+                }
+                className="
+                  inline-flex
+                  h-10
+                  items-center
+                  gap-2
+                  rounded-full
+                  border
+                  border-slate-200
+                  bg-white
+                  px-4
+                  text-[8px]
+                  font-black
+                  uppercase
+                  tracking-[0.15em]
+                  text-slate-500
+                  shadow-sm
+                  transition
+
+                  hover:border-[#c89f3d]
+                  hover:text-[#9f7314]
+
+                  disabled:opacity-50
+
+                  dark:border-white/10
+                  dark:bg-white/[0.035]
+                  dark:text-white/40
+                  dark:shadow-none
+                  dark:hover:border-[#e5c67d]
+                  dark:hover:text-[#e5c67d]
+                "
+              >
+                <RefreshCw
+                  size={13}
+                  className={
+                    refreshing
+                      ? "animate-spin"
+                      : ""
+                  }
+                />
+
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          {/* Error */}
+
+          {errorMessage && (
+            <div
+              className="
+                mt-8
+                flex
+                flex-col
+                items-center
+                justify-between
+                gap-4
+                rounded-2xl
+                border
+                border-rose-200
+                bg-rose-50
+                px-5
+                py-5
+                text-rose-700
+
+                dark:border-rose-400/20
+                dark:bg-rose-400/10
+                dark:text-rose-200
+
+                sm:flex-row
+              "
+            >
+              <div
+                className="
+                  flex
+                  items-start
+                  gap-3
+                "
+              >
+                <ShieldAlert
+                  size={18}
+                  className="
+                    mt-0.5
+                    shrink-0
+                  "
+                />
+
+                <div>
+                  <p className="text-sm font-semibold">
+                    Showcase unavailable
+                  </p>
+
+                  <p
+                    className="
+                      mt-1
+                      text-xs
+                      leading-6
+                      opacity-80
+                    "
+                  >
+                    {errorMessage}
+                  </p>
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500 dark:text-white/45">Curating the edit</span>
               </div>
-            ) : items.length === 0 ? (
-              <div className="flex min-h-[380px] flex-col items-center justify-center rounded-[2rem] border border-dashed border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-white/[0.02] px-6 text-center">
-                <Sparkles className="mb-5 text-[#e5c67d]/60" size={38} />
-                <p className="font-serif text-2xl italic text-slate-800 dark:text-white">No portfolios found.</p>
-                <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-white/35">Adjust your search parameters.</p>
-              </div>
-            ) : (
-              /* MASONRY GRID */
-              <div className="columns-1 gap-5 space-y-5 sm:columns-2 xl:columns-3">
-                {items.map((item, index) => {
-                  const dynamicRatio = aspectRatios[index % aspectRatios.length];
-                  const designerId = String(item.owner_id || item.designer_id);
-                  const isOwnItem = designerId === currentUserId;
+
+              <button
+                type="button"
+                onClick={
+                  refreshShowcase
+                }
+                className="
+                  inline-flex
+                  h-10
+                  shrink-0
+                  items-center
+                  gap-2
+                  rounded-full
+                  bg-rose-600
+                  px-4
+                  text-[8px]
+                  font-black
+                  uppercase
+                  tracking-[0.15em]
+                  text-white
+                "
+              >
+                <RefreshCw
+                  size={13}
+                />
+
+                Try Again
+              </button>
+            </div>
+          )}
+
+          {/*=================================================
+          DESIGN GRID
+          =================================================*/}
+
+          {initialLoading ? (
+            <div
+              className="
+                mt-8
+                grid
+                gap-5
+
+                sm:grid-cols-2
+
+                lg:grid-cols-3
+
+                xl:grid-cols-4
+              "
+            >
+              {Array.from({
+                length: 8,
+              }).map(
+                (
+                  _,
+                  index,
+                ) => (
+                  <ShowcaseSkeleton
+                    key={index}
+                  />
+                ),
+              )}
+            </div>
+          ) : visibleDesigns.length >
+            0 ? (
+            <div
+              className="
+                mt-8
+                grid
+                gap-5
+
+                sm:grid-cols-2
+
+                lg:grid-cols-3
+
+                xl:grid-cols-4
+              "
+            >
+              {visibleDesigns.map(
+                (design) => {
+                  const action =
+                    getDesignAction(
+                      design,
+
+                      currentUserId,
+                    );
 
                   return (
-                    <article key={item.id || index} className="group relative mb-5 break-inside-avoid overflow-hidden rounded-[1.5rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-[#111] shadow-md dark:shadow-[0_14px_35px_rgba(0,0,0,0.32)] transition duration-500 hover:-translate-y-1.5 hover:border-[#e5c67d]/55 hover:shadow-xl dark:hover:shadow-[0_24px_55px_rgba(0,0,0,0.55)]">
-                      <div onClick={() => navigate(`/designer/showcase/${item.slug || item.id}`)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') navigate(`/designer/showcase/${item.slug || item.id}`); }} role="button" tabIndex={0} className="relative cursor-pointer overflow-hidden" style={{ aspectRatio: dynamicRatio }}>
-                        
-                        {item.watermarked_preview_url ? (
-                          <img src={item.watermarked_preview_url} alt={item.title || 'Design preview'} className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.06]" />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center bg-slate-50 dark:bg-white/[0.03]"><Sparkles size={32} className="text-slate-300 dark:text-white/15" /></div>
-                        )}
-                        
-                        {/* 🚀 OVERLAYS AND TEXT INSIDE THE IMAGE CARD ARE KEPT STRICTLY DARK FOR CONTRAST */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/15 to-transparent opacity-75 transition group-hover:opacity-100" />
-                        
-                        {/* Top Badges */}
-                        <div className="absolute top-5 left-5 right-5 flex justify-between items-start opacity-0 group-hover:opacity-100 transition-opacity duration-700 delay-100 pointer-events-none">
-                            <div className="bg-white/80 dark:bg-black/40 backdrop-blur-md border border-white/20 dark:border-white/10 px-3 py-1.5 rounded-full text-[8px] font-black uppercase tracking-[0.2em] text-slate-800 dark:text-white shadow-sm">
-                                {item.style_category || 'Concept'}
-                            </div>
-                            {isOwnItem && (
-                                <div className="bg-[#D4AF37]/20 backdrop-blur-md border border-[#D4AF37]/50 px-3 py-1.5 rounded-full text-[8px] font-black uppercase tracking-[0.2em] text-[#D4AF37]">
-                                    Your Asset
-                                </div>
-                            )}
+                    <article
+                      key={
+                        design.id
+                      }
+                      className="
+                        group
+                        overflow-hidden
+                        rounded-[1.75rem]
+                        border
+                        border-slate-200
+                        bg-white
+                        shadow-sm
+                        transition
+                        duration-500
+
+                        hover:-translate-y-1
+                        hover:border-[#d1ab52]
+                        hover:shadow-xl
+
+                        dark:border-white/10
+                        dark:bg-[#111]
+                        dark:shadow-none
+                        dark:hover:border-[#e5c67d]/50
+                        dark:hover:shadow-[0_24px_60px_rgba(0,0,0,0.45)]
+                      "
+                    >
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openDesign(
+                            design,
+                          )
+                        }
+                        className="
+                          relative
+                          block
+                          aspect-[4/5]
+                          w-full
+                          overflow-hidden
+                          text-left
+                        "
+                      >
+                        <ShowcaseImage
+                          src={
+                            design.image
+                          }
+                          alt={
+                            design.title
+                          }
+                          className="
+                            h-full
+                            w-full
+                            object-cover
+                            transition
+                            duration-700
+
+                            group-hover:scale-[1.05]
+                          "
+                        />
+
+                        <div
+                          className="
+                            absolute
+                            inset-0
+                            bg-gradient-to-t
+                            from-black/85
+                            via-transparent
+                            to-black/5
+                          "
+                        />
+
+                        <div
+                          className="
+                            absolute
+                            left-4
+                            right-4
+                            top-4
+                            flex
+                            flex-wrap
+                            items-start
+                            justify-between
+                            gap-2
+                          "
+                        >
+                          <SourceBadge
+                            design={
+                              design
+                            }
+                          />
+
+                          {action.isOwnDesign && (
+                            <span
+                              className="
+                                inline-flex
+                                items-center
+                                gap-1
+                                rounded-full
+                                border
+                                border-[#e5c67d]/40
+                                bg-black/50
+                                px-2.5
+                                py-1
+                                text-[8px]
+                                font-black
+                                uppercase
+                                tracking-[0.14em]
+                                text-[#e5c67d]
+                                backdrop-blur
+                              "
+                            >
+                              <CheckCircle2
+                                size={10}
+                              />
+
+                              Your Design
+                            </span>
+                          )}
                         </div>
 
-                        <div className="absolute inset-x-0 bottom-0 translate-y-3 p-5 opacity-0 transition duration-500 group-hover:translate-y-0 group-hover:opacity-100">
-                          <h3 className="truncate font-serif text-xl text-white">{item.title}</h3>
-                          
-                          <div className="mt-2 flex items-center gap-2">
-                            <div className="h-6 w-6 overflow-hidden rounded-full border border-white/20 bg-white/10">
-                              {item.owner_avatar || item.designer_avatar ? (
-                                <img src={item.owner_avatar || item.designer_avatar} alt="" className="h-full w-full object-cover" />
-                              ) : (
-                                <User size={12} className="m-auto mt-[5px] text-white/55" />
-                              )}
-                            </div>
-                            <p className="truncate text-[9px] font-black uppercase tracking-[0.15em] text-white/70">{item.owner_name || item.designer_name || 'Anonymous'}</p>
-                          </div>
-                          
-                          {/* CTAs (Remix + Logic-based secondary button) */}
-                          <div className="mt-5 grid grid-cols-2 gap-2.5">
-                            
-                            <button 
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                navigate(`/designer/sketch?remix=${item.slug}`); 
-                              }} 
-                              className="flex items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/5 py-3 text-[9px] font-black uppercase tracking-[0.16em] text-white transition hover:bg-white/20 backdrop-blur-md"
+                        <div
+                          className="
+                            absolute
+                            bottom-4
+                            left-4
+                            right-4
+                          "
+                        >
+                          <span
+                            className="
+                              rounded-full
+                              bg-black/55
+                              px-3
+                              py-1.5
+                              text-[8px]
+                              font-bold
+                              text-[#e5c67d]
+                              backdrop-blur
+                            "
+                          >
+                            {
+                              design.styleCategory
+                            }
+                          </span>
+                        </div>
+                      </button>
+
+                      <div className="p-5">
+                        <div
+                          className="
+                            flex
+                            items-start
+                            justify-between
+                            gap-3
+                          "
+                        >
+                          <div
+                            className="
+                              min-w-0
+                              flex-1
+                            "
+                          >
+                            <p
+                              className="
+                                text-[8px]
+                                font-black
+                                uppercase
+                                tracking-[0.18em]
+                                text-[#b88b20]
+
+                                dark:text-[#e5c67d]
+                              "
                             >
-                              <Edit2 size={12} /> Remix
+                              {
+                                design.styleCategory
+                              }
+                            </p>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openDesign(
+                                  design,
+                                )
+                              }
+                              className="
+                                block
+                                w-full
+                                text-left
+                              "
+                            >
+                              <h3
+                                className="
+                                  mt-2
+                                  line-clamp-2
+                                  font-serif
+                                  text-2xl
+                                  leading-tight
+                                  text-slate-900
+                                  transition
+
+                                  hover:text-[#9f7314]
+
+                                  dark:text-white
+                                  dark:hover:text-[#e5c67d]
+                                "
+                              >
+                                {
+                                  design.title
+                                }
+                              </h3>
                             </button>
-
-                            {isOwnItem ? (
-                                <div className="flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl text-[9px] uppercase tracking-[0.16em] font-bold text-white/50 cursor-default">
-                                    <ShieldCheck size={12} /> Owned
-                                </div>
-                            ) : isCreator ? (
-                                <Link 
-                                    to={`/creator/bookings/new?designer_id=${designerId}&design_id=${item.id}&budget=${item.starting_price || item.base_price || 0}`} 
-                                    onClick={(event) => event.stopPropagation()} 
-                                    className="flex items-center justify-center gap-1.5 rounded-xl bg-[#e5c67d] py-3 text-[9px] font-black uppercase tracking-[0.16em] text-black transition hover:bg-white shadow-md"
-                                >
-                                    <Zap size={12} /> Book
-                                </Link>
-                            ) : (
-                                <div className="flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/15 text-white backdrop-blur-xl transition-all duration-300 text-[9px] uppercase tracking-[0.16em] font-bold">
-                                    <Eye size={12} /> View
-                                </div>
-                            )}
-
                           </div>
+
+                          {design.rating >
+                            0 && (
+                            <span
+                              className="
+                                inline-flex
+                                shrink-0
+                                items-center
+                                gap-1
+                                rounded-full
+                                bg-[#e5c67d]/15
+                                px-2.5
+                                py-1.5
+                                text-[9px]
+                                font-bold
+                                text-[#9f7314]
+
+                                dark:bg-[#e5c67d]/10
+                                dark:text-[#e5c67d]
+                              "
+                            >
+                              <Star
+                                size={11}
+                                fill="currentColor"
+                              />
+
+                              {design.rating.toFixed(
+                                1,
+                              )}
+                            </span>
+                          )}
+                        </div>
+
+                        <p
+                          className="
+                            mt-3
+                            line-clamp-2
+                            text-xs
+                            leading-6
+                            text-slate-500
+
+                            dark:text-white/40
+                          "
+                        >
+                          {
+                            design.description
+                          }
+                        </p>
+
+                        {/* Owner */}
+
+                        <div
+                          className="
+                            mt-4
+                            flex
+                            items-center
+                            gap-3
+                            border-y
+                            border-slate-100
+                            py-3
+
+                            dark:border-white/[0.06]
+                          "
+                        >
+                          <div
+                            className="
+                              flex
+                              h-9
+                              w-9
+                              shrink-0
+                              items-center
+                              justify-center
+                              overflow-hidden
+                              rounded-full
+                              border
+                              border-slate-200
+                              bg-slate-50
+                              text-slate-400
+
+                              dark:border-white/10
+                              dark:bg-white/[0.05]
+                              dark:text-white/25
+                            "
+                          >
+                            {design.ownerAvatar ? (
+                              <ShowcaseImage
+                                src={
+                                  design.ownerAvatar
+                                }
+                                alt=""
+                                className="
+                                  h-full
+                                  w-full
+                                  object-cover
+                                "
+                              />
+                            ) : (
+                              <User
+                                size={14}
+                              />
+                            )}
+                          </div>
+
+                          <div className="min-w-0">
+                            <p
+                              className="
+                                truncate
+                                text-xs
+                                font-semibold
+                                text-slate-700
+
+                                dark:text-white/65
+                              "
+                            >
+                              {
+                                design.ownerName
+                              }
+                            </p>
+
+                            <p
+                              className="
+                                mt-0.5
+                                text-[8px]
+                                font-bold
+                                uppercase
+                                tracking-[0.14em]
+                                text-slate-400
+
+                                dark:text-white/25
+                              "
+                            >
+                              {formatPublishedDate(
+                                design.createdAt,
+                              )}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Tags */}
+
+                        {design.tags.length >
+                          0 && (
+                          <div
+                            className="
+                              mt-4
+                              flex
+                              flex-wrap
+                              gap-1.5
+                            "
+                          >
+                            {design.tags
+                              .slice(
+                                0,
+                                3,
+                              )
+                              .map(
+                                (tag) => (
+                                  <span
+                                    key={`${design.id}-${tag}`}
+                                    className="
+                                      inline-flex
+                                      max-w-full
+                                      items-center
+                                      gap-1
+                                      rounded-full
+                                      bg-slate-100
+                                      px-2.5
+                                      py-1.5
+                                      text-[8px]
+                                      font-bold
+                                      uppercase
+                                      tracking-[0.1em]
+                                      text-slate-500
+
+                                      dark:bg-white/[0.05]
+                                      dark:text-white/35
+                                    "
+                                  >
+                                    <Tag
+                                      size={9}
+                                    />
+
+                                    <span className="truncate">
+                                      {tag}
+                                    </span>
+                                  </span>
+                                ),
+                              )}
+                          </div>
+                        )}
+
+                        <div className="mt-5">
+                          <PrimaryActionButton
+                            design={
+                              design
+                            }
+                            currentUserId={
+                              currentUserId
+                            }
+                            onAction={
+                              performPrimaryAction
+                            }
+                            compact
+                          />
                         </div>
                       </div>
                     </article>
                   );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* SIDEBAR: Top Visionaries */}
-          <aside className="h-fit rounded-[2rem] border border-slate-200 dark:border-white/10 bg-white/80 dark:bg-[#111]/80 p-6 shadow-xl dark:shadow-[0_18px_50px_rgba(0,0,0,0.32)] backdrop-blur-xl lg:sticky lg:top-8 transition-colors duration-300">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#e5c67d]">The network</p>
-            <h2 className="mt-2 flex items-center gap-2 font-serif text-2xl text-slate-900 dark:text-white"><Crown size={20} className="text-[#e5c67d]" /> Top visionaries</h2>
-            <p className="mt-3 border-b border-slate-200 dark:border-white/10 pb-6 text-sm leading-6 text-slate-500 dark:text-white/45">Meet the designers earning the strongest community response.</p>
-            
-            <div className="mt-5 space-y-2">
-              {topDesigners.length === 0 && !loading ? (
-                <p className="py-8 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-white/35">No data available</p>
-              ) : (
-                topDesigners.map((designer, idx) => (
-                  <button 
-                    key={designer.id || idx} 
-                    type="button" 
-                    onClick={() => navigate(`/directory/${designer.id || designer._id}`)} 
-                    className="group flex w-full items-center justify-between gap-3 rounded-2xl p-3 text-left transition hover:bg-slate-50 dark:hover:bg-white/[0.06]"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/10">
-                        <img src={designer.profile_image_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${designer.id}`} alt="" className="h-full w-full object-cover" />
-                        {idx === 0 && <span className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full bg-[#e5c67d] text-[8px] font-black text-black">1</span>}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate font-serif text-base text-slate-800 dark:text-white transition group-hover:text-[#e5c67d] dark:group-hover:text-[#e5c67d]">
-                          {designer.full_name || designer.username || 'Visionary'}
-                        </p>
-                        <p className="mt-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">
-                          {designer.total_completed_bookings || 0} bookings
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight size={16} className="shrink-0 text-slate-400 dark:text-white/35 transition group-hover:translate-x-0.5 group-hover:text-[#e5c67d] dark:group-hover:text-[#e5c67d]" />
-                  </button>
-                ))
+                },
               )}
             </div>
-          </aside>
+          ) : (
+            <div
+              className="
+                mt-8
+                flex
+                min-h-[360px]
+                flex-col
+                items-center
+                justify-center
+                rounded-[2rem]
+                border
+                border-dashed
+                border-slate-300
+                bg-white/60
+                px-6
+                text-center
 
+                dark:border-white/15
+                dark:bg-white/[0.02]
+              "
+            >
+              <div
+                className="
+                  flex
+                  h-16
+                  w-16
+                  items-center
+                  justify-center
+                  rounded-full
+                  border
+                  border-[#c89f3d]/30
+                  bg-[#e5c67d]/15
+                  text-[#9f7314]
+
+                  dark:border-[#e5c67d]/25
+                  dark:bg-[#e5c67d]/10
+                  dark:text-[#e5c67d]
+                "
+              >
+                <Compass
+                  size={26}
+                />
+              </div>
+
+              <h3
+                className="
+                  mt-6
+                  font-serif
+                  text-3xl
+                  text-slate-900
+
+                  dark:text-white
+                "
+              >
+                No designs match your filters.
+              </h3>
+
+              <p
+                className="
+                  mt-3
+                  max-w-md
+                  text-sm
+                  leading-7
+                  text-slate-500
+
+                  dark:text-white/40
+                "
+              >
+                Clear the search and style filters to return to the complete
+                Showcase.
+              </p>
+
+              <button
+                type="button"
+                onClick={
+                  clearFilters
+                }
+                className="
+                  mt-7
+                  inline-flex
+                  h-11
+                  items-center
+                  gap-2
+                  rounded-full
+                  bg-[#e5c67d]
+                  px-5
+                  text-[9px]
+                  font-black
+                  uppercase
+                  tracking-[0.18em]
+                  text-black
+                  transition
+
+                  hover:bg-amber-200
+
+                  dark:hover:bg-white
+                "
+              >
+                <RefreshCw
+                  size={14}
+                />
+
+                Clear Filters
+              </button>
+            </div>
+          )}
         </section>
-      </main>
+
+        {/*=================================================
+        PUBLISH YOUR WORK
+        =================================================*/}
+
+        <section
+          className="
+            relative
+            mt-8
+            overflow-hidden
+            rounded-[2.5rem]
+            border
+            border-[#d8ba71]/50
+            bg-white
+            px-6
+            py-16
+            text-center
+            shadow-sm
+
+            dark:border-[#e5c67d]/20
+            dark:bg-[#111]
+            dark:shadow-none
+
+            sm:px-10
+            sm:py-20
+
+            lg:px-16
+            lg:py-24
+          "
+        >
+          <div
+            aria-hidden="true"
+            className="
+              absolute
+              left-1/2
+              top-1/2
+              h-[32rem]
+              w-[32rem]
+              -translate-x-1/2
+              -translate-y-1/2
+              rounded-full
+              bg-[#e5c67d]/[0.12]
+              blur-[120px]
+
+              dark:bg-[#e5c67d]/[0.08]
+            "
+          />
+
+          <div
+            className="
+              relative
+              z-10
+              mx-auto
+              max-w-4xl
+            "
+          >
+            <UploadCloud
+              size={25}
+              className="
+                mx-auto
+                text-[#b88b20]
+
+                dark:text-[#e5c67d]
+              "
+            />
+
+            <p
+              className="
+                mt-5
+                text-[9px]
+                font-black
+                uppercase
+                tracking-[0.32em]
+                text-[#b88b20]
+
+                dark:text-[#e5c67d]
+              "
+            >
+              Your Portfolio Starts Here
+            </p>
+
+            <h2
+              className="
+                mt-4
+                font-serif
+                text-4xl
+                leading-tight
+                text-slate-900
+
+                dark:text-white
+
+                sm:text-5xl
+
+                lg:text-6xl
+              "
+            >
+              Publish Your
+
+              <span
+                className="
+                  italic
+                  text-[#b88b20]
+
+                  dark:text-[#e5c67d]
+                "
+              >
+                {" "}
+                Creative Work
+              </span>
+            </h2>
+
+            <p
+              className="
+                mx-auto
+                mt-6
+                max-w-2xl
+                text-base
+                leading-8
+                text-slate-500
+
+                dark:text-white/50
+              "
+            >
+              Share your published fashion concepts with the DesignByYou
+              community and build your creative presence.
+            </p>
+
+            <div
+              className="
+                mt-8
+                flex
+                flex-wrap
+                justify-center
+                gap-x-6
+                gap-y-3
+                font-serif
+                text-lg
+                italic
+                text-slate-400
+
+                dark:text-white/30
+
+                sm:text-xl
+              "
+            >
+              <span>
+                Show your vision.
+              </span>
+
+              <span>
+                Build your identity.
+              </span>
+
+              <span>
+                Inspire the community.
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                navigate(
+                  "/designer/upload",
+                )
+              }
+              className="
+                mt-10
+                inline-flex
+                items-center
+                gap-2
+                rounded-full
+                bg-[#e5c67d]
+                px-8
+                py-4
+                text-[10px]
+                font-black
+                uppercase
+                tracking-[0.2em]
+                text-black
+                transition
+
+                hover:-translate-y-0.5
+                hover:bg-amber-200
+                hover:shadow-[0_0_45px_rgba(229,198,125,0.25)]
+
+                dark:hover:bg-white
+              "
+            >
+              <UploadCloud
+                size={15}
+              />
+
+              Publish a Design
+
+              <ArrowRight
+                size={14}
+              />
+            </button>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

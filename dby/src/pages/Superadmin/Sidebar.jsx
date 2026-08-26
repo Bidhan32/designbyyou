@@ -15,8 +15,8 @@ const Sidebar = ({ closeSidebar }) => {
 
     const menuItems = [
         { name: 'Overview', path: '/admin/dashboard', icon: <LayoutDashboard size={18} /> },
-        { name: 'User Directory', path: '/admin/users', icon: <Users size={18} /> },
-        { name: 'System Settings', path: '/admin/settings', icon: <Settings size={18} /> },
+        { name: 'User Directory', path: '/superadmin/users', icon: <Users size={18} /> },
+        { name: 'System Settings', path: '/superadmin/settings', icon: <Settings size={18} /> },
     ];
 
     const handleLogout = () => {

@@ -1,486 +1,1877 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import API from '../../api/axios';
-import { useToast } from '../../context/ToastContext';
-import { 
-    ChevronLeft, Lock, Unlock, Calendar, Coins, FileText, 
-    CheckCircle2, Loader2, ShieldCheck, MessageSquare, 
-    ArrowUpRight, Sparkles, Upload, PlayCircle, AlertCircle, XCircle, Compass
-} from 'lucide-react';
+/*
+=========================================================
+FashionVision Designer Booking Detail
+Designer Contract Workspace
+Version 2.3 - 2D + 3D + Virtual Try-On Garment Support
+=========================================================
+*/
 
-const DesignerBookingDetail = () => {
-    const { id: bookingId } = useParams();
-    const navigate = useNavigate();
-    const { showToast } = useToast();
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-    // Bulletproof ID Grabber
-    const getUserId = () => {
-        const directId = localStorage.getItem('userId');
-        if (directId) return directId;
-        const userObj = localStorage.getItem('user');
-        if (userObj) {
-            const parsed = JSON.parse(userObj);
-            return parsed.id || parsed._id; 
-        }
-        return null;
+import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  BadgeDollarSign,
+  Ban,
+  CalendarDays,
+  Check,
+  CheckCircle2,
+  Clock3,
+  Copy,
+  ExternalLink,
+  FileCheck2,
+  FileText,
+  Hourglass,
+  Loader2,
+  LockKeyhole,
+  MessageSquareText,
+  PackageCheck,
+  PlayCircle,
+  RefreshCw,
+  ShieldCheck,
+  Sparkles,
+  UploadCloud,
+  X,
+  XCircle,
+} from "lucide-react";
+
+import { Link, useParams } from "react-router-dom";
+
+import API from "../../api/axios";
+
+import BookingModelViewer from "../../components/BookingModelViewer";
+
+/*=========================================================
+Booking Statuses
+=========================================================*/
+
+const BOOKING_STATUS = Object.freeze({
+  PENDING: "pending",
+  AWAITING_PAYMENT: "awaiting_payment",
+  FUNDED: "funded",
+  ACCEPTED: "accepted",
+  PROGRESS: "progress",
+  REVIEW_PROTOTYPE: "review_prototype",
+  FINAL_PRODUCTION: "final_production",
+  REVIEW_FINAL: "review_final",
+  REVIEW: "review",
+  CANCELLATION_PENDING: "cancellation_pending",
+  COMPLETED: "completed",
+  DELIVERED: "delivered",
+  CANCELLED: "cancelled",
+});
+
+const WORKFLOW_STEPS = Object.freeze([
+  {
+    id: "request",
+    label: "Request",
+    statuses: [BOOKING_STATUS.PENDING],
+  },
+  {
+    id: "escrow",
+    label: "Escrow",
+    statuses: [BOOKING_STATUS.AWAITING_PAYMENT, BOOKING_STATUS.FUNDED],
+  },
+  {
+    id: "prototype",
+    label: "Prototype",
+    statuses: [
+      BOOKING_STATUS.ACCEPTED,
+      BOOKING_STATUS.PROGRESS,
+      BOOKING_STATUS.REVIEW_PROTOTYPE,
+    ],
+  },
+  {
+    id: "final",
+    label: "Final Assets",
+    statuses: [
+      BOOKING_STATUS.FINAL_PRODUCTION,
+      BOOKING_STATUS.REVIEW_FINAL,
+      BOOKING_STATUS.REVIEW,
+    ],
+  },
+  {
+    id: "complete",
+    label: "Complete",
+    statuses: [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.DELIVERED],
+  },
+]);
+
+/*=========================================================
+Helpers
+=========================================================*/
+
+function safelyParseJson(value) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function getStoredUserId() {
+  const directId = localStorage.getItem("userId");
+
+  if (directId) {
+    return directId;
+  }
+
+  const storedUser = safelyParseJson(localStorage.getItem("user"));
+
+  return storedUser?.id || storedUser?._id || null;
+}
+
+function normalizeStatus(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
+function cleanText(value) {
+  return String(value || "").trim();
+}
+
+function getFirstName(value) {
+  const name = cleanText(value);
+
+  return name ? name.split(/\s+/)[0] : "Creator";
+}
+
+function formatCurrency(value) {
+  const amount = Number(value);
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number.isFinite(amount) ? amount : 0);
+}
+
+function formatDate(value, options = {}) {
+  if (!value) {
+    return "Not provided";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Invalid date";
+  }
+
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    ...options,
+  });
+}
+
+function formatDateTime(value) {
+  if (!value) {
+    return "Not provided";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Invalid date";
+  }
+
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function getDeadlineMessage(value) {
+  if (!value) {
+    return "No deadline has been set.";
+  }
+
+  const deadline = new Date(value);
+
+  if (Number.isNaN(deadline.getTime())) {
+    return "Deadline is unavailable.";
+  }
+
+  const days = Math.ceil((deadline.getTime() - Date.now()) / 86400000);
+
+  if (days < 0) {
+    const overdueDays = Math.abs(days);
+
+    return `${overdueDays} day${overdueDays === 1 ? "" : "s"} overdue`;
+  }
+
+  if (days === 0) {
+    return "Due today";
+  }
+
+  if (days === 1) {
+    return "Due tomorrow";
+  }
+
+  return `${days} days remaining`;
+}
+
+function getApiErrorMessage(error) {
+  return (
+    error?.response?.data?.message ||
+    error?.message ||
+    "The requested action could not be completed."
+  );
+}
+
+function getStatusDetails(status) {
+  switch (normalizeStatus(status)) {
+    case BOOKING_STATUS.PENDING:
+      return {
+        label: "New Request",
+
+        title: "Review this commission request",
+
+        description:
+          "Read the creator's brief, confirm the scope and accept or reject the contract.",
+
+        icon: Hourglass,
+
+        badgeClass:
+          "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300",
+
+        accentClass: "text-amber-700 dark:text-amber-300",
+      };
+
+    case BOOKING_STATUS.AWAITING_PAYMENT:
+      return {
+        label: "Awaiting Escrow",
+
+        title: "Creator payment is pending",
+
+        description:
+          "You accepted the project. Begin work only after escrow is confirmed as secured.",
+
+        icon: LockKeyhole,
+
+        badgeClass:
+          "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-400/20 dark:bg-orange-400/10 dark:text-orange-300",
+
+        accentClass: "text-orange-700 dark:text-orange-300",
+      };
+
+    case BOOKING_STATUS.FUNDED:
+      return {
+        label: "Escrow Funded",
+
+        title: "Payment is secured",
+
+        description:
+          "Accept the funded contract to begin prototype production.",
+
+        icon: ShieldCheck,
+
+        badgeClass:
+          "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300",
+
+        accentClass: "text-emerald-700 dark:text-emerald-300",
+      };
+
+    case BOOKING_STATUS.ACCEPTED:
+    case BOOKING_STATUS.PROGRESS:
+      return {
+        label: "Prototype Production",
+
+        title: "Build the first prototype",
+
+        description:
+          "Submit the first 2D prototype and, when available, an optional 3D model for creator review.",
+
+        icon: PlayCircle,
+
+        badgeClass:
+          "border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#8F7118] dark:text-[#E4C760]",
+
+        accentClass: "text-[#987719] dark:text-[#D4AF37]",
+      };
+
+    case BOOKING_STATUS.REVIEW_PROTOTYPE:
+      return {
+        label: "Prototype Review",
+
+        title: "Waiting for creator feedback",
+
+        description:
+          "The prototype has been submitted. The creator can approve it or request changes.",
+
+        icon: Clock3,
+
+        badgeClass:
+          "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-400/20 dark:bg-indigo-400/10 dark:text-indigo-300",
+
+        accentClass: "text-indigo-700 dark:text-indigo-300",
+      };
+
+    case BOOKING_STATUS.FINAL_PRODUCTION:
+      return {
+        label: "Final Production",
+
+        title: "Prepare final deliverables",
+
+        description:
+          "The prototype is approved. Submit the polished final 2D work and optional 3D model for payout review.",
+
+        icon: UploadCloud,
+
+        badgeClass:
+          "border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#8F7118] dark:text-[#E4C760]",
+
+        accentClass: "text-[#987719] dark:text-[#D4AF37]",
+      };
+
+    case BOOKING_STATUS.REVIEW_FINAL:
+    case BOOKING_STATUS.REVIEW:
+      return {
+        label: "Final Review",
+
+        title: "Waiting for final approval",
+
+        description:
+          "The creator is reviewing your final delivery. Payout is released after approval.",
+
+        icon: FileCheck2,
+
+        badgeClass:
+          "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300",
+
+        accentClass: "text-violet-700 dark:text-violet-300",
+      };
+
+    case BOOKING_STATUS.CANCELLATION_PENDING:
+      return {
+        label: "Cancellation Processing",
+
+        title: "Cancellation is being reconciled",
+
+        description:
+          "Payment and wallet records are being safely reconciled. No further action is available.",
+
+        icon: Loader2,
+
+        badgeClass:
+          "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-300",
+
+        accentClass: "text-rose-700 dark:text-rose-300",
+
+        spinning: true,
+      };
+
+    case BOOKING_STATUS.COMPLETED:
+    case BOOKING_STATUS.DELIVERED:
+      return {
+        label: "Completed & Paid",
+
+        title: "Contract successfully completed",
+
+        description:
+          "The final delivery was approved and payout was released to your wallet.",
+
+        icon: CheckCircle2,
+
+        badgeClass:
+          "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300",
+
+        accentClass: "text-emerald-700 dark:text-emerald-300",
+      };
+
+    case BOOKING_STATUS.CANCELLED:
+      return {
+        label: "Cancelled",
+
+        title: "This contract is closed",
+
+        description: "No further work is required for this booking.",
+
+        icon: Ban,
+
+        badgeClass:
+          "border-slate-200 bg-slate-100 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/45",
+
+        accentClass: "text-slate-600 dark:text-white/50",
+      };
+
+    default:
+      return {
+        label: status || "Unknown",
+
+        title: "Contract status",
+
+        description: "Review the contract information below.",
+
+        icon: Clock3,
+
+        badgeClass:
+          "border-slate-200 bg-slate-100 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/50",
+
+        accentClass: "text-slate-600 dark:text-white/50",
+      };
+  }
+}
+
+function getCurrentWorkflowIndex(status) {
+  const normalized = normalizeStatus(status);
+
+  if (
+    normalized === BOOKING_STATUS.CANCELLED ||
+    normalized === BOOKING_STATUS.CANCELLATION_PENDING
+  ) {
+    return -1;
+  }
+
+  return WORKFLOW_STEPS.findIndex((step) => step.statuses.includes(normalized));
+}
+
+function getAvailablePrimaryAction(status, escrowLocked) {
+  const normalized = normalizeStatus(status);
+
+  if (normalized === BOOKING_STATUS.PENDING) {
+    return {
+      type: "accept",
+
+      label: "Accept Contract",
+
+      helper: "Move the project to escrow funding",
+
+      icon: Check,
     };
-    
-    const currentUserId = getUserId();
+  }
 
-    const [booking, setBooking] = useState(null);
-    const [loading, setLoading] = useState(true);
-    
-    // Action States
-    const [fundingEscrow, setFundingEscrow] = useState(false);
-    const [approvingAction, setApprovingAction] = useState(false);
-    const [submittingAction, setSubmittingAction] = useState(false);
-    
-    // Provider Acceptance States
-    const [isAccepting, setIsAccepting] = useState(false);
-    const [isRejecting, setIsRejecting] = useState(false);
-    const [providerHasAccepted, setProviderHasAccepted] = useState(false); 
-    const [rejectionReason, setRejectionReason] = useState('');
+  if (normalized === BOOKING_STATUS.FUNDED) {
+    return {
+      type: "accept",
 
-    // Form States
-    const [urlInput, setUrlInput] = useState('');
-    const [messageInput, setMessageInput] = useState('');
-    
-    // Revision States
-    const [isRequestingRevision, setIsRequestingRevision] = useState(false);
-    const [revisionNotes, setRevisionNotes] = useState('');
+      label: "Accept & Begin",
 
-    // Cancellation States
-    const [isCancelling, setIsCancelling] = useState(false);
-    const [cancellationReason, setCancellationReason] = useState('');
+      helper: "Escrow is already secured",
 
-    const fetchBookingDetails = async () => {
+      icon: ShieldCheck,
+    };
+  }
+
+  if (
+    [BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.PROGRESS].includes(normalized) &&
+    escrowLocked
+  ) {
+    return {
+      type: "prototype",
+
+      label: "Submit Prototype",
+
+      helper: "Send phase-one work for review",
+
+      icon: PlayCircle,
+    };
+  }
+
+  if (normalized === BOOKING_STATUS.FINAL_PRODUCTION) {
+    return {
+      type: "final",
+
+      label: "Submit Final Files",
+
+      helper: "Send polished deliverables",
+
+      icon: UploadCloud,
+    };
+  }
+
+  return null;
+}
+
+/*=========================================================
+Action Modal
+=========================================================*/
+
+function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
+  const [reason, setReason] = useState("");
+
+  const [fileUrl, setFileUrl] = useState("");
+
+  const [modelUrl, setModelUrl] = useState("");
+
+  const [tryonImageUrl, setTryonImageUrl] = useState("");
+
+  const [message, setMessage] = useState("");
+
+  if (!mode) {
+    return null;
+  }
+
+  const isSubmission = mode === "prototype" || mode === "final";
+
+  const isReject = mode === "reject";
+
+  const isCancel = mode === "cancel";
+
+  const title =
+    mode === "prototype"
+      ? "Submit prototype"
+      : mode === "final"
+        ? "Submit final deliverables"
+        : mode === "reject"
+          ? "Reject contract"
+          : "Cancel contract";
+
+  const subtitle =
+    mode === "prototype"
+      ? "Provide the required 2D prototype URL, optional 3D model URL, optional Virtual Try-On garment image URL, and a short note for the creator."
+      : mode === "final"
+        ? "Provide the required final 2D URL, optional 3D model URL, optional Virtual Try-On garment image URL, and completion notes."
+        : mode === "reject"
+          ? "Tell the creator why you are declining this request."
+          : "Explain why this active contract should be cancelled.";
+
+  const buttonLabel =
+    mode === "prototype"
+      ? "Submit Prototype"
+      : mode === "final"
+        ? "Submit Final Files"
+        : mode === "reject"
+          ? "Reject Contract"
+          : "Request Cancellation";
+
+  const canSubmit = isSubmission
+    ? Boolean(cleanText(fileUrl))
+    : Boolean(cleanText(reason));
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+
+    if (!canSubmit || submitting) {
+      return;
+    }
+
+    onSubmit({
+      reason: cleanText(reason),
+
+      fileUrl: cleanText(fileUrl),
+
+      modelUrl: cleanText(modelUrl),
+
+      tryonImageUrl: cleanText(tryonImageUrl),
+
+      message: cleanText(message),
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm">
+      <button
+        type="button"
+        aria-label="Close modal"
+        onClick={onClose}
+        className="absolute inset-0 cursor-default"
+      />
+
+      <form
+        onSubmit={handleSubmit}
+        className="relative z-10 max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[#0B0B0B]"
+      >
+        <div className="border-b border-slate-200 p-6 dark:border-white/10">
+          <div className="flex items-start justify-between gap-5">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#9B791D] dark:text-[#D4AF37]">
+                Contract{" "}
+                {String(booking?.id || "")
+                  .slice(0, 8)
+                  .toUpperCase()}
+              </p>
+
+              <h2 className="mt-2 font-serif text-3xl font-light text-slate-950 dark:text-white">
+                {title}
+              </h2>
+
+              <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-white/45">
+                {subtitle}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 dark:border-white/10 dark:text-white/45 dark:hover:bg-white/5"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-5 p-6">
+          {isSubmission ? (
+            <>
+              <label className="block">
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/40">
+                  {mode === "prototype"
+                    ? "2D Prototype URL"
+                    : "2D Final Deliverable URL"}{" "}
+                  <span className="text-rose-500">*</span>
+                </span>
+
+                <input
+                  type="url"
+                  value={fileUrl}
+                  onChange={(event) => setFileUrl(event.target.value)}
+                  placeholder={
+                    mode === "prototype"
+                      ? "https://example.com/prototype-preview.png"
+                      : "https://example.com/final-deliverable.png"
+                  }
+                  required
+                  className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25"
+                />
+
+                <p className="mt-2 text-[11px] leading-5 text-slate-400 dark:text-white/30">
+                  This is the main 2D image, preview or deliverable the creator
+                  will review.
+                </p>
+              </label>
+
+              <label className="block">
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/40">
+                  3D Model URL{" "}
+                  <span className="font-semibold normal-case tracking-normal text-slate-400 dark:text-white/25">
+                    (optional)
+                  </span>
+                </span>
+
+                <input
+                  type="url"
+                  value={modelUrl}
+                  onChange={(event) => setModelUrl(event.target.value)}
+                  placeholder={
+                    mode === "prototype"
+                      ? "https://example.com/prototype.glb"
+                      : "https://example.com/final.glb"
+                  }
+                  className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25"
+                />
+
+                <p className="mt-2 text-[11px] leading-5 text-slate-400 dark:text-white/30">
+                  Optional HTTP/HTTPS link to a GLB or GLTF model.
+                </p>
+              </label>
+
+              <label className="block">
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/40">
+                  Virtual Try-On Garment Image URL{" "}
+                  <span className="font-semibold normal-case tracking-normal text-slate-400 dark:text-white/25">
+                    (optional)
+                  </span>
+                </span>
+
+                <input
+                  type="url"
+                  value={tryonImageUrl}
+                  onChange={(event) => setTryonImageUrl(event.target.value)}
+                  placeholder={
+                    mode === "prototype"
+                      ? "https://example.com/prototype-garment.png"
+                      : "https://example.com/final-garment.png"
+                  }
+                  className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25"
+                />
+
+                <p className="mt-2 text-[11px] leading-5 text-slate-400 dark:text-white/30">
+                  Optional public HTTP/HTTPS image of the garment for Creator
+                  Virtual Try-On. Use a clean garment-focused image that FASHN
+                  can access.
+                </p>
+              </label>
+
+              <label className="block">
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/40">
+                  Delivery message
+                </span>
+
+                <textarea
+                  value={message}
+                  onChange={(event) => setMessage(event.target.value)}
+                  rows={5}
+                  placeholder={
+                    mode === "prototype"
+                      ? "Explain the prototype choices and what feedback you need."
+                      : "Summarize the final files, formats and usage notes."
+                  }
+                  className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25"
+                />
+              </label>
+            </>
+          ) : (
+            <label className="block">
+              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/40">
+                {isReject ? "Rejection reason" : "Cancellation reason"}{" "}
+                <span className="text-rose-500">*</span>
+              </span>
+
+              <textarea
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                rows={6}
+                required
+                placeholder={
+                  isReject
+                    ? "Explain why this request is not a suitable fit."
+                    : "Explain why the contract must be cancelled."
+                }
+                className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-rose-400 focus:bg-white focus:ring-4 focus:ring-rose-500/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25"
+              />
+            </label>
+          )}
+
+          {(isReject || isCancel) && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">
+              <div className="flex items-start gap-3">
+                <AlertCircle size={18} className="mt-0.5 shrink-0" />
+
+                <p>
+                  {isReject
+                    ? "Rejecting closes an unfunded pending request. This action cannot be resumed from this page."
+                    : "Funded cancellations may trigger Stripe refund and wallet reconciliation processing."}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col-reverse gap-3 border-t border-slate-200 p-6 dark:border-white/10 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 px-5 text-xs font-black uppercase tracking-[0.16em] text-slate-600 transition hover:bg-slate-100 disabled:opacity-50 dark:border-white/10 dark:text-white/55 dark:hover:bg-white/5"
+          >
+            Keep Contract
+          </button>
+
+          <button
+            type="submit"
+            disabled={!canSubmit || submitting}
+            className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-xs font-black uppercase tracking-[0.16em] text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
+              isReject || isCancel
+                ? "bg-rose-600 hover:bg-rose-700"
+                : "bg-[#A98520] hover:bg-[#8E701B]"
+            }`}
+          >
+            {submitting ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : isSubmission ? (
+              <UploadCloud size={16} />
+            ) : (
+              <Ban size={16} />
+            )}
+
+            {buttonLabel}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+/*=========================================================
+Main Component
+=========================================================*/
+
+function DesignerBookingDetail() {
+  const { id } = useParams();
+
+  const currentUserId = useMemo(() => getStoredUserId(), []);
+
+  const [booking, setBooking] = useState(null);
+
+  const [loading, setLoading] = useState(true);
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  const [submitting, setSubmitting] = useState(false);
+
+  const [error, setError] = useState("");
+
+  const [successMessage, setSuccessMessage] = useState("");
+
+  const [modalMode, setModalMode] = useState(null);
+
+  const [copied, setCopied] = useState(false);
+
+  const fetchBooking = useCallback(
+    async ({ silent = false } = {}) => {
+      if (!currentUserId) {
+        setLoading(false);
+
+        setError(
+          "Your account session could not be identified. Please sign in again.",
+        );
+
+        return;
+      }
+
+      if (!id) {
+        setLoading(false);
+
+        setError("A booking identifier was not supplied.");
+
+        return;
+      }
+
+      if (silent) {
+        setRefreshing(true);
+      } else {
         setLoading(true);
-        try {
-            const { data } = await API.get(`/p2p-bookings/pipeline`);
-            const targetBooking = (data.data || []).find(b => b.id === bookingId);
-            if (!targetBooking) throw new Error("Contract not found.");
-            
-            if (targetBooking.status !== 'pending' && targetBooking.status !== 'cancelled') {
-                setProviderHasAccepted(true);
-            }
-            
-            setBooking(targetBooking); 
-        } catch (err) {
-            showToast(err.response?.data?.message || err.message, "error");
-            navigate('/designer/bookings');
-        } finally {
-            setLoading(false);
+      }
+
+      setError("");
+
+      try {
+        const response = await API.get("/p2p-bookings/pipeline");
+
+        const pipeline = Array.isArray(response?.data?.data)
+          ? response.data.data
+          : [];
+
+        const matchedBooking = pipeline.find(
+          (item) => String(item?.id) === String(id),
+        );
+
+        if (!matchedBooking) {
+          setBooking(null);
+
+          setError(
+            "This booking was not found or you no longer have access to it.",
+          );
+
+          return;
         }
-    };
 
-    useEffect(() => {
-        if (bookingId) fetchBookingDetails();
-    }, [bookingId]);
+        if (String(matchedBooking.designer_id) !== String(currentUserId)) {
+          setBooking(null);
 
-    const formatDeadline = (dateString) => {
-        if (!dateString) return 'TBD';
-        const date = new Date(dateString);
-        return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }); 
-    };
+          setError("This contract is not assigned to your designer account.");
 
-    // --- CLIENT ACTIONS ---
-    const handleFundEscrow = async () => {
-        if (!booking || !booking.stripe_payment_intent_id) return;
-        setFundingEscrow(true);
-        try {
-            const { data } = await API.post('/p2p-bookings/verify-escrow', { bookingId, paymentIntentId: booking.stripe_payment_intent_id });
-            if (data.status === 'success') {
-                showToast("Capital secured.", "success");
-                await fetchBookingDetails(); 
-            }
-        } catch (err) { showToast(err.response?.data?.message || "Escrow fault.", "error"); } 
-        finally { setFundingEscrow(false); }
-    };
-
-    const handleApproveAction = async (endpoint, successMsg) => {
-        setApprovingAction(true);
-        try {
-            const { data } = await API.post(`/p2p-bookings/${bookingId}/${endpoint}`);
-            if (data.status === 'success') {
-                showToast(successMsg, "success");
-                await fetchBookingDetails();
-            }
-        } catch (err) { showToast("Action failed.", "error"); } 
-        finally { setApprovingAction(false); }
-    };
-
-    const handleRequestRevision = async (e) => {
-        e.preventDefault();
-        if (!revisionNotes.trim()) return showToast("Please provide revision feedback.", "error");
-        
-        setApprovingAction(true);
-        const currentPhase = booking.status === 'review_prototype' ? 'prototype' : 'final';
-        
-        try {
-            await API.post(`/p2p-bookings/${bookingId}/request-revision`, { notes: revisionNotes, currentPhase });
-            showToast("Revision requested. Artist notified.", "success");
-            setIsRequestingRevision(false);
-            setRevisionNotes('');
-            await fetchBookingDetails();
-        } catch (err) { showToast("Failed to request revision.", "error"); } 
-        finally { setApprovingAction(false); }
-    };
-
-    const handleCancelProject = async () => {
-        if (!cancellationReason.trim()) return showToast("Please provide a reason for cancellation.", "error");
-        setIsCancelling(true);
-        try {
-            await API.post(`/p2p-bookings/${bookingId}/cancel`, { reason: cancellationReason });
-            showToast("Contract successfully cancelled. Refund initiated.", "success");
-            await fetchBookingDetails(); 
-        } catch (err) { 
-            showToast(err.response?.data?.message || "Cancellation failed.", "error"); 
-        } finally { 
-            setIsCancelling(false); 
+          return;
         }
-    };
 
-    // --- PROVIDER ACTIONS ---
-    const handleAcceptProject = async () => {
-        setIsAccepting(true);
-        try {
-            await API.post(`/p2p-bookings/${bookingId}/accept`);
-            showToast("Project Accepted! Waiting for client to fund escrow.", "success");
-            setProviderHasAccepted(true); 
-            await fetchBookingDetails();
-        } catch (err) { showToast("Failed to accept project.", "error"); }
-        finally { setIsAccepting(false); }
-    };
+        setBooking(matchedBooking);
+      } catch (requestError) {
+        console.error("Unable to load designer booking:", requestError);
 
-    const handleRejectProject = async () => {
-        if (!rejectionReason.trim()) return showToast("Please provide a reason for declining.", "error");
-        setIsRejecting(true);
-        try {
-            await API.post(`/p2p-bookings/${bookingId}/reject`, { reason: rejectionReason });
-            showToast("Project Rejected.", "success");
-            await fetchBookingDetails();
-        } catch (err) { showToast("Failed to reject project.", "error"); }
-        finally { setIsRejecting(false); }
-    };
+        setError(getApiErrorMessage(requestError));
+      } finally {
+        setLoading(false);
 
-    const handleSubmitPhase = async (e, phase) => {
-        e.preventDefault();
-        if (!urlInput) return showToast("Please provide a valid link.", "error");
-        setSubmittingAction(true);
-        
-        const endpoint = phase === 'prototype' ? 'submit-prototype' : 'submit-final';
-        try {
-            await API.post(`/p2p-bookings/${bookingId}/${endpoint}`, { file_url: urlInput, message: messageInput });
-            showToast("Work submitted for review!", "success");
-            setUrlInput(''); setMessageInput('');
-            await fetchBookingDetails();
-        } catch (err) { showToast("Failed to submit work.", "error"); } 
-        finally { setSubmittingAction(false); }
-    };
+        setRefreshing(false);
+      }
+    },
+    [currentUserId, id],
+  );
 
-    if (loading) return (
-        <div className="h-screen flex flex-col items-center justify-center space-y-6 bg-slate-50 dark:bg-[#030303] transition-colors duration-300">
-            <div className="relative">
-                <div className="absolute inset-0 border-t-2 border-[#D4AF37] rounded-full animate-spin"></div>
-                <Loader2 className="animate-spin text-slate-300 dark:text-white/20" size={40} />
-            </div>
-            <span className="text-[10px] text-[#D4AF37] font-bold uppercase tracking-[0.3em] animate-pulse">Decrypting Contract...</span>
-        </div>
-    );
-    
-    if (!booking) return null;
+  useEffect(() => {
+    fetchBooking();
+  }, [fetchBooking]);
 
-    const isClient = currentUserId === booking.creator_id;
-    const isProvider = currentUserId === booking.designer_id;
-    const isPastPrototype = ['final_production', 'review_final', 'completed', 'review'].includes(booking.status);
-    const isReviewState = ['review_prototype', 'review_final', 'review'].includes(booking.status);
+  useEffect(() => {
+    if (!successMessage) {
+      return undefined;
+    }
 
+    const timer = setTimeout(() => setSuccessMessage(""), 4500);
+
+    return () => clearTimeout(timer);
+  }, [successMessage]);
+
+  const runAction = useCallback(
+    async ({ endpoint, payload, success }) => {
+      setSubmitting(true);
+
+      setError("");
+
+      try {
+        await API.post(endpoint, payload);
+
+        setModalMode(null);
+
+        setSuccessMessage(success);
+
+        await fetchBooking({
+          silent: true,
+        });
+      } catch (requestError) {
+        console.error("Designer booking action failed:", requestError);
+
+        setError(getApiErrorMessage(requestError));
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [fetchBooking],
+  );
+
+  const handleAccept = async () => {
+    if (!booking || submitting) {
+      return;
+    }
+
+    await runAction({
+      endpoint: `/p2p-bookings/${booking.id}/accept`,
+
+      payload: {},
+
+      success: booking.escrow_locked
+        ? "Contract accepted. Prototype production can begin."
+        : "Contract accepted. Waiting for creator escrow funding.",
+    });
+  };
+
+  const handleModalSubmit = async ({
+    reason,
+    fileUrl,
+    modelUrl,
+    tryonImageUrl,
+    message,
+  }) => {
+    if (!booking) {
+      return;
+    }
+
+    if (modalMode === "reject") {
+      await runAction({
+        endpoint: `/p2p-bookings/${booking.id}/reject`,
+
+        payload: {
+          reason,
+        },
+
+        success: "The contract request was rejected.",
+      });
+
+      return;
+    }
+
+    if (modalMode === "cancel") {
+      await runAction({
+        endpoint: `/p2p-bookings/${booking.id}/cancel`,
+
+        payload: {
+          reason,
+        },
+
+        success: "The cancellation request was processed.",
+      });
+
+      return;
+    }
+
+    if (modalMode === "prototype") {
+      await runAction({
+        endpoint: `/p2p-bookings/${booking.id}/submit-prototype`,
+
+        payload: {
+          file_url: fileUrl,
+
+          model_url: modelUrl || null,
+
+          tryon_image_url: tryonImageUrl || null,
+
+          message,
+        },
+
+        success: "Prototype submitted for creator review.",
+      });
+
+      return;
+    }
+
+    if (modalMode === "final") {
+      await runAction({
+        endpoint: `/p2p-bookings/${booking.id}/submit-final`,
+
+        payload: {
+          file_url: fileUrl,
+
+          model_url: modelUrl || null,
+
+          tryon_image_url: tryonImageUrl || null,
+
+          message,
+        },
+
+        success: "Final deliverables submitted for creator approval.",
+      });
+    }
+  };
+
+  const copyBookingId = async () => {
+    if (!booking?.id) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(booking.id);
+
+      setCopied(true);
+
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setError("The booking ID could not be copied.");
+    }
+  };
+
+  const status = normalizeStatus(booking?.status);
+
+  const statusDetails = getStatusDetails(status);
+
+  const StatusIcon = statusDetails.icon;
+
+  const workflowIndex = getCurrentWorkflowIndex(status);
+
+  const primaryAction = getAvailablePrimaryAction(
+    status,
+    Boolean(booking?.escrow_locked),
+  );
+
+  const PrimaryIcon = primaryAction?.icon || ArrowRight;
+
+  const canReject =
+    status === BOOKING_STATUS.PENDING && !booking?.escrow_locked;
+
+  const canCancel =
+    Boolean(booking) &&
+    ![
+      BOOKING_STATUS.COMPLETED,
+      BOOKING_STATUS.DELIVERED,
+      BOOKING_STATUS.CANCELLED,
+      BOOKING_STATUS.CANCELLATION_PENDING,
+    ].includes(status);
+
+  const creatorName =
+    booking?.sender_name || booking?.creator_name || "Project Creator";
+
+  const creatorAvatar =
+    booking?.sender_avatar || booking?.creator_avatar || null;
+
+  const projectTitle =
+    booking?.reference_design_title || "Bespoke Design Commission";
+
+  /*=====================================================
+    Loading
+    =====================================================*/
+
+  if (loading) {
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-[#030303] text-slate-900 dark:text-white selection:bg-[#D4AF37] selection:text-black font-sans relative overflow-x-hidden pb-32 animate-fade-in transition-colors duration-300">
-            
-            {/* AMBIENT GLOW */}
-            <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-                <div className="absolute top-[10%] right-[10%] w-[40vw] h-[40vw] bg-[#D4AF37]/5 dark:bg-[#D4AF37]/5 blur-[150px] rounded-full animate-pulse" style={{ animationDuration: '8s' }}></div>
-            </div>
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-6 text-slate-950 dark:bg-[#030303] dark:text-white">
+        <div className="text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-[#D4AF37]/20 bg-[#D4AF37]/10 text-[#9B791D] dark:text-[#D4AF37]">
+            <Loader2 size={28} className="animate-spin" />
+          </div>
 
-            {/* HEADER AREA */}
-            <div className="bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 sticky top-0 z-40 px-6 py-6 shadow-sm dark:shadow-2xl transition-colors duration-300">
-                <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-                    <Link to="/designer/bookings" className="flex items-center gap-3 text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500 dark:text-white/40 hover:text-slate-900 dark:hover:text-white transition-colors group w-fit">
-                        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center group-hover:bg-slate-200 dark:group-hover:bg-white/10 transition-colors border border-slate-200 dark:border-white/5">
-                            <ChevronLeft size={14} />
-                        </div>
-                        Back to Pipeline
-                    </Link>
-                    <div className="flex items-center gap-4 flex-wrap">
-                        <span className="font-mono text-[10px] text-slate-500 dark:text-white/40 uppercase tracking-widest bg-slate-100 dark:bg-white/5 px-4 py-2 rounded-lg border border-slate-200 dark:border-white/5 shadow-inner transition-colors duration-300">
-                            Ref: {String(booking.id).substring(0, 8)}
-                        </span>
-                        <span className={`px-5 py-2.5 rounded-full text-[9px] font-black uppercase tracking-[0.2em] border shadow-sm dark:shadow-lg transition-colors duration-300 ${
-                            booking.status === 'cancelled' ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-500/30 dark:shadow-[0_0_15px_rgba(244,63,94,0.15)]' :
-                            booking.status === 'completed' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30 dark:shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 
-                            isReviewState ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/30 dark:shadow-[0_0_15px_rgba(99,102,241,0.15)]' :
-                            booking.escrow_locked ? 'bg-[#D4AF37]/5 dark:bg-[#D4AF37]/10 text-[#b59220] dark:text-[#D4AF37] border-[#D4AF37]/30 dark:shadow-[0_0_15px_rgba(212,175,55,0.15)]' : 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/30 dark:shadow-[0_0_15px_rgba(245,158,11,0.15)]'
-                        }`}>
-                            {booking.status === 'cancelled' ? 'Cancelled' : booking.status === 'completed' ? 'Fulfilled' : isReviewState ? 'Action Required' : booking.escrow_locked ? 'In Production' : providerHasAccepted ? 'Awaiting Funding' : 'Awaiting Artist Acceptance'}
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <div className="max-w-[1400px] mx-auto px-6 mt-12 grid grid-cols-1 lg:grid-cols-12 gap-10 relative z-10">
-                
-                {/* LEFT COLUMN: MAIN CONTENT */}
-                <div className="lg:col-span-7 space-y-8">
-                    
-                    {/* CANCELLATION BANNER */}
-                    {booking.status === 'cancelled' && (
-                        <div className="p-8 bg-rose-50 dark:bg-rose-500/5 border border-rose-200 dark:border-rose-500/20 rounded-3xl space-y-3 shadow-md dark:shadow-2xl backdrop-blur-xl transition-colors duration-300">
-                            <h3 className="text-sm font-bold text-rose-600 dark:text-rose-400 flex items-center gap-3 uppercase tracking-widest transition-colors">
-                                <AlertCircle size={18} /> Contract Cancelled / Rejected
-                            </h3>
-                            <p className="text-xs text-rose-500 dark:text-rose-400/70 leading-relaxed font-light tracking-wide pl-8 border-l border-rose-200 dark:border-rose-500/20 ml-2.5 transition-colors">
-                                Reason: {booking.cancellation_reason || "No reason provided."}
-                            </p>
-                        </div>
-                    )}
-
-                    {/* CLIENT REVIEW BANNER WITH REVISION OPTION */}
-                    {isClient && isReviewState && (
-                        <section className="bg-indigo-50 dark:bg-indigo-500/5 border border-indigo-200 dark:border-indigo-500/20 rounded-3xl p-8 md:p-10 space-y-8 shadow-sm dark:shadow-[0_20px_50px_rgba(99,102,241,0.05)] backdrop-blur-xl transition-colors duration-300">
-                            <div className="flex items-center gap-5 border-b border-indigo-200 dark:border-indigo-500/10 pb-6 transition-colors">
-                                <div className="p-4 bg-indigo-100 dark:bg-indigo-500/20 rounded-2xl border border-indigo-300 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400 shadow-sm dark:shadow-[0_0_20px_rgba(99,102,241,0.2)] transition-colors">
-                                    <Sparkles size={24} />
-                                </div>
-                                <div>
-                                    <h2 className="text-2xl font-serif text-slate-900 dark:text-white tracking-wide transition-colors">Review {booking.status === 'review_prototype' ? 'Prototype' : 'Final Deliverables'}</h2>
-                                    <p className="text-[10px] text-slate-500 dark:text-white/50 tracking-[0.2em] mt-2 uppercase font-bold transition-colors">The hired artist has submitted work for your approval.</p>
-                                </div>
-                            </div>
-                            
-                            <div className="p-6 bg-white dark:bg-[#030303] rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-inner space-y-5 transition-colors duration-300">
-                                <a href={booking.status === 'review_prototype' ? booking.prototype_file_url : booking.delivery_file_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors">
-                                    <FileText size={16} /> Open Delivered Assets <ArrowUpRight size={14} />
-                                </a>
-                                {(booking.prototype_message || booking.delivery_message) && (
-                                    <p className="text-xs text-slate-600 dark:text-white/60 italic bg-slate-50 dark:bg-white/5 p-5 rounded-xl border border-slate-200 dark:border-white/5 font-light leading-relaxed transition-colors">
-                                        "{booking.status === 'review_prototype' ? booking.prototype_message : booking.delivery_message}"
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* REVISION FORM TOGGLE */}
-                            {isRequestingRevision ? (
-                                <form onSubmit={handleRequestRevision} className="space-y-5 p-6 bg-white dark:bg-[#030303] rounded-2xl border border-rose-200 dark:border-rose-500/30 shadow-sm dark:shadow-inner transition-colors duration-300">
-                                    <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-rose-500 dark:text-rose-400 flex items-center gap-2 transition-colors"><AlertCircle size={14}/> What needs to be changed?</p>
-                                    <textarea value={revisionNotes} onChange={(e) => setRevisionNotes(e.target.value)} required rows={4} placeholder="List out your requested tweaks clearly..." className="w-full bg-slate-50 dark:bg-[#111] border border-slate-300 dark:border-white/10 rounded-xl px-5 py-4 text-xs text-slate-900 dark:text-white focus:border-rose-400 dark:focus:border-rose-500/50 outline-none resize-none transition-colors shadow-sm dark:shadow-inner" />
-                                    <div className="flex gap-4">
-                                        <button type="button" onClick={() => setIsRequestingRevision(false)} className="flex-1 py-4 bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/10 font-bold uppercase tracking-[0.2em] text-[10px] rounded-xl transition-all border border-slate-200 dark:border-white/10">Cancel</button>
-                                        <button type="submit" disabled={approvingAction} className="flex-1 py-4 bg-rose-50 dark:bg-rose-600/20 hover:bg-rose-100 dark:hover:bg-rose-600/40 border border-rose-200 dark:border-rose-500/50 text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 font-bold uppercase tracking-[0.2em] text-[10px] rounded-xl flex justify-center transition-all shadow-sm dark:shadow-[0_0_15px_rgba(244,63,94,0.15)]">
-                                            {approvingAction ? <Loader2 className="animate-spin" size={14} /> : "Submit Revision"}
-                                        </button>
-                                    </div>
-                                </form>
-                            ) : (
-                                <div className="grid grid-cols-2 gap-5 pt-2">
-                                    <button onClick={() => setIsRequestingRevision(true)} className="w-full py-5 bg-white dark:bg-[#030303] border border-slate-200 dark:border-white/10 hover:border-rose-300 dark:hover:border-rose-500/40 text-slate-600 dark:text-white/60 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-slate-50 dark:hover:bg-transparent font-bold uppercase tracking-[0.2em] text-[10px] rounded-xl transition-all shadow-sm dark:shadow-inner">
-                                        Request Changes
-                                    </button>
-                                    <button 
-                                        onClick={() => handleApproveAction(booking.status === 'review_prototype' ? 'approve-prototype' : 'release', "Work Approved!")} 
-                                        disabled={approvingAction} 
-                                        className="w-full py-5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold uppercase tracking-[0.2em] text-[10px] rounded-xl transition-all flex items-center justify-center gap-2 shadow-md dark:shadow-[0_0_20px_rgba(99,102,241,0.3)]"
-                                    >
-                                        {approvingAction ? <Loader2 className="animate-spin" size={14} /> : booking.status === 'review_prototype' ? "Approve Prototype" : "Approve & Release Funds"}
-                                    </button>
-                                </div>
-                            )}
-                        </section>
-                    )}
-
-                    {/* PROJECT PARAMETERS */}
-                    <section className="bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-3xl p-8 md:p-10 shadow-lg dark:shadow-2xl relative overflow-hidden transition-colors duration-300">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/5 blur-[50px] rounded-full pointer-events-none"></div>
-                        <div className="flex items-center gap-4 border-b border-slate-100 dark:border-white/5 pb-6 mb-6 relative z-10 transition-colors">
-                            <div className="p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/10 transition-colors"><FileText size={20} className="text-[#D4AF37]" /></div>
-                            <h2 className="text-2xl font-serif text-slate-900 dark:text-white tracking-wide transition-colors">Project Brief</h2>
-                        </div>
-                        <p className="text-sm text-slate-600 dark:text-white/60 leading-loose font-light tracking-wide bg-slate-50 dark:bg-[#111] p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-inner relative z-10 whitespace-pre-wrap transition-colors duration-300">
-                            "{booking.brief_text}"
-                        </p>
-                    </section>
-
-                    {/* 3-PHASE TIMELINE */}
-                    <section className="bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-3xl p-8 md:p-10 shadow-lg dark:shadow-2xl relative overflow-hidden transition-colors duration-300">
-                        <div className="flex items-center justify-between mb-10 relative z-10">
-                            <h2 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-white/40 transition-colors">Production Timeline</h2>
-                            <span className="text-[9px] font-mono font-bold text-[#D4AF37] uppercase tracking-widest bg-[#D4AF37]/10 px-4 py-1.5 rounded-full border border-[#D4AF37]/20 shadow-sm dark:shadow-[0_0_15px_rgba(212,175,55,0.1)]">Active Sync: LIVE</span>
-                        </div>
-                        
-                        <div className="space-y-12 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-200 dark:before:bg-white/10 z-10 transition-colors">
-                            
-                            <div className="relative pl-14">
-                                <div className={`absolute left-0 top-0 h-10 w-10 rounded-full border-2 flex items-center justify-center bg-white dark:bg-[#0a0a0a] z-10 transition-colors ${booking.escrow_locked ? 'border-[#D4AF37] shadow-sm dark:shadow-[0_0_15px_rgba(212,175,55,0.3)]' : 'border-slate-200 dark:border-white/10'}`}>
-                                    {booking.escrow_locked ? <CheckCircle2 size={16} className="text-[#D4AF37]"/> : <div className="h-2 w-2 bg-slate-300 dark:bg-white/20 rounded-full" />}
-                                </div>
-                                <h4 className={`text-xs font-bold uppercase tracking-[0.2em] pt-2.5 transition-colors ${booking.escrow_locked ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-white/30'}`}>Phase 1: Escrow Secured</h4>
-                            </div>
-
-                            <div className="relative pl-14">
-                                <div className={`absolute left-0 top-0 h-10 w-10 rounded-full border-2 flex items-center justify-center bg-white dark:bg-[#0a0a0a] z-10 transition-colors ${isPastPrototype ? 'border-[#D4AF37] shadow-sm dark:shadow-[0_0_15px_rgba(212,175,55,0.3)]' : 'border-slate-200 dark:border-white/10'}`}>
-                                    {isPastPrototype ? <CheckCircle2 size={16} className="text-[#D4AF37]"/> : <div className="h-2 w-2 bg-slate-300 dark:bg-white/20 rounded-full" />}
-                                </div>
-                                <h4 className={`text-xs font-bold uppercase tracking-[0.2em] pt-2.5 transition-colors ${isPastPrototype ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-white/30'}`}>Phase 2: Prototype Approved</h4>
-                            </div>
-
-                            <div className="relative pl-14">
-                                <div className={`absolute left-0 top-0 h-10 w-10 rounded-full border-2 flex items-center justify-center bg-white dark:bg-[#0a0a0a] z-10 transition-colors ${booking.status === 'completed' ? 'border-[#D4AF37] shadow-sm dark:shadow-[0_0_15px_rgba(212,175,55,0.3)]' : 'border-slate-200 dark:border-white/10'}`}>
-                                    {booking.status === 'completed' ? <CheckCircle2 size={16} className="text-[#D4AF37]"/> : <div className="h-2 w-2 bg-slate-300 dark:bg-white/20 rounded-full" />}
-                                </div>
-                                <h4 className={`text-xs font-bold uppercase tracking-[0.2em] pt-2.5 transition-colors ${booking.status === 'completed' ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-white/30'}`}>Phase 3: Final Delivery</h4>
-                            </div>
-
-                        </div>
-                    </section>
-                </div>
-
-                {/* RIGHT COLUMN: ACTION PANEL */}
-                <div className="lg:col-span-5 space-y-8">
-                    <div className="bg-white dark:bg-[#111] rounded-3xl p-8 md:p-10 text-slate-900 dark:text-white space-y-8 shadow-xl dark:shadow-[0_30px_60px_rgba(0,0,0,0.6)] border border-slate-200 dark:border-[#D4AF37]/20 relative overflow-hidden sticky top-32 transition-colors duration-300">
-                        
-                        <div className="absolute top-[-20%] right-[-10%] opacity-[0.03] text-[#D4AF37] pointer-events-none rotate-12">
-                            <Compass size={300} strokeWidth={0.5} />
-                        </div>
-                        
-                        <div className="space-y-5 relative z-10 border-b border-slate-200 dark:border-white/5 pb-8 transition-colors">
-                            <div className="flex items-center justify-between">
-                                <p className="text-[10px] uppercase tracking-[0.3em] font-bold text-[#D4AF37]">Escrow Ledger</p>
-                                {booking.escrow_locked ? (
-                                    <span className="flex items-center gap-1.5 text-[9px] text-[#D4AF37] font-bold uppercase tracking-[0.2em] bg-[#D4AF37]/10 border border-[#D4AF37]/30 px-3 py-1.5 rounded-full shadow-[0_0_10px_rgba(212,175,55,0.1)]">
-                                        <Lock size={12}/> Secured
-                                    </span>
-                                ) : (
-                                    <span className="flex items-center gap-1.5 text-[9px] text-amber-500 dark:text-amber-400 font-bold uppercase tracking-[0.2em] bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 px-3 py-1.5 rounded-full">
-                                        <Unlock size={12}/> Unfunded
-                                    </span>
-                                )}
-                            </div>
-                            <h3 className="text-6xl font-serif tracking-tighter text-slate-900 dark:text-white drop-shadow-sm dark:drop-shadow-xl transition-colors">
-                                ${Number(booking.agreed_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                            </h3>
-                            
-                            <div className="pt-2 flex items-center gap-2 text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase tracking-widest transition-colors">
-                                <Calendar size={12} className="text-[#D4AF37]" />
-                                Deadline: <span className="text-slate-900 dark:text-white">{formatDeadline(booking.deadline)}</span>
-                            </div>
-                        </div>
-
-                        {/* PROVIDER VIEW - ACCEPT OR REJECT GATE */}
-                        {isProvider && booking.status === 'pending' && !providerHasAccepted && (
-                            <div className="relative z-10 space-y-5">
-                                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-[9px] uppercase tracking-[0.2em] text-[#D4AF37] transition-colors">
-                                    <Sparkles size={10} /> Incoming Request
-                                </div>
-                                
-                                <textarea 
-                                    placeholder="If declining, provide a brief reason..." 
-                                    value={rejectionReason}
-                                    onChange={(e) => setRejectionReason(e.target.value)}
-                                    className="w-full bg-slate-50 dark:bg-[#030303] border border-slate-300 dark:border-white/10 rounded-xl p-4 text-xs text-slate-900 dark:text-white outline-none resize-none focus:border-[#D4AF37] dark:focus:border-[#D4AF37]/50 transition-colors shadow-sm dark:shadow-inner"
-                                    rows={2}
-                                />
-
-                                <div className="flex gap-4 pt-2">
-                                    <button onClick={handleRejectProject} disabled={isRejecting || isAccepting} className="flex-1 py-4 bg-slate-50 dark:bg-[#030303] hover:bg-rose-50 dark:hover:bg-rose-500/10 text-slate-500 dark:text-white/50 hover:text-rose-600 dark:hover:text-rose-400 font-bold uppercase tracking-[0.2em] text-[9px] rounded-xl transition-all border border-slate-200 dark:border-white/10 hover:border-rose-300 dark:hover:border-rose-500/30 flex justify-center items-center gap-2 shadow-sm dark:shadow-inner">
-                                        {isRejecting ? <Loader2 className="animate-spin" size={14} /> : <><XCircle size={14}/> Decline</>}
-                                    </button>
-                                    <button onClick={handleAcceptProject} disabled={isRejecting || isAccepting} className="flex-[1.5] py-4 bg-[#D4AF37] hover:bg-slate-900 dark:hover:bg-white text-black hover:text-white dark:hover:text-black font-bold uppercase tracking-[0.2em] text-[9px] rounded-xl transition-all flex justify-center items-center gap-2 shadow-md dark:shadow-[0_0_20px_rgba(212,175,55,0.2)]">
-                                        {isAccepting ? <Loader2 className="animate-spin" size={14} /> : <><CheckCircle2 size={14}/> Accept Project</>}
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* CLIENT VIEW: Funding */}
-                        {isClient && providerHasAccepted && !booking.escrow_locked && !['completed', 'cancelled'].includes(booking.status) && (
-                            <div className="relative z-10 space-y-6">
-                                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-[0.2em] flex items-center gap-2 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-2.5 rounded-lg border border-emerald-200 dark:border-emerald-500/20 w-fit transition-colors">
-                                    <CheckCircle2 size={12}/> Artist Accepted
-                                </p>
-                                <button onClick={handleFundEscrow} disabled={fundingEscrow} className="w-full py-5 bg-[#D4AF37] hover:bg-slate-900 dark:hover:bg-white text-black hover:text-white dark:hover:text-black font-black uppercase tracking-[0.2em] text-[10px] rounded-xl flex items-center justify-center gap-2 shadow-md dark:shadow-[0_0_20px_rgba(212,175,55,0.3)] transition-all duration-300">
-                                    {fundingEscrow ? <Loader2 className="animate-spin" size={14} /> : "Authorize & Fund Escrow"}
-                                </button>
-                            </div>
-                        )}
-
-                        {/* CLIENT VIEW: Waiting for Acceptance */}
-                        {isClient && booking.status === 'pending' && !providerHasAccepted && (
-                            <div className="relative z-10">
-                                <div className="p-5 bg-slate-50 dark:bg-[#030303] border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-inner rounded-xl transition-colors duration-300">
-                                    <p className="text-xs font-light tracking-wide text-slate-500 dark:text-white/50 leading-relaxed text-center transition-colors">Contract sent. Waiting for the artist to accept the terms before you fund escrow.</p>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* PROVIDER VIEW: Forms */}
-                        {isProvider && providerHasAccepted && booking.escrow_locked && !['completed', 'cancelled'].includes(booking.status) && (
-                            <div className="relative z-10 space-y-8">
-                                
-                                {['accepted', 'progress'].includes(booking.status) && (
-                                    <form onSubmit={(e) => handleSubmitPhase(e, 'prototype')} className="space-y-5 bg-slate-50 dark:bg-[#030303] p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-inner transition-colors duration-300">
-                                        <p className="text-[10px] text-[#D4AF37] font-bold uppercase tracking-[0.2em] flex items-center gap-2"><PlayCircle size={14}/> Submit Prototype</p>
-                                        <input type="url" placeholder="Paste Prototype Link..." value={urlInput} onChange={(e) => setUrlInput(e.target.value)} required className="w-full bg-white dark:bg-[#111] border border-slate-300 dark:border-white/10 rounded-xl px-5 py-4 text-xs text-slate-900 dark:text-white outline-none focus:border-[#D4AF37] dark:focus:border-[#D4AF37]/50 transition-colors shadow-sm dark:shadow-inner" />
-                                        <button type="submit" disabled={submittingAction} className="w-full py-4 bg-slate-200 dark:bg-white/10 hover:bg-[#D4AF37] dark:hover:bg-[#D4AF37] hover:text-white dark:hover:text-black border border-slate-300 dark:border-white/10 hover:border-[#D4AF37] dark:hover:border-[#D4AF37] text-slate-800 dark:text-white font-bold uppercase tracking-[0.2em] text-[10px] rounded-xl flex justify-center items-center gap-2 transition-all">
-                                            {submittingAction ? <Loader2 className="animate-spin" size={14} /> : <><Upload size={14}/> Send Prototype</>}
-                                        </button>
-                                    </form>
-                                )}
-
-                                {booking.status === 'final_production' && (
-                                    <form onSubmit={(e) => handleSubmitPhase(e, 'final')} className="space-y-5 bg-slate-50 dark:bg-[#030303] p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-inner transition-colors duration-300">
-                                        <p className="text-[10px] text-[#D4AF37] font-bold uppercase tracking-[0.2em] flex items-center gap-2"><CheckCircle2 size={14}/> Submit Final Files</p>
-                                        <input type="url" placeholder="Paste Final Deliverables Link..." value={urlInput} onChange={(e) => setUrlInput(e.target.value)} required className="w-full bg-white dark:bg-[#111] border border-slate-300 dark:border-white/10 rounded-xl px-5 py-4 text-xs text-slate-900 dark:text-white outline-none focus:border-[#D4AF37] dark:focus:border-[#D4AF37]/50 transition-colors shadow-sm dark:shadow-inner" />
-                                        <button type="submit" disabled={submittingAction} className="w-full py-4 bg-[#D4AF37] hover:bg-slate-900 dark:hover:bg-white text-black hover:text-white dark:hover:text-black font-bold uppercase tracking-[0.2em] text-[10px] rounded-xl flex justify-center items-center gap-2 transition-all shadow-md dark:shadow-[0_0_15px_rgba(212,175,55,0.2)]">
-                                            {submittingAction ? <Loader2 className="animate-spin" size={14} /> : <><Upload size={14}/> Send Final Assets</>}
-                                        </button>
-                                    </form>
-                                )}
-                            </div>
-                        )}
-
-                        {/* DANGER ZONE - CANCELLATION */}
-                        {isClient && !['completed', 'cancelled'].includes(booking.status) && (
-                            <div className="relative z-10 mt-12 pt-8 border-t border-slate-200 dark:border-white/5 space-y-5 transition-colors">
-                                <p className="text-[10px] text-rose-600 dark:text-rose-500 font-bold uppercase tracking-[0.3em] flex items-center gap-2"><AlertCircle size={14}/> Danger Zone</p>
-                                <textarea 
-                                    placeholder="Reason for cancellation..." 
-                                    value={cancellationReason}
-                                    onChange={(e) => setCancellationReason(e.target.value)}
-                                    className="w-full bg-slate-50 dark:bg-[#030303] border border-slate-300 dark:border-white/5 rounded-xl p-5 text-xs text-slate-900 dark:text-white outline-none resize-none focus:border-rose-400 dark:focus:border-rose-500/50 transition-colors shadow-sm dark:shadow-inner"
-                                    rows={2}
-                                />
-                                <button 
-                                    onClick={handleCancelProject} 
-                                    disabled={isCancelling}
-                                    className="w-full py-4 bg-slate-100 dark:bg-[#030303] hover:bg-rose-50 dark:hover:bg-rose-900/40 border border-slate-300 dark:border-white/5 hover:border-rose-300 dark:hover:border-rose-900/50 text-slate-500 dark:text-white/40 hover:text-rose-600 dark:hover:text-rose-400 font-bold uppercase tracking-[0.2em] text-[9px] rounded-xl transition-all flex justify-center gap-2 shadow-sm dark:shadow-inner"
-                                >
-                                    {isCancelling ? <Loader2 className="animate-spin" size={14} /> : "Cancel Project & Refund"}
-                                </button>
-                            </div>
-                        )}
-
-                        {booking.status === 'completed' && (
-                            <div className="relative z-10 p-6 bg-slate-50 dark:bg-[#030303] border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-inner rounded-2xl text-center mt-8 transition-colors duration-300">
-                                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-[0.3em] flex items-center justify-center gap-2 transition-colors">
-                                    <ShieldCheck size={18}/> Contract Settled
-                                </p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
+          <p className="mt-5 text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 dark:text-white/40">
+            Loading contract workspace
+          </p>
         </div>
+      </main>
     );
-};
+  }
+
+  /*=====================================================
+    Booking unavailable
+    =====================================================*/
+
+  if (!booking) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-6 text-slate-950 dark:bg-[#030303] dark:text-white">
+        <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-xl dark:border-white/10 dark:bg-[#0A0A0A]">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-400/10 dark:text-rose-300">
+            <AlertCircle size={28} />
+          </div>
+
+          <h1 className="mt-6 font-serif text-3xl font-light">
+            Contract unavailable
+          </h1>
+
+          <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-white/45">
+            {error || "This contract could not be loaded."}
+          </p>
+
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <Link
+              to="/designer/bookings"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-5 text-xs font-black uppercase tracking-[0.16em] text-slate-700 transition hover:bg-slate-100 dark:border-white/10 dark:text-white/65 dark:hover:bg-white/5"
+            >
+              <ArrowLeft size={15} />
+              Back to Pipeline
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => fetchBooking()}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#A98520] px-5 text-xs font-black uppercase tracking-[0.16em] text-white transition hover:bg-[#8E701B]"
+            >
+              <RefreshCw size={15} />
+              Retry
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="relative min-h-screen overflow-hidden bg-slate-50 pb-20 text-slate-950 antialiased dark:bg-[#030303] dark:text-white">
+      {/*=====================================================
+            Background
+            =====================================================*/}
+
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div className="absolute -right-[12rem] -top-[14rem] h-[36rem] w-[36rem] rounded-full bg-[#D4AF37]/10 blur-[160px] dark:bg-[#D4AF37]/15" />
+
+        <div className="absolute -bottom-[17rem] -left-[15rem] h-[40rem] w-[40rem] rounded-full bg-indigo-500/5 blur-[180px] dark:bg-indigo-500/10" />
+
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(15,23,42,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.025)_1px,transparent_1px)] bg-[size:38px_38px] dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.018)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.018)_1px,transparent_1px)]" />
+      </div>
+
+      {/*=====================================================
+            Header
+            =====================================================*/}
+
+      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/80 backdrop-blur-2xl dark:border-white/5 dark:bg-[#070707]/80">
+        <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-4 px-5 py-4 sm:px-8 lg:px-10">
+          <Link
+            to="/designer/bookings"
+            className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 transition hover:text-[#9B791D] dark:text-white/45 dark:hover:text-[#D4AF37]"
+          >
+            <ArrowLeft size={16} />
+            Contract Pipeline
+          </Link>
+
+          <button
+            type="button"
+            onClick={() =>
+              fetchBooking({
+                silent: true,
+              })
+            }
+            disabled={refreshing}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-[10px] font-black uppercase tracking-[0.16em] text-slate-600 transition hover:border-[#D4AF37]/50 hover:text-[#9B791D] disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/55 dark:hover:text-[#D4AF37]"
+          >
+            <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+            Refresh
+          </button>
+        </div>
+      </header>
+
+      <div className="relative z-10 mx-auto max-w-[1280px] space-y-7 px-5 pt-8 sm:px-8 lg:px-10">
+        {/*=================================================
+                Success message
+                =================================================*/}
+
+        {successMessage && (
+          <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200">
+            <CheckCircle2 size={19} className="mt-0.5 shrink-0" />
+
+            <div className="flex-1">
+              <p className="text-sm font-semibold">{successMessage}</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSuccessMessage("")}
+              className="text-emerald-700/70 hover:text-emerald-900 dark:text-emerald-200/70"
+            >
+              <X size={17} />
+            </button>
+          </div>
+        )}
+
+        {/*=================================================
+                Error message
+                =================================================*/}
+
+        {error && (
+          <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-800 shadow-sm dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">
+            <AlertCircle size={19} className="mt-0.5 shrink-0" />
+
+            <div className="flex-1">
+              <p className="text-sm font-semibold">{error}</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setError("")}
+              className="text-rose-700/70 hover:text-rose-900 dark:text-rose-200/70"
+            >
+              <X size={17} />
+            </button>
+          </div>
+        )}
+
+        {/*=================================================
+                Contract hero
+                =================================================*/}
+
+        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-sm backdrop-blur dark:border-white/5 dark:bg-[#0A0A0A]/90 dark:shadow-2xl">
+          <div className="grid gap-0 xl:grid-cols-[1fr_350px]">
+            <div className="p-6 sm:p-8 lg:p-10">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.17em] ${statusDetails.badgeClass}`}
+                >
+                  <StatusIcon
+                    size={13}
+                    className={statusDetails.spinning ? "animate-spin" : ""}
+                  />
+
+                  {statusDetails.label}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={copyBookingId}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.15em] text-slate-500 transition hover:border-[#D4AF37]/40 hover:text-[#9B791D] dark:border-white/10 dark:bg-white/[0.03] dark:text-white/35 dark:hover:text-[#D4AF37]"
+                >
+                  {String(booking.id).slice(0, 8).toUpperCase()}
+
+                  {copied ? <Check size={12} /> : <Copy size={12} />}
+                </button>
+
+                <span className="rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/5 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.17em] text-[#8F7118] dark:text-[#D4AF37]">
+                  {booking.booking_type || "commission"}
+                </span>
+              </div>
+
+              <h1 className="mt-6 max-w-4xl font-serif text-4xl font-light tracking-tight sm:text-5xl lg:text-6xl">
+                {projectTitle}
+              </h1>
+
+              <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-500 dark:text-white/45 sm:text-base">
+                {booking.brief_text || "No project brief was supplied."}
+              </p>
+
+              <div className="mt-8 flex flex-wrap items-center gap-5 border-t border-slate-200 pt-6 dark:border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5">
+                    {creatorAvatar ? (
+                      <img
+                        src={creatorAvatar}
+                        alt={creatorName}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-sm font-bold text-slate-500 dark:text-white/45">
+                        {getFirstName(creatorName).charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-white/30">
+                      Project Creator
+                    </p>
+
+                    <p className="mt-1 text-sm font-semibold">{creatorName}</p>
+                  </div>
+                </div>
+
+                <div className="hidden h-10 w-px bg-slate-200 sm:block dark:bg-white/10" />
+
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-white/30">
+                    Created
+                  </p>
+
+                  <p className="mt-1 text-sm font-semibold">
+                    {formatDate(booking.created_at)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/*=========================================
+                        Current phase
+                        =========================================*/}
+
+            <aside className="border-t border-slate-200 bg-slate-50/80 p-6 dark:border-white/5 dark:bg-white/[0.025] sm:p-8 xl:border-l xl:border-t-0">
+              <div
+                className={`flex h-14 w-14 items-center justify-center rounded-2xl border border-current/15 bg-white shadow-sm dark:bg-black/20 ${statusDetails.accentClass}`}
+              >
+                <StatusIcon
+                  size={25}
+                  className={statusDetails.spinning ? "animate-spin" : ""}
+                />
+              </div>
+
+              <p
+                className={`mt-6 text-[10px] font-black uppercase tracking-[0.2em] ${statusDetails.accentClass}`}
+              >
+                Current Phase
+              </p>
+
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight">
+                {statusDetails.title}
+              </h2>
+
+              <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-white/45">
+                {statusDetails.description}
+              </p>
+
+              <div className="mt-7 space-y-3">
+                {primaryAction && (
+                  <button
+                    type="button"
+                    onClick={
+                      primaryAction.type === "accept"
+                        ? handleAccept
+                        : () => setModalMode(primaryAction.type)
+                    }
+                    disabled={submitting}
+                    className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#A98520] px-5 text-xs font-black uppercase tracking-[0.16em] text-white shadow-lg shadow-[#D4AF37]/10 transition hover:-translate-y-0.5 hover:bg-[#8E701B] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {submitting ? (
+                      <Loader2 size={17} className="animate-spin" />
+                    ) : (
+                      <PrimaryIcon size={17} />
+                    )}
+
+                    {primaryAction.label}
+                  </button>
+                )}
+
+                {canReject && (
+                  <button
+                    type="button"
+                    onClick={() => setModalMode("reject")}
+                    disabled={submitting}
+                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white px-5 text-xs font-black uppercase tracking-[0.16em] text-rose-600 transition hover:bg-rose-50 disabled:opacity-50 dark:border-rose-400/20 dark:bg-transparent dark:text-rose-300 dark:hover:bg-rose-400/10"
+                  >
+                    <XCircle size={16} />
+                    Reject Request
+                  </button>
+                )}
+
+                {canCancel && (
+                  <button
+                    type="button"
+                    onClick={() => setModalMode("cancel")}
+                    disabled={submitting}
+                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-xs font-black uppercase tracking-[0.16em] text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 dark:border-white/10 dark:bg-transparent dark:text-white/40 dark:hover:border-rose-400/20 dark:hover:bg-rose-400/10 dark:hover:text-rose-300"
+                  >
+                    <Ban size={16} />
+                    Cancel Contract
+                  </button>
+                )}
+              </div>
+
+              {primaryAction && (
+                <p className="mt-4 text-center text-[11px] leading-5 text-slate-400 dark:text-white/30">
+                  {primaryAction.helper}
+                </p>
+              )}
+            </aside>
+          </div>
+        </section>
+
+        {/*=================================================
+                Workflow
+                =================================================*/}
+
+        <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur dark:border-white/5 dark:bg-[#0A0A0A]/90 sm:p-8">
+          <div className="flex items-center justify-between gap-5">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#9B791D] dark:text-[#D4AF37]">
+                Milestone Journey
+              </p>
+
+              <h2 className="mt-2 font-serif text-3xl font-light">
+                Contract workflow
+              </h2>
+            </div>
+
+            <Sparkles className="text-[#D4AF37]" size={22} />
+          </div>
+
+          <div className="mt-8 grid gap-4 md:grid-cols-5">
+            {WORKFLOW_STEPS.map((step, index) => {
+              const active = index === workflowIndex;
+
+              const complete = workflowIndex >= 0 && index < workflowIndex;
+
+              const terminalComplete =
+                [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.DELIVERED].includes(
+                  status,
+                ) && index <= workflowIndex;
+
+              const reached = complete || terminalComplete;
+
+              return (
+                <div
+                  key={step.id}
+                  className={`relative rounded-2xl border p-4 transition ${
+                    active
+                      ? "border-[#D4AF37]/45 bg-[#D4AF37]/10"
+                      : reached
+                        ? "border-emerald-200 bg-emerald-50 dark:border-emerald-400/15 dark:bg-emerald-400/5"
+                        : "border-slate-200 bg-slate-50 dark:border-white/5 dark:bg-white/[0.025]"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`flex h-8 w-8 items-center justify-center rounded-full border text-xs font-black ${
+                        active
+                          ? "border-[#D4AF37]/40 bg-[#D4AF37] text-black"
+                          : reached
+                            ? "border-emerald-300 bg-emerald-500 text-white dark:border-emerald-400"
+                            : "border-slate-200 bg-white text-slate-400 dark:border-white/10 dark:bg-black/20 dark:text-white/30"
+                      }`}
+                    >
+                      {reached ? <Check size={14} /> : index + 1}
+                    </div>
+
+                    <span
+                      className={`text-[10px] font-black uppercase tracking-[0.16em] ${
+                        active
+                          ? "text-[#8F7118] dark:text-[#D4AF37]"
+                          : reached
+                            ? "text-emerald-700 dark:text-emerald-300"
+                            : "text-slate-400 dark:text-white/30"
+                      }`}
+                    >
+                      {step.label}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {[
+            BOOKING_STATUS.CANCELLED,
+            BOOKING_STATUS.CANCELLATION_PENDING,
+          ].includes(status) && (
+            <div className="mt-5 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">
+              <Ban size={18} className="mt-0.5 shrink-0" />
+
+              <p>
+                {status === BOOKING_STATUS.CANCELLED
+                  ? "This workflow ended because the contract was cancelled."
+                  : "This workflow is temporarily paused while cancellation is processed."}
+              </p>
+            </div>
+          )}
+        </section>
+
+        {/*=================================================
+                Main details grid
+                =================================================*/}
+
+        <div className="grid gap-7 xl:grid-cols-[1fr_360px]">
+          <div className="space-y-7">
+            {/*=========================================
+                        Project scope
+                        =========================================*/}
+
+            <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur dark:border-white/5 dark:bg-[#0A0A0A]/90 sm:p-8">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/10 text-[#9B791D] dark:text-[#D4AF37]">
+                  <FileText size={20} />
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/30">
+                    Project Scope
+                  </p>
+
+                  <h2 className="mt-1 text-xl font-semibold">Creator brief</h2>
+                </div>
+              </div>
+
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-7 text-slate-600 dark:border-white/5 dark:bg-white/[0.025] dark:text-white/55">
+                {booking.brief_text || "No project brief was supplied."}
+              </div>
+
+              {booking.revision_notes && (
+                <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-400/20 dark:bg-amber-400/10">
+                  <div className="flex items-start gap-3">
+                    <MessageSquareText
+                      size={19}
+                      className="mt-0.5 shrink-0 text-amber-700 dark:text-amber-300"
+                    />
+
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">
+                        Revision Requested
+                      </p>
+
+                      <p className="mt-2 text-sm leading-6 text-amber-800/85 dark:text-amber-100/80">
+                        {booking.revision_notes}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {/*=========================================
+                        Submitted Deliverables
+                        =========================================*/}
+
+            <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur dark:border-white/5 dark:bg-[#0A0A0A]/90 sm:p-8">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-400/20 dark:bg-indigo-400/10 dark:text-indigo-300">
+                  <PackageCheck size={20} />
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/30">
+                    Deliverables
+                  </p>
+
+                  <h2 className="mt-1 text-xl font-semibold">Submitted work</h2>
+                </div>
+              </div>
+
+              <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-500 dark:text-white/40">
+                Each milestone keeps the required 2D deliverable and, when
+                supplied, an interactive 3D model and Virtual Try-On garment
+                image.
+              </p>
+
+              {/*=====================================
+                            Prototype
+                            =====================================*/}
+
+              <article className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/5 dark:bg-white/[0.025]">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-400/10 dark:text-indigo-300">
+                    <PlayCircle size={19} />
+                  </div>
+
+                  <span className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
+                    Prototype
+                  </span>
+                </div>
+
+                <h3 className="mt-5 text-base font-semibold">
+                  Phase-one submission
+                </h3>
+
+                <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-white/40">
+                  {booking.prototype_message ||
+                    "No prototype has been submitted yet."}
+                </p>
+
+                {booking.prototype_file_url ? (
+                  <a
+                    href={booking.prototype_file_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-5 inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-white px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-50 dark:border-indigo-400/20 dark:bg-white/[0.03] dark:text-indigo-300 dark:hover:bg-indigo-400/10"
+                  >
+                    Open 2D Prototype
+                    <ExternalLink size={13} />
+                  </a>
+                ) : (
+                  <p className="mt-5 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-white/25">
+                    2D prototype not submitted
+                  </p>
+                )}
+
+                {booking.prototype_tryon_image_url && (
+                  <a
+                    href={booking.prototype_tryon_image_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 flex w-fit items-center gap-2 rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/5 px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-[#8F7118] transition hover:border-[#D4AF37]/45 hover:bg-[#D4AF37]/10 dark:text-[#D4AF37]"
+                  >
+                    Open Try-On Garment
+                    <Sparkles size={13} />
+                  </a>
+                )}
+
+                {booking.prototype_model_url && (
+                  <div className="mt-6">
+                    <BookingModelViewer
+                      modelUrl={booking.prototype_model_url}
+                      title="Prototype 3D Model"
+                      height={390}
+                    />
+                  </div>
+                )}
+
+                <div className="mt-5 flex flex-wrap gap-3">
+                  {booking.prototype_file_url && (
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-white/30">
+                      <CheckCircle2 size={13} className="text-emerald-500" />
+                      2D prototype available
+                    </div>
+                  )}
+
+                  {booking.prototype_model_url && (
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-white/30">
+                      <CheckCircle2 size={13} className="text-cyan-500" />
+                      Interactive 3D model available
+                    </div>
+                  )}
+
+                  {booking.prototype_tryon_image_url && (
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-white/30">
+                      <CheckCircle2 size={13} className="text-[#B89122]" />
+                      Virtual Try-On garment available
+                    </div>
+                  )}
+                </div>
+              </article>
+
+              {/*=====================================
+                            Final delivery
+                            =====================================*/}
+
+              <article className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/5 dark:bg-white/[0.025]">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 text-violet-700 dark:bg-violet-400/10 dark:text-violet-300">
+                    <FileCheck2 size={19} />
+                  </div>
+
+                  <span className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
+                    Final
+                  </span>
+                </div>
+
+                <h3 className="mt-5 text-base font-semibold">Final delivery</h3>
+
+                <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-white/40">
+                  {booking.delivery_message ||
+                    "Final files have not been submitted yet."}
+                </p>
+
+                {booking.delivery_file_url ? (
+                  <a
+                    href={booking.delivery_file_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-5 inline-flex items-center gap-2 rounded-xl border border-violet-200 bg-white px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-violet-700 transition hover:border-violet-300 hover:bg-violet-50 dark:border-violet-400/20 dark:bg-white/[0.03] dark:text-violet-300 dark:hover:bg-violet-400/10"
+                  >
+                    Open Final 2D
+                    <ExternalLink size={13} />
+                  </a>
+                ) : (
+                  <p className="mt-5 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-white/25">
+                    Final 2D deliverable not submitted
+                  </p>
+                )}
+
+                {booking.delivery_tryon_image_url && (
+                  <a
+                    href={booking.delivery_tryon_image_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 flex w-fit items-center gap-2 rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/5 px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-[#8F7118] transition hover:border-[#D4AF37]/45 hover:bg-[#D4AF37]/10 dark:text-[#D4AF37]"
+                  >
+                    Open Try-On Garment
+                    <Sparkles size={13} />
+                  </a>
+                )}
+
+                {booking.delivery_model_url && (
+                  <div className="mt-6">
+                    <BookingModelViewer
+                      modelUrl={booking.delivery_model_url}
+                      title="Final 3D Model"
+                      height={390}
+                    />
+                  </div>
+                )}
+
+                <div className="mt-5 flex flex-wrap gap-3">
+                  {booking.delivery_file_url && (
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-white/30">
+                      <CheckCircle2 size={13} className="text-emerald-500" />
+                      Final 2D deliverable available
+                    </div>
+                  )}
+
+                  {booking.delivery_model_url && (
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-white/30">
+                      <CheckCircle2 size={13} className="text-cyan-500" />
+                      Interactive final 3D model available
+                    </div>
+                  )}
+
+                  {booking.delivery_tryon_image_url && (
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-white/30">
+                      <CheckCircle2 size={13} className="text-[#B89122]" />
+                      Virtual Try-On garment available
+                    </div>
+                  )}
+                </div>
+              </article>
+            </section>
+          </div>
+
+          {/*=================================================
+                    Sidebar
+                    =================================================*/}
+
+          <aside className="space-y-7">
+            {/*=========================================
+                        Contract summary
+                        =========================================*/}
+
+            <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur dark:border-white/5 dark:bg-[#0A0A0A]/90">
+              <div className="flex items-center gap-3">
+                <BadgeDollarSign
+                  size={20}
+                  className="text-[#9B791D] dark:text-[#D4AF37]"
+                />
+
+                <h2 className="text-lg font-semibold">Contract summary</h2>
+              </div>
+
+              <div className="mt-6 space-y-4">
+                <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-4 dark:border-white/10">
+                  <span className="text-sm text-slate-500 dark:text-white/40">
+                    Agreed value
+                  </span>
+
+                  <strong className="font-mono text-lg text-[#9B791D] dark:text-[#D4AF37]">
+                    {formatCurrency(booking.agreed_price)}
+                  </strong>
+                </div>
+
+                <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-4 dark:border-white/10">
+                  <span className="text-sm text-slate-500 dark:text-white/40">
+                    Escrow
+                  </span>
+
+                  <span
+                    className={`inline-flex items-center gap-2 text-sm font-semibold ${
+                      booking.escrow_locked
+                        ? "text-emerald-700 dark:text-emerald-300"
+                        : "text-slate-600 dark:text-white/55"
+                    }`}
+                  >
+                    {booking.escrow_locked ? (
+                      <ShieldCheck size={15} />
+                    ) : (
+                      <LockKeyhole size={15} />
+                    )}
+
+                    {booking.escrow_locked ? "Secured" : "Not funded"}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-sm text-slate-500 dark:text-white/40">
+                    Booking type
+                  </span>
+
+                  <span className="text-sm font-semibold capitalize">
+                    {booking.booking_type || "commission"}
+                  </span>
+                </div>
+              </div>
+            </section>
+
+            {/*=========================================
+                        Schedule
+                        =========================================*/}
+
+            <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur dark:border-white/5 dark:bg-[#0A0A0A]/90">
+              <div className="flex items-center gap-3">
+                <CalendarDays
+                  size={20}
+                  className="text-[#9B791D] dark:text-[#D4AF37]"
+                />
+
+                <h2 className="text-lg font-semibold">Schedule</h2>
+              </div>
+
+              <div className="mt-6 space-y-5">
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-white/30">
+                    Deadline
+                  </p>
+
+                  <p className="mt-2 text-base font-semibold">
+                    {formatDate(booking.deadline)}
+                  </p>
+
+                  <p className="mt-1 text-xs text-slate-500 dark:text-white/40">
+                    {getDeadlineMessage(booking.deadline)}
+                  </p>
+                </div>
+
+                <div className="border-t border-slate-200 pt-5 dark:border-white/10">
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-white/30">
+                    Scheduled start
+                  </p>
+
+                  <p className="mt-2 text-sm font-semibold">
+                    {formatDateTime(booking.scheduled_at)}
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/*=========================================
+                        Cancellation record
+                        =========================================*/}
+
+            {(booking.cancellation_reason || booking.cancelled_at) && (
+              <section className="rounded-3xl border border-rose-200 bg-rose-50 p-6 shadow-sm dark:border-rose-400/20 dark:bg-rose-400/10">
+                <div className="flex items-center gap-3 text-rose-700 dark:text-rose-300">
+                  <Ban size={20} />
+
+                  <h2 className="text-lg font-semibold">Cancellation record</h2>
+                </div>
+
+                <p className="mt-4 text-sm leading-6 text-rose-800/80 dark:text-rose-100/75">
+                  {booking.cancellation_reason ||
+                    "No cancellation reason was recorded."}
+                </p>
+
+                {booking.cancelled_at && (
+                  <p className="mt-4 text-[10px] font-black uppercase tracking-[0.16em] text-rose-700/70 dark:text-rose-200/60">
+                    Closed {formatDateTime(booking.cancelled_at)}
+                  </p>
+                )}
+              </section>
+            )}
+          </aside>
+        </div>
+      </div>
+
+      {/*=====================================================
+            Action modal
+            =====================================================*/}
+
+      <ActionModal
+        mode={modalMode}
+        booking={booking}
+        submitting={submitting}
+        onClose={() => {
+          if (!submitting) {
+            setModalMode(null);
+          }
+        }}
+        onSubmit={handleModalSubmit}
+      />
+    </main>
+  );
+}
 
 export default DesignerBookingDetail;

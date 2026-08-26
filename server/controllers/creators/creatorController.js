@@ -1,65 +1,1976 @@
-const crypto = require('crypto');
-const db = require('../../config/db');
+"use strict";
 
-exports.uploadToCreatorMarketplace = async (req, res) => {
-    // 1. Extract the text fields sent in the FormData
-    const { title, editableType } = req.body;
+/*
+=========================================================
+DesignByYou / FashionVision
+Creator Controller
+Creator Studio Assets + Fashion Editor Projects
+Version 5.1
+=========================================================
 
-    try {
-        // 2. Ensure Multer and Cloudinary successfully processed the file
-        if (!req.file || !req.file.path) {
-            return res.status(400).json({ message: "A showcase preview graphic is required." });
+CREATOR STUDIO MODEL
+---------------------------------------------------------
+
+Creator Studio is NOT:
+
+- ecommerce
+- a marketplace
+- a store
+- checkout
+- a sales system
+- a licensing system
+
+Creator Studio assets are creative Showcase assets owned
+by the Creator.
+
+A Studio asset may contain:
+
+- preview image
+- title
+- description
+- creative format
+- general creative category
+- Showcase style
+- Showcase garment
+- Showcase occasions
+- tags
+- editable/vector canvas state
+
+=========================================================
+GENERAL CATEGORY MODEL
+=========================================================
+
+design_categories
+        ↓
+GET /api/v1/creators/studio/categories
+        ↓
+category_id
+        ↓
+designs.category_id
+
+Only active categories may be selected.
+
+=========================================================
+SHOWCASE DISCOVERY MODEL
+=========================================================
+
+showcase_discovery_terms
+        ↓
+GET /api/v1/creator-showcase/discovery
+        ↓
+Creator selects:
+    exactly 1 Style
+    exactly 1 Garment
+    0+ Occasions
+        ↓
+showcase_term_ids
+        ↓
+validated by this controller
+        ↓
+design_showcase_terms
+
+A design can therefore belong to multiple discovery
+dimensions simultaneously.
+
+Example:
+
+Style:
+    Romantic
+
+Garment:
+    Dresses
+
+Occasion:
+    Wedding
+    Party
+
+=========================================================
+STYLE CATEGORY COMPATIBILITY
+=========================================================
+
+The designs table still contains:
+
+style_category
+
+The frontend may submit style_category for compatibility,
+but the backend does NOT trust that value.
+
+The canonical style is loaded from:
+
+showcase_discovery_terms
+
+and its validated database name is written into:
+
+designs.style_category
+
+=========================================================
+SHOWCASE VISIBILITY
+=========================================================
+
+Creator Studio assets are intended to appear in the
+Creator Showcase.
+
+Therefore new Creator Studio assets are saved as:
+
+is_public    = TRUE
+is_published = TRUE
+
+These flags mean Showcase visibility/readiness.
+
+They do NOT mean:
+
+- for sale
+- purchasable
+- licensed
+- marketplace listing
+
+=========================================================
+LEGACY DATABASE COLUMNS
+=========================================================
+
+The designs table still contains older compatibility
+columns including:
+
+base_price
+product_type
+license_type
+sku
+
+These are NOT Creator-facing ecommerce features.
+
+base_price:
+    always 0
+
+product_type:
+    safe legacy enum value "sketch"
+
+license_type:
+    safe legacy value "commercial"
+
+sku:
+    internal asset identifier only
+
+Creative format remains separate from legacy product_type.
+
+=========================================================
+TRANSACTION GUARANTEE
+=========================================================
+
+The following happen atomically:
+
+1. validate category
+2. validate Showcase discovery terms
+3. insert design
+4. insert design_showcase_terms rows
+5. commit
+
+If any step fails, the database design insert and Showcase
+term assignments are rolled back together.
+=========================================================
+*/
+
+const crypto = require("crypto");
+
+const db = require("../../config/db");
+
+/*=========================================================
+Limits
+=========================================================*/
+
+const MAX_TITLE_LENGTH = 120;
+
+const MAX_DESCRIPTION_LENGTH = 3000;
+
+const MAX_TAG_LENGTH = 40;
+
+const MAX_TAGS = 15;
+
+/*
+1 Style
+1 Garment
+Up to all 8 currently-defined Occasions
+
+10 gives enough room for:
+
+1 + 1 + 8
+*/
+
+const MAX_SHOWCASE_TERMS = 10;
+
+/*=========================================================
+Creator Fashion Editor Project Limits
+=========================================================*/
+
+const EDITOR_PROJECT_MAX_BYTES = 25 * 1024 * 1024;
+
+const EDITOR_PROJECT_SCHEMA_MAX = 100;
+
+/*=========================================================
+Creative Formats
+=========================================================*/
+
+const ALLOWED_FORMATS = new Set(["sketch", "3d_garment", "tech_pack"]);
+
+/*=========================================================
+Legacy Database Compatibility
+=========================================================*/
+
+const LEGACY_PRODUCT_TYPE = "sketch";
+
+const LEGACY_LICENSE_TYPE = "commercial";
+
+const LEGACY_BASE_PRICE = 0;
+
+/*=========================================================
+Helpers
+=========================================================*/
+
+function cleanText(value, maxLength = 500) {
+  if (value === undefined || value === null) {
+    return "";
+  }
+
+  return String(value)
+    .replace(/\0/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function cleanMultiline(value, maxLength = 3000) {
+  if (value === undefined || value === null) {
+    return "";
+  }
+
+  return String(value)
+    .replace(/\0/g, "")
+    .replace(/\r\n/g, "\n")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function normalizeToken(value) {
+  return cleanText(value, 100).toLowerCase().replace(/\s+/g, "_");
+}
+
+function isPlainObject(value) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function isPositiveBigIntId(value) {
+  return /^[1-9]\d*$/.test(String(value ?? "").trim());
+}
+
+function getAuthenticatedCreatorId(req) {
+  return cleanText(req?.user?.id || req?.user?._id || "", 100);
+}
+
+function normalizeTag(value) {
+  return cleanText(value, MAX_TAG_LENGTH)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s_-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^[-_]+|[-_]+$/g, "");
+}
+
+function sendError(res, statusCode, message, code = null) {
+  return res.status(statusCode).json({
+    status: "error",
+
+    ...(code
+      ? {
+          code,
         }
-        if (!editableType) {
-            return res.status(400).json({ message: "Editable design data is required." });
-        }
+      : {}),
 
-        // Cloudinary automatically puts the secure URL right here
-        const watermarked_preview_url = req.file.path; 
+    message,
+  });
+}
 
-        // 3. Prepare Database Fields
-        const safeTitle = title || 'Atelier Sketch';
-        const sku = `CRT-SKE-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-        const slug = safeTitle.toLowerCase().trim().replace(/ /g, '-').replace(/[^\w-]+/g, '') + '-' + crypto.randomBytes(2).toString('hex');
-        
-        const normalizedProductType = 'sketch'; 
-        const normalizedLicenseType = 'commercial'; 
-        const normalizedStyleCategory = 'Streetwear'; 
-        const processedTags = ['sketch', 'cad', 'apparel'];
+/*=========================================================
+UUID Validation
+=========================================================*/
 
-        // Because we appended editableType via FormData using JSON.stringify on the frontend,
-        // it arrives here as a string. We can pass it directly to the JSONB column.
-        const canvasState = editableType;
+function isUuid(value) {
+  if (typeof value !== "string") {
+    return false;
+  }
 
-        // 4. Database Insert
-        const result = await db.query(
-            `INSERT INTO designs (
-                id, owner_id, title, sku, slug, description,
-                base_price, canvas_state, style_category, tags, 
-                product_type, license_type, watermarked_preview_url, high_res_file_url,
-                is_public, is_published, created_at, updated_at
-            ) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NULL, true, true, NOW(), NOW()) 
-            RETURNING id, title, slug, sku, watermarked_preview_url;`,
-            [
-                req.user.id, safeTitle, sku, slug, "Created in Studio CAD Engine",
-                0, canvasState, normalizedStyleCategory, 
-                processedTags, normalizedProductType, normalizedLicenseType,
-                watermarked_preview_url
-            ]
-        );
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value.trim(),
+  );
+}
 
-        res.status(201).json({ 
-            status: 'success', 
-            message: "Portfolio asset successfully published to the Showcase!", 
-            data: result.rows[0] 
-        });
-        
-    } catch (error) {
-        console.error("Creator Database Injection Error:", error);
-        
-        if (error.code === '23505') {
-            return res.status(400).json({ message: "Upload rejected. A portfolio item with this exact configuration already exists." });
-        }
-        res.status(500).json({ message: "Portfolio upload failed. Check database constraints." });
+/*=========================================================
+Uploaded Preview
+=========================================================*/
+
+function getUploadedPreviewUrl(req) {
+  return cleanText(
+    req?.file?.path || req?.file?.secure_url || req?.file?.url || "",
+
+    2000,
+  );
+}
+
+/*=========================================================
+JSON Parsing
+=========================================================*/
+
+function parseJson(value) {
+  if (value === undefined || value === null || value === "") {
+    return {
+      supplied: false,
+
+      valid: true,
+
+      value: null,
+    };
+  }
+
+  if (typeof value === "object") {
+    return {
+      supplied: true,
+
+      valid: true,
+
+      value,
+    };
+  }
+
+  if (typeof value !== "string") {
+    return {
+      supplied: true,
+
+      valid: false,
+
+      value: null,
+    };
+  }
+
+  try {
+    return {
+      supplied: true,
+
+      valid: true,
+
+      value: JSON.parse(value),
+    };
+  } catch {
+    return {
+      supplied: true,
+
+      valid: false,
+
+      value: null,
+    };
+  }
+}
+
+/*=========================================================
+Fashion Editor Project Validation
+=========================================================*/
+
+function validateEditorProjectPayload(rawProjectData) {
+  const parsed = parseJson(rawProjectData);
+
+  if (!parsed.supplied || !parsed.valid || !isPlainObject(parsed.value)) {
+    return {
+      error: "A valid Fashion Editor project_data object is required.",
+    };
+  }
+
+  const projectData = parsed.value;
+
+  if (!isPlainObject(projectData.document)) {
+    return {
+      error: "The editor project must contain a valid document object.",
+    };
+  }
+
+  if (!Array.isArray(projectData.layers)) {
+    return {
+      error: "The editor project must contain a layers array.",
+    };
+  }
+
+  const hasValidObjects =
+    Array.isArray(projectData.objects) || isPlainObject(projectData.objects);
+
+  if (!hasValidObjects) {
+    return {
+      error: "The editor project must contain an objects array or object map.",
+    };
+  }
+
+  let serializedProject;
+
+  try {
+    serializedProject = JSON.stringify(projectData);
+  } catch {
+    return {
+      error: "The editor project contains data that cannot be serialized.",
+    };
+  }
+
+  const projectBytes = Buffer.byteLength(serializedProject, "utf8");
+
+  if (projectBytes > EDITOR_PROJECT_MAX_BYTES) {
+    return {
+      error: "The editor project exceeds the 25 MB storage limit.",
+    };
+  }
+
+  const requestedSchemaVersion = Number(
+    projectData.schemaVersion ?? projectData.document?.schemaVersion ?? 2,
+  );
+
+  const schemaVersion =
+    Number.isInteger(requestedSchemaVersion) &&
+    requestedSchemaVersion > 0 &&
+    requestedSchemaVersion <= EDITOR_PROJECT_SCHEMA_MAX
+      ? requestedSchemaVersion
+      : 2;
+
+  const title = cleanText(projectData.document?.name, MAX_TITLE_LENGTH);
+
+  return {
+    projectData,
+    serializedProject,
+    schemaVersion,
+    title,
+  };
+}
+
+async function rollbackQuietly(client) {
+  try {
+    await client.query("ROLLBACK");
+  } catch (rollbackError) {
+    console.error("Creator transaction rollback failed:", rollbackError);
+  }
+}
+
+/*=========================================================
+Tags
+=========================================================*/
+
+function parseTags(rawTags) {
+  const parsed = parseJson(rawTags);
+
+  if (!parsed.supplied) {
+    return {
+      valid: true,
+
+      tags: [],
+    };
+  }
+
+  if (!parsed.valid || !Array.isArray(parsed.value)) {
+    return {
+      valid: false,
+
+      tags: [],
+    };
+  }
+
+  const result = [];
+
+  const seen = new Set();
+
+  for (const rawTag of parsed.value) {
+    const tag = normalizeTag(rawTag);
+
+    if (!tag || seen.has(tag)) {
+      continue;
     }
+
+    seen.add(tag);
+
+    result.push(tag);
+
+    if (result.length >= MAX_TAGS) {
+      break;
+    }
+  }
+
+  return {
+    valid: true,
+
+    tags: result,
+  };
+}
+
+/*=========================================================
+Showcase Term IDs
+=========================================================*/
+
+function parseShowcaseTermIds(rawValue) {
+  const parsed = parseJson(rawValue);
+
+  if (!parsed.supplied || !parsed.valid || !Array.isArray(parsed.value)) {
+    return {
+      valid: false,
+
+      ids: [],
+    };
+  }
+
+  const ids = [];
+
+  const seen = new Set();
+
+  for (const rawId of parsed.value) {
+    const id = cleanText(rawId, 100);
+
+    /*
+    Reject malformed values rather than silently ignoring
+    them. The frontend is expected to submit UUIDs only.
+    */
+
+    if (!id || !isUuid(id)) {
+      return {
+        valid: false,
+
+        ids: [],
+      };
+    }
+
+    if (seen.has(id)) {
+      continue;
+    }
+
+    seen.add(id);
+
+    ids.push(id);
+
+    if (ids.length > MAX_SHOWCASE_TERMS) {
+      return {
+        valid: false,
+
+        ids: [],
+      };
+    }
+  }
+
+  return {
+    valid: true,
+
+    ids,
+  };
+}
+
+/*=========================================================
+Canvas State
+=========================================================*/
+
+function parseCanvasState(rawCanvasState) {
+  const parsed = parseJson(rawCanvasState);
+
+  if (!parsed.supplied) {
+    return {
+      valid: true,
+
+      value: [],
+    };
+  }
+
+  if (!parsed.valid) {
+    return {
+      valid: false,
+
+      value: [],
+    };
+  }
+
+  const value = parsed.value;
+
+  if (Array.isArray(value)) {
+    return {
+      valid: true,
+
+      value,
+    };
+  }
+
+  if (value && typeof value === "object") {
+    return {
+      valid: true,
+
+      value,
+    };
+  }
+
+  return {
+    valid: false,
+
+    value: [],
+  };
+}
+
+/*=========================================================
+Slug
+=========================================================*/
+
+function makeSlug(title) {
+  const base = cleanText(title, MAX_TITLE_LENGTH)
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+
+  const suffix = crypto.randomBytes(4).toString("hex");
+
+  return `${base || "creator-studio"}-${suffix}`;
+}
+
+/*=========================================================
+Internal Asset Code
+=========================================================*/
+
+function createInternalAssetCode() {
+  return `CRT-STU-${crypto.randomBytes(5).toString("hex").toUpperCase()}`;
+}
+
+/*=========================================================
+Public Discovery Term Shape
+=========================================================*/
+
+function serializeDiscoveryTerm(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+
+    name: row.name,
+
+    slug: row.slug,
+
+    search_term: row.search_term,
+
+    emoji: row.emoji || null,
+
+    description: row.description || null,
+
+    sort_order: row.sort_order,
+  };
+}
+
+/*=========================================================
+GET CREATOR STUDIO CATEGORIES
+
+GET
+/api/v1/creators/studio/categories
+=========================================================*/
+
+exports.getCreatorStudioCategories = async (req, res) => {
+  try {
+    const result = await db.query(`
+          SELECT
+            id,
+            name,
+            slug,
+            description,
+            sort_order
+
+          FROM design_categories
+
+          WHERE
+            is_active = TRUE
+
+          ORDER BY
+            sort_order ASC,
+            name ASC
+        `);
+
+    return res.status(200).json({
+      status: "success",
+
+      count: result.rows.length,
+
+      data: result.rows.map((row) => ({
+        id: row.id,
+
+        name: row.name,
+
+        slug: row.slug,
+
+        description: row.description || null,
+
+        sort_order: row.sort_order,
+      })),
+    });
+  } catch (error) {
+    console.error("Creator Studio categories fetch failed:", error);
+
+    return sendError(
+      res,
+      500,
+      "Creator Studio categories could not be loaded.",
+      "CREATOR_STUDIO_CATEGORIES_FAILED",
+    );
+  }
+};
+
+/*=========================================================
+GET CREATOR FASHION EDITOR PROJECTS
+
+GET
+/api/v1/creators/editor-projects
+=========================================================*/
+
+exports.getMyEditorProjects = async (req, res) => {
+  const creatorId = getAuthenticatedCreatorId(req);
+
+  if (!creatorId) {
+    return sendError(
+      res,
+      401,
+      "Authentication is required.",
+      "AUTHENTICATION_REQUIRED",
+    );
+  }
+
+  if (normalizeToken(req?.user?.role) !== "creator") {
+    return sendError(
+      res,
+      403,
+      "Only Creator accounts can access Creator Fashion Editor projects.",
+      "CREATOR_REQUIRED",
+    );
+  }
+
+  try {
+    const result = await db.query(
+      `
+        SELECT
+          id,
+          owner_id,
+          title,
+          schema_version,
+          preview_url,
+          source_project_id,
+          version,
+          created_at,
+          updated_at
+
+        FROM editor_projects
+
+        WHERE owner_id = $1
+
+        ORDER BY updated_at DESC
+      `,
+      [creatorId],
+    );
+
+    return res.status(200).json({
+      status: "success",
+
+      results: result.rows.length,
+
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error("Creator editor project list failed:", error);
+
+    return sendError(
+      res,
+      500,
+      "Creator Fashion Editor projects could not be loaded.",
+      "CREATOR_EDITOR_PROJECTS_LOAD_FAILED",
+    );
+  }
+};
+
+/*=========================================================
+CREATE CREATOR FASHION EDITOR PROJECT
+
+POST
+/api/v1/creators/editor-projects
+=========================================================*/
+
+exports.createEditorProject = async (req, res) => {
+  const creatorId = getAuthenticatedCreatorId(req);
+
+  if (!creatorId) {
+    return sendError(
+      res,
+      401,
+      "Authentication is required.",
+      "AUTHENTICATION_REQUIRED",
+    );
+  }
+
+  if (normalizeToken(req?.user?.role) !== "creator") {
+    return sendError(
+      res,
+      403,
+      "Only Creator accounts can create Creator Fashion Editor projects.",
+      "CREATOR_REQUIRED",
+    );
+  }
+
+  const projectValidation = validateEditorProjectPayload(
+    req.body?.project_data,
+  );
+
+  if (projectValidation.error) {
+    return sendError(
+      res,
+      400,
+      projectValidation.error,
+      "INVALID_EDITOR_PROJECT",
+    );
+  }
+
+  const title = cleanText(
+    req.body?.title || projectValidation.title || "Untitled Fashion Design",
+    MAX_TITLE_LENGTH,
+  );
+
+  if (!title) {
+    return sendError(
+      res,
+      400,
+      "A project title is required.",
+      "EDITOR_PROJECT_TITLE_REQUIRED",
+    );
+  }
+
+  try {
+    const result = await db.query(
+      `
+        INSERT INTO editor_projects (
+          owner_id,
+          title,
+          project_data,
+          schema_version,
+          preview_url,
+          source_project_id,
+          version,
+          created_at,
+          updated_at
+        )
+        VALUES (
+          $1,
+          $2,
+          $3::jsonb,
+          $4,
+          NULL,
+          NULL,
+          1,
+          NOW(),
+          NOW()
+        )
+        RETURNING
+          id,
+          owner_id,
+          title,
+          project_data,
+          schema_version,
+          preview_url,
+          source_project_id,
+          version,
+          created_at,
+          updated_at
+      `,
+      [
+        creatorId,
+        title,
+        projectValidation.serializedProject,
+        projectValidation.schemaVersion,
+      ],
+    );
+
+    return res.status(201).json({
+      status: "success",
+
+      message: "Creator Fashion Editor project created successfully.",
+
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Creator editor project creation failed:", error);
+
+    return sendError(
+      res,
+      500,
+      "The Creator Fashion Editor project could not be created.",
+      "CREATOR_EDITOR_PROJECT_CREATE_FAILED",
+    );
+  }
+};
+
+/*=========================================================
+GET OWNED CREATOR FASHION EDITOR PROJECT
+
+GET
+/api/v1/creators/editor-projects/:projectId
+=========================================================*/
+
+exports.getEditorProject = async (req, res) => {
+  const creatorId = getAuthenticatedCreatorId(req);
+
+  const projectId = cleanText(req.params?.projectId, 100);
+
+  if (!creatorId) {
+    return sendError(
+      res,
+      401,
+      "Authentication is required.",
+      "AUTHENTICATION_REQUIRED",
+    );
+  }
+
+  if (normalizeToken(req?.user?.role) !== "creator") {
+    return sendError(
+      res,
+      403,
+      "Only Creator accounts can access Creator Fashion Editor projects.",
+      "CREATOR_REQUIRED",
+    );
+  }
+
+  if (!isPositiveBigIntId(projectId)) {
+    return sendError(
+      res,
+      400,
+      "A valid editor project ID is required.",
+      "INVALID_EDITOR_PROJECT_ID",
+    );
+  }
+
+  try {
+    const result = await db.query(
+      `
+        SELECT
+          id,
+          owner_id,
+          title,
+          project_data,
+          schema_version,
+          preview_url,
+          source_project_id,
+          version,
+          created_at,
+          updated_at
+
+        FROM editor_projects
+
+        WHERE id = $1
+          AND owner_id = $2
+
+        LIMIT 1
+      `,
+      [projectId, creatorId],
+    );
+
+    if (result.rows.length === 0) {
+      return sendError(
+        res,
+        404,
+        "Creator Fashion Editor project not found.",
+        "EDITOR_PROJECT_NOT_FOUND",
+      );
+    }
+
+    return res.status(200).json({
+      status: "success",
+
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Creator editor project retrieval failed:", error);
+
+    return sendError(
+      res,
+      500,
+      "The Creator Fashion Editor project could not be loaded.",
+      "CREATOR_EDITOR_PROJECT_LOAD_FAILED",
+    );
+  }
+};
+
+/*=========================================================
+UPDATE OWNED CREATOR FASHION EDITOR PROJECT
+
+PUT
+/api/v1/creators/editor-projects/:projectId
+=========================================================*/
+
+exports.updateEditorProject = async (req, res) => {
+  const creatorId = getAuthenticatedCreatorId(req);
+
+  const projectId = cleanText(req.params?.projectId, 100);
+
+  if (!creatorId) {
+    return sendError(
+      res,
+      401,
+      "Authentication is required.",
+      "AUTHENTICATION_REQUIRED",
+    );
+  }
+
+  if (normalizeToken(req?.user?.role) !== "creator") {
+    return sendError(
+      res,
+      403,
+      "Only Creator accounts can update Creator Fashion Editor projects.",
+      "CREATOR_REQUIRED",
+    );
+  }
+
+  if (!isPositiveBigIntId(projectId)) {
+    return sendError(
+      res,
+      400,
+      "A valid editor project ID is required.",
+      "INVALID_EDITOR_PROJECT_ID",
+    );
+  }
+
+  let client;
+
+  let transactionActive = false;
+
+  try {
+    client = await db.connect();
+
+    await client.query("BEGIN");
+
+    transactionActive = true;
+
+    const existingResult = await client.query(
+      `
+        SELECT
+          id,
+          owner_id,
+          title,
+          project_data,
+          schema_version,
+          preview_url,
+          source_project_id,
+          version,
+          created_at,
+          updated_at
+
+        FROM editor_projects
+
+        WHERE id = $1
+          AND owner_id = $2
+
+        LIMIT 1
+
+        FOR UPDATE
+      `,
+      [projectId, creatorId],
+    );
+
+    if (existingResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+
+      transactionActive = false;
+
+      return sendError(
+        res,
+        404,
+        "Creator Fashion Editor project not found.",
+        "EDITOR_PROJECT_NOT_FOUND",
+      );
+    }
+
+    const existingProject = existingResult.rows[0];
+
+    const expectedVersionValue =
+      req.body?.expected_version ?? req.body?.version;
+
+    if (
+      expectedVersionValue !== undefined &&
+      expectedVersionValue !== null &&
+      String(expectedVersionValue).trim() !== ""
+    ) {
+      const expectedVersion = Number(expectedVersionValue);
+
+      if (!Number.isInteger(expectedVersion) || expectedVersion < 1) {
+        await client.query("ROLLBACK");
+
+        transactionActive = false;
+
+        return sendError(
+          res,
+          400,
+          "expected_version must be a positive integer.",
+          "INVALID_EDITOR_PROJECT_VERSION",
+        );
+      }
+
+      if (expectedVersion !== Number(existingProject.version)) {
+        await client.query("ROLLBACK");
+
+        transactionActive = false;
+
+        return res.status(409).json({
+          status: "error",
+
+          code: "EDITOR_PROJECT_VERSION_CONFLICT",
+
+          message:
+            "This project has changed since it was opened. Reload the latest version before saving again.",
+
+          details: {
+            current_version: Number(existingProject.version),
+          },
+        });
+      }
+    }
+
+    let nextProjectData = existingProject.project_data;
+
+    let nextSchemaVersion = Number(existingProject.schema_version) || 2;
+
+    if (req.body?.project_data !== undefined) {
+      const projectValidation = validateEditorProjectPayload(
+        req.body.project_data,
+      );
+
+      if (projectValidation.error) {
+        await client.query("ROLLBACK");
+
+        transactionActive = false;
+
+        return sendError(
+          res,
+          400,
+          projectValidation.error,
+          "INVALID_EDITOR_PROJECT",
+        );
+      }
+
+      nextProjectData = projectValidation.projectData;
+
+      nextSchemaVersion = projectValidation.schemaVersion;
+    }
+
+    const nextTitle = cleanText(
+      req.body?.title ??
+        nextProjectData?.document?.name ??
+        existingProject.title,
+      MAX_TITLE_LENGTH,
+    );
+
+    if (!nextTitle) {
+      await client.query("ROLLBACK");
+
+      transactionActive = false;
+
+      return sendError(
+        res,
+        400,
+        "A project title is required.",
+        "EDITOR_PROJECT_TITLE_REQUIRED",
+      );
+    }
+
+    const updateResult = await client.query(
+      `
+        UPDATE editor_projects
+
+        SET
+          title = $1,
+          project_data = $2::jsonb,
+          schema_version = $3,
+          version = version + 1,
+          updated_at = NOW()
+
+        WHERE id = $4
+          AND owner_id = $5
+
+        RETURNING
+          id,
+          owner_id,
+          title,
+          project_data,
+          schema_version,
+          preview_url,
+          source_project_id,
+          version,
+          created_at,
+          updated_at
+      `,
+      [
+        nextTitle,
+        JSON.stringify(nextProjectData),
+        nextSchemaVersion,
+        projectId,
+        creatorId,
+      ],
+    );
+
+    await client.query("COMMIT");
+
+    transactionActive = false;
+
+    return res.status(200).json({
+      status: "success",
+
+      message: "Creator Fashion Editor project saved successfully.",
+
+      data: updateResult.rows[0],
+    });
+  } catch (error) {
+    if (client && transactionActive) {
+      await rollbackQuietly(client);
+
+      transactionActive = false;
+    }
+
+    console.error("Creator editor project update failed:", error);
+
+    return sendError(
+      res,
+      500,
+      "The Creator Fashion Editor project could not be saved.",
+      "CREATOR_EDITOR_PROJECT_UPDATE_FAILED",
+    );
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+};
+
+/*=========================================================
+UPLOAD CREATOR STUDIO ASSET
+
+POST
+/api/v1/creators/studio/upload
+
+Multipart:
+
+preview
+title
+description
+style_category        compatibility only
+format
+category_id
+showcase_term_ids
+tags
+canvas_state
+=========================================================*/
+
+exports.uploadCreatorStudioAsset = async (req, res) => {
+  const creatorId = req?.user?.id;
+
+  /*=====================================================
+    Authentication Defense
+    =====================================================*/
+
+  if (!creatorId) {
+    return sendError(
+      res,
+      401,
+      "Authentication is required.",
+      "AUTHENTICATION_REQUIRED",
+    );
+  }
+
+  /*
+    authorize("creator") is also enforced by the route.
+    */
+
+  if (normalizeToken(req?.user?.role) !== "creator") {
+    return sendError(
+      res,
+      403,
+      "Only Creator accounts can save Creator Studio assets.",
+      "CREATOR_REQUIRED",
+    );
+  }
+
+  /*=====================================================
+    Preview
+    =====================================================*/
+
+  const previewUrl = getUploadedPreviewUrl(req);
+
+  if (!previewUrl) {
+    return sendError(
+      res,
+      400,
+      "A preview image is required.",
+      "PREVIEW_REQUIRED",
+    );
+  }
+
+  /*=====================================================
+    Basic Metadata
+    =====================================================*/
+
+  const title = cleanText(req.body?.title, MAX_TITLE_LENGTH);
+
+  const description = cleanMultiline(
+    req.body?.description,
+    MAX_DESCRIPTION_LENGTH,
+  );
+
+  if (title.length < 2) {
+    return sendError(
+      res,
+      400,
+      "Title must contain at least 2 characters.",
+      "INVALID_TITLE",
+    );
+  }
+
+  if (description.length < 10) {
+    return sendError(
+      res,
+      400,
+      "Description must contain at least 10 characters.",
+      "INVALID_DESCRIPTION",
+    );
+  }
+
+  /*=====================================================
+    General Category
+    =====================================================*/
+
+  const categoryId = cleanText(req.body?.category_id, 100);
+
+  if (!categoryId) {
+    return sendError(
+      res,
+      400,
+      "Select a category before saving the Studio asset.",
+      "CATEGORY_REQUIRED",
+    );
+  }
+
+  if (!isUuid(categoryId)) {
+    return sendError(
+      res,
+      400,
+      "The selected category is invalid.",
+      "INVALID_CATEGORY",
+    );
+  }
+
+  /*=====================================================
+    Showcase Discovery IDs
+    =====================================================*/
+
+  const showcaseTermResult = parseShowcaseTermIds(req.body?.showcase_term_ids);
+
+  if (!showcaseTermResult.valid) {
+    return sendError(
+      res,
+      400,
+      "Showcase discovery selections are invalid.",
+      "INVALID_SHOWCASE_TERMS",
+    );
+  }
+
+  const showcaseTermIds = showcaseTermResult.ids;
+
+  /*
+    At minimum:
+
+    1 Style
+    1 Garment
+    */
+
+  if (showcaseTermIds.length < 2) {
+    return sendError(
+      res,
+      400,
+      "Select a Showcase style and garment type.",
+      "SHOWCASE_CLASSIFICATION_REQUIRED",
+    );
+  }
+
+  /*=====================================================
+    Creative Format
+    =====================================================*/
+
+  const requestedFormat = normalizeToken(
+    req.body?.format || req.body?.product_type || "sketch",
+  );
+
+  if (!ALLOWED_FORMATS.has(requestedFormat)) {
+    return sendError(
+      res,
+      400,
+      "The selected creative format is not supported.",
+      "INVALID_FORMAT",
+    );
+  }
+
+  /*=====================================================
+    User Tags
+    =====================================================*/
+
+  const parsedTags = parseTags(req.body?.tags);
+
+  if (!parsedTags.valid) {
+    return sendError(
+      res,
+      400,
+      "Tags must be supplied as a valid JSON array.",
+      "INVALID_TAGS",
+    );
+  }
+
+  /*
+    Discovery taxonomy is stored relationally.
+
+    Do NOT encode Style/Garment/Occasion into tags.
+    */
+
+  const internalTags = [
+    "creator-studio",
+
+    `format-${normalizeTag(requestedFormat)}`,
+  ];
+
+  const combinedTags = [];
+
+  const tagSet = new Set();
+
+  for (const tag of [...internalTags, ...parsedTags.tags]) {
+    const normalized = normalizeTag(tag);
+
+    if (!normalized || tagSet.has(normalized)) {
+      continue;
+    }
+
+    tagSet.add(normalized);
+
+    combinedTags.push(normalized);
+
+    if (combinedTags.length >= MAX_TAGS) {
+      break;
+    }
+  }
+
+  /*=====================================================
+    Canvas State
+    =====================================================*/
+
+  const canvasStateResult = parseCanvasState(req.body?.canvas_state);
+
+  if (!canvasStateResult.valid) {
+    return sendError(
+      res,
+      400,
+      "Canvas state must contain valid JSON.",
+      "INVALID_CANVAS_STATE",
+    );
+  }
+
+  const canvasState = canvasStateResult.value;
+
+  /*=====================================================
+    Identifiers
+    =====================================================*/
+
+  const internalAssetCode = createInternalAssetCode();
+
+  const slug = makeSlug(title);
+
+  /*=====================================================
+    Transaction
+    =====================================================*/
+
+  let client;
+
+  let transactionActive = false;
+
+  try {
+    client = await db.connect();
+
+    await client.query("BEGIN");
+
+    transactionActive = true;
+
+    /*---------------------------------------------------
+      Validate Active General Category
+      ---------------------------------------------------*/
+
+    const categoryResult = await client.query(
+      `
+            SELECT
+              id,
+              name,
+              slug,
+              description
+
+            FROM design_categories
+
+            WHERE
+              id = $1
+
+              AND is_active =
+                TRUE
+
+            LIMIT 1
+
+            FOR SHARE
+          `,
+
+      [categoryId],
+    );
+
+    if (categoryResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+
+      transactionActive = false;
+
+      return sendError(
+        res,
+        400,
+        "The selected category is no longer available.",
+        "INVALID_CATEGORY",
+      );
+    }
+
+    const category = categoryResult.rows[0];
+
+    /*---------------------------------------------------
+      Validate Showcase Discovery Terms
+      ---------------------------------------------------*/
+
+    const discoveryResult = await client.query(
+      `
+            SELECT
+              id,
+              group_type,
+              name,
+              slug,
+              search_term,
+              emoji,
+              description,
+              sort_order
+
+            FROM showcase_discovery_terms
+
+            WHERE
+              id = ANY(
+                $1::uuid[]
+              )
+
+              AND is_active =
+                TRUE
+
+            ORDER BY
+              CASE group_type
+
+                WHEN 'style'
+                  THEN 1
+
+                WHEN 'garment'
+                  THEN 2
+
+                WHEN 'occasion'
+                  THEN 3
+
+                ELSE 4
+
+              END,
+
+              sort_order ASC,
+
+              name ASC
+
+            FOR SHARE
+          `,
+
+      [showcaseTermIds],
+    );
+
+    /*
+      Every submitted UUID must resolve to an active term.
+
+      No disabled/non-existent terms are silently accepted.
+      */
+
+    if (discoveryResult.rows.length !== showcaseTermIds.length) {
+      await client.query("ROLLBACK");
+
+      transactionActive = false;
+
+      return sendError(
+        res,
+        400,
+        "One or more Showcase discovery selections are no longer available.",
+        "INVALID_SHOWCASE_TERMS",
+      );
+    }
+
+    const styleTerms = discoveryResult.rows.filter(
+      (row) => row.group_type === "style",
+    );
+
+    const garmentTerms = discoveryResult.rows.filter(
+      (row) => row.group_type === "garment",
+    );
+
+    const occasionTerms = discoveryResult.rows.filter(
+      (row) => row.group_type === "occasion",
+    );
+
+    /*---------------------------------------------------
+      Exactly One Style
+      ---------------------------------------------------*/
+
+    if (styleTerms.length !== 1) {
+      await client.query("ROLLBACK");
+
+      transactionActive = false;
+
+      return sendError(
+        res,
+        400,
+        "Select exactly one Showcase style.",
+        "INVALID_SHOWCASE_STYLE",
+      );
+    }
+
+    /*---------------------------------------------------
+      Exactly One Garment
+      ---------------------------------------------------*/
+
+    if (garmentTerms.length !== 1) {
+      await client.query("ROLLBACK");
+
+      transactionActive = false;
+
+      return sendError(
+        res,
+        400,
+        "Select exactly one garment type.",
+        "INVALID_SHOWCASE_GARMENT",
+      );
+    }
+
+    /*
+      Occasion is optional and may contain multiple terms.
+
+      Since group_type has a database CHECK constraint,
+      valid rows can only be:
+
+      style
+      garment
+      occasion
+      */
+
+    const styleTerm = styleTerms[0];
+
+    const garmentTerm = garmentTerms[0];
+
+    /*
+      IMPORTANT:
+
+      Ignore arbitrary browser style_category values.
+
+      The validated database Style name is authoritative.
+      */
+
+    const styleCategory = cleanText(styleTerm.name, 120);
+
+    /*---------------------------------------------------
+      Insert Creator Studio Design
+      ---------------------------------------------------*/
+
+    const designResult = await client.query(
+      `
+            INSERT INTO designs (
+              id,
+              owner_id,
+              title,
+              sku,
+              slug,
+              description,
+              base_price,
+              canvas_state,
+              style_category,
+              tags,
+              product_type,
+              license_type,
+              category_id,
+              watermarked_preview_url,
+              high_res_file_url,
+              is_public,
+              is_published,
+              created_at,
+              updated_at
+            )
+
+            VALUES (
+              gen_random_uuid(),
+              $1,
+              $2,
+              $3,
+              $4,
+              $5,
+              $6,
+              $7::jsonb,
+              $8,
+              $9::text[],
+              $10,
+              $11,
+              $12,
+              $13,
+              NULL,
+              TRUE,
+              TRUE,
+              NOW(),
+              NOW()
+            )
+
+            RETURNING
+              id,
+              owner_id,
+              title,
+              slug,
+              description,
+              canvas_state,
+              style_category,
+              tags,
+              category_id,
+              watermarked_preview_url,
+              is_public,
+              is_published,
+              created_at,
+              updated_at
+          `,
+
+      [
+        creatorId,
+
+        title,
+
+        internalAssetCode,
+
+        slug,
+
+        description,
+
+        LEGACY_BASE_PRICE,
+
+        JSON.stringify(canvasState),
+
+        styleCategory,
+
+        combinedTags,
+
+        LEGACY_PRODUCT_TYPE,
+
+        LEGACY_LICENSE_TYPE,
+
+        category.id,
+
+        previewUrl,
+      ],
+    );
+
+    const design = designResult.rows[0];
+
+    /*---------------------------------------------------
+      Insert Showcase Discovery Relationships
+
+      New design + validated unique UUIDs means duplicates
+      should not occur.
+
+      ON CONFLICT DO NOTHING remains defensive.
+      ---------------------------------------------------*/
+
+    await client.query(
+      `
+          INSERT INTO design_showcase_terms (
+            design_id,
+            term_id,
+            created_at
+          )
+
+          SELECT
+            $1::uuid,
+            selected_term_id,
+            NOW()
+
+          FROM UNNEST(
+            $2::uuid[]
+          ) AS selected_term_id
+
+          ON CONFLICT (
+            design_id,
+            term_id
+          )
+          DO NOTHING
+        `,
+
+      [design.id, showcaseTermIds],
+    );
+
+    /*---------------------------------------------------
+      Commit
+      ---------------------------------------------------*/
+
+    await client.query("COMMIT");
+
+    transactionActive = false;
+
+    /*===================================================
+      Response
+
+      Deliberately do NOT expose:
+
+      base_price
+      license_type
+      sku
+      legacy product_type
+      ===================================================*/
+
+    return res.status(201).json({
+      status: "success",
+
+      message: "Creator Studio asset saved successfully.",
+
+      data: {
+        id: design.id,
+
+        owner_id: design.owner_id,
+
+        title: design.title,
+
+        slug: design.slug,
+
+        description: design.description,
+
+        preview_url: design.watermarked_preview_url,
+
+        style_category: design.style_category,
+
+        format: requestedFormat,
+
+        category: {
+          id: category.id,
+
+          name: category.name,
+
+          slug: category.slug,
+
+          description: category.description || null,
+        },
+
+        showcase_discovery: {
+          style: serializeDiscoveryTerm(styleTerm),
+
+          garment: serializeDiscoveryTerm(garmentTerm),
+
+          occasions: occasionTerms.map(serializeDiscoveryTerm),
+        },
+
+        showcase_term_ids: showcaseTermIds,
+
+        /*
+            Only user-created tags are returned publicly in
+            this response.
+
+            Internal classification tags remain internal.
+            */
+
+        tags: parsedTags.tags,
+
+        canvas_state: design.canvas_state,
+
+        is_public: design.is_public,
+
+        is_published: design.is_published,
+
+        created_at: design.created_at,
+
+        updated_at: design.updated_at,
+      },
+    });
+  } catch (error) {
+    if (client && transactionActive) {
+      try {
+        await client.query("ROLLBACK");
+
+        transactionActive = false;
+      } catch (rollbackError) {
+        console.error("Creator Studio rollback failed:", rollbackError);
+      }
+    }
+
+    console.error("Creator Studio asset save failed:", error);
+
+    /*===================================================
+      Unique Constraint
+      ===================================================*/
+
+    if (error.code === "23505") {
+      return sendError(
+        res,
+        409,
+        "The asset could not be assigned a unique identifier. Please try again.",
+        "ASSET_CONFLICT",
+      );
+    }
+
+    /*===================================================
+      Foreign Key
+      ===================================================*/
+
+    if (error.code === "23503") {
+      return sendError(
+        res,
+        400,
+        "One or more selected creative classifications are no longer available.",
+        "ASSET_REFERENCE_UNAVAILABLE",
+      );
+    }
+
+    /*===================================================
+      Invalid UUID / Enum / JSON
+      ===================================================*/
+
+    if (error.code === "22P02") {
+      return sendError(
+        res,
+        400,
+        "One or more asset values are incompatible with the current database configuration.",
+        "INVALID_DATABASE_VALUE",
+      );
+    }
+
+    /*===================================================
+      Check Constraint
+      ===================================================*/
+
+    if (error.code === "23514") {
+      return sendError(
+        res,
+        400,
+        "One or more asset values violate a database constraint.",
+        "DATABASE_CONSTRAINT_FAILED",
+      );
+    }
+
+    return sendError(
+      res,
+      500,
+      "The Creator Studio asset could not be saved.",
+      "CREATOR_STUDIO_SAVE_FAILED",
+    );
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
 };
