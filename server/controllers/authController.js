@@ -14,12 +14,12 @@ const jwt = require("jsonwebtoken");
 
 const db = require("../config/db");
 
-const sendEmail = require("../utils/sendmail");
+const sendEmail = require("../utils/sendMail");
 
 const {
   otpTemplate,
   passwordResetOtpTemplate,
-} = require("../utils/emailtemplate");
+} = require("../utils/emailTemplate");
 
 /*=========================================================
 Configuration
