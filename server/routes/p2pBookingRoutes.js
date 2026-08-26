@@ -83,7 +83,7 @@ POST
 
 const express = require("express");
 
-const p2pController = require("../controllers/p2pBookingController");
+const p2pController = require("../controllers/P2PBookingController");
 
 const {
   p2pBookingCreateLimiter,

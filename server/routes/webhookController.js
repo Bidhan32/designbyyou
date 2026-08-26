@@ -25,7 +25,7 @@ const Stripe = require("stripe");
 
 const db = require("../config/db");
 
-const p2pController = require("../controllers/p2pBookingController");
+const p2pController = require("../controllers/P2PBookingController");
 
 const designerFinanceController = require("../controllers/designerFinanceController");
 
