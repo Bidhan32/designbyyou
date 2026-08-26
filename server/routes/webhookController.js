@@ -52,13 +52,15 @@ if (!stripeSecretKey) {
 }
 
 if (!stripeWebhookSecret) {
-  throw new Error(
-    "STRIPE_WEBHOOK_SECRET is missing from the backend environment.",
+  console.warn(
+    "WARNING: STRIPE_WEBHOOK_SECRET is not configured. Stripe platform webhooks will return 503 until it is added.",
   );
 }
 
-if (process.env.NODE_ENV === "production" && !stripeConnectWebhookSecret) {
-  throw new Error("STRIPE_CONNECT_WEBHOOK_SECRET is required in production.");
+if (!stripeConnectWebhookSecret) {
+  console.warn(
+    "WARNING: STRIPE_CONNECT_WEBHOOK_SECRET is not configured. Stripe Connect webhooks will return 503 until it is added.",
+  );
 }
 
 const stripe = new Stripe(stripeSecretKey);
@@ -2338,7 +2340,7 @@ async function handleStripeWebhook(
   if (!webhookSecret) {
     console.error(`${endpointName} webhook secret is not configured.`);
 
-    return res.status(500).json({
+   return res.status(503).json({
       status: "error",
 
       message: `${endpointName} webhook signing secret is not configured.`,
