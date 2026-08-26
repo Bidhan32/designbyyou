@@ -16,7 +16,7 @@ import { Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
 
 import API from "../../api/axios";
 
-import AuthLayout from "../../layouts/AuthLayout";
+import AuthLayout from "../../Layouts/AuthLayout";
 
 import { useAuth } from "../../context/AuthContext";
 

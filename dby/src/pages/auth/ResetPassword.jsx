@@ -15,7 +15,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { CheckCircle2, Hash, Loader2, Lock, Mail } from "lucide-react";
 
 import API from "../../api/axios";
-import AuthLayout from "../../layouts/AuthLayout";
+import AuthLayout from "../../Layouts/AuthLayout";
 
 /*=========================================================
 Configuration

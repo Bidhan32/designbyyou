@@ -108,17 +108,17 @@ Designer Pages
 
 import DesignerMarketplace from "./pages/Designer/DesignerMarketplace";
 
-import DesignerDashboard from "./pages/designer/DesignerDashboard";
+import DesignerDashboard from "./pages/Designer/DesignerDashboard";
 
-import InventoryGrid from "./pages/designer/InventoryGrid";
+import InventoryGrid from "./pages/Designer/InventoryGrid";
 
-import DesignerBookings from "./pages/designer/DesignerBookings";
+import DesignerBookings from "./pages/Designer/DesignerBookings";
 
-import DesignerWallet from "./pages/designer/DesignerWallet";
+import DesignerWallet from "./pages/Designer/DesignerWallet";
 
-import DesignerUploadDesign from "./pages/designer/DesignerUploadDesign";
+import DesignerUploadDesign from "./pages/Designer/DesignerUploadDesign";
 
-import DesignDetail from "./pages/designer/DesignDetail";
+import DesignDetail from "./pages/Designer/DesignDetail";
 
 import ProfileSettings from "./pages/Designer/DesignerProfileSettings";
 

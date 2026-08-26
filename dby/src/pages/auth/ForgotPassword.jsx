@@ -15,7 +15,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, Loader2, Mail } from "lucide-react";
 
 import API from "../../api/axios";
-import AuthLayout from "../../layouts/AuthLayout";
+import AuthLayout from "../../Layouts/AuthLayout";
 
 /*=========================================================
 Forgot Password

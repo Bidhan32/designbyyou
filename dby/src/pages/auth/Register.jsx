@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 
 import API from "../../api/axios";
-import AuthLayout from "../../layouts/AuthLayout";
+import AuthLayout from "../../Layouts/AuthLayout";
 
 /*=========================================================
 Configuration
