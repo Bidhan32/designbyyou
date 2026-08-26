@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "serve --single --listen $PORT dist"
   },
   "dependencies": {
     "@avaturn/sdk": "^1.1.4",
@@ -36,6 +37,7 @@
     "react-konva": "^19.2.5",
     "react-router-dom": "^7.13.1",
     "recharts": "^3.8.1",
+    "serve": "^14.2.6",
     "simplify-js": "^1.2.4",
     "socket.io-client": "^4.8.3",
     "tailwindcss": "^4.2.1",
