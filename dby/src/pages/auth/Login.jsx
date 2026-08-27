@@ -3,8 +3,19 @@
 /*
 =========================================================
 DesignByYou Login Page
-Authentication & Role Redirect
-Version 2.0
+Authentication, Email Verification & Role Redirect
+Version 2.1
+=========================================================
+
+Version 2.1:
+
+- Creator email verification is enforced by the backend.
+- EMAIL_NOT_VERIFIED redirects only that specific case
+  to /verify-otp.
+- Does NOT incorrectly redirect every HTTP 403 response
+  to OTP verification.
+- Preserves pending Designer login behavior.
+- Preserves Creator, Designer and Superadmin redirects.
 =========================================================
 */
 
@@ -41,8 +52,8 @@ const Login = () => {
   });
 
   /*=====================================================
-    Input Change
-    =====================================================*/
+  Input Change
+  =====================================================*/
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -58,8 +69,8 @@ const Login = () => {
   };
 
   /*=====================================================
-    Login
-    =====================================================*/
+  Login
+  =====================================================*/
 
   const handleLogin = async (event) => {
     event.preventDefault();
@@ -71,6 +82,10 @@ const Login = () => {
     const email = formData.email.trim().toLowerCase();
 
     const password = formData.password;
+
+    /*-------------------------------------------------
+    Basic Validation
+    -------------------------------------------------*/
 
     if (!email) {
       setError("Please enter your email address.");
@@ -85,6 +100,7 @@ const Login = () => {
     }
 
     setLoading(true);
+
     setError("");
 
     try {
@@ -94,48 +110,48 @@ const Login = () => {
       });
 
       /*-------------------------------------------------
-            Validate Login Response
-            -------------------------------------------------*/
+      Validate Login Response
+      -------------------------------------------------*/
 
       if (data?.status !== "success" || !data?.token || !data?.user) {
         throw new Error("Invalid login response.");
       }
 
       /*-------------------------------------------------
-            Save Authentication
+      Save Authentication
 
-            AuthContext stores:
+      AuthContext stores:
 
-            - JWT token
-            - current user
-            -------------------------------------------------*/
+      - JWT token
+      - current user
+      -------------------------------------------------*/
 
       login(data.user, data.token);
 
       /*-------------------------------------------------
-            Clear Verification Trace
+      Clear Verification Trace
 
-            A successful login means we no longer need any
-            stale verification-email navigation state.
-            -------------------------------------------------*/
+      A successful login means the account passed all
+      login-level verification requirements.
+      -------------------------------------------------*/
 
       sessionStorage.removeItem("pending_verification_email");
 
       /*-------------------------------------------------
-            Role Redirect
+      Role Redirect
 
-            IMPORTANT:
+      CREATOR:
+      - Backend already guarantees verified email before
+        a Creator reaches this point.
 
-            Pending designers ARE allowed to sign in.
+      DESIGNER:
+      - Pending Designers may still sign in.
+      - Approval-sensitive actions are protected by
+        backend authorization middleware.
 
-            Therefore:
-            approval_status = pending
-
-            does NOT redirect them back to OTP or block login.
-
-            Approval-required backend actions will return:
-            ACCOUNT_PENDING_APPROVAL
-            -------------------------------------------------*/
+      SUPERADMIN:
+      - Redirect directly to Superadmin dashboard.
+      -------------------------------------------------*/
 
       const role = String(data.user.role || "")
         .trim()
@@ -149,37 +165,74 @@ const Login = () => {
         return;
       }
 
-     if (role === "designer") {
-  navigate("/designer/explore", {
-    replace: true,
-  });
+      if (role === "designer") {
+        navigate("/designer/explore", {
+          replace: true,
+        });
 
-  return;
-}
+        return;
+      }
 
-if (role === "superadmin") {
-  navigate("/superadmin/dashboard", {
-    replace: true,
-  });
+      if (role === "superadmin") {
+        navigate("/superadmin/dashboard", {
+          replace: true,
+        });
 
-  return;
-}
+        return;
+      }
 
-navigate("/unauthorized", {
-  replace: true,
-});
+      navigate("/unauthorized", {
+        replace: true,
+      });
     } catch (err) {
       const status = err.response?.status;
 
       const responseData = err.response?.data;
 
-      const code = responseData?.code;
+      const code = String(responseData?.code || "")
+        .trim()
+        .toUpperCase();
 
       const backendMessage = responseData?.message;
 
       /*-------------------------------------------------
-            Login Rate Limit
-            -------------------------------------------------*/
+      Email Verification Required
+
+      IMPORTANT:
+
+      Only this explicit backend code redirects the user
+      to OTP verification.
+
+      Never redirect every HTTP 403 to /verify-otp.
+      -------------------------------------------------*/
+
+      if (status === 403 && code === "EMAIL_NOT_VERIFIED") {
+        /*
+        Keep the email available if the user refreshes
+        the verification page.
+        */
+
+        sessionStorage.setItem("pending_verification_email", email);
+
+        navigate("/verify-otp", {
+          replace: true,
+
+          state: {
+            email,
+
+            reason: "EMAIL_NOT_VERIFIED",
+
+            message:
+              backendMessage || "Please verify your email before signing in.",
+          },
+        });
+
+        return;
+      }
+
+      /*-------------------------------------------------
+      Login Rate Limit
+      -------------------------------------------------*/
 
       if (status === 429 || code === "LOGIN_RATE_LIMITED") {
         setError(
@@ -191,8 +244,8 @@ navigate("/unauthorized", {
       }
 
       /*-------------------------------------------------
-            Invalid Credentials
-            -------------------------------------------------*/
+      Invalid Credentials
+      -------------------------------------------------*/
 
       if (status === 401) {
         setError(backendMessage || "Invalid email or password.");
@@ -201,21 +254,18 @@ navigate("/unauthorized", {
       }
 
       /*-------------------------------------------------
-            Forbidden Account
+      Forbidden Account
 
-            DO NOT send every 403 to /verify-otp.
+      Other HTTP 403 responses must NOT be mistaken for
+      email verification.
 
-            403 may represent:
+      Examples may include:
 
-            - FORBIDDEN
-            - ACCOUNT_PENDING_APPROVAL
-            - ACCOUNT_REJECTED
-            - ACCOUNT_SUSPENDED
-            - EMAIL_NOT_VERIFIED
-
-            Login itself currently does not require approval
-            or email verification.
-            -------------------------------------------------*/
+      - FORBIDDEN
+      - ACCOUNT_PENDING_APPROVAL
+      - ACCOUNT_REJECTED
+      - ACCOUNT_SUSPENDED
+      -------------------------------------------------*/
 
       if (status === 403) {
         setError(
@@ -226,8 +276,8 @@ navigate("/unauthorized", {
       }
 
       /*-------------------------------------------------
-            Network Failure
-            -------------------------------------------------*/
+      Network Failure
+      -------------------------------------------------*/
 
       if (!err.response) {
         setError(
@@ -238,8 +288,8 @@ navigate("/unauthorized", {
       }
 
       /*-------------------------------------------------
-            Development Logging
-            -------------------------------------------------*/
+      Development Logging
+      -------------------------------------------------*/
 
       if (import.meta.env.DEV) {
         console.error("Login failed:", {
@@ -249,6 +299,10 @@ navigate("/unauthorized", {
         });
       }
 
+      /*-------------------------------------------------
+      Generic Failure
+      -------------------------------------------------*/
+
       setError(backendMessage || "Unable to sign in. Please try again.");
     } finally {
       setLoading(false);
@@ -256,8 +310,8 @@ navigate("/unauthorized", {
   };
 
   /*=====================================================
-    Render
-    =====================================================*/
+  Render
+  =====================================================*/
 
   return (
     <AuthLayout
@@ -266,8 +320,8 @@ navigate("/unauthorized", {
     >
       <form onSubmit={handleLogin} className="space-y-6" noValidate>
         {/*=========================================
-                Email
-                =========================================*/}
+        Email
+        =========================================*/}
 
         <div className="space-y-1">
           <label
@@ -301,8 +355,8 @@ navigate("/unauthorized", {
         </div>
 
         {/*=========================================
-                Password
-                =========================================*/}
+        Password
+        =========================================*/}
 
         <div className="space-y-1">
           <div className="flex justify-between items-end mb-1">
@@ -358,8 +412,8 @@ navigate("/unauthorized", {
         </div>
 
         {/*=========================================
-                Error
-                =========================================*/}
+        Error
+        =========================================*/}
 
         {error && (
           <div
@@ -371,8 +425,8 @@ navigate("/unauthorized", {
         )}
 
         {/*=========================================
-                Submit
-                =========================================*/}
+        Submit
+        =========================================*/}
 
         <button
           type="submit"
@@ -391,8 +445,8 @@ navigate("/unauthorized", {
         </button>
 
         {/*=========================================
-                Registration
-                =========================================*/}
+        Registration
+        =========================================*/}
 
         <div className="text-center pt-6 border-t border-gray-50">
           <p className="text-sm text-gray-500">

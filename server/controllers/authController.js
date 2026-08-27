@@ -861,14 +861,12 @@ exports.resendOtp = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const email = normalizeEmail(req.body?.email);
-
     const password = req.body?.password;
 
-    /*
-    Keep invalid username/email and invalid password
-    responses identical.
-    */
-
+    /**
+     * Keep invalid username/email and invalid password
+     * responses identical.
+     */
     if (
       !isValidEmail(email) ||
       typeof password !== "string" ||
@@ -876,29 +874,25 @@ exports.login = async (req, res) => {
     ) {
       return res.status(401).json({
         status: "error",
-
         message: "Invalid email or password.",
       });
     }
 
     const initialCheck = await db.query(
       `
-          SELECT
-            id,
-            role,
-            password_hash,
-            approval_status,
-            is_email_verified,
-            token_version
-
-          FROM users
-
-          WHERE
-            LOWER(email) =
-              LOWER($1)
-
-          LIMIT 1
-        `,
+        SELECT
+          id,
+          role,
+          password_hash,
+          approval_status,
+          is_email_verified,
+          token_version
+        FROM users
+        WHERE
+          LOWER(email) =
+            LOWER($1)
+        LIMIT 1
+      `,
       [email],
     );
 
@@ -907,7 +901,6 @@ exports.login = async (req, res) => {
     if (!preUser || !preUser.password_hash) {
       return res.status(401).json({
         status: "error",
-
         message: "Invalid email or password.",
       });
     }
@@ -920,44 +913,53 @@ exports.login = async (req, res) => {
     if (!passwordMatches) {
       return res.status(401).json({
         status: "error",
-
         message: "Invalid email or password.",
       });
     }
 
-    /*
-    Account Policy
+    const role = normalizeRole(preUser.role);
 
-    DESIGNER:
-    - May sign in while pending.
-    - Approval-required actions are protected using
-      requireApprovedAccount.
-    - Sensitive actions may also require verified email.
+    /**
+     * Account Policy
+     *
+     * DESIGNER:
+     * - May sign in while pending administrator approval.
+     * - Approval-required actions are protected using
+     *   requireApprovedAccount.
+     * - Sensitive financial/account actions may additionally
+     *   require verified email.
+     *
+     * CREATOR:
+     * - Does not require administrator approval.
+     * - MUST verify email before being allowed to sign in.
+     */
 
-    CREATOR:
-    - Does not require administrator approval.
-    - Sensitive actions may require verified email.
-    */
+    if (role === "creator" && preUser.is_email_verified !== true) {
+      return res.status(403).json({
+        status: "error",
+        code: "EMAIL_NOT_VERIFIED",
+        message: "Please verify your email before signing in.",
+      });
+    }
 
+    /**
+     * Only record a successful login after all login-level
+     * account requirements have passed.
+     */
     await db.query(
       `
         UPDATE users
-
         SET
           last_login =
             NOW(),
-
           updated_at =
             NOW()
-
         WHERE
           id =
             $1
       `,
       [preUser.id],
     );
-
-    const role = normalizeRole(preUser.role);
 
     let userResult;
 
@@ -968,48 +970,40 @@ exports.login = async (req, res) => {
     if (role === "designer") {
       userResult = await db.query(
         `
-            SELECT
-              u.id,
-              u.full_name,
-              u.email,
-              u.role,
-              u.profile_image_url,
-              u.approval_status,
-              u.is_email_verified,
-
-              u.subscription_tier,
-              u.subscription_active_until,
-
-              dp.portfolio_url,
-              dp.bio,
-              dp.address_line,
-              dp.city,
-              dp.country,
-              dp.tier,
-              dp.xp_points,
-              dp.avg_rating,
-              dp.total_completed_bookings,
-
-              w.available_balance,
-              w.pending_escrow_balance,
-              w.pending_payout_balance
-
-            FROM users u
-
-            LEFT JOIN designer_profiles dp
-              ON u.id =
-                dp.user_id
-
-            LEFT JOIN designer_wallets w
-              ON u.id =
-                w.user_id
-
-            WHERE
-              u.id =
-                $1
-
-            LIMIT 1
-          `,
+          SELECT
+            u.id,
+            u.full_name,
+            u.email,
+            u.role,
+            u.profile_image_url,
+            u.approval_status,
+            u.is_email_verified,
+            u.subscription_tier,
+            u.subscription_active_until,
+            dp.portfolio_url,
+            dp.bio,
+            dp.address_line,
+            dp.city,
+            dp.country,
+            dp.tier,
+            dp.xp_points,
+            dp.avg_rating,
+            dp.total_completed_bookings,
+            w.available_balance,
+            w.pending_escrow_balance,
+            w.pending_payout_balance
+          FROM users u
+          LEFT JOIN designer_profiles dp
+            ON u.id =
+              dp.user_id
+          LEFT JOIN designer_wallets w
+            ON u.id =
+              w.user_id
+          WHERE
+            u.id =
+              $1
+          LIMIT 1
+        `,
         [preUser.id],
       );
     } else if (role === "creator") {
@@ -1019,39 +1013,33 @@ exports.login = async (req, res) => {
 
       userResult = await db.query(
         `
-            SELECT
-              u.id,
-              u.full_name,
-              u.email,
-              u.role,
-              u.profile_image_url,
-              u.approval_status,
-              u.is_email_verified,
-
-              u.subscription_tier,
-              u.subscription_active_until,
-
-              cp.company_name,
-              cp.preferred_category,
-              cp.default_dimensions,
-              cp.brand_guidelines_summary,
-              COALESCE(
-                cp.xp_points,
-                0
-              ) AS xp_points
-
-            FROM users u
-
-            LEFT JOIN creator_profiles cp
-              ON u.id =
-                cp.user_id
-
-            WHERE
-              u.id =
-                $1
-
-            LIMIT 1
-          `,
+          SELECT
+            u.id,
+            u.full_name,
+            u.email,
+            u.role,
+            u.profile_image_url,
+            u.approval_status,
+            u.is_email_verified,
+            u.subscription_tier,
+            u.subscription_active_until,
+            cp.company_name,
+            cp.preferred_category,
+            cp.default_dimensions,
+            cp.brand_guidelines_summary,
+            COALESCE(
+              cp.xp_points,
+              0
+            ) AS xp_points
+          FROM users u
+          LEFT JOIN creator_profiles cp
+            ON u.id =
+              cp.user_id
+          WHERE
+            u.id =
+              $1
+          LIMIT 1
+        `,
         [preUser.id],
       );
     } else if (role === "admin" || role === "superadmin") {
@@ -1064,25 +1052,22 @@ exports.login = async (req, res) => {
 
       userResult = await db.query(
         `
-            SELECT
-              id,
-              full_name,
-              email,
-              role,
-              profile_image_url,
-              approval_status,
-              is_email_verified,
-              subscription_tier,
-              subscription_active_until
-
-            FROM users
-
-            WHERE
-              id =
-                $1
-
-            LIMIT 1
-          `,
+          SELECT
+            id,
+            full_name,
+            email,
+            role,
+            profile_image_url,
+            approval_status,
+            is_email_verified,
+            subscription_tier,
+            subscription_active_until
+          FROM users
+          WHERE
+            id =
+              $1
+          LIMIT 1
+        `,
         [preUser.id],
       );
     } else {
@@ -1092,13 +1077,11 @@ exports.login = async (req, res) => {
 
       console.error("Login rejected unknown role:", {
         userId: preUser.id,
-
         role: preUser.role,
       });
 
       return res.status(403).json({
         status: "error",
-
         message: "This account cannot access the application.",
       });
     }
@@ -1108,7 +1091,6 @@ exports.login = async (req, res) => {
     if (!user) {
       return res.status(401).json({
         status: "error",
-
         message: "Unable to load this account.",
       });
     }
@@ -1121,9 +1103,7 @@ exports.login = async (req, res) => {
 
     return res.status(200).json({
       status: "success",
-
       token,
-
       user,
     });
   } catch (error) {
@@ -1131,7 +1111,6 @@ exports.login = async (req, res) => {
 
     return res.status(500).json({
       status: "error",
-
       message: "An error occurred during login.",
     });
   }
