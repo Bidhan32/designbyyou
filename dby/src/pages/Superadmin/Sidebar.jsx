@@ -14,7 +14,7 @@ const Sidebar = ({ closeSidebar }) => {
     const location = useLocation();
 
     const menuItems = [
-        { name: 'Overview', path: '/admin/dashboard', icon: <LayoutDashboard size={18} /> },
+        { name: 'Overview', path: '/superadmin/dashboard', icon: <LayoutDashboard size={18} /> },
         { name: 'User Directory', path: '/superadmin/users', icon: <Users size={18} /> },
         { name: 'System Settings', path: '/superadmin/settings', icon: <Settings size={18} /> },
     ];
