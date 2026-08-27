@@ -426,8 +426,12 @@ export default function CreatorShowcaseDetail() {
           items-center
           justify-center
           gap-4
-          bg-[#030303]
-          text-white
+          bg-slate-50
+          text-slate-900
+          transition-colors
+          duration-300
+          dark:bg-[#030303]
+          dark:text-white
         "
       >
         <div className="relative">
@@ -447,7 +451,7 @@ export default function CreatorShowcaseDetail() {
             aria-hidden="true"
             className="
               animate-spin
-              text-white/20
+              text-slate-400 dark:text-white/20
             "
           />
         </div>
@@ -482,9 +486,13 @@ export default function CreatorShowcaseDetail() {
           items-center
           justify-center
           overflow-hidden
-          bg-[#030303]
+          bg-slate-50
           p-6
-          text-white
+          text-slate-900
+          transition-colors
+          duration-300
+          dark:bg-[#030303]
+          dark:text-white
         "
       >
         <div
@@ -513,8 +521,8 @@ export default function CreatorShowcaseDetail() {
             space-y-4
             rounded-3xl
             border
-            border-white/10
-            bg-[#0a0a0a]
+            border-slate-200 dark:border-white/10
+            bg-white dark:bg-[#0a0a0a]
             p-10
             text-center
             shadow-2xl
@@ -527,7 +535,7 @@ export default function CreatorShowcaseDetail() {
             className="
               mx-auto
               mb-6
-              text-white/10
+              text-slate-300 dark:text-white/10
             "
           />
 
@@ -536,7 +544,7 @@ export default function CreatorShowcaseDetail() {
               font-serif
               text-2xl
               tracking-wide
-              text-white
+              text-slate-900 dark:text-white
             "
           >
             Showcase Item Unavailable
@@ -549,7 +557,7 @@ export default function CreatorShowcaseDetail() {
               uppercase
               leading-6
               tracking-widest
-              text-white/40
+              text-slate-500 dark:text-white/40
             "
           >
             {error || "This showcase item is unavailable."}
@@ -574,7 +582,7 @@ export default function CreatorShowcaseDetail() {
               text-black
               transition
 
-              hover:bg-white
+              hover:bg-[#ead28f] dark:hover:bg-white
             "
           >
             <ChevronLeft size={13} />
@@ -606,10 +614,14 @@ export default function CreatorShowcaseDetail() {
         relative
         min-h-screen
         overflow-x-hidden
-        bg-[#030303]
+        bg-slate-50
         pb-32
-        text-white
+        text-slate-900
+        transition-colors
+        duration-300
         selection:bg-[#D4AF37]
+        dark:bg-[#030303]
+        dark:text-white
         selection:text-black
       "
     >
@@ -664,8 +676,8 @@ export default function CreatorShowcaseDetail() {
           top-20
           z-40
           border-b
-          border-white/5
-          bg-[#0a0a0a]/90
+          border-slate-200 dark:border-white/5
+          bg-white/90 dark:bg-[#0a0a0a]/90
           px-4
           py-4
           shadow-2xl
@@ -696,10 +708,10 @@ export default function CreatorShowcaseDetail() {
               font-bold
               uppercase
               tracking-[0.16em]
-              text-white/40
+              text-slate-500 dark:text-white/40
               transition
 
-              hover:text-white
+              hover:text-slate-950 dark:hover:text-white
 
               sm:text-[10px]
             "
@@ -714,10 +726,10 @@ export default function CreatorShowcaseDetail() {
                 justify-center
                 rounded-full
                 border
-                border-white/5
-                bg-white/5
+                border-slate-200 dark:border-white/5
+                bg-slate-100 dark:bg-white/5
 
-                group-hover:bg-white/10
+                group-hover:bg-slate-200 dark:group-hover:bg-white/10
               "
             >
               <ChevronLeft size={14} />
@@ -741,15 +753,15 @@ export default function CreatorShowcaseDetail() {
                   truncate
                   rounded-full
                   border
-                  border-white/10
-                  bg-white/[0.04]
+                  border-slate-200 dark:border-white/10
+                  bg-slate-100/80 dark:bg-white/[0.04]
                   px-3
                   py-2
                   text-[8px]
                   font-black
                   uppercase
                   tracking-[0.15em]
-                  text-white/45
+                  text-slate-600 dark:text-white/45
 
                   sm:block
                 "
@@ -832,8 +844,8 @@ export default function CreatorShowcaseDetail() {
               overflow-hidden
               rounded-3xl
               border
-              border-white/5
-              bg-[#0a0a0a]
+              border-slate-200 dark:border-white/5
+              bg-white dark:bg-[#0a0a0a]
               p-2
               shadow-2xl
             "
@@ -845,7 +857,7 @@ export default function CreatorShowcaseDetail() {
                 w-full
                 overflow-hidden
                 rounded-2xl
-                bg-[#111]
+                bg-slate-100 dark:bg-[#111]
               "
             >
               {item.watermarked_preview_url ? (
@@ -876,7 +888,7 @@ export default function CreatorShowcaseDetail() {
                     items-center
                     justify-center
                     gap-3
-                    text-white/10
+                    text-slate-300 dark:text-white/10
                   "
                 >
                   <Sparkles size={48} />
@@ -970,8 +982,8 @@ export default function CreatorShowcaseDetail() {
               space-y-8
               rounded-3xl
               border
-              border-white/5
-              bg-[#0a0a0a]
+              border-slate-200 dark:border-white/5
+              bg-white dark:bg-[#0a0a0a]
               p-6
               shadow-2xl
 
@@ -1009,7 +1021,7 @@ export default function CreatorShowcaseDetail() {
                   font-bold
                   uppercase
                   tracking-[0.16em]
-                  text-white/35
+                  text-slate-500 dark:text-white/35
                 "
               >
                 <span
@@ -1072,8 +1084,8 @@ export default function CreatorShowcaseDetail() {
               className="
                 h-px
                 bg-gradient-to-r
-                from-white/10
-                via-white/5
+                from-slate-200 dark:from-white/10
+                via-slate-100 dark:via-white/5
                 to-transparent
               "
             />
@@ -1106,7 +1118,7 @@ export default function CreatorShowcaseDetail() {
                   text-sm
                   font-light
                   leading-loose
-                  text-white/70
+                  text-slate-700 dark:text-white/70
 
                   md:text-base
                 "
@@ -1123,7 +1135,7 @@ export default function CreatorShowcaseDetail() {
               <div
                 className="
                   border-t
-                  border-white/5
+                  border-slate-200 dark:border-white/5
                   pt-7
                 "
               >
@@ -1134,7 +1146,7 @@ export default function CreatorShowcaseDetail() {
                     font-black
                     uppercase
                     tracking-[0.2em]
-                    text-white/30
+                    text-slate-500 dark:text-white/30
                   "
                 >
                   Creative Tags
@@ -1156,15 +1168,15 @@ export default function CreatorShowcaseDetail() {
                           gap-1.5
                           rounded-full
                           border
-                          border-white/10
-                          bg-white/5
+                          border-slate-200 dark:border-white/10
+                          bg-slate-100 dark:bg-white/5
                           px-4
                           py-2
                           text-[9px]
                           font-bold
                           uppercase
                           tracking-[0.16em]
-                          text-white/50
+                          text-slate-600 dark:text-white/50
                         "
                     >
                       <Tag size={10} />
@@ -1198,8 +1210,8 @@ export default function CreatorShowcaseDetail() {
               overflow-hidden
               rounded-3xl
               border
-              border-white/5
-              bg-[#0a0a0a]
+              border-slate-200 dark:border-white/5
+              bg-white dark:bg-[#0a0a0a]
               p-6
               shadow-2xl
 
@@ -1244,8 +1256,8 @@ export default function CreatorShowcaseDetail() {
                   overflow-hidden
                   rounded-full
                   border
-                  border-white/10
-                  bg-[#111]
+                  border-slate-200 dark:border-white/10
+                  bg-slate-100 dark:bg-[#111]
                 "
               >
                 {ownerAvatar ? (
@@ -1264,7 +1276,7 @@ export default function CreatorShowcaseDetail() {
                   <User
                     size={24}
                     className="
-                      text-white/20
+                      text-slate-400 dark:text-white/20
                     "
                   />
                 )}
@@ -1307,7 +1319,7 @@ export default function CreatorShowcaseDetail() {
                         items-center
                         gap-1.5
                         text-[9px]
-                        text-white/35
+                        text-slate-500 dark:text-white/35
                       "
                   >
                     <MapPin size={10} />
@@ -1330,13 +1342,13 @@ export default function CreatorShowcaseDetail() {
                       mt-6
                       rounded-2xl
                       border
-                      border-white/5
-                      bg-[#111]
+                      border-slate-200 dark:border-white/5
+                      bg-slate-100 dark:bg-[#111]
                       p-5
                       text-xs
                       font-light
                       leading-relaxed
-                      text-white/50
+                      text-slate-600 dark:text-white/50
                     "
                   >
                     {item.designer_bio}
@@ -1352,7 +1364,7 @@ export default function CreatorShowcaseDetail() {
                     grid-cols-2
                     gap-3
                     border-t
-                    border-white/5
+                    border-slate-200 dark:border-white/5
                     pt-6
                   "
                 >
@@ -1364,8 +1376,8 @@ export default function CreatorShowcaseDetail() {
                       justify-center
                       rounded-2xl
                       border
-                      border-white/5
-                      bg-white/[0.04]
+                      border-slate-200 dark:border-white/5
+                      bg-slate-100/80 dark:bg-white/[0.04]
                       p-4
                       text-center
                     "
@@ -1395,7 +1407,7 @@ export default function CreatorShowcaseDetail() {
                         font-bold
                         uppercase
                         tracking-[0.16em]
-                        text-white/35
+                        text-slate-500 dark:text-white/35
                       "
                     >
                       Rating
@@ -1410,8 +1422,8 @@ export default function CreatorShowcaseDetail() {
                       justify-center
                       rounded-2xl
                       border
-                      border-white/5
-                      bg-white/[0.04]
+                      border-slate-200 dark:border-white/5
+                      bg-slate-100/80 dark:bg-white/[0.04]
                       p-4
                       text-center
                     "
@@ -1420,7 +1432,7 @@ export default function CreatorShowcaseDetail() {
                       size={16}
                       className="
                         mb-2
-                        text-white/60
+                        text-slate-700 dark:text-white/60
                       "
                     />
 
@@ -1440,7 +1452,7 @@ export default function CreatorShowcaseDetail() {
                         font-bold
                         uppercase
                         tracking-[0.13em]
-                        text-white/35
+                        text-slate-500 dark:text-white/35
                       "
                     >
                       Completed
@@ -1477,7 +1489,7 @@ export default function CreatorShowcaseDetail() {
                       mt-2
                       text-xs
                       leading-6
-                      text-white/45
+                      text-slate-600 dark:text-white/45
                     "
                   >
                     Use this Showcase design as creative context when starting a
@@ -1512,7 +1524,7 @@ export default function CreatorShowcaseDetail() {
                         text-black
                         transition
 
-                        hover:bg-white
+                        hover:bg-[#ead28f] dark:hover:bg-white
                       "
                     >
                       <Zap size={14} />
@@ -1532,14 +1544,14 @@ export default function CreatorShowcaseDetail() {
                         gap-2
                         rounded-xl
                         border
-                        border-white/10
-                        bg-white/[0.04]
+                        border-slate-200 dark:border-white/10
+                        bg-slate-100/80 dark:bg-white/[0.04]
                         py-3.5
                         text-[9px]
                         font-black
                         uppercase
                         tracking-[0.16em]
-                        text-white/65
+                        text-slate-700 dark:text-white/65
                         transition
 
                         hover:border-[#D4AF37]/40
@@ -1565,17 +1577,17 @@ export default function CreatorShowcaseDetail() {
                         gap-2
                         rounded-xl
                         border
-                        border-white/10
+                        border-slate-200 dark:border-white/10
                         py-3.5
                         text-[9px]
                         font-black
                         uppercase
                         tracking-[0.16em]
-                        text-white/45
+                        text-slate-600 dark:text-white/45
                         transition
 
-                        hover:border-white/25
-                        hover:text-white
+                        hover:border-slate-400 dark:hover:border-white/25
+                        hover:text-slate-950 dark:hover:text-white
                       "
                     >
                       Portfolio
@@ -1593,7 +1605,7 @@ export default function CreatorShowcaseDetail() {
                 className="
                   mt-6
                   border-t
-                  border-white/5
+                  border-slate-200 dark:border-white/5
                   pt-6
                 "
               >
@@ -1609,7 +1621,7 @@ export default function CreatorShowcaseDetail() {
                   <Sparkles
                     size={17}
                     className="
-                      text-violet-300
+                      text-violet-600 dark:text-violet-300
                     "
                   />
 
@@ -1628,7 +1640,7 @@ export default function CreatorShowcaseDetail() {
                       mt-2
                       text-xs
                       leading-6
-                      text-white/42
+                      text-slate-600 dark:text-white/42
                     "
                   >
                     This creative work was shared by a Creator in the
@@ -1647,14 +1659,14 @@ export default function CreatorShowcaseDetail() {
                     gap-2
                     rounded-xl
                     border
-                    border-white/10
-                    bg-white/[0.04]
+                    border-slate-200 dark:border-white/10
+                    bg-slate-100/80 dark:bg-white/[0.04]
                     py-3.5
                     text-[9px]
                     font-black
                     uppercase
                     tracking-[0.16em]
-                    text-white/60
+                    text-slate-700 dark:text-white/60
                     transition
 
                     hover:border-[#D4AF37]/35

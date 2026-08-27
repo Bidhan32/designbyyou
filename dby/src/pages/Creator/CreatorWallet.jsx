@@ -4,7 +4,7 @@
 =========================================================
 DesignByYou
 Creator Wallet & Billing
-Version 3.0
+Version 3.1
 =========================================================
 
 Responsibilities:
@@ -16,6 +16,7 @@ Responsibilities:
 5. Creator subscription management
 6. Transaction ledger
 7. Ledger filtering / pagination
+8. Creator light / dark theme support
 
 =========================================================
 IMPORTANT FINANCIAL MODEL
@@ -95,6 +96,8 @@ import {
 import { loadStripe } from "@stripe/stripe-js";
 
 import API from "../../api/axios";
+
+import { useTheme } from "../../context/ThemeContext";
 
 /*=========================================================
 Stripe Elements
@@ -181,26 +184,30 @@ const SUBSCRIPTION_PLANS = [
   },
 ];
 
-const CARD_ELEMENT_OPTIONS = {
-  style: {
-    base: {
-      color: "#ffffff",
-      fontSize: "16px",
-      fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
+function createCardElementOptions(theme) {
+  const isDark = theme === "dark";
 
-      "::placeholder": {
-        color: "#737373",
+  return {
+    style: {
+      base: {
+        color: isDark ? "#ffffff" : "#0f172a",
+        fontSize: "16px",
+        fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
+
+        "::placeholder": {
+          color: isDark ? "#737373" : "#94a3b8",
+        },
+
+        iconColor: "#D4AF37",
       },
 
-      iconColor: "#D4AF37",
+      invalid: {
+        color: isDark ? "#fb7185" : "#be123c",
+        iconColor: isDark ? "#fb7185" : "#be123c",
+      },
     },
-
-    invalid: {
-      color: "#fb7185",
-      iconColor: "#fb7185",
-    },
-  },
-};
+  };
+}
 
 /*=========================================================
 Default Data
@@ -467,26 +474,26 @@ function getDirectionAmountPrefix(direction) {
 function getDirectionBadgeClasses(direction) {
   switch (direction) {
     case "credit":
-      return "border-emerald-500/20 bg-emerald-500/10 text-emerald-400";
+      return "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
 
     case "debit":
-      return "border-rose-500/20 bg-rose-500/10 text-rose-400";
+      return "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-400";
 
     case "internal_release":
       return "border-[#D4AF37]/20 bg-[#D4AF37]/10 text-[#D4AF37]";
 
     default:
-      return "border-white/10 bg-white/5 text-white/50";
+      return "border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/50";
   }
 }
 
 function getDirectionAmountClasses(direction) {
   switch (direction) {
     case "credit":
-      return "text-emerald-400";
+      return "text-emerald-700 dark:text-emerald-400";
 
     case "debit":
-      return "text-rose-400";
+      return "text-rose-700 dark:text-rose-400";
 
     default:
       return "text-[#D4AF37]";
@@ -517,21 +524,21 @@ function getSubscriptionStatusClasses(status) {
   switch (status) {
     case "active":
     case "trialing":
-      return "border-emerald-500/20 bg-emerald-500/10 text-emerald-400";
+      return "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
 
     case "past_due":
     case "incomplete":
-      return "border-amber-500/20 bg-amber-500/10 text-amber-300";
+      return "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300";
 
     case "unpaid":
-      return "border-rose-500/20 bg-rose-500/10 text-rose-400";
+      return "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-400";
 
     case "canceled":
     case "incomplete_expired":
-      return "border-white/10 bg-white/5 text-white/45";
+      return "border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/45";
 
     default:
-      return "border-white/10 bg-white/5 text-white/45";
+      return "border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/45";
   }
 }
 
@@ -583,7 +590,7 @@ function WalletModal({ open, title, subtitle, onClose, children }) {
         flex
         items-center
         justify-center
-        bg-black/80
+        bg-black/50 dark:bg-black/80
         p-4
         backdrop-blur-md
       "
@@ -598,9 +605,11 @@ function WalletModal({ open, title, subtitle, onClose, children }) {
           overflow-hidden
           rounded-[2rem]
           border
-          border-white/10
-          bg-[#0a0a0a]
-          shadow-[0_40px_120px_rgba(0,0,0,0.8)]
+          border-slate-200 dark:border-white/10
+          bg-white dark:bg-[#0a0a0a]
+          shadow-2xl
+          shadow-slate-300/50
+          dark:shadow-[0_40px_120px_rgba(0,0,0,0.8)]
         "
         onMouseDown={(event) => event.stopPropagation()}
       >
@@ -611,7 +620,7 @@ function WalletModal({ open, title, subtitle, onClose, children }) {
             justify-between
             gap-4
             border-b
-            border-white/5
+            border-slate-200/80 dark:border-white/5
             p-6
           "
         >
@@ -620,7 +629,7 @@ function WalletModal({ open, title, subtitle, onClose, children }) {
               className="
                 font-serif
                 text-2xl
-                text-white
+                text-slate-900 dark:text-white
               "
             >
               {title}
@@ -631,7 +640,7 @@ function WalletModal({ open, title, subtitle, onClose, children }) {
                 mt-2
                 text-xs
                 leading-5
-                text-white/45
+                text-slate-500 dark:text-white/45
               "
             >
               {subtitle}
@@ -649,13 +658,13 @@ function WalletModal({ open, title, subtitle, onClose, children }) {
               place-items-center
               rounded-full
               border
-              border-white/10
-              bg-white/5
-              text-white/50
+              border-slate-200 dark:border-white/10
+              bg-slate-100 dark:bg-white/5
+              text-slate-500 dark:text-white/50
               transition
 
-              hover:bg-white/10
-              hover:text-white
+              hover:bg-slate-200 dark:hover:bg-white/10
+              hover:text-slate-950 dark:hover:text-white
             "
             aria-label="Close"
           >
@@ -674,6 +683,13 @@ Creator Wallet Core
 =========================================================*/
 
 function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
+  const { theme } = useTheme();
+
+  const cardElementOptions = useMemo(
+    () => createCardElementOptions(theme),
+    [theme],
+  );
+
   /*=======================================================
   Summary State
   =======================================================*/
@@ -1607,7 +1623,10 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
           justify-center
           gap-4
           overflow-hidden
-          bg-[#030303]
+          bg-slate-50
+          transition-colors
+          duration-300
+          dark:bg-[#030303]
         "
       >
         <div
@@ -1641,7 +1660,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
           <Loader2
             className="
               animate-spin
-              text-white/20
+              text-slate-300 dark:text-white/20
             "
             size={40}
           />
@@ -1676,10 +1695,14 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
           relative
           min-h-screen
           overflow-x-hidden
-          bg-[#030303]
+          bg-slate-50
           pb-32
           font-sans
-          text-white
+          text-slate-900
+          transition-colors
+          duration-300
+          dark:bg-[#030303]
+          dark:text-white
           selection:bg-[#D4AF37]
           selection:text-black
         "
@@ -1775,7 +1798,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   text-4xl
                   font-light
                   tracking-tight
-                  text-white
+                  text-slate-900 dark:text-white
 
                   md:text-5xl
                 "
@@ -1797,7 +1820,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   max-w-2xl
                   text-xs
                   leading-6
-                  text-white/45
+                  text-slate-500 dark:text-white/45
 
                   sm:text-sm
                 "
@@ -1817,15 +1840,15 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                 gap-2
                 rounded-full
                 border
-                border-white/10
-                bg-white/5
+                border-slate-200 dark:border-white/10
+                bg-slate-100 dark:bg-white/5
                 px-5
                 py-3
                 text-[9px]
                 font-black
                 uppercase
                 tracking-[0.18em]
-                text-white/60
+                text-slate-600 dark:text-white/60
                 transition
 
                 hover:border-[#D4AF37]/30
@@ -1863,8 +1886,8 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
 
                 ${
                   notice.type === "success"
-                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
-                    : "border-[#D4AF37]/20 bg-[#D4AF37]/10 text-[#e9d181]"
+                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                    : "border-[#D4AF37]/20 bg-[#D4AF37]/10 text-amber-700 dark:text-[#e9d181]"
                 }
               `}
             >
@@ -1917,7 +1940,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   items-center
                   gap-3
                   text-xs
-                  text-rose-300
+                  text-rose-700 dark:text-rose-300
                 "
               >
                 <AlertCircle size={16} />
@@ -1933,8 +1956,8 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   font-black
                   uppercase
                   tracking-widest
-                  text-white/60
-                  hover:text-white
+                  text-slate-600 dark:text-white/60
+                  hover:text-slate-950 dark:hover:text-white
                 "
               >
                 Retry
@@ -1968,7 +1991,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                 rounded-3xl
                 border
                 border-[#D4AF37]/20
-                bg-[#111]
+                bg-slate-50 dark:bg-[#111]
                 p-7
                 shadow-2xl
               "
@@ -2021,7 +2044,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                     text-[9px]
                     uppercase
                     tracking-widest
-                    text-white/35
+                    text-slate-500 dark:text-white/35
                   "
                 >
                   Ready for bookings
@@ -2038,8 +2061,8 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                 overflow-hidden
                 rounded-3xl
                 border
-                border-white/5
-                bg-[#0a0a0a]
+                border-slate-200/80 dark:border-white/5
+                bg-white dark:bg-[#0a0a0a]
                 p-7
                 shadow-2xl
               "
@@ -2052,7 +2075,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   absolute
                   -right-5
                   -top-4
-                  text-indigo-400
+                  text-indigo-500 dark:text-indigo-400
                   opacity-[0.035]
                 "
               />
@@ -2064,7 +2087,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   font-black
                   uppercase
                   tracking-[0.2em]
-                  text-white/40
+                  text-slate-500 dark:text-white/40
                 "
               >
                 Active Escrow
@@ -2086,7 +2109,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   text-[9px]
                   uppercase
                   tracking-widest
-                  text-indigo-300/70
+                  text-indigo-600 dark:text-indigo-300/70
                 "
               >
                 {activeEscrowCount}{" "}
@@ -2102,8 +2125,8 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                 overflow-hidden
                 rounded-3xl
                 border
-                border-white/5
-                bg-[#0a0a0a]
+                border-slate-200/80 dark:border-white/5
+                bg-white dark:bg-[#0a0a0a]
                 p-7
                 shadow-2xl
               "
@@ -2116,7 +2139,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   absolute
                   -right-5
                   -top-4
-                  text-rose-400
+                  text-rose-700 dark:text-rose-400
                   opacity-[0.03]
                 "
               />
@@ -2128,7 +2151,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   font-black
                   uppercase
                   tracking-[0.2em]
-                  text-white/40
+                  text-slate-500 dark:text-white/40
                 "
               >
                 Pending Return
@@ -2150,7 +2173,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   text-[9px]
                   uppercase
                   tracking-widest
-                  text-white/35
+                  text-slate-500 dark:text-white/35
                 "
               >
                 Awaiting Stripe
@@ -2165,8 +2188,8 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                 overflow-hidden
                 rounded-3xl
                 border
-                border-white/5
-                bg-[#0a0a0a]
+                border-slate-200/80 dark:border-white/5
+                bg-white dark:bg-[#0a0a0a]
                 p-7
                 shadow-2xl
               "
@@ -2179,7 +2202,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   absolute
                   -right-5
                   -top-4
-                  text-white
+                  text-slate-900 dark:text-white
                   opacity-[0.025]
                 "
               />
@@ -2191,7 +2214,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   font-black
                   uppercase
                   tracking-[0.2em]
-                  text-white/40
+                  text-slate-500 dark:text-white/40
                 "
               >
                 Net Booking Spend
@@ -2216,7 +2239,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   text-[9px]
                   uppercase
                   tracking-widest
-                  text-white/35
+                  text-slate-500 dark:text-white/35
                 "
               >
                 After booking refunds
@@ -2241,8 +2264,8 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
               className="
                 rounded-3xl
                 border
-                border-white/5
-                bg-[#0a0a0a]
+                border-slate-200/80 dark:border-white/5
+                bg-white dark:bg-[#0a0a0a]
                 p-6
                 shadow-2xl
 
@@ -2276,7 +2299,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                       max-w-xl
                       text-xs
                       leading-5
-                      text-white/40
+                      text-slate-500 dark:text-white/40
                     "
                   >
                     Fund your Creator wallet or return unused Stripe-funded
@@ -2327,7 +2350,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                     text-black
                     transition
 
-                    hover:bg-white
+                    hover:bg-slate-100 dark:hover:bg-white
                   "
                 >
                   <CreditCard size={14} />
@@ -2349,15 +2372,15 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                     gap-2
                     rounded-xl
                     border
-                    border-white/10
-                    bg-white/5
+                    border-slate-200 dark:border-white/10
+                    bg-slate-100 dark:bg-white/5
                     px-5
                     py-4
                     text-[9px]
                     font-black
                     uppercase
                     tracking-[0.18em]
-                    text-white/70
+                    text-slate-600 dark:text-white/70
                     transition
 
                     hover:border-[#D4AF37]/30
@@ -2381,8 +2404,8 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                 overflow-hidden
                 rounded-3xl
                 border
-                border-white/5
-                bg-white/5
+                border-slate-200/80 dark:border-white/5
+                bg-slate-100 dark:bg-white/5
                 shadow-2xl
 
                 sm:grid-cols-4
@@ -2412,7 +2435,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                 <div
                   key={stat.label}
                   className="
-                      bg-[#0a0a0a]
+                      bg-white dark:bg-[#0a0a0a]
                       p-5
                     "
                 >
@@ -2422,7 +2445,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                         font-black
                         uppercase
                         tracking-[0.15em]
-                        text-white/35
+                        text-slate-500 dark:text-white/35
                       "
                   >
                     {stat.label}
@@ -2433,7 +2456,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                         mt-2
                         font-serif
                         text-xl
-                        text-white
+                        text-slate-900 dark:text-white
                       "
                   >
                     {stat.count
@@ -2456,15 +2479,17 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
               rounded-[2rem]
               border
               border-[#D4AF37]/20
-              bg-[#0a0a0a]
-              shadow-[0_25px_70px_rgba(0,0,0,0.5)]
+              bg-white dark:bg-[#0a0a0a]
+              shadow-xl
+              shadow-slate-200/60
+              dark:shadow-[0_25px_70px_rgba(0,0,0,0.5)]
             "
           >
             <div
               className="
                 relative
                 border-b
-                border-white/5
+                border-slate-200/80 dark:border-white/5
                 bg-gradient-to-r
                 from-[#D4AF37]/10
                 to-transparent
@@ -2528,7 +2553,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                       max-w-xl
                       text-xs
                       leading-6
-                      text-white/45
+                      text-slate-500 dark:text-white/45
                     "
                   >
                     Subscribe securely through Stripe and manage billing,
@@ -2551,8 +2576,8 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                       min-w-[240px]
                       rounded-2xl
                       border
-                      border-white/10
-                      bg-black/20
+                      border-slate-200 dark:border-white/10
+                      bg-slate-100/80 dark:bg-black/20
                       p-5
                     "
                   >
@@ -2571,7 +2596,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                             font-black
                             uppercase
                             tracking-[0.18em]
-                            text-white/35
+                            text-slate-500 dark:text-white/35
                           "
                         >
                           Current Plan
@@ -2616,10 +2641,10 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                           items-center
                           gap-2
                           border-t
-                          border-white/5
+                          border-slate-200/80 dark:border-white/5
                           pt-4
                           text-[9px]
-                          text-white/45
+                          text-slate-500 dark:text-white/45
                         "
                       >
                         <CalendarDays size={12} className="text-[#D4AF37]" />
@@ -2628,7 +2653,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                           ? "Active until"
                           : "Current period ends"}
 
-                        <span className="text-white/75">
+                        <span className="text-slate-700 dark:text-white/75">
                           {formatDate(currentSubscription.current_period_end)}
                         </span>
                       </div>
@@ -2659,7 +2684,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                     bg-rose-500/5
                     p-4
                     text-xs
-                    text-rose-300
+                    text-rose-700 dark:text-rose-300
                   "
                 >
                   <span>{subscriptionError}</span>
@@ -2698,7 +2723,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                     p-4
                     text-xs
                     leading-5
-                    text-amber-200
+                    text-amber-700 dark:text-amber-200
                   "
                 >
                   <AlertCircle size={16} className="mt-0.5 shrink-0" />
@@ -2713,12 +2738,12 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                     mb-6
                     rounded-xl
                     border
-                    border-white/10
-                    bg-white/5
+                    border-slate-200 dark:border-white/10
+                    bg-slate-100 dark:bg-white/5
                     p-4
                     text-xs
                     leading-5
-                    text-white/55
+                    text-slate-600 dark:text-white/55
                   "
                 >
                   Cancellation is scheduled. Your current access remains
@@ -2744,8 +2769,8 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                           flex-col
                           rounded-2xl
                           border
-                          border-white/10
-                          bg-[#111]
+                          border-slate-200 dark:border-white/10
+                          bg-slate-50 dark:bg-[#111]
                           p-5
                           transition
 
@@ -2770,7 +2795,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                             flex-1
                             text-xs
                             leading-5
-                            text-white/40
+                            text-slate-500 dark:text-white/40
                           "
                       >
                         {plan.description}
@@ -2797,7 +2822,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                             text-black
                             transition
 
-                            hover:bg-white
+                            hover:bg-slate-100 dark:hover:bg-white
 
                             disabled:cursor-wait
                             disabled:opacity-50
@@ -2821,8 +2846,8 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                     gap-5
                     rounded-2xl
                     border
-                    border-white/5
-                    bg-[#111]
+                    border-slate-200/80 dark:border-white/5
+                    bg-slate-50 dark:bg-[#111]
                     p-6
 
                     sm:flex-row
@@ -2847,7 +2872,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                       className="
                         mt-2
                         text-sm
-                        text-white/60
+                        text-slate-600 dark:text-white/60
                       "
                     >
                       Your current subscription should be managed through Stripe
@@ -2877,7 +2902,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                         text-black
                         transition
 
-                        hover:bg-white
+                        hover:bg-slate-100 dark:hover:bg-white
 
                         disabled:cursor-wait
                         disabled:opacity-50
@@ -2915,7 +2940,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                         font-black
                         uppercase
                         tracking-[0.16em]
-                        text-white/45
+                        text-slate-500 dark:text-white/45
                         transition
 
                         hover:text-[#D4AF37]
@@ -2942,16 +2967,16 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
               overflow-hidden
               rounded-[2rem]
               border
-              border-white/5
-              bg-[#0a0a0a]
+              border-slate-200/80 dark:border-white/5
+              bg-white dark:bg-[#0a0a0a]
               shadow-2xl
             "
           >
             <div
               className="
                 border-b
-                border-white/5
-                bg-[#111]/50
+                border-slate-200/80 dark:border-white/5
+                bg-slate-100/70 dark:bg-[#111]/50
                 p-6
 
                 sm:p-8
@@ -2983,8 +3008,8 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                       place-items-center
                       rounded-xl
                       border
-                      border-white/10
-                      bg-[#030303]
+                      border-slate-200 dark:border-white/10
+                      bg-white dark:bg-[#030303]
                     "
                   >
                     <FileText size={17} className="text-[#D4AF37]" />
@@ -3007,7 +3032,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                         font-bold
                         uppercase
                         tracking-[0.16em]
-                        text-white/35
+                        text-slate-500 dark:text-white/35
                       "
                     >
                       {pagination.total} recorded{" "}
@@ -3040,7 +3065,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                         left-3
                         top-1/2
                         -translate-y-1/2
-                        text-white/30
+                        text-slate-400 dark:text-white/30
                       "
                     />
 
@@ -3054,15 +3079,15 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                         w-full
                         rounded-xl
                         border
-                        border-white/10
-                        bg-[#030303]
+                        border-slate-200 dark:border-white/10
+                        bg-white dark:bg-[#030303]
                         py-3
                         pl-9
                         pr-3
                         text-xs
-                        text-white
+                        text-slate-900 dark:text-white
                         outline-none
-                        placeholder:text-white/25
+                        placeholder:text-slate-400 dark:placeholder:text-white/25
 
                         focus:border-[#D4AF37]/40
                       "
@@ -3075,12 +3100,12 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                     className="
                       rounded-xl
                       border
-                      border-white/10
-                      bg-[#030303]
+                      border-slate-200 dark:border-white/10
+                      bg-white dark:bg-[#030303]
                       px-3
                       py-3
                       text-xs
-                      text-white/70
+                      text-slate-600 dark:text-white/70
                       outline-none
                     "
                   >
@@ -3097,12 +3122,12 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                     className="
                       rounded-xl
                       border
-                      border-white/10
-                      bg-[#030303]
+                      border-slate-200 dark:border-white/10
+                      bg-white dark:bg-[#030303]
                       px-3
                       py-3
                       text-xs
-                      text-white/70
+                      text-slate-600 dark:text-white/70
                       outline-none
                     "
                   >
@@ -3130,7 +3155,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   bg-rose-500/5
                   p-4
                   text-xs
-                  text-rose-300
+                  text-rose-700 dark:text-rose-300
                 "
               >
                 <span>{ledgerError}</span>
@@ -3188,11 +3213,11 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                     place-items-center
                     rounded-full
                     border
-                    border-white/5
-                    bg-[#111]
+                    border-slate-200/80 dark:border-white/5
+                    bg-slate-50 dark:bg-[#111]
                   "
                 >
-                  <Sparkles size={24} className="text-white/20" />
+                  <Sparkles size={24} className="text-slate-300 dark:text-white/20" />
                 </div>
 
                 <p
@@ -3201,7 +3226,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                     font-black
                     uppercase
                     tracking-[0.18em]
-                    text-white/35
+                    text-slate-500 dark:text-white/35
                   "
                 >
                   No matching transactions found
@@ -3216,7 +3241,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                 <div
                   className="
                     divide-y
-                    divide-white/5
+                    divide-slate-200 dark:divide-white/5
 
                     md:hidden
                   "
@@ -3277,7 +3302,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                                   mt-1
                                   truncate
                                   text-xs
-                                  text-white/40
+                                  text-slate-500 dark:text-white/40
                                 "
                             >
                               {transaction.counterparty_name ||
@@ -3309,7 +3334,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                               grid-cols-2
                               gap-3
                               rounded-xl
-                              bg-white/[0.03]
+                              bg-slate-100/70 dark:bg-white/[0.03]
                               p-3
                               text-[9px]
                             "
@@ -3319,7 +3344,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                               className="
                                   uppercase
                                   tracking-widest
-                                  text-white/25
+                                  text-slate-400 dark:text-white/25
                                 "
                             >
                               Provider
@@ -3328,7 +3353,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                             <p
                               className="
                                   mt-1
-                                  text-white/55
+                                  text-slate-600 dark:text-white/55
                                 "
                             >
                               {getProviderLabel(transaction)}
@@ -3340,7 +3365,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                               className="
                                   uppercase
                                   tracking-widest
-                                  text-white/25
+                                  text-slate-400 dark:text-white/25
                                 "
                             >
                               Date
@@ -3349,7 +3374,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                             <p
                               className="
                                   mt-1
-                                  text-white/55
+                                  text-slate-600 dark:text-white/55
                                 "
                             >
                               {formatDate(transaction.created_at)}
@@ -3365,7 +3390,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                               className="
                                   uppercase
                                   tracking-widest
-                                  text-white/25
+                                  text-slate-400 dark:text-white/25
                                 "
                             >
                               Reference
@@ -3376,7 +3401,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                                   mt-1
                                   break-all
                                   font-mono
-                                  text-white/45
+                                  text-slate-500 dark:text-white/45
                                 "
                             >
                               {shortenReference(reference, 30)}
@@ -3411,13 +3436,13 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                       <tr
                         className="
                           border-b
-                          border-white/5
-                          bg-[#030303]
+                          border-slate-200/80 dark:border-white/5
+                          bg-white dark:bg-[#030303]
                           text-[8px]
                           font-black
                           uppercase
                           tracking-[0.18em]
-                          text-white/30
+                          text-slate-400 dark:text-white/30
                         "
                       >
                         <th className="px-7 py-5">Transaction</th>
@@ -3443,7 +3468,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                     <tbody
                       className="
                         divide-y
-                        divide-white/5
+                        divide-slate-200 dark:divide-white/5
                       "
                     >
                       {ledger.map((transaction) => {
@@ -3457,7 +3482,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                             key={transaction.transaction_id}
                             className="
                                 transition
-                                hover:bg-[#111]
+                                hover:bg-slate-50 dark:hover:bg-[#111]
                               "
                           >
                             <td className="px-7 py-5">
@@ -3485,7 +3510,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                                     mt-2
                                     font-mono
                                     text-[9px]
-                                    text-white/25
+                                    text-slate-400 dark:text-white/25
                                   "
                               >
                                 ID:{" "}
@@ -3502,7 +3527,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                                   py-5
                                   font-serif
                                   text-sm
-                                  text-white/80
+                                  text-slate-700 dark:text-white/80
                                 "
                             >
                               {transaction.counterparty_name ||
@@ -3514,7 +3539,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                                   px-7
                                   py-5
                                   text-xs
-                                  text-white/45
+                                  text-slate-500 dark:text-white/45
                                 "
                             >
                               {formatDateTime(transaction.created_at)}
@@ -3528,7 +3553,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                                     font-black
                                     uppercase
                                     tracking-widest
-                                    text-white/35
+                                    text-slate-500 dark:text-white/35
                                   "
                               >
                                 {getProviderLabel(transaction)}
@@ -3542,13 +3567,13 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                                     truncate
                                     rounded-lg
                                     border
-                                    border-white/5
-                                    bg-[#030303]
+                                    border-slate-200/80 dark:border-white/5
+                                    bg-white dark:bg-[#030303]
                                     px-3
                                     py-1.5
                                     font-mono
                                     text-[9px]
-                                    text-white/40
+                                    text-slate-500 dark:text-white/40
                                   "
                               >
                                 {shortenReference(reference, 24)}
@@ -3590,7 +3615,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                     flex-col
                     gap-4
                     border-t
-                    border-white/5
+                    border-slate-200/80 dark:border-white/5
                     p-5
 
                     sm:flex-row
@@ -3604,7 +3629,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                       font-bold
                       uppercase
                       tracking-[0.15em]
-                      text-white/30
+                      text-slate-400 dark:text-white/30
                     "
                   >
                     Page {pagination.page} of{" "}
@@ -3629,18 +3654,18 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                         gap-1.5
                         rounded-xl
                         border
-                        border-white/10
-                        bg-white/5
+                        border-slate-200 dark:border-white/10
+                        bg-slate-100 dark:bg-white/5
                         px-4
                         py-2.5
                         text-[8px]
                         font-black
                         uppercase
                         tracking-widest
-                        text-white/55
+                        text-slate-600 dark:text-white/55
                         transition
 
-                        hover:text-white
+                        hover:text-slate-950 dark:hover:text-white
 
                         disabled:cursor-not-allowed
                         disabled:opacity-30
@@ -3660,18 +3685,18 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                         gap-1.5
                         rounded-xl
                         border
-                        border-white/10
-                        bg-white/5
+                        border-slate-200 dark:border-white/10
+                        bg-slate-100 dark:bg-white/5
                         px-4
                         py-2.5
                         text-[8px]
                         font-black
                         uppercase
                         tracking-widest
-                        text-white/55
+                        text-slate-600 dark:text-white/55
                         transition
 
-                        hover:text-white
+                        hover:text-slate-950 dark:hover:text-white
 
                         disabled:cursor-not-allowed
                         disabled:opacity-30
@@ -3714,7 +3739,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                 font-black
                 uppercase
                 tracking-[0.18em]
-                text-white/40
+                text-slate-500 dark:text-white/40
               "
             >
               Deposit Amount
@@ -3752,12 +3777,12 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   w-full
                   rounded-xl
                   border
-                  border-white/10
-                  bg-[#030303]
+                  border-slate-200 dark:border-white/10
+                  bg-white dark:bg-[#030303]
                   py-4
                   pl-10
                   pr-4
-                  text-white
+                  text-slate-900 dark:text-white
                   outline-none
 
                   focus:border-[#D4AF37]/50
@@ -3775,7 +3800,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                 font-black
                 uppercase
                 tracking-[0.18em]
-                text-white/40
+                text-slate-500 dark:text-white/40
               "
             >
               Card
@@ -3786,19 +3811,19 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                 min-h-[54px]
                 rounded-xl
                 border
-                border-white/10
-                bg-[#030303]
+                border-slate-200 dark:border-white/10
+                bg-white dark:bg-[#030303]
                 px-4
                 py-[17px]
               "
             >
               {stripeElementsEnabled ? (
-                <CardElement options={CARD_ELEMENT_OPTIONS} />
+                <CardElement options={cardElementOptions} />
               ) : (
                 <p
                   className="
                     text-xs
-                    text-rose-300
+                    text-rose-700 dark:text-rose-300
                   "
                 >
                   Stripe card entry is unavailable because
@@ -3821,7 +3846,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                 p-3
                 text-xs
                 leading-5
-                text-rose-300
+                text-rose-700 dark:text-rose-300
               "
             >
               <AlertCircle size={15} className="mt-0.5 shrink-0" />
@@ -3839,7 +3864,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
               p-4
               text-[10px]
               leading-5
-              text-white/45
+              text-slate-500 dark:text-white/45
             "
           >
             Wallet deposits are separate from subscription payments. Unused
@@ -3866,7 +3891,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
               text-black
               transition
 
-              hover:bg-white
+              hover:bg-slate-100 dark:hover:bg-white
 
               disabled:cursor-not-allowed
               disabled:opacity-50
@@ -3904,8 +3929,8 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
             className="
               rounded-xl
               border
-              border-white/5
-              bg-[#111]
+              border-slate-200/80 dark:border-white/5
+              bg-slate-50 dark:bg-[#111]
               p-4
             "
           >
@@ -3915,7 +3940,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                 font-black
                 uppercase
                 tracking-[0.18em]
-                text-white/35
+                text-slate-500 dark:text-white/35
               "
             >
               Available Wallet Balance
@@ -3926,7 +3951,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                 mt-2
                 font-serif
                 text-2xl
-                text-white
+                text-slate-900 dark:text-white
               "
             >
               {formatMoney(wallet.available_balance, currency)}
@@ -3942,7 +3967,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                 font-black
                 uppercase
                 tracking-[0.18em]
-                text-white/40
+                text-slate-500 dark:text-white/40
               "
             >
               Amount to Return
@@ -3980,12 +4005,12 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   w-full
                   rounded-xl
                   border
-                  border-white/10
-                  bg-[#030303]
+                  border-slate-200 dark:border-white/10
+                  bg-white dark:bg-[#030303]
                   py-4
                   pl-10
                   pr-4
-                  text-white
+                  text-slate-900 dark:text-white
                   outline-none
 
                   focus:border-[#D4AF37]/50
@@ -4007,7 +4032,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                 p-3
                 text-xs
                 leading-5
-                text-rose-300
+                text-rose-700 dark:text-rose-300
               "
             >
               <AlertCircle size={15} className="mt-0.5 shrink-0" />
@@ -4020,12 +4045,12 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
             className="
               rounded-xl
               border
-              border-white/10
-              bg-white/[0.03]
+              border-slate-200 dark:border-white/10
+              bg-slate-100/70 dark:bg-white/[0.03]
               p-4
               text-[10px]
               leading-5
-              text-white/45
+              text-slate-500 dark:text-white/45
             "
           >
             Your available wallet balance can include value that is not
@@ -4053,7 +4078,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
               text-black
               transition
 
-              hover:bg-white
+              hover:bg-slate-100 dark:hover:bg-white
 
               disabled:cursor-not-allowed
               disabled:opacity-50
