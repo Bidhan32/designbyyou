@@ -48,6 +48,7 @@ const creatorRoutes = require("./routes/creatorRoutes");
 const creatorFinanceRoutes = require("./routes/creatorFinanceRoute");
 const marketplaceRoutes = require("./routes/marketplaceRoutes");
 const p2pBookingRoutes = require("./routes/p2pBookingRoutes");
+const aiFashionRoutes = require("./routes/aiFashionRoutes");
 const virtualTryOnRoutes = require("./routes/virtualTryOnRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const userRoutes = require("./routes/userRoutes");
@@ -361,6 +362,7 @@ app.use("/api/v1/marketplace", marketplaceRoutes);
 app.use("/api/v1/p2p-bookings", p2pBookingRoutes);
 
 app.use("/api/v1/virtual-tryon", virtualTryOnRoutes);
+app.use("/api/v1/ai-fashion", aiFashionRoutes);
 
 app.use("/api/v1/chat", chatRoutes);
 

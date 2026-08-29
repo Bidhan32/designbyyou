@@ -4,7 +4,7 @@
 =========================================================
 DesignByYou
 Creator Showcase Detail
-Version 3.0
+Version 3.1
 =========================================================
 
 PURPOSE
@@ -49,6 +49,14 @@ Creator work provides:
 - style
 - tags
 
+Eligible Creator Fashion Editor work may also provide:
+
+- Remix / Redesign
+
+Remix creates a NEW private Creator-owned Fashion Editor
+project. It never modifies the source project or Showcase
+item.
+
 Creator work does NOT provide:
 
 - Book Designer
@@ -88,6 +96,18 @@ category_id
 category_name
 category_slug
 
+Safe Creator Fashion Editor capability fields:
+
+source_type
+is_editable
+allow_remix
+original_design_id
+can_remix
+
+The detail page remixes by public design_id only.
+
+The backend resolves the private editor project internally.
+
 =========================================================
 SECURITY
 =========================================================
@@ -96,6 +116,8 @@ The endpoint intentionally does NOT expose:
 
 canvas_state
 raw editable source
+editor_project_id
+project_data
 price
 license information
 =========================================================
@@ -103,7 +125,7 @@ license information
 
 import React, { useEffect, useMemo, useState } from "react";
 
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import {
   ArrowRight,
@@ -143,6 +165,15 @@ function isRequestCanceled(error) {
   );
 }
 
+function isTruthy(value) {
+  return (
+    value === true ||
+    String(value ?? "")
+      .trim()
+      .toLowerCase() === "true"
+  );
+}
+
 /*=========================================================
 Owner Model
 =========================================================*/
@@ -152,6 +183,19 @@ function isDesignerOwned(item) {
     item?.owner_role === "designer" ||
     item?.can_book_designer === true ||
     item?.can_book_designer === "true"
+  );
+}
+
+function canRemixCreatorItem(item) {
+  if (!item || isDesignerOwned(item)) {
+    return false;
+  }
+
+  return (
+    cleanText(item?.source_type).toLowerCase() === "fashion_editor" &&
+    isTruthy(item?.is_editable) &&
+    isTruthy(item?.allow_remix) &&
+    isTruthy(item?.can_remix)
   );
 }
 
@@ -269,11 +313,17 @@ Creator Showcase Detail
 export default function CreatorShowcaseDetail() {
   const { slug } = useParams();
 
+  const navigate = useNavigate();
+
   const [item, setItem] = useState(null);
 
   const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState("");
+
+  const [remixing, setRemixing] = useState(false);
+
+  const [remixError, setRemixError] = useState("");
 
   /*=======================================================
   Load Showcase Item
@@ -296,6 +346,8 @@ export default function CreatorShowcaseDetail() {
       setLoading(true);
 
       setError("");
+
+      setRemixError("");
 
       setItem(null);
 
@@ -363,6 +415,85 @@ export default function CreatorShowcaseDetail() {
   }, [slug]);
 
   /*=======================================================
+  Remix / Redesign
+
+  POST
+  /api/v1/creators/showcase/:designId/remix
+
+  The backend creates a NEW private editor_projects row
+  owned by the authenticated Creator.
+
+  The source Showcase item and source editor project are
+  never modified.
+  =======================================================*/
+
+  const handleRemix = async () => {
+    if (remixing) {
+      return;
+    }
+
+    const designId = cleanText(item?.design_id);
+
+    if (!designId || !canRemixCreatorItem(item)) {
+      setRemixError("This Showcase design is not available for remixing.");
+
+      return;
+    }
+
+    setRemixError("");
+
+    setRemixing(true);
+
+    try {
+      const response = await API.post(
+        `/creators/showcase/${encodeURIComponent(designId)}/remix`,
+        {},
+      );
+
+      const projectId = cleanText(response?.data?.data?.id);
+
+      if (!/^[1-9]\d*$/.test(projectId)) {
+        throw new Error(
+          "The remix was created, but the new Fashion Editor project ID was not returned.",
+        );
+      }
+
+      navigate(`/creator/fashion-editor/${encodeURIComponent(projectId)}`);
+    } catch (requestError) {
+      if (import.meta.env.DEV) {
+        console.error(
+          "Creator Showcase remix request failed:",
+          requestError?.response?.data || requestError,
+        );
+      }
+
+      const status = requestError?.response?.status;
+
+      if (status === 401) {
+        setRemixError("Please sign in again before remixing this design.");
+      } else if (status === 403) {
+        setRemixError(
+          requestError?.response?.data?.message ||
+            "Only Creator accounts can remix this design.",
+        );
+      } else if (status === 404) {
+        setRemixError(
+          requestError?.response?.data?.message ||
+            "This design is no longer available for remixing.",
+        );
+      } else {
+        setRemixError(
+          requestError?.response?.data?.message ||
+            requestError?.message ||
+            "The remix could not be created right now.",
+        );
+      }
+    } finally {
+      setRemixing(false);
+    }
+  };
+
+  /*=======================================================
   Derived Data
   =======================================================*/
 
@@ -382,6 +513,8 @@ export default function CreatorShowcaseDetail() {
         bookingUrl: null,
 
         designerStudioUrl: null,
+
+        canRemix: false,
 
         tags: [],
       };
@@ -407,6 +540,8 @@ export default function CreatorShowcaseDetail() {
       designerStudioUrl: designerId
         ? `/creator/studio/${encodeURIComponent(designerId)}`
         : null,
+
+      canRemix: canRemixCreatorItem(item),
 
       tags: Array.isArray(item?.tags) ? item.tags.filter(Boolean) : [],
     };
@@ -601,6 +736,7 @@ export default function CreatorShowcaseDetail() {
     completedBookings,
     bookingUrl,
     designerStudioUrl,
+    canRemix,
     tags,
   } = derived;
 
@@ -1647,6 +1783,129 @@ export default function CreatorShowcaseDetail() {
                     DesignByYou Showcase.
                   </p>
                 </div>
+
+                {canRemix && (
+                  <div
+                    className="
+                      mt-5
+                      rounded-2xl
+                      border
+                      border-[#D4AF37]/20
+                      bg-[#D4AF37]/[0.055]
+                      p-5
+                    "
+                  >
+                    <p
+                      className="
+                        text-[9px]
+                        font-black
+                        uppercase
+                        tracking-[0.18em]
+                        text-[#D4AF37]
+                      "
+                    >
+                      Remixable Fashion Editor Design
+                    </p>
+
+                    <p
+                      className="
+                        mt-2
+                        text-xs
+                        leading-6
+                        text-slate-600 dark:text-white/45
+                      "
+                    >
+                      Create your own private editable copy in Fashion Editor.
+                      The original Creator&apos;s project and Showcase design
+                      remain unchanged.
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={handleRemix}
+                      disabled={remixing}
+                      className="
+                        mt-4
+                        flex
+                        w-full
+                        items-center
+                        justify-center
+                        gap-2
+                        rounded-xl
+                        bg-[#D4AF37]
+                        py-4
+                        text-[10px]
+                        font-black
+                        uppercase
+                        tracking-[0.18em]
+                        text-black
+                        transition
+
+                        hover:bg-[#ead28f] dark:hover:bg-white
+
+                        disabled:cursor-not-allowed
+                        disabled:opacity-60
+                      "
+                    >
+                      {remixing ? (
+                        <>
+                          <Loader2
+                            size={14}
+                            aria-hidden="true"
+                            className="animate-spin"
+                          />
+                          Creating Remix
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={14} />
+                          Remix / Redesign
+                          <ArrowRight size={13} />
+                        </>
+                      )}
+                    </button>
+
+                    {remixError && (
+                      <p
+                        role="alert"
+                        className="
+                          mt-3
+                          rounded-xl
+                          border
+                          border-rose-500/15
+                          bg-rose-500/[0.06]
+                          px-4
+                          py-3
+                          text-[10px]
+                          leading-5
+                          text-rose-600 dark:text-rose-300
+                        "
+                      >
+                        {remixError}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {!canRemix && remixError && (
+                  <p
+                    role="alert"
+                    className="
+                      mt-5
+                      rounded-xl
+                      border
+                      border-rose-500/15
+                      bg-rose-500/[0.06]
+                      px-4
+                      py-3
+                      text-[10px]
+                      leading-5
+                      text-rose-600 dark:text-rose-300
+                    "
+                  >
+                    {remixError}
+                  </p>
+                )}
 
                 <Link
                   to="/creator/showcase"

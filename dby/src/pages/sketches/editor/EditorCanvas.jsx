@@ -7,30 +7,22 @@ Version 1.8.0 — Symmetry Guides and Multi-Preview
 */
 
 import React, {
-    forwardRef,
-    memo,
-    useCallback,
-    useEffect,
-    useLayoutEffect,
-    useMemo,
-    useRef,
-    useState
+  forwardRef,
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
 
-import {
-    Group,
-    Layer,
-    Line,
-    Rect,
-    Stage
-} from "react-konva";
+import { Group, Layer, Line, Rect, Stage } from "react-konva";
 
 import LayerRenderer from "../layers/LayerRenderer";
 import ObjectRenderer from "../objects/ObjectRenderer";
 
-import {
-    TEXT_EDIT_REQUEST_EVENT
-} from "../objects/TextObject";
+import { TEXT_EDIT_REQUEST_EVENT } from "../objects/TextObject";
 
 import PencilTool from "../tools/PencilTool";
 import SelectionTool from "../tools/SelectionTool";
@@ -41,175 +33,118 @@ import ShapeTool from "../tools/ShapeTool";
 import FillTool from "../tools/FillTool";
 import TextTool from "../tools/TextTool";
 import ImageTool from "../tools/ImageTool";
+import ClothingTool from "../tools/ClothingTool";
 import PatternTool from "../tools/PatternTool";
 import PatternMaskTool from "../tools/PatternMaskTool";
 
 import SelectionTransformer from "./SelectionTransformer";
 import TextEditOverlay from "./TextEditOverlay";
 
-import {
-    createToolManager
-} from "../tools/ToolManager";
+import { createToolManager } from "../tools/ToolManager";
 
 import {
-    EDITOR_TOOLS,
-    MAX_ZOOM,
-    MIN_ZOOM,
-    useFashionEditorStore
+  EDITOR_TOOLS,
+  MAX_ZOOM,
+  MIN_ZOOM,
+  useFashionEditorStore,
 } from "../useFashionEditorStore";
 
-import {
-    getSymmetryGuideLines
-} from "../utils/SymmetryUtils";
+import { getSymmetryGuideLines } from "../utils/SymmetryUtils";
 
 /*=========================================================
 Constants
 =========================================================*/
 
-const DEFAULT_VIEWPORT_WIDTH =
-    900;
+const DEFAULT_VIEWPORT_WIDTH = 900;
 
-const DEFAULT_VIEWPORT_HEIGHT =
-    700;
+const DEFAULT_VIEWPORT_HEIGHT = 700;
 
-const DEFAULT_WORKSPACE_COLOR =
-    "#d9dde5";
+const DEFAULT_WORKSPACE_COLOR = "#d9dde5";
 
-const DEFAULT_GRID_COLOR =
-    "#94a3b8";
+const DEFAULT_GRID_COLOR = "#94a3b8";
 
-const TEMPORARY_LAYER_ID =
-    "__fashion-editor-temporary-layer__";
+const TEMPORARY_LAYER_ID = "__fashion-editor-temporary-layer__";
 
-const RESIZE_FIT_DELAY =
-    60;
+const RESIZE_FIT_DELAY = 60;
 
 /*=========================================================
 Numeric Helpers
 =========================================================*/
 
-function numberOr(
-    value,
-    fallback = 0
-) {
-    const numericValue =
-        Number(value);
+function numberOr(value, fallback = 0) {
+  const numericValue = Number(value);
 
-    return Number.isFinite(
-        numericValue
-    )
-        ? numericValue
-        : fallback;
+  return Number.isFinite(numericValue) ? numericValue : fallback;
 }
 
-function clamp(
-    value,
+function clamp(value, minimum, maximum) {
+  return Math.max(
     minimum,
-    maximum
-) {
-    return Math.max(
-        minimum,
 
-        Math.min(
-            maximum,
+    Math.min(
+      maximum,
 
-            numberOr(
-                value,
-                minimum
-            )
-        )
-    );
+      numberOr(value, minimum),
+    ),
+  );
 }
 
 /*=========================================================
 General Helpers
 =========================================================*/
 
-function isFunction(
-    value
-) {
-    return (
-        typeof value ===
-        "function"
-    );
+function isFunction(value) {
+  return typeof value === "function";
 }
 
-function assignRef(
-    ref,
-    value
-) {
-    if (
-        !ref
-    ) {
-        return;
-    }
+function assignRef(ref, value) {
+  if (!ref) {
+    return;
+  }
 
-    if (
-        isFunction(ref)
-    ) {
-        ref(value);
+  if (isFunction(ref)) {
+    ref(value);
 
-        return;
-    }
+    return;
+  }
 
-    ref.current =
-        value;
+  ref.current = value;
 }
 
-function isEditableElement(
-    target
-) {
-    if (
-        !target
-    ) {
-        return false;
-    }
+function isEditableElement(target) {
+  if (!target) {
+    return false;
+  }
 
-    const tagName =
-        target.tagName
-            ?.toLowerCase();
+  const tagName = target.tagName?.toLowerCase();
 
-    return (
-        tagName === "input" ||
-        tagName === "textarea" ||
-        tagName === "select" ||
-        target.isContentEditable ===
-            true
-    );
+  return (
+    tagName === "input" ||
+    tagName === "textarea" ||
+    tagName === "select" ||
+    target.isContentEditable === true
+  );
 }
 
-function getNativeEvent(
-    event
-) {
-    return (
-        event?.evt ||
-        event?.nativeEvent ||
-        event ||
-        null
-    );
+function getNativeEvent(event) {
+  return event?.evt || event?.nativeEvent || event || null;
 }
 
-function safelyPreventDefault(
-    event
-) {
-    const nativeEvent =
-        getNativeEvent(event);
+function safelyPreventDefault(event) {
+  const nativeEvent = getNativeEvent(event);
 
-    if (
-        !nativeEvent ||
-        typeof nativeEvent.preventDefault !==
-            "function" ||
-        nativeEvent.cancelable ===
-            false ||
-        nativeEvent.defaultPrevented ===
-            true
-    ) {
-        return false;
-    }
+  if (
+    !nativeEvent ||
+    typeof nativeEvent.preventDefault !== "function" ||
+    nativeEvent.cancelable === false ||
+    nativeEvent.defaultPrevented === true
+  ) {
+    return false;
+  }
 
-    nativeEvent.preventDefault();
+  nativeEvent.preventDefault();
 
-    return true;
+  return true;
 }
 
 /*
@@ -223,725 +158,370 @@ event properties, but turns preventDefault into a safe no-op
 only when the browser says the event cannot be cancelled.
 */
 
-function createManagerSafeEvent(
-    event
-) {
-    const nativeEvent =
-        getNativeEvent(event);
+function createManagerSafeEvent(event) {
+  const nativeEvent = getNativeEvent(event);
 
-    if (
-        !event ||
-        !nativeEvent ||
-        nativeEvent.cancelable !==
-            false ||
-        typeof Proxy ===
-            "undefined"
-    ) {
-        return event;
-    }
+  if (
+    !event ||
+    !nativeEvent ||
+    nativeEvent.cancelable !== false ||
+    typeof Proxy === "undefined"
+  ) {
+    return event;
+  }
 
-    try {
-        const safeNativeEvent =
-            new Proxy(
-                nativeEvent,
-                {
-                    get(
-                        target,
-                        property
-                    ) {
-                        if (
-                            property ===
-                            "preventDefault"
-                        ) {
-                            return () =>
-                                false;
-                        }
+  try {
+    const safeNativeEvent = new Proxy(nativeEvent, {
+      get(target, property) {
+        if (property === "preventDefault") {
+          return () => false;
+        }
 
-                        const value =
-                            Reflect.get(
-                                target,
-                                property,
-                                target
-                            );
+        const value = Reflect.get(target, property, target);
 
-                        return typeof value ===
-                            "function"
-                            ? value.bind(
-                                target
-                            )
-                            : value;
-                    }
-                }
-            );
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    });
 
-        return new Proxy(
-            event,
-            {
-                get(
-                    target,
-                    property
-                ) {
-                    if (
-                        property ===
-                            "evt" ||
-                        property ===
-                            "nativeEvent"
-                    ) {
-                        return safeNativeEvent;
-                    }
+    return new Proxy(event, {
+      get(target, property) {
+        if (property === "evt" || property === "nativeEvent") {
+          return safeNativeEvent;
+        }
 
-                    const value =
-                        Reflect.get(
-                            target,
-                            property,
-                            target
-                        );
+        const value = Reflect.get(target, property, target);
 
-                    return typeof value ===
-                        "function"
-                        ? value.bind(
-                            target
-                        )
-                        : value;
-                },
+        return typeof value === "function" ? value.bind(target) : value;
+      },
 
-                set(
-                    target,
-                    property,
-                    value
-                ) {
-                    return Reflect.set(
-                        target,
-                        property,
-                        value,
-                        target
-                    );
-                }
-            }
-        );
-    } catch {
-        return event;
-    }
+      set(target, property, value) {
+        return Reflect.set(target, property, value, target);
+      },
+    });
+  } catch {
+    return event;
+  }
 }
 
-function isTouchEvent(
-    nativeEvent
-) {
-    const eventType =
-        typeof nativeEvent?.type ===
-            "string"
-            ? nativeEvent.type
-                .toLowerCase()
-            : "";
+function isTouchEvent(nativeEvent) {
+  const eventType =
+    typeof nativeEvent?.type === "string" ? nativeEvent.type.toLowerCase() : "";
 
-    return Boolean(
-        nativeEvent?.pointerType ===
-            "touch" ||
-        eventType.startsWith(
-            "touch"
-        ) ||
-        nativeEvent?.touches ||
-        nativeEvent
-            ?.changedTouches
-    );
+  return Boolean(
+    nativeEvent?.pointerType === "touch" ||
+    eventType.startsWith("touch") ||
+    nativeEvent?.touches ||
+    nativeEvent?.changedTouches,
+  );
 }
 
-function getPointerId(
-    nativeEvent
-) {
-    const directPointerId =
-        Number(
-            nativeEvent?.pointerId
-        );
+function getPointerId(nativeEvent) {
+  const directPointerId = Number(nativeEvent?.pointerId);
 
-    if (
-        Number.isFinite(
-            directPointerId
-        )
-    ) {
-        return directPointerId;
-    }
+  if (Number.isFinite(directPointerId)) {
+    return directPointerId;
+  }
 
-    const touch =
-        nativeEvent
-            ?.changedTouches?.[0] ||
-        nativeEvent
-            ?.touches?.[0] ||
-        null;
+  const touch =
+    nativeEvent?.changedTouches?.[0] || nativeEvent?.touches?.[0] || null;
 
-    const touchIdentifier =
-        Number(
-            touch?.identifier
-        );
+  const touchIdentifier = Number(touch?.identifier);
 
-    return Number.isFinite(
-        touchIdentifier
-    )
-        ? touchIdentifier
-        : null;
+  return Number.isFinite(touchIdentifier) ? touchIdentifier : null;
 }
 
-function isFinitePoint(
-    point
-) {
-    return Boolean(
-        point &&
-        Number.isFinite(
-            Number(point.x)
-        ) &&
-        Number.isFinite(
-            Number(point.y)
-        )
-    );
+function isFinitePoint(point) {
+  return Boolean(
+    point &&
+    Number.isFinite(Number(point.x)) &&
+    Number.isFinite(Number(point.y)),
+  );
 }
 
-function clonePoint(
-    point
-) {
-    if (
-        !isFinitePoint(point)
-    ) {
-        return null;
-    }
+function clonePoint(point) {
+  if (!isFinitePoint(point)) {
+    return null;
+  }
 
-    return {
-        x:
-            Number(point.x),
+  return {
+    x: Number(point.x),
 
-        y:
-            Number(point.y)
-    };
+    y: Number(point.y),
+  };
 }
 
-function distanceBetweenPoints(
-    firstPoint,
-    secondPoint
-) {
-    if (
-        !isFinitePoint(firstPoint) ||
-        !isFinitePoint(secondPoint)
-    ) {
-        return 0;
-    }
+function distanceBetweenPoints(firstPoint, secondPoint) {
+  if (!isFinitePoint(firstPoint) || !isFinitePoint(secondPoint)) {
+    return 0;
+  }
 
-    return Math.hypot(
-        secondPoint.x -
-            firstPoint.x,
+  return Math.hypot(
+    secondPoint.x - firstPoint.x,
 
-        secondPoint.y -
-            firstPoint.y
-    );
+    secondPoint.y - firstPoint.y,
+  );
 }
 
-function midpoint(
-    firstPoint,
-    secondPoint
-) {
-    if (
-        !isFinitePoint(firstPoint) ||
-        !isFinitePoint(secondPoint)
-    ) {
-        return null;
-    }
+function midpoint(firstPoint, secondPoint) {
+  if (!isFinitePoint(firstPoint) || !isFinitePoint(secondPoint)) {
+    return null;
+  }
 
-    return {
-        x:
-            (
-                firstPoint.x +
-                secondPoint.x
-            ) /
-            2,
+  return {
+    x: (firstPoint.x + secondPoint.x) / 2,
 
-        y:
-            (
-                firstPoint.y +
-                secondPoint.y
-            ) /
-            2
-    };
+    y: (firstPoint.y + secondPoint.y) / 2,
+  };
 }
 
-function getResponsiveFitPadding(
-    width,
-    height
-) {
-    const safeWidth =
-        Math.max(
-            1,
+function getResponsiveFitPadding(width, height) {
+  const safeWidth = Math.max(
+    1,
 
-            numberOr(
-                width,
-                1
-            )
-        );
+    numberOr(width, 1),
+  );
 
-    const safeHeight =
-        Math.max(
-            1,
+  const safeHeight = Math.max(
+    1,
 
-            numberOr(
-                height,
-                1
-            )
-        );
+    numberOr(height, 1),
+  );
 
-    if (
-        safeWidth <
-            480 ||
-        safeHeight <
-            420
-    ) {
-        return 18;
-    }
+  if (safeWidth < 480 || safeHeight < 420) {
+    return 18;
+  }
 
-    if (
-        safeWidth <
-        768
-    ) {
-        return 28;
-    }
+  if (safeWidth < 768) {
+    return 28;
+  }
 
-    if (
-        safeWidth <
-        1100
-    ) {
-        return 40;
-    }
+  if (safeWidth < 1100) {
+    return 40;
+  }
 
-    return 56;
+  return 56;
 }
 
 /*=========================================================
 Coordinate Conversion
 =========================================================*/
 
-export function screenPointToDocumentPoint(
-    screenPoint,
-    viewport
-) {
-    if (
-        !isFinitePoint(
-            screenPoint
-        )
-    ) {
-        return null;
-    }
+export function screenPointToDocumentPoint(screenPoint, viewport) {
+  if (!isFinitePoint(screenPoint)) {
+    return null;
+  }
 
-    const zoom =
-        Math.max(
-            0.0001,
+  const zoom = Math.max(
+    0.0001,
 
-            numberOr(
-                viewport?.zoom,
-                1
-            )
-        );
+    numberOr(viewport?.zoom, 1),
+  );
 
-    const viewportX =
-        numberOr(
-            viewport?.x,
-            0
-        );
+  const viewportX = numberOr(viewport?.x, 0);
 
-    const viewportY =
-        numberOr(
-            viewport?.y,
-            0
-        );
+  const viewportY = numberOr(viewport?.y, 0);
 
-    return {
-        x:
-            (
-                Number(
-                    screenPoint.x
-                ) -
-                viewportX
-            ) /
-            zoom,
+  return {
+    x: (Number(screenPoint.x) - viewportX) / zoom,
 
-        y:
-            (
-                Number(
-                    screenPoint.y
-                ) -
-                viewportY
-            ) /
-            zoom
-    };
+    y: (Number(screenPoint.y) - viewportY) / zoom,
+  };
 }
 
-function isPointInsideDocument(
-    point,
-    documentData
-) {
-    if (
-        !isFinitePoint(point) ||
-        !documentData
-    ) {
-        return false;
-    }
+function isPointInsideDocument(point, documentData) {
+  if (!isFinitePoint(point) || !documentData) {
+    return false;
+  }
 
-    const width =
-        Math.max(
-            1,
+  const width = Math.max(
+    1,
 
-            numberOr(
-                documentData.width,
-                1200
-            )
-        );
+    numberOr(documentData.width, 1200),
+  );
 
-    const height =
-        Math.max(
-            1,
+  const height = Math.max(
+    1,
 
-            numberOr(
-                documentData.height,
-                1600
-            )
-        );
+    numberOr(documentData.height, 1600),
+  );
 
-    return (
-        point.x >=
-            0 &&
-        point.y >=
-            0 &&
-        point.x <=
-            width &&
-        point.y <=
-            height
-    );
+  return point.x >= 0 && point.y >= 0 && point.x <= width && point.y <= height;
 }
 
 /*=========================================================
 Pointer Coordinates
 =========================================================*/
 
-function getLocalEventPoint(
-    event,
-    container,
-    stage
-) {
-    const nativeEvent =
-        getNativeEvent(event);
+function getLocalEventPoint(event, container, stage) {
+  const nativeEvent = getNativeEvent(event);
 
-    const touch =
-        nativeEvent
-            ?.changedTouches?.[0] ||
-        nativeEvent
-            ?.touches?.[0] ||
-        null;
+  const touch =
+    nativeEvent?.changedTouches?.[0] || nativeEvent?.touches?.[0] || null;
 
-    const clientX =
-        Number(
-            nativeEvent?.clientX ??
-            touch?.clientX
-        );
+  const clientX = Number(nativeEvent?.clientX ?? touch?.clientX);
 
-    const clientY =
-        Number(
-            nativeEvent?.clientY ??
-            touch?.clientY
-        );
+  const clientY = Number(nativeEvent?.clientY ?? touch?.clientY);
 
-    if (
-        container &&
-        Number.isFinite(clientX) &&
-        Number.isFinite(clientY)
-    ) {
-        const rectangle =
-            container
-                .getBoundingClientRect();
+  if (container && Number.isFinite(clientX) && Number.isFinite(clientY)) {
+    const rectangle = container.getBoundingClientRect();
 
-        return {
-            x:
-                clientX -
-                rectangle.left,
+    return {
+      x: clientX - rectangle.left,
 
-            y:
-                clientY -
-                rectangle.top
-        };
-    }
+      y: clientY - rectangle.top,
+    };
+  }
 
-    return clonePoint(
-        stage
-            ?.getPointerPosition
-            ?.()
-    );
+  return clonePoint(stage?.getPointerPosition?.());
 }
 
-function getLocalTouchPoints(
-    nativeEvent,
-    container
-) {
-    if (
-        !nativeEvent ||
-        !container
-    ) {
-        return [];
-    }
+function getLocalTouchPoints(nativeEvent, container) {
+  if (!nativeEvent || !container) {
+    return [];
+  }
 
-    const rectangle =
-        container
-            .getBoundingClientRect();
+  const rectangle = container.getBoundingClientRect();
 
-    const touches =
-        nativeEvent.touches
-            ? Array.from(
-                nativeEvent.touches
-            )
-            : [];
+  const touches = nativeEvent.touches ? Array.from(nativeEvent.touches) : [];
 
-    return touches
-        .map(
-            touch => {
-                const identifier =
-                    Number(
-                        touch.identifier
-                    );
+  return touches
+    .map((touch) => {
+      const identifier = Number(touch.identifier);
 
-                const clientX =
-                    Number(
-                        touch.clientX
-                    );
+      const clientX = Number(touch.clientX);
 
-                const clientY =
-                    Number(
-                        touch.clientY
-                    );
+      const clientY = Number(touch.clientY);
 
-                if (
-                    !Number.isFinite(
-                        identifier
-                    ) ||
-                    !Number.isFinite(
-                        clientX
-                    ) ||
-                    !Number.isFinite(
-                        clientY
-                    )
-                ) {
-                    return null;
-                }
+      if (
+        !Number.isFinite(identifier) ||
+        !Number.isFinite(clientX) ||
+        !Number.isFinite(clientY)
+      ) {
+        return null;
+      }
 
-                return [
-                    identifier,
+      return [
+        identifier,
 
-                    {
-                        x:
-                            clientX -
-                            rectangle.left,
+        {
+          x: clientX - rectangle.left,
 
-                        y:
-                            clientY -
-                            rectangle.top
-                    }
-                ];
-            }
-        )
-        .filter(Boolean);
+          y: clientY - rectangle.top,
+        },
+      ];
+    })
+    .filter(Boolean);
 }
 
-function applyStageTouchStyles(
-    stage
-) {
-    const stageContainer =
-        stage
-            ?.container
-            ?.();
+function applyStageTouchStyles(stage) {
+  const stageContainer = stage?.container?.();
 
-    if (
-        !stageContainer
-    ) {
-        return;
-    }
+  if (!stageContainer) {
+    return;
+  }
 
-    stageContainer.style.touchAction =
-        "none";
+  stageContainer.style.touchAction = "none";
 
-    stageContainer.style.overscrollBehavior =
-        "none";
+  stageContainer.style.overscrollBehavior = "none";
 
-    stageContainer.style.userSelect =
-        "none";
+  stageContainer.style.userSelect = "none";
 
-    stageContainer.style.webkitUserSelect =
-        "none";
+  stageContainer.style.webkitUserSelect = "none";
 
-    stageContainer
-        .querySelectorAll(
-            "canvas"
-        )
-        .forEach(
-            canvas => {
-                canvas.style.touchAction =
-                    "none";
+  stageContainer.querySelectorAll("canvas").forEach((canvas) => {
+    canvas.style.touchAction = "none";
 
-                canvas.style.overscrollBehavior =
-                    "none";
-            }
-        );
+    canvas.style.overscrollBehavior = "none";
+  });
 }
 
 /*=========================================================
 Responsive Container Size
 =========================================================*/
 
-function useContainerSize(
-    containerRef
-) {
-    const [
-        size,
-        setSize
-    ] = useState({
-        width:
-            DEFAULT_VIEWPORT_WIDTH,
+function useContainerSize(containerRef) {
+  const [size, setSize] = useState({
+    width: DEFAULT_VIEWPORT_WIDTH,
 
-        height:
-            DEFAULT_VIEWPORT_HEIGHT
-    });
+    height: DEFAULT_VIEWPORT_HEIGHT,
+  });
 
-    useLayoutEffect(
-        () => {
-            const container =
-                containerRef.current;
+  useLayoutEffect(() => {
+    const container = containerRef.current;
 
-            if (
-                !container
-            ) {
-                return undefined;
-            }
+    if (!container) {
+      return undefined;
+    }
 
-            let animationFrameId =
-                null;
+    let animationFrameId = null;
 
-            const updateSize =
-                () => {
-                    const rectangle =
-                        container
-                            .getBoundingClientRect();
+    const updateSize = () => {
+      const rectangle = container.getBoundingClientRect();
 
-                    const width =
-                        Math.max(
-                            1,
+      const width = Math.max(
+        1,
 
-                            Math.round(
-                                rectangle.width
-                            )
-                        );
+        Math.round(rectangle.width),
+      );
 
-                    const height =
-                        Math.max(
-                            1,
+      const height = Math.max(
+        1,
 
-                            Math.round(
-                                rectangle.height
-                            )
-                        );
+        Math.round(rectangle.height),
+      );
 
-                    setSize(
-                        previousSize => {
-                            if (
-                                previousSize.width ===
-                                    width &&
-                                previousSize.height ===
-                                    height
-                            ) {
-                                return previousSize;
-                            }
+      setSize((previousSize) => {
+        if (previousSize.width === width && previousSize.height === height) {
+          return previousSize;
+        }
 
-                            return {
-                                width,
-                                height
-                            };
-                        }
-                    );
-                };
+        return {
+          width,
+          height,
+        };
+      });
+    };
 
-            const scheduleUpdate =
-                () => {
-                    if (
-                        animationFrameId !==
-                        null
-                    ) {
-                        cancelAnimationFrame(
-                            animationFrameId
-                        );
-                    }
+    const scheduleUpdate = () => {
+      if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId);
+      }
 
-                    animationFrameId =
-                        requestAnimationFrame(
-                            updateSize
-                        );
-                };
+      animationFrameId = requestAnimationFrame(updateSize);
+    };
 
-            updateSize();
+    updateSize();
 
-            if (
-                typeof ResizeObserver !==
-                "undefined"
-            ) {
-                const observer =
-                    new ResizeObserver(
-                        scheduleUpdate
-                    );
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(scheduleUpdate);
 
-                observer.observe(
-                    container
-                );
+      observer.observe(container);
 
-                return () => {
-                    observer.disconnect();
+      return () => {
+        observer.disconnect();
 
-                    if (
-                        animationFrameId !==
-                        null
-                    ) {
-                        cancelAnimationFrame(
-                            animationFrameId
-                        );
-                    }
-                };
-            }
+        if (animationFrameId !== null) {
+          cancelAnimationFrame(animationFrameId);
+        }
+      };
+    }
 
-            window.addEventListener(
-                "resize",
-                scheduleUpdate
-            );
+    window.addEventListener("resize", scheduleUpdate);
 
-            window.addEventListener(
-                "orientationchange",
-                scheduleUpdate
-            );
+    window.addEventListener("orientationchange", scheduleUpdate);
 
-            return () => {
-                window.removeEventListener(
-                    "resize",
-                    scheduleUpdate
-                );
+    return () => {
+      window.removeEventListener("resize", scheduleUpdate);
 
-                window.removeEventListener(
-                    "orientationchange",
-                    scheduleUpdate
-                );
+      window.removeEventListener("orientationchange", scheduleUpdate);
 
-                if (
-                    animationFrameId !==
-                    null
-                ) {
-                    cancelAnimationFrame(
-                        animationFrameId
-                    );
-                }
-            };
-        },
-        [
-            containerRef
-        ]
-    );
+      if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [containerRef]);
 
-    return size;
+  return size;
 }
 
 /*=========================================================
@@ -949,167 +529,87 @@ Document Grid
 =========================================================*/
 
 function DocumentGrid({
-    width,
-    height,
-    gridSize,
-    zoom,
-    color =
-        DEFAULT_GRID_COLOR
+  width,
+  height,
+  gridSize,
+  zoom,
+  color = DEFAULT_GRID_COLOR,
 }) {
-    const lines =
-        useMemo(
-            () => {
-                const safeWidth =
-                    Math.max(
-                        1,
+  const lines = useMemo(() => {
+    const safeWidth = Math.max(
+      1,
 
-                        numberOr(
-                            width,
-                            1
-                        )
-                    );
+      numberOr(width, 1),
+    );
 
-                const safeHeight =
-                    Math.max(
-                        1,
+    const safeHeight = Math.max(
+      1,
 
-                        numberOr(
-                            height,
-                            1
-                        )
-                    );
+      numberOr(height, 1),
+    );
 
-                let spacing =
-                    Math.max(
-                        5,
+    let spacing = Math.max(
+      5,
 
-                        numberOr(
-                            gridSize,
-                            20
-                        )
-                    );
+      numberOr(gridSize, 20),
+    );
 
-                const estimatedLineCount =
-                    safeWidth /
-                        spacing +
-                    safeHeight /
-                        spacing;
+    const estimatedLineCount = safeWidth / spacing + safeHeight / spacing;
 
-                /*
+    /*
                 Avoid creating thousands of
                 individual Konva nodes.
                 */
 
-                if (
-                    estimatedLineCount >
-                    350
-                ) {
-                    spacing *=
-                        Math.ceil(
-                            estimatedLineCount /
-                            350
-                        );
-                }
+    if (estimatedLineCount > 350) {
+      spacing *= Math.ceil(estimatedLineCount / 350);
+    }
 
-                const result =
-                    [];
+    const result = [];
 
-                for (
-                    let x =
-                        spacing;
-                    x <
-                        safeWidth;
-                    x +=
-                        spacing
-                ) {
-                    result.push({
-                        id:
-                            `grid-vertical-${x}`,
+    for (let x = spacing; x < safeWidth; x += spacing) {
+      result.push({
+        id: `grid-vertical-${x}`,
 
-                        points: [
-                            x,
-                            0,
-                            x,
-                            safeHeight
-                        ]
-                    });
-                }
+        points: [x, 0, x, safeHeight],
+      });
+    }
 
-                for (
-                    let y =
-                        spacing;
-                    y <
-                        safeHeight;
-                    y +=
-                        spacing
-                ) {
-                    result.push({
-                        id:
-                            `grid-horizontal-${y}`,
+    for (let y = spacing; y < safeHeight; y += spacing) {
+      result.push({
+        id: `grid-horizontal-${y}`,
 
-                        points: [
-                            0,
-                            y,
-                            safeWidth,
-                            y
-                        ]
-                    });
-                }
+        points: [0, y, safeWidth, y],
+      });
+    }
 
-                return result;
-            },
-            [
-                width,
-                height,
-                gridSize
-            ]
-        );
+    return result;
+  }, [width, height, gridSize]);
 
-    const strokeWidth =
-        1 /
-        Math.max(
-            0.0001,
+  const strokeWidth =
+    1 /
+    Math.max(
+      0.0001,
 
-            numberOr(
-                zoom,
-                1
-            )
-        );
-
-    return (
-        <>
-            {lines.map(
-                line => (
-                    <Line
-                        key={
-                            line.id
-                        }
-                        points={
-                            line.points
-                        }
-                        stroke={
-                            color
-                        }
-                        strokeWidth={
-                            strokeWidth
-                        }
-                        opacity={
-                            0.28
-                        }
-                        listening={
-                            false
-                        }
-                        perfectDrawEnabled={
-                            false
-                        }
-                        shadowForStrokeEnabled={
-                            false
-                        }
-                    />
-                )
-            )}
-        </>
+      numberOr(zoom, 1),
     );
+
+  return (
+    <>
+      {lines.map((line) => (
+        <Line
+          key={line.id}
+          points={line.points}
+          stroke={color}
+          strokeWidth={strokeWidth}
+          opacity={0.28}
+          listening={false}
+          perfectDrawEnabled={false}
+          shadowForStrokeEnabled={false}
+        />
+      ))}
+    </>
+  );
 }
 
 /*=========================================================
@@ -1117,3869 +617,2082 @@ Editor Canvas
 =========================================================*/
 
 function EditorCanvas(
-    {
-        className = "",
-        style = null,
+  {
+    className = "",
+    style = null,
 
-        stageRef:
-            externalStageRef =
-                null,
+    stageRef: externalStageRef = null,
 
-        tools = [],
+    tools = [],
 
-        autoFit = true,
-        autoFitOnResize = true,
+    autoFit = true,
+    autoFitOnResize = true,
 
-        wheelZoom = true,
-        touchGestures = true,
-        clipToDocument = true,
+    wheelZoom = true,
+    touchGestures = true,
+    clipToDocument = true,
 
-        minimumHeight = 640,
+    minimumHeight = 640,
 
-        fitPadding = null,
+    fitPadding = null,
 
-        workspaceColor =
-            DEFAULT_WORKSPACE_COLOR,
+    workspaceColor = DEFAULT_WORKSPACE_COLOR,
 
-        gridColor =
-            DEFAULT_GRID_COLOR,
+    gridColor = DEFAULT_GRID_COLOR,
 
-        onReady = null,
+    onReady = null,
 
-        onPointerPositionChange =
-            null,
+    onPointerPositionChange = null,
 
-        onTemporaryObjectChange =
-            null,
+    onTemporaryObjectChange = null,
 
-        onTemporaryObjectsChange =
-            null,
+    onTemporaryObjectsChange = null,
 
-        onViewportChange =
-            null,
+    onViewportChange = null,
 
-        onSaveRequested =
-            null,
+    onSaveRequested = null,
 
-        onTextEditStart =
-            null,
+    onTextEditStart = null,
 
-        onTextEditEnd =
-            null,
+    onTextEditEnd = null,
 
-        onError = null
-    },
-    forwardedRef
+    onError = null,
+  },
+  forwardedRef,
 ) {
-    /*=====================================================
+  /*=====================================================
     References
     =====================================================*/
 
-    const containerRef =
-        useRef(null);
+  const containerRef = useRef(null);
 
-    const internalStageRef =
-        useRef(null);
+  const internalStageRef = useRef(null);
 
-    const managerRef =
-        useRef(null);
+  const managerRef = useRef(null);
 
-    const extraToolIdsRef =
-        useRef(
-            new Set()
-        );
+  const extraToolIdsRef = useRef(new Set());
 
-    const panSessionRef =
-        useRef(null);
+  const panSessionRef = useRef(null);
 
-    const spacePressedRef =
-        useRef(false);
+  const spacePressedRef = useRef(false);
 
-    const autoFitSignatureRef =
-        useRef(null);
+  const autoFitSignatureRef = useRef(null);
 
-    const resizeFitTimerRef =
-        useRef(null);
+  const resizeFitTimerRef = useRef(null);
 
-    const activeTouchPointersRef =
-        useRef(
-            new Map()
-        );
+  const activeTouchPointersRef = useRef(new Map());
 
-    const pinchGestureRef =
-        useRef(null);
+  const pinchGestureRef = useRef(null);
 
-    const touchGestureActiveRef =
-        useRef(false);
+  const touchGestureActiveRef = useRef(false);
 
-    const onReadyRef =
-        useRef(onReady);
+  const onReadyRef = useRef(onReady);
 
-    const onPointerPositionChangeRef =
-        useRef(
-            onPointerPositionChange
-        );
+  const onPointerPositionChangeRef = useRef(onPointerPositionChange);
 
-    const onTemporaryObjectChangeRef =
-        useRef(
-            onTemporaryObjectChange
-        );
+  const onTemporaryObjectChangeRef = useRef(onTemporaryObjectChange);
 
-    const onTemporaryObjectsChangeRef =
-        useRef(
-            onTemporaryObjectsChange
-        );
+  const onTemporaryObjectsChangeRef = useRef(onTemporaryObjectsChange);
 
-    const onViewportChangeRef =
-        useRef(
-            onViewportChange
-        );
+  const onViewportChangeRef = useRef(onViewportChange);
 
-    const onSaveRequestedRef =
-        useRef(
-            onSaveRequested
-        );
+  const onSaveRequestedRef = useRef(onSaveRequested);
 
-    const onTextEditStartRef =
-        useRef(
-            onTextEditStart
-        );
+  const onTextEditStartRef = useRef(onTextEditStart);
 
-    const onTextEditEndRef =
-        useRef(
-            onTextEditEnd
-        );
+  const onTextEditEndRef = useRef(onTextEditEnd);
 
-    const onErrorRef =
-        useRef(onError);
+  const onErrorRef = useRef(onError);
 
-    /*=====================================================
+  /*=====================================================
     Local State
     =====================================================*/
 
-    const [
-        temporaryObjects,
-        setTemporaryObjectsState
-    ] = useState([]);
+  const [temporaryObjects, setTemporaryObjectsState] = useState([]);
 
-    const [
-        isPanning,
-        setIsPanning
-    ] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
 
-    const [
-        isSpacePressed,
-        setIsSpacePressed
-    ] = useState(false);
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
 
-    const [
-        isTouchGesturing,
-        setIsTouchGesturing
-    ] = useState(false);
+  const [isTouchGesturing, setIsTouchGesturing] = useState(false);
 
-    const [
-        stageNode,
-        setStageNodeState
-    ] = useState(null);
+  const [stageNode, setStageNodeState] = useState(null);
 
-    const [
-        editingTextObjectId,
-        setEditingTextObjectId
-    ] = useState(null);
+  const [editingTextObjectId, setEditingTextObjectId] = useState(null);
 
-    const containerSize =
-        useContainerSize(
-            containerRef
-        );
+  const containerSize = useContainerSize(containerRef);
 
-    /*=====================================================
+  /*=====================================================
     Store State
     =====================================================*/
 
-    const documentData =
-        useFashionEditorStore(
-            state =>
-                state.document
-        );
+  const documentData = useFashionEditorStore((state) => state.document);
 
-    const viewport =
-        useFashionEditorStore(
-            state =>
-                state.viewport
-        );
+  const viewport = useFashionEditorStore((state) => state.viewport);
 
-    const ui =
-        useFashionEditorStore(
-            state =>
-                state.ui
-        );
+  const ui = useFashionEditorStore((state) => state.ui);
 
-    const symmetry =
-        useFashionEditorStore(
-            state =>
-                state.symmetry
-        );
+  const symmetry = useFashionEditorStore((state) => state.symmetry);
 
-    const activeTool =
-        useFashionEditorStore(
-            state =>
-                state.activeTool
-        );
+  const activeTool = useFashionEditorStore((state) => state.activeTool);
 
-    const activeLayer =
-        useFashionEditorStore(
-            state =>
-                state.layers.find(
-                    layer =>
-                        layer.id ===
-                        state.activeLayerId
-                ) ||
-                null
-        );
+  const activeLayer = useFashionEditorStore(
+    (state) =>
+      state.layers.find((layer) => layer.id === state.activeLayerId) || null,
+  );
 
-    /*
+  /*
     Return the existing object reference from Zustand.
     This avoids creating a new snapshot object on each read.
     */
 
-    const editingTextObject =
-        useFashionEditorStore(
-            state =>
-                editingTextObjectId
-                    ? (
-                        state.objects[
-                            editingTextObjectId
-                        ] ||
-                        null
-                    )
-                    : null
-        );
+  const editingTextObject = useFashionEditorStore((state) =>
+    editingTextObjectId ? state.objects[editingTextObjectId] || null : null,
+  );
 
-    /*=====================================================
+  /*=====================================================
     Store Actions
     =====================================================*/
 
-    const setActiveTool =
-        useFashionEditorStore(
-            state =>
-                state.setActiveTool
-        );
+  const setActiveTool = useFashionEditorStore((state) => state.setActiveTool);
 
-    const setViewport =
-        useFashionEditorStore(
-            state =>
-                state.setViewport
-        );
+  const setViewport = useFashionEditorStore((state) => state.setViewport);
 
-    const setZoom =
-        useFashionEditorStore(
-            state =>
-                state.setZoom
-        );
+  const setZoom = useFashionEditorStore((state) => state.setZoom);
 
-    const panBy =
-        useFashionEditorStore(
-            state =>
-                state.panBy
-        );
+  const panBy = useFashionEditorStore((state) => state.panBy);
 
-    const fitDocumentToViewport =
-        useFashionEditorStore(
-            state =>
-                state
-                    .fitDocumentToViewport
-        );
+  const fitDocumentToViewport = useFashionEditorStore(
+    (state) => state.fitDocumentToViewport,
+  );
 
-    const undo =
-        useFashionEditorStore(
-            state =>
-                state.undo
-        );
+  const undo = useFashionEditorStore((state) => state.undo);
 
-    const redo =
-        useFashionEditorStore(
-            state =>
-                state.redo
-        );
+  const redo = useFashionEditorStore((state) => state.redo);
 
-    const deleteObjects =
-        useFashionEditorStore(
-            state =>
-                state.deleteObjects
-        );
+  const deleteObjects = useFashionEditorStore((state) => state.deleteObjects);
 
-    const clearSelection =
-        useFashionEditorStore(
-            state =>
-                state.clearSelection
-        );
+  const clearSelection = useFashionEditorStore((state) => state.clearSelection);
 
-    const selectAllOnActiveLayer =
-        useFashionEditorStore(
-            state =>
-                state
-                    .selectAllOnActiveLayer
-        );
+  const selectAllOnActiveLayer = useFashionEditorStore(
+    (state) => state.selectAllOnActiveLayer,
+  );
 
-    const copySelection =
-        useFashionEditorStore(
-            state =>
-                state.copySelection
-        );
+  const copySelection = useFashionEditorStore((state) => state.copySelection);
 
-    const cutSelection =
-        useFashionEditorStore(
-            state =>
-                state.cutSelection
-        );
+  const cutSelection = useFashionEditorStore((state) => state.cutSelection);
 
-    const pasteClipboard =
-        useFashionEditorStore(
-            state =>
-                state.pasteClipboard
-        );
+  const pasteClipboard = useFashionEditorStore((state) => state.pasteClipboard);
 
-    const nudgeSelection =
-        useFashionEditorStore(
-            state =>
-                state.nudgeSelection
-        );
+  const nudgeSelection = useFashionEditorStore((state) => state.nudgeSelection);
 
-    /*=====================================================
+  /*=====================================================
     Keep Callback References Current
     =====================================================*/
 
-    useEffect(
-        () => {
-            onReadyRef.current =
-                onReady;
+  useEffect(() => {
+    onReadyRef.current = onReady;
 
-            onPointerPositionChangeRef.current =
-                onPointerPositionChange;
+    onPointerPositionChangeRef.current = onPointerPositionChange;
 
-            onTemporaryObjectChangeRef.current =
-                onTemporaryObjectChange;
+    onTemporaryObjectChangeRef.current = onTemporaryObjectChange;
 
-            onTemporaryObjectsChangeRef.current =
-                onTemporaryObjectsChange;
+    onTemporaryObjectsChangeRef.current = onTemporaryObjectsChange;
 
-            onViewportChangeRef.current =
-                onViewportChange;
+    onViewportChangeRef.current = onViewportChange;
 
-            onSaveRequestedRef.current =
-                onSaveRequested;
+    onSaveRequestedRef.current = onSaveRequested;
 
-            onTextEditStartRef.current =
-                onTextEditStart;
+    onTextEditStartRef.current = onTextEditStart;
 
-            onTextEditEndRef.current =
-                onTextEditEnd;
+    onTextEditEndRef.current = onTextEditEnd;
 
-            onErrorRef.current =
-                onError;
-        },
-        [
-            onReady,
-            onPointerPositionChange,
-            onTemporaryObjectChange,
-            onTemporaryObjectsChange,
-            onViewportChange,
-            onSaveRequested,
-            onTextEditStart,
-            onTextEditEnd,
-            onError
-        ]
-    );
+    onErrorRef.current = onError;
+  }, [
+    onReady,
+    onPointerPositionChange,
+    onTemporaryObjectChange,
+    onTemporaryObjectsChange,
+    onViewportChange,
+    onSaveRequested,
+    onTextEditStart,
+    onTextEditEnd,
+    onError,
+  ]);
 
-    /*=====================================================
+  /*=====================================================
     Temporary Objects
     =====================================================*/
 
-    const updateTemporaryObjects =
-        useCallback(
-            nextObjects => {
-                const normalizedObjects =
-                    (
-                        Array.isArray(
-                            nextObjects
-                        )
-                            ? nextObjects
-                            : nextObjects
-                                ? [
-                                    nextObjects
-                                ]
-                                : []
-                    )
-                        .filter(Boolean)
-                        .filter(
-                            (
-                                object,
-                                index,
-                                objects
-                            ) =>
-                                objects.findIndex(
-                                    candidate =>
-                                        candidate ===
-                                            object ||
-                                        (
-                                            candidate?.id &&
-                                            object?.id &&
-                                            candidate.id ===
-                                                object.id
-                                        )
-                                ) ===
-                                index
-                        );
+  const updateTemporaryObjects = useCallback((nextObjects) => {
+    const normalizedObjects = (
+      Array.isArray(nextObjects)
+        ? nextObjects
+        : nextObjects
+          ? [nextObjects]
+          : []
+    )
+      .filter(Boolean)
+      .filter(
+        (object, index, objects) =>
+          objects.findIndex(
+            (candidate) =>
+              candidate === object ||
+              (candidate?.id && object?.id && candidate.id === object.id),
+          ) === index,
+      );
 
-                setTemporaryObjectsState(
-                    normalizedObjects
-                );
+    setTemporaryObjectsState(normalizedObjects);
 
-                const primaryObject =
-                    normalizedObjects[0] ||
-                    null;
+    const primaryObject = normalizedObjects[0] || null;
 
-                onTemporaryObjectChangeRef
-                    .current
-                    ?.(
-                        primaryObject
-                    );
+    onTemporaryObjectChangeRef.current?.(primaryObject);
 
-                onTemporaryObjectsChangeRef
-                    .current
-                    ?.(
-                        normalizedObjects
-                    );
-            },
-            []
-        );
+    onTemporaryObjectsChangeRef.current?.(normalizedObjects);
+  }, []);
 
-    const updateTemporaryObject =
-        useCallback(
-            nextObject => {
-                updateTemporaryObjects(
-                    nextObject
-                        ? [
-                            nextObject
-                        ]
-                        : []
-                );
-            },
-            [
-                updateTemporaryObjects
-            ]
-        );
+  const updateTemporaryObject = useCallback(
+    (nextObject) => {
+      updateTemporaryObjects(nextObject ? [nextObject] : []);
+    },
+    [updateTemporaryObjects],
+  );
 
-    /*=====================================================
+  /*=====================================================
     Text Editing
     =====================================================*/
 
-    const closeTextEditor =
-        useCallback(
-            (
-                mode = "close",
-                objectOverride = null
-            ) => {
-                const currentObject =
-                    objectOverride ||
-                    (
-                        editingTextObjectId
-                            ? (
-                                useFashionEditorStore
-                                    .getState()
-                                    .objects[
-                                        editingTextObjectId
-                                    ] ||
-                                null
-                            )
-                            : null
-                    );
+  const closeTextEditor = useCallback(
+    (mode = "close", objectOverride = null) => {
+      const currentObject =
+        objectOverride ||
+        (editingTextObjectId
+          ? useFashionEditorStore.getState().objects[editingTextObjectId] ||
+            null
+          : null);
 
-                setEditingTextObjectId(
-                    null
-                );
+      setEditingTextObjectId(null);
 
-                onTextEditEndRef
-                    .current
-                    ?.({
-                        mode,
+      onTextEditEndRef.current?.({
+        mode,
 
-                        object:
-                            currentObject
-                    });
-            },
-            [
-                editingTextObjectId
-            ]
-        );
+        object: currentObject,
+      });
+    },
+    [editingTextObjectId],
+  );
 
-    const openTextEditor =
-        useCallback(
-            request => {
-                const requestedObjectId =
-                    request?.objectId ||
-                    request?.object?.id ||
-                    null;
+  const openTextEditor = useCallback(
+    (request) => {
+      const requestedObjectId =
+        request?.objectId || request?.object?.id || null;
 
-                if (
-                    !requestedObjectId
-                ) {
-                    return false;
-                }
+      if (!requestedObjectId) {
+        return false;
+      }
 
-                const state =
-                    useFashionEditorStore
-                        .getState();
+      const state = useFashionEditorStore.getState();
 
-                const requestedObject =
-                    state.objects[
-                        requestedObjectId
-                    ] ||
-                    request?.object ||
-                    null;
+      const requestedObject =
+        state.objects[requestedObjectId] || request?.object || null;
 
-                if (
-                    !requestedObject ||
-                    requestedObject.type !==
-                        "text" ||
-                    requestedObject.visible ===
-                        false ||
-                    requestedObject.locked ===
-                        true
-                ) {
-                    return false;
-                }
+      if (
+        !requestedObject ||
+        requestedObject.type !== "text" ||
+        requestedObject.visible === false ||
+        requestedObject.locked === true
+      ) {
+        return false;
+      }
 
-                const requestedLayer =
-                    state.layers.find(
-                        layer =>
-                            layer.id ===
-                            requestedObject
-                                .layerId
-                    ) ||
-                    null;
+      const requestedLayer =
+        state.layers.find((layer) => layer.id === requestedObject.layerId) ||
+        null;
 
-                if (
-                    !requestedLayer ||
-                    requestedLayer.visible ===
-                        false ||
-                    requestedLayer.locked ===
-                        true
-                ) {
-                    return false;
-                }
+      if (
+        !requestedLayer ||
+        requestedLayer.visible === false ||
+        requestedLayer.locked === true
+      ) {
+        return false;
+      }
 
-                if (
-                    managerRef.current
-                        ?.isInteracting()
-                ) {
-                    managerRef.current
-                        .cancelInteraction(
-                            "text-edit-started"
-                        );
-                }
+      if (managerRef.current?.isInteracting()) {
+        managerRef.current.cancelInteraction("text-edit-started");
+      }
 
-                panSessionRef.current =
-                    null;
+      panSessionRef.current = null;
 
-                setIsPanning(
-                    false
-                );
+      setIsPanning(false);
 
-                updateTemporaryObject(
-                    null
-                );
+      updateTemporaryObject(null);
 
-                setEditingTextObjectId(
-                    requestedObjectId
-                );
+      setEditingTextObjectId(requestedObjectId);
 
-                onTextEditStartRef
-                    .current
-                    ?.({
-                        object:
-                            requestedObject,
+      onTextEditStartRef.current?.({
+        object: requestedObject,
 
-                        request
-                    });
+        request,
+      });
 
-                return true;
-            },
-            [
-                updateTemporaryObject
-            ]
-        );
+      return true;
+    },
+    [updateTemporaryObject],
+  );
 
-    /*
+  /*
     TextObject emits this event after a double-click or
     double-tap. Listening on the Stage avoids passing an edit
     callback through every layer renderer.
     */
 
-    useEffect(
-        () => {
-            if (
-                !stageNode
-            ) {
-                return undefined;
-            }
+  useEffect(() => {
+    if (!stageNode) {
+      return undefined;
+    }
 
-            const handleTextEditRequest =
-                event => {
-                    openTextEditor(
-                        event
-                    );
-                };
+    const handleTextEditRequest = (event) => {
+      openTextEditor(event);
+    };
 
-            stageNode.on(
-                TEXT_EDIT_REQUEST_EVENT,
-                handleTextEditRequest
-            );
+    stageNode.on(TEXT_EDIT_REQUEST_EVENT, handleTextEditRequest);
 
-            return () => {
-                stageNode.off(
-                    TEXT_EDIT_REQUEST_EVENT,
-                    handleTextEditRequest
-                );
-            };
-        },
-        [
-            stageNode,
-            openTextEditor
-        ]
-    );
+    return () => {
+      stageNode.off(TEXT_EDIT_REQUEST_EVENT, handleTextEditRequest);
+    };
+  }, [stageNode, openTextEditor]);
 
-    /*
+  /*
     Remove the overlay if the edited object is deleted,
     hidden, or locked while editing.
     */
 
-    useEffect(
-        () => {
-            if (
-                !editingTextObjectId
-            ) {
-                return;
-            }
+  useEffect(() => {
+    if (!editingTextObjectId) {
+      return;
+    }
 
-            if (
-                !editingTextObject
-            ) {
-                closeTextEditor(
-                    "object-unavailable"
-                );
+    if (!editingTextObject) {
+      closeTextEditor("object-unavailable");
 
-                return;
-            }
+      return;
+    }
 
-            const state =
-                useFashionEditorStore
-                    .getState();
+    const state = useFashionEditorStore.getState();
 
-            const layer =
-                state.layers.find(
-                    item =>
-                        item.id ===
-                        editingTextObject
-                            .layerId
-                );
-
-            if (
-                editingTextObject.visible ===
-                    false ||
-                editingTextObject.locked ===
-                    true ||
-                !layer ||
-                layer.visible ===
-                    false ||
-                layer.locked ===
-                    true
-            ) {
-                closeTextEditor(
-                    "object-unavailable",
-                    editingTextObject
-                );
-            }
-        },
-        [
-            closeTextEditor,
-            editingTextObject,
-            editingTextObjectId
-        ]
+    const layer = state.layers.find(
+      (item) => item.id === editingTextObject.layerId,
     );
 
-    /*=====================================================
+    if (
+      editingTextObject.visible === false ||
+      editingTextObject.locked === true ||
+      !layer ||
+      layer.visible === false ||
+      layer.locked === true
+    ) {
+      closeTextEditor("object-unavailable", editingTextObject);
+    }
+  }, [closeTextEditor, editingTextObject, editingTextObjectId]);
+
+  /*=====================================================
     Tool Manager
     =====================================================*/
 
-    useEffect(
-        () => {
-            const manager =
-                createToolManager({
-                    fallbackToolId:
-                        EDITOR_TOOLS.PENCIL,
+  useEffect(() => {
+    const manager = createToolManager({
+      fallbackToolId: EDITOR_TOOLS.PENCIL,
 
-                    getContext:
-                        () => {
-                            const state =
-                                useFashionEditorStore
-                                    .getState();
+      getContext: () => {
+        const state = useFashionEditorStore.getState();
 
-                            return {
-                                state,
+        return {
+          state,
 
-                                editorState:
-                                    state,
+          editorState: state,
 
-                                actions:
-                                    state,
+          actions: state,
 
-                                store:
-                                    useFashionEditorStore,
+          store: useFashionEditorStore,
 
-                                document:
-                                    state.document,
+          document: state.document,
 
-                                viewport:
-                                    state.viewport,
+          viewport: state.viewport,
 
-                                activeLayerId:
-                                    state.activeLayerId,
+          activeLayerId: state.activeLayerId,
 
-                                brush:
-                                    state.brush,
+          brush: state.brush,
 
-                                eraser:
-                                    state.eraser,
+          eraser: state.eraser,
 
-                                image:
-                                    state.image,
+          image: state.image,
 
-                                pattern:
-                                    state.pattern,
+          pattern: state.pattern,
 
-                                patternMask:
-                                    state.patternMask,
+          patternMask: state.patternMask,
 
-                                symmetry:
-                                    state.symmetry,
+          symmetry: state.symmetry,
 
-                                selection: {
-                                    objectIds:
-                                        state
-                                            .selectedObjectIds
-                                },
+          selection: {
+            objectIds: state.selectedObjectIds,
+          },
 
-                                stage:
-                                    internalStageRef
-                                        .current,
+          stage: internalStageRef.current,
 
-                                stageRef:
-                                    internalStageRef,
+          stageRef: internalStageRef,
 
-                                container:
-                                    containerRef
-                                        .current,
+          container: containerRef.current,
 
-                                containerRef,
+          containerRef,
 
-                                setTemporaryObject:
-                                    updateTemporaryObject,
+          setTemporaryObject: updateTemporaryObject,
 
-                                setTemporaryObjects:
-                                    updateTemporaryObjects,
+          setTemporaryObjects: updateTemporaryObjects,
 
-                                toDocumentPoint:
-                                    screenPoint =>
-                                        screenPointToDocumentPoint(
-                                            screenPoint,
+          toDocumentPoint: (screenPoint) =>
+            screenPointToDocumentPoint(
+              screenPoint,
 
-                                            useFashionEditorStore
-                                                .getState()
-                                                .viewport
-                                        ),
+              useFashionEditorStore.getState().viewport,
+            ),
 
-                                requestRender:
-                                    () => {
-                                        internalStageRef
-                                            .current
-                                            ?.batchDraw
-                                            ?.();
-                                    }
-                            };
-                        },
+          requestRender: () => {
+            internalStageRef.current?.batchDraw?.();
+          },
+        };
+      },
 
-                    onError:
-                        (
-                            error,
-                            details
-                        ) => {
-                            if (
-                                isFunction(
-                                    onErrorRef
-                                        .current
-                                )
-                            ) {
-                                onErrorRef.current(
-                                    error,
-                                    details
-                                );
+      onError: (error, details) => {
+        if (isFunction(onErrorRef.current)) {
+          onErrorRef.current(error, details);
 
-                                return;
-                            }
+          return;
+        }
 
-                            console.error(
-                                "Fashion editor tool error:",
-                                error,
-                                details
-                            );
-                        }
-                });
+        console.error("Fashion editor tool error:", error, details);
+      },
+    });
 
-            manager.register(
-                PencilTool
-            );
+    manager.register(PencilTool);
 
-            manager.register(
-                SelectionTool
-            );
+    manager.register(SelectionTool);
 
-            manager.register(
-                EraserTool
-            );
+    manager.register(EraserTool);
 
-            manager.register(
-                BrushTool
-            );
+    manager.register(BrushTool);
 
-            manager.register(
-                LineTool
-            );
+    manager.register(LineTool);
 
-            manager.register(
-                ShapeTool
-            );
+    manager.register(ShapeTool);
 
-            manager.register(
-                FillTool
-            );
+    manager.register(FillTool);
 
-            manager.register(
-                ImageTool
-            );
+    manager.register(ImageTool);
+    manager.register(ClothingTool);
 
-            manager.register(
-                PatternTool
-            );
+    manager.register(PatternTool);
 
-            manager.register(
-                PatternMaskTool
-            );
+    manager.register(PatternMaskTool);
 
-            manager.register(
-                TextTool
-            );
+    manager.register(TextTool);
 
-            managerRef.current =
-                manager;
+    managerRef.current = manager;
 
-            const currentTool =
-                useFashionEditorStore
-                    .getState()
-                    .activeTool;
+    const currentTool = useFashionEditorStore.getState().activeTool;
 
-            if (
-                manager.hasTool(
-                    currentTool
-                )
-            ) {
-                manager.activate(
-                    currentTool
-                );
-            } else {
-                manager.deactivate();
-            }
+    if (manager.hasTool(currentTool)) {
+      manager.activate(currentTool);
+    } else {
+      manager.deactivate();
+    }
 
-            if (
-                internalStageRef.current
-            ) {
-                onReadyRef.current?.({
-                    stage:
-                        internalStageRef
-                            .current,
+    if (internalStageRef.current) {
+      onReadyRef.current?.({
+        stage: internalStageRef.current,
 
-                    manager,
+        manager,
 
-                    container:
-                        containerRef
-                            .current
-                });
-            }
+        container: containerRef.current,
+      });
+    }
 
-            return () => {
-                manager.destroy();
+    return () => {
+      manager.destroy();
 
-                if (
-                    managerRef.current ===
-                    manager
-                ) {
-                    managerRef.current =
-                        null;
-                }
-            };
-        },
-        [
-            updateTemporaryObject,
-            updateTemporaryObjects
-        ]
-    );
+      if (managerRef.current === manager) {
+        managerRef.current = null;
+      }
+    };
+  }, [updateTemporaryObject, updateTemporaryObjects]);
 
-    /*=====================================================
+  /*=====================================================
     Register Additional Tools
     =====================================================*/
 
-    useEffect(
-        () => {
-            const manager =
-                managerRef.current;
+  useEffect(() => {
+    const manager = managerRef.current;
 
-            if (
-                !manager
-            ) {
-                return;
-            }
+    if (!manager) {
+      return;
+    }
 
-            const nextToolIds =
-                new Set();
+    const nextToolIds = new Set();
 
-            if (
-                Array.isArray(
-                    tools
-                )
-            ) {
-                tools.forEach(
-                    tool => {
-                        if (
-                            !tool?.id ||
-                            tool.id ===
-                                PencilTool.id ||
-                            tool.id ===
-                                SelectionTool.id ||
-                            tool.id ===
-                                EraserTool.id ||
-                            tool.id ===
-                                BrushTool.id ||
-                            tool.id ===
-                                LineTool.id ||
-                            tool.id ===
-                                ShapeTool.id ||
-                            tool.id ===
-                                FillTool.id ||
-                            tool.id ===
-                                TextTool.id ||
-                            tool.id ===
-                                ImageTool.id ||
-                            tool.id ===
-                                PatternTool.id ||
-                            tool.id ===
-                                PatternMaskTool.id
-                        ) {
-                            return;
-                        }
+    if (Array.isArray(tools)) {
+      tools.forEach((tool) => {
+        if (
+          !tool?.id ||
+          tool.id === PencilTool.id ||
+          tool.id === SelectionTool.id ||
+          tool.id === EraserTool.id ||
+          tool.id === BrushTool.id ||
+          tool.id === LineTool.id ||
+          tool.id === ShapeTool.id ||
+          tool.id === FillTool.id ||
+          tool.id === TextTool.id ||
+          tool.id === ImageTool.id ||
+          tool.id === ClothingTool.id ||
+          tool.id === PatternTool.id ||
+          tool.id === PatternMaskTool.id
+        ) {
+          return;
+        }
 
-                        manager.register(
-                            tool,
-                            {
-                                replace:
-                                    true
-                            }
-                        );
+        manager.register(tool, {
+          replace: true,
+        });
 
-                        nextToolIds.add(
-                            tool.id
-                        );
-                    }
-                );
-            }
+        nextToolIds.add(tool.id);
+      });
+    }
 
-            extraToolIdsRef
-                .current
-                .forEach(
-                    toolId => {
-                        if (
-                            !nextToolIds.has(
-                                toolId
-                            ) &&
-                            manager.hasTool(
-                                toolId
-                            )
-                        ) {
-                            manager.unregister(
-                                toolId
-                            );
-                        }
-                    }
-                );
+    extraToolIdsRef.current.forEach((toolId) => {
+      if (!nextToolIds.has(toolId) && manager.hasTool(toolId)) {
+        manager.unregister(toolId);
+      }
+    });
 
-            extraToolIdsRef.current =
-                nextToolIds;
+    extraToolIdsRef.current = nextToolIds;
 
-            const currentTool =
-                useFashionEditorStore
-                    .getState()
-                    .activeTool;
+    const currentTool = useFashionEditorStore.getState().activeTool;
 
-            if (
-                manager.hasTool(
-                    currentTool
-                )
-            ) {
-                manager.activate(
-                    currentTool
-                );
-            }
-        },
-        [
-            tools
-        ]
-    );
+    if (manager.hasTool(currentTool)) {
+      manager.activate(currentTool);
+    }
+  }, [tools]);
 
-    /*=====================================================
+  /*=====================================================
     Synchronize Active Tool
     =====================================================*/
 
-    useEffect(
-        () => {
-            const manager =
-                managerRef.current;
+  useEffect(() => {
+    const manager = managerRef.current;
 
-            if (
-                !manager
-            ) {
-                return;
-            }
+    if (!manager) {
+      return;
+    }
 
-            if (
-                manager.hasTool(
-                    activeTool
-                )
-            ) {
-                manager.activate(
-                    activeTool
-                );
-            } else {
-                manager.deactivate();
-            }
+    if (manager.hasTool(activeTool)) {
+      manager.activate(activeTool);
+    } else {
+      manager.deactivate();
+    }
 
-            updateTemporaryObject(
-                null
-            );
-        },
-        [
-            activeTool,
-            updateTemporaryObject
-        ]
-    );
+    updateTemporaryObject(null);
+  }, [activeTool, updateTemporaryObject]);
 
-    /*=====================================================
+  /*=====================================================
     Stage Reference
     =====================================================*/
 
-    const setStageNode =
-        useCallback(
-            node => {
-                internalStageRef.current =
-                    node;
+  const setStageNode = useCallback(
+    (node) => {
+      internalStageRef.current = node;
 
-                if (
-                    node
-                ) {
-                    setStageNodeState(
-                        currentNode =>
-                            currentNode ===
-                                node
-                                ? currentNode
-                                : node
-                    );
-                }
-
-                assignRef(
-                    forwardedRef,
-                    node
-                );
-
-                assignRef(
-                    externalStageRef,
-                    node
-                );
-
-                if (
-                    node
-                ) {
-                    applyStageTouchStyles(
-                        node
-                    );
-
-                    onReadyRef.current?.({
-                        stage:
-                            node,
-
-                        manager:
-                            managerRef
-                                .current,
-
-                        container:
-                            containerRef
-                                .current
-                    });
-                }
-            },
-            [
-                forwardedRef,
-                externalStageRef
-            ]
+      if (node) {
+        setStageNodeState((currentNode) =>
+          currentNode === node ? currentNode : node,
         );
+      }
 
-    /*=====================================================
+      assignRef(forwardedRef, node);
+
+      assignRef(externalStageRef, node);
+
+      if (node) {
+        applyStageTouchStyles(node);
+
+        onReadyRef.current?.({
+          stage: node,
+
+          manager: managerRef.current,
+
+          container: containerRef.current,
+        });
+      }
+    },
+    [forwardedRef, externalStageRef],
+  );
+
+  /*=====================================================
     Responsive Automatic Document Fit
     =====================================================*/
 
-    useEffect(
-        () => {
-            if (
-                !autoFit ||
-                containerSize.width <=
-                    1 ||
-                containerSize.height <=
-                    1
-            ) {
-                return undefined;
-            }
+  useEffect(() => {
+    if (!autoFit || containerSize.width <= 1 || containerSize.height <= 1) {
+      return undefined;
+    }
 
-            const documentSignature = [
-                documentData.id,
-                documentData.width,
-                documentData.height
-            ].join(":");
+    const documentSignature = [
+      documentData.id,
+      documentData.width,
+      documentData.height,
+    ].join(":");
 
-            const signature =
-                autoFitOnResize
-                    ? [
-                        documentSignature,
-                        containerSize.width,
-                        containerSize.height
-                    ].join(":")
-                    : documentSignature;
+    const signature = autoFitOnResize
+      ? [documentSignature, containerSize.width, containerSize.height].join(":")
+      : documentSignature;
 
-            if (
-                autoFitSignatureRef
-                    .current ===
-                signature
-            ) {
-                return undefined;
-            }
+    if (autoFitSignatureRef.current === signature) {
+      return undefined;
+    }
 
-            autoFitSignatureRef.current =
-                signature;
+    autoFitSignatureRef.current = signature;
 
-            if (
-                resizeFitTimerRef.current
-            ) {
-                window.clearTimeout(
-                    resizeFitTimerRef
-                        .current
-                );
-            }
+    if (resizeFitTimerRef.current) {
+      window.clearTimeout(resizeFitTimerRef.current);
+    }
 
-            resizeFitTimerRef.current =
-                window.setTimeout(
-                    () => {
-                        const padding =
-                            Number.isFinite(
-                                Number(
-                                    fitPadding
-                                )
-                            )
-                                ? Math.max(
-                                    0,
+    resizeFitTimerRef.current = window.setTimeout(() => {
+      const padding = Number.isFinite(Number(fitPadding))
+        ? Math.max(
+            0,
 
-                                    Number(
-                                        fitPadding
-                                    )
-                                )
-                                : getResponsiveFitPadding(
-                                    containerSize
-                                        .width,
-
-                                    containerSize
-                                        .height
-                                );
-
-                        fitDocumentToViewport(
-                            containerSize.width,
-                            containerSize.height,
-                            padding
-                        );
-
-                        resizeFitTimerRef.current =
-                            null;
-                    },
-                    RESIZE_FIT_DELAY
-                );
-
-            return () => {
-                if (
-                    resizeFitTimerRef.current
-                ) {
-                    window.clearTimeout(
-                        resizeFitTimerRef
-                            .current
-                    );
-
-                    resizeFitTimerRef.current =
-                        null;
-                }
-            };
-        },
-        [
-            autoFit,
-            autoFitOnResize,
-            fitPadding,
+            Number(fitPadding),
+          )
+        : getResponsiveFitPadding(
             containerSize.width,
-            containerSize.height,
-            documentData.id,
-            documentData.width,
-            documentData.height,
-            fitDocumentToViewport
-        ]
-    );
 
-    /*=====================================================
+            containerSize.height,
+          );
+
+      fitDocumentToViewport(containerSize.width, containerSize.height, padding);
+
+      resizeFitTimerRef.current = null;
+    }, RESIZE_FIT_DELAY);
+
+    return () => {
+      if (resizeFitTimerRef.current) {
+        window.clearTimeout(resizeFitTimerRef.current);
+
+        resizeFitTimerRef.current = null;
+      }
+    };
+  }, [
+    autoFit,
+    autoFitOnResize,
+    fitPadding,
+    containerSize.width,
+    containerSize.height,
+    documentData.id,
+    documentData.width,
+    documentData.height,
+    fitDocumentToViewport,
+  ]);
+
+  /*=====================================================
     Viewport Callback
     =====================================================*/
 
-    useEffect(
-        () => {
-            onViewportChangeRef
-                .current
-                ?.(
-                    viewport
-                );
-        },
-        [
-            viewport
-        ]
-    );
+  useEffect(() => {
+    onViewportChangeRef.current?.(viewport);
+  }, [viewport]);
 
-    /*=====================================================
+  /*=====================================================
     Pointer Information
     =====================================================*/
 
-    const getPointerInformation =
-        useCallback(
-            () => {
-                const stage =
-                    internalStageRef
-                        .current;
+  const getPointerInformation = useCallback(() => {
+    const stage = internalStageRef.current;
 
-                const screenPoint =
-                    stage
-                        ?.getPointerPosition
-                        ?.();
+    const screenPoint = stage?.getPointerPosition?.();
 
-                if (
-                    !screenPoint
-                ) {
-                    return null;
-                }
+    if (!screenPoint) {
+      return null;
+    }
 
-                const state =
-                    useFashionEditorStore
-                        .getState();
+    const state = useFashionEditorStore.getState();
 
-                const documentPoint =
-                    screenPointToDocumentPoint(
-                        screenPoint,
-                        state.viewport
-                    );
+    const documentPoint = screenPointToDocumentPoint(
+      screenPoint,
+      state.viewport,
+    );
 
-                return {
-                    screenPoint:
-                        clonePoint(
-                            screenPoint
-                        ),
+    return {
+      screenPoint: clonePoint(screenPoint),
 
-                    documentPoint,
+      documentPoint,
 
-                    insideDocument:
-                        isPointInsideDocument(
-                            documentPoint,
-                            state.document
-                        )
-                };
-            },
-            []
-        );
+      insideDocument: isPointInsideDocument(documentPoint, state.document),
+    };
+  }, []);
 
-    const publishPointerPosition =
-        useCallback(
-            () => {
-                const information =
-                    getPointerInformation();
+  const publishPointerPosition = useCallback(() => {
+    const information = getPointerInformation();
 
-                if (
-                    information
-                ) {
-                    onPointerPositionChangeRef
-                        .current
-                        ?.(
-                            information
-                        );
-                }
+    if (information) {
+      onPointerPositionChangeRef.current?.(information);
+    }
 
-                return information;
-            },
-            [
-                getPointerInformation
-            ]
-        );
+    return information;
+  }, [getPointerInformation]);
 
-    /*=====================================================
+  /*=====================================================
     Focus
     =====================================================*/
 
-    const focusCanvas =
-        useCallback(
-            () => {
-                const container =
-                    containerRef.current;
+  const focusCanvas = useCallback(() => {
+    const container = containerRef.current;
 
-                if (
-                    !container
-                ) {
-                    return;
-                }
+    if (!container) {
+      return;
+    }
 
-                try {
-                    container.focus({
-                        preventScroll:
-                            true
-                    });
-                } catch {
-                    container.focus();
-                }
-            },
-            []
-        );
+    try {
+      container.focus({
+        preventScroll: true,
+      });
+    } catch {
+      container.focus();
+    }
+  }, []);
 
-    const canvasHasKeyboardFocus =
-        useCallback(
-            () => {
-                const container =
-                    containerRef.current;
+  const canvasHasKeyboardFocus = useCallback(() => {
+    const container = containerRef.current;
 
-                if (
-                    !container ||
-                    typeof globalThis
-                        .document ===
-                        "undefined"
-                ) {
-                    return false;
-                }
+    if (!container || typeof globalThis.document === "undefined") {
+      return false;
+    }
 
-                const activeElement =
-                    globalThis
-                        .document
-                        .activeElement;
+    const activeElement = globalThis.document.activeElement;
 
-                return (
-                    activeElement ===
-                        container ||
-                    container.contains(
-                        activeElement
-                    )
-                );
-            },
-            []
-        );
+    return activeElement === container || container.contains(activeElement);
+  }, []);
 
-    /*=====================================================
+  /*=====================================================
     Touch Gesture Helpers
     =====================================================*/
 
-    const syncTouchPointers =
-        useCallback(
-            (
-                event,
-                phase = "move"
-            ) => {
-                const nativeEvent =
-                    getNativeEvent(
-                        event
-                    );
+  const syncTouchPointers = useCallback((event, phase = "move") => {
+    const nativeEvent = getNativeEvent(event);
 
-                if (
-                    !isTouchEvent(
-                        nativeEvent
-                    )
-                ) {
-                    return 0;
-                }
+    if (!isTouchEvent(nativeEvent)) {
+      return 0;
+    }
 
-                const pointerMap =
-                    activeTouchPointersRef
-                        .current;
+    const pointerMap = activeTouchPointersRef.current;
 
-                /*
+    /*
                 Native TouchEvent objects expose the complete
                 active touch list. Rebuilding the map from that
                 list is the most reliable path on iOS and Android.
                 */
 
-                if (
-                    nativeEvent?.touches
-                ) {
-                    pointerMap.clear();
+    if (nativeEvent?.touches) {
+      pointerMap.clear();
 
-                    getLocalTouchPoints(
-                        nativeEvent,
-                        containerRef
-                            .current
-                    ).forEach(
-                        ([
-                            pointerId,
-                            point
-                        ]) => {
-                            pointerMap.set(
-                                pointerId,
-                                point
-                            );
-                        }
-                    );
+      getLocalTouchPoints(nativeEvent, containerRef.current).forEach(
+        ([pointerId, point]) => {
+          pointerMap.set(pointerId, point);
+        },
+      );
 
-                    return pointerMap
-                        .size;
-                }
+      return pointerMap.size;
+    }
 
-                /*
+    /*
                 PointerEvent path used by browsers that expose
                 touch input through pointer events.
                 */
 
-                const pointerId =
-                    getPointerId(
-                        nativeEvent
-                    );
+    const pointerId = getPointerId(nativeEvent);
 
-                if (
-                    pointerId ===
-                    null
-                ) {
-                    return pointerMap
-                        .size;
-                }
+    if (pointerId === null) {
+      return pointerMap.size;
+    }
 
-                if (
-                    phase === "end" ||
-                    phase === "cancel"
-                ) {
-                    pointerMap.delete(
-                        pointerId
-                    );
+    if (phase === "end" || phase === "cancel") {
+      pointerMap.delete(pointerId);
 
-                    return pointerMap
-                        .size;
-                }
+      return pointerMap.size;
+    }
 
-                const localPoint =
-                    getLocalEventPoint(
-                        event,
-                        containerRef
-                            .current,
-                        internalStageRef
-                            .current
-                    );
+    const localPoint = getLocalEventPoint(
+      event,
+      containerRef.current,
+      internalStageRef.current,
+    );
 
-                if (
-                    localPoint
-                ) {
-                    pointerMap.set(
-                        pointerId,
-                        localPoint
-                    );
-                }
+    if (localPoint) {
+      pointerMap.set(pointerId, localPoint);
+    }
 
-                return pointerMap
-                    .size;
-            },
-            []
-        );
+    return pointerMap.size;
+  }, []);
 
-    const initializePinchGesture =
-        useCallback(
-            () => {
-                const pointerEntries = [
-                    ...activeTouchPointersRef
-                        .current
-                        .entries()
-                ];
+  const initializePinchGesture = useCallback(() => {
+    const pointerEntries = [...activeTouchPointersRef.current.entries()];
 
-                if (
-                    pointerEntries.length <
-                    2
-                ) {
-                    pinchGestureRef.current =
-                        null;
+    if (pointerEntries.length < 2) {
+      pinchGestureRef.current = null;
 
-                    return false;
-                }
+      return false;
+    }
 
-                const [
-                    firstEntry,
-                    secondEntry
-                ] =
-                    pointerEntries;
+    const [firstEntry, secondEntry] = pointerEntries;
 
-                const [
-                    firstPointerId,
-                    firstPoint
-                ] =
-                    firstEntry;
+    const [firstPointerId, firstPoint] = firstEntry;
 
-                const [
-                    secondPointerId,
-                    secondPoint
-                ] =
-                    secondEntry;
+    const [secondPointerId, secondPoint] = secondEntry;
 
-                const center =
-                    midpoint(
-                        firstPoint,
-                        secondPoint
-                    );
+    const center = midpoint(firstPoint, secondPoint);
 
-                const distance =
-                    Math.max(
-                        1,
+    const distance = Math.max(
+      1,
 
-                        distanceBetweenPoints(
-                            firstPoint,
-                            secondPoint
-                        )
-                    );
+      distanceBetweenPoints(firstPoint, secondPoint),
+    );
 
-                if (
-                    !center
-                ) {
-                    return false;
-                }
+    if (!center) {
+      return false;
+    }
 
-                const state =
-                    useFashionEditorStore
-                        .getState();
+    const state = useFashionEditorStore.getState();
 
-                const documentAnchor =
-                    screenPointToDocumentPoint(
-                        center,
-                        state.viewport
-                    );
+    const documentAnchor = screenPointToDocumentPoint(center, state.viewport);
 
-                if (
-                    !documentAnchor
-                ) {
-                    return false;
-                }
+    if (!documentAnchor) {
+      return false;
+    }
 
-                pinchGestureRef.current = {
-                    pointerIds: [
-                        firstPointerId,
-                        secondPointerId
-                    ],
+    pinchGestureRef.current = {
+      pointerIds: [firstPointerId, secondPointerId],
 
-                    startDistance:
-                        distance,
+      startDistance: distance,
 
-                    startZoom:
-                        state.viewport
-                            .zoom,
+      startZoom: state.viewport.zoom,
 
-                    documentAnchor
-                };
+      documentAnchor,
+    };
 
-                return true;
-            },
-            []
-        );
+    return true;
+  }, []);
 
-    const beginTouchGesture =
-        useCallback(
-            event => {
-                if (
-                    !touchGestures
-                ) {
-                    return false;
-                }
+  const beginTouchGesture = useCallback(
+    (event) => {
+      if (!touchGestures) {
+        return false;
+      }
 
-                const nativeEvent =
-                    getNativeEvent(
-                        event
-                    );
+      const nativeEvent = getNativeEvent(event);
 
-                if (
-                    !isTouchEvent(
-                        nativeEvent
-                    )
-                ) {
-                    return false;
-                }
+      if (!isTouchEvent(nativeEvent)) {
+        return false;
+      }
 
-                const touchCount =
-                    syncTouchPointers(
-                        event,
-                        "start"
-                    );
+      const touchCount = syncTouchPointers(event, "start");
 
-                const pointerId =
-                    getPointerId(
-                        nativeEvent
-                    );
+      const pointerId = getPointerId(nativeEvent);
 
-                /*
+      /*
                 Pointer capture is available for PointerEvent
                 input. Native TouchEvent objects do not need it.
                 */
 
-                if (
-                    nativeEvent
-                        ?.pointerType ===
-                        "touch" &&
-                    pointerId !==
-                        null
-                ) {
-                    try {
-                        nativeEvent
-                            ?.target
-                            ?.setPointerCapture
-                            ?.(
-                                pointerId
-                            );
-                    } catch {
-                        // Pointer capture is optional.
-                    }
-                }
+      if (nativeEvent?.pointerType === "touch" && pointerId !== null) {
+        try {
+          nativeEvent?.target?.setPointerCapture?.(pointerId);
+        } catch {
+          // Pointer capture is optional.
+        }
+      }
 
-                if (
-                    touchGestureActiveRef
-                        .current
-                ) {
-                    if (
-                        touchCount >=
-                        2
-                    ) {
-                        initializePinchGesture();
-                    }
+      if (touchGestureActiveRef.current) {
+        if (touchCount >= 2) {
+          initializePinchGesture();
+        }
 
-                    safelyPreventDefault(
-                        nativeEvent
-                    );
+        safelyPreventDefault(nativeEvent);
 
-                    return true;
-                }
+        return true;
+      }
 
-                /*
+      /*
                 One touch belongs to the active drawing,
                 erasing, selection, or pan tool. The ToolManager
                 must receive it normally.
                 */
 
-                if (
-                    touchCount <
-                    2
-                ) {
-                    return false;
-                }
+      if (touchCount < 2) {
+        return false;
+      }
 
-                touchGestureActiveRef.current =
-                    true;
+      touchGestureActiveRef.current = true;
 
-                setIsTouchGesturing(
-                    true
-                );
+      setIsTouchGesturing(true);
 
-                if (
-                    managerRef.current
-                        ?.isInteracting()
-                ) {
-                    managerRef.current
-                        .cancelInteraction(
-                            "touch-gesture-started"
-                        );
-                }
+      if (managerRef.current?.isInteracting()) {
+        managerRef.current.cancelInteraction("touch-gesture-started");
+      }
 
-                panSessionRef.current =
-                    null;
+      panSessionRef.current = null;
 
-                setIsPanning(
-                    false
-                );
+      setIsPanning(false);
 
-                updateTemporaryObject(
-                    null
-                );
+      updateTemporaryObject(null);
 
-                initializePinchGesture();
+      initializePinchGesture();
 
-                safelyPreventDefault(
-                    nativeEvent
-                );
+      safelyPreventDefault(nativeEvent);
 
-                return true;
-            },
-            [
-                touchGestures,
-                syncTouchPointers,
-                initializePinchGesture,
-                updateTemporaryObject
-            ]
+      return true;
+    },
+    [
+      touchGestures,
+      syncTouchPointers,
+      initializePinchGesture,
+      updateTemporaryObject,
+    ],
+  );
+
+  const updateTouchGesture = useCallback(
+    (event) => {
+      if (!touchGestures) {
+        return false;
+      }
+
+      const nativeEvent = getNativeEvent(event);
+
+      if (!isTouchEvent(nativeEvent)) {
+        return false;
+      }
+
+      const touchCount = syncTouchPointers(event, "move");
+
+      if (!touchGestureActiveRef.current) {
+        return false;
+      }
+
+      safelyPreventDefault(nativeEvent);
+
+      if (touchCount < 2) {
+        return true;
+      }
+
+      let gesture = pinchGestureRef.current;
+
+      if (!gesture) {
+        initializePinchGesture();
+
+        gesture = pinchGestureRef.current;
+      }
+
+      if (!gesture) {
+        return true;
+      }
+
+      let firstPoint = activeTouchPointersRef.current.get(
+        gesture.pointerIds[0],
+      );
+
+      let secondPoint = activeTouchPointersRef.current.get(
+        gesture.pointerIds[1],
+      );
+
+      if (!firstPoint || !secondPoint) {
+        initializePinchGesture();
+
+        gesture = pinchGestureRef.current;
+
+        if (!gesture) {
+          return true;
+        }
+
+        firstPoint = activeTouchPointersRef.current.get(gesture.pointerIds[0]);
+
+        secondPoint = activeTouchPointersRef.current.get(gesture.pointerIds[1]);
+      }
+
+      if (!firstPoint || !secondPoint) {
+        return true;
+      }
+
+      const currentDistance = Math.max(
+        1,
+
+        distanceBetweenPoints(firstPoint, secondPoint),
+      );
+
+      const currentCenter = midpoint(firstPoint, secondPoint);
+
+      if (!currentCenter) {
+        return true;
+      }
+
+      const zoomRatio =
+        currentDistance /
+        Math.max(
+          1,
+
+          gesture.startDistance,
         );
 
-    const updateTouchGesture =
-        useCallback(
-            event => {
-                if (
-                    !touchGestures
-                ) {
-                    return false;
-                }
+      const nextZoom = clamp(gesture.startZoom * zoomRatio, MIN_ZOOM, MAX_ZOOM);
 
-                const nativeEvent =
-                    getNativeEvent(
-                        event
-                    );
+      setViewport({
+        zoom: nextZoom,
 
-                if (
-                    !isTouchEvent(
-                        nativeEvent
-                    )
-                ) {
-                    return false;
-                }
+        x: currentCenter.x - gesture.documentAnchor.x * nextZoom,
 
-                const touchCount =
-                    syncTouchPointers(
-                        event,
-                        "move"
-                    );
+        y: currentCenter.y - gesture.documentAnchor.y * nextZoom,
+      });
 
-                if (
-                    !touchGestureActiveRef
-                        .current
-                ) {
-                    return false;
-                }
+      return true;
+    },
+    [touchGestures, syncTouchPointers, initializePinchGesture, setViewport],
+  );
 
-                safelyPreventDefault(
-                    nativeEvent
-                );
+  const endTouchGesture = useCallback(
+    (event, phase = "end") => {
+      if (!touchGestures) {
+        return false;
+      }
 
-                if (
-                    touchCount <
-                    2
-                ) {
-                    return true;
-                }
+      const nativeEvent = getNativeEvent(event);
 
-                let gesture =
-                    pinchGestureRef.current;
+      if (!isTouchEvent(nativeEvent)) {
+        return false;
+      }
 
-                if (
-                    !gesture
-                ) {
-                    initializePinchGesture();
+      const pointerId = getPointerId(nativeEvent);
 
-                    gesture =
-                        pinchGestureRef
-                            .current;
-                }
+      const wasTouchGesture = touchGestureActiveRef.current;
 
-                if (
-                    !gesture
-                ) {
-                    return true;
-                }
+      const touchCount = syncTouchPointers(event, phase);
 
-                let firstPoint =
-                    activeTouchPointersRef
-                        .current
-                        .get(
-                            gesture
-                                .pointerIds[0]
-                        );
+      if (nativeEvent?.pointerType === "touch" && pointerId !== null) {
+        try {
+          nativeEvent?.target?.releasePointerCapture?.(pointerId);
+        } catch {
+          // Pointer release is optional.
+        }
+      }
 
-                let secondPoint =
-                    activeTouchPointersRef
-                        .current
-                        .get(
-                            gesture
-                                .pointerIds[1]
-                        );
-
-                if (
-                    !firstPoint ||
-                    !secondPoint
-                ) {
-                    initializePinchGesture();
-
-                    gesture =
-                        pinchGestureRef
-                            .current;
-
-                    if (
-                        !gesture
-                    ) {
-                        return true;
-                    }
-
-                    firstPoint =
-                        activeTouchPointersRef
-                            .current
-                            .get(
-                                gesture
-                                    .pointerIds[0]
-                            );
-
-                    secondPoint =
-                        activeTouchPointersRef
-                            .current
-                            .get(
-                                gesture
-                                    .pointerIds[1]
-                            );
-                }
-
-                if (
-                    !firstPoint ||
-                    !secondPoint
-                ) {
-                    return true;
-                }
-
-                const currentDistance =
-                    Math.max(
-                        1,
-
-                        distanceBetweenPoints(
-                            firstPoint,
-                            secondPoint
-                        )
-                    );
-
-                const currentCenter =
-                    midpoint(
-                        firstPoint,
-                        secondPoint
-                    );
-
-                if (
-                    !currentCenter
-                ) {
-                    return true;
-                }
-
-                const zoomRatio =
-                    currentDistance /
-                    Math.max(
-                        1,
-
-                        gesture
-                            .startDistance
-                    );
-
-                const nextZoom =
-                    clamp(
-                        gesture
-                            .startZoom *
-                            zoomRatio,
-                        MIN_ZOOM,
-                        MAX_ZOOM
-                    );
-
-                setViewport({
-                    zoom:
-                        nextZoom,
-
-                    x:
-                        currentCenter.x -
-                        gesture
-                            .documentAnchor
-                            .x *
-                        nextZoom,
-
-                    y:
-                        currentCenter.y -
-                        gesture
-                            .documentAnchor
-                            .y *
-                        nextZoom
-                });
-
-                return true;
-            },
-            [
-                touchGestures,
-                syncTouchPointers,
-                initializePinchGesture,
-                setViewport
-            ]
-        );
-
-    const endTouchGesture =
-        useCallback(
-            (
-                event,
-                phase = "end"
-            ) => {
-                if (
-                    !touchGestures
-                ) {
-                    return false;
-                }
-
-                const nativeEvent =
-                    getNativeEvent(
-                        event
-                    );
-
-                if (
-                    !isTouchEvent(
-                        nativeEvent
-                    )
-                ) {
-                    return false;
-                }
-
-                const pointerId =
-                    getPointerId(
-                        nativeEvent
-                    );
-
-                const wasTouchGesture =
-                    touchGestureActiveRef
-                        .current;
-
-                const touchCount =
-                    syncTouchPointers(
-                        event,
-                        phase
-                    );
-
-                if (
-                    nativeEvent
-                        ?.pointerType ===
-                        "touch" &&
-                    pointerId !==
-                        null
-                ) {
-                    try {
-                        nativeEvent
-                            ?.target
-                            ?.releasePointerCapture
-                            ?.(
-                                pointerId
-                            );
-                    } catch {
-                        // Pointer release is optional.
-                    }
-                }
-
-                /*
+      /*
                 Never call preventDefault() here. Browsers often
                 dispatch touchend with cancelable=false after the
                 gesture has completed. Trying to cancel that event
                 produces the intervention warning.
                 */
 
-                if (
-                    !wasTouchGesture
-                ) {
-                    return false;
-                }
+      if (!wasTouchGesture) {
+        return false;
+      }
 
-                if (
-                    touchCount >=
-                    2
-                ) {
-                    initializePinchGesture();
-                } else {
-                    pinchGestureRef.current =
-                        null;
-                }
+      if (touchCount >= 2) {
+        initializePinchGesture();
+      } else {
+        pinchGestureRef.current = null;
+      }
 
-                if (
-                    touchCount ===
-                    0
-                ) {
-                    touchGestureActiveRef.current =
-                        false;
+      if (touchCount === 0) {
+        touchGestureActiveRef.current = false;
 
-                    setIsTouchGesturing(
-                        false
-                    );
-                }
+        setIsTouchGesturing(false);
+      }
 
-                return true;
-            },
-            [
-                touchGestures,
-                syncTouchPointers,
-                initializePinchGesture
-            ]
-        );
+      return true;
+    },
+    [touchGestures, syncTouchPointers, initializePinchGesture],
+  );
 
-    /*=====================================================
+  /*=====================================================
     Pan Handling
     =====================================================*/
 
-    const shouldStartPan =
-        useCallback(
-            nativeEvent => {
-                const currentTool =
-                    useFashionEditorStore
-                        .getState()
-                        .activeTool;
+  const shouldStartPan = useCallback((nativeEvent) => {
+    const currentTool = useFashionEditorStore.getState().activeTool;
 
-                return Boolean(
-                    currentTool ===
-                        EDITOR_TOOLS.PAN ||
-                    spacePressedRef
-                        .current ||
-                    nativeEvent?.button ===
-                        1
-                );
-            },
-            []
-        );
+    return Boolean(
+      currentTool === EDITOR_TOOLS.PAN ||
+      spacePressedRef.current ||
+      nativeEvent?.button === 1,
+    );
+  }, []);
 
-    const startPan =
-        useCallback(
-            event => {
-                const nativeEvent =
-                    getNativeEvent(
-                        event
-                    );
+  const startPan = useCallback(
+    (event) => {
+      const nativeEvent = getNativeEvent(event);
 
-                if (
-                    !shouldStartPan(
-                        nativeEvent
-                    )
-                ) {
-                    return false;
-                }
+      if (!shouldStartPan(nativeEvent)) {
+        return false;
+      }
 
-                safelyPreventDefault(
-                    nativeEvent
-                );
+      safelyPreventDefault(nativeEvent);
 
-                if (
-                    managerRef.current
-                        ?.isInteracting()
-                ) {
-                    managerRef.current
-                        .cancelInteraction(
-                            "pan-started"
-                        );
-                }
+      if (managerRef.current?.isInteracting()) {
+        managerRef.current.cancelInteraction("pan-started");
+      }
 
-                updateTemporaryObject(
-                    null
-                );
+      updateTemporaryObject(null);
 
-                const state =
-                    useFashionEditorStore
-                        .getState();
+      const state = useFashionEditorStore.getState();
 
-                const pointerId =
-                    getPointerId(
-                        nativeEvent
-                    );
+      const pointerId = getPointerId(nativeEvent);
 
-                const localPoint =
-                    getLocalEventPoint(
-                        event,
-                        containerRef
-                            .current,
-                        internalStageRef
-                            .current
-                    );
+      const localPoint = getLocalEventPoint(
+        event,
+        containerRef.current,
+        internalStageRef.current,
+      );
 
-                panSessionRef.current = {
-                    pointerId,
+      panSessionRef.current = {
+        pointerId,
 
-                    startX:
-                        numberOr(
-                            localPoint?.x,
-                            0
-                        ),
+        startX: numberOr(localPoint?.x, 0),
 
-                    startY:
-                        numberOr(
-                            localPoint?.y,
-                            0
-                        ),
+        startY: numberOr(localPoint?.y, 0),
 
-                    startViewportX:
-                        state.viewport
-                            .x,
+        startViewportX: state.viewport.x,
 
-                    startViewportY:
-                        state.viewport
-                            .y
-                };
+        startViewportY: state.viewport.y,
+      };
 
-                try {
-                    if (
-                        pointerId !==
-                        null
-                    ) {
-                        nativeEvent
-                            ?.target
-                            ?.setPointerCapture
-                            ?.(
-                                pointerId
-                            );
-                    }
-                } catch {
-                    // Pointer capture is optional.
-                }
+      try {
+        if (pointerId !== null) {
+          nativeEvent?.target?.setPointerCapture?.(pointerId);
+        }
+      } catch {
+        // Pointer capture is optional.
+      }
 
-                setIsPanning(
-                    true
-                );
+      setIsPanning(true);
 
-                return true;
-            },
-            [
-                shouldStartPan,
-                updateTemporaryObject
-            ]
-        );
+      return true;
+    },
+    [shouldStartPan, updateTemporaryObject],
+  );
 
-    const updatePan =
-        useCallback(
-            event => {
-                const panSession =
-                    panSessionRef
-                        .current;
+  const updatePan = useCallback(
+    (event) => {
+      const panSession = panSessionRef.current;
 
-                if (
-                    !panSession
-                ) {
-                    return false;
-                }
+      if (!panSession) {
+        return false;
+      }
 
-                safelyPreventDefault(
-                    event
-                );
+      safelyPreventDefault(event);
 
-                const localPoint =
-                    getLocalEventPoint(
-                        event,
-                        containerRef
-                            .current,
-                        internalStageRef
-                            .current
-                    );
+      const localPoint = getLocalEventPoint(
+        event,
+        containerRef.current,
+        internalStageRef.current,
+      );
 
-                if (
-                    !localPoint
-                ) {
-                    return true;
-                }
+      if (!localPoint) {
+        return true;
+      }
 
-                setViewport({
-                    x:
-                        panSession
-                            .startViewportX +
-                        (
-                            localPoint.x -
-                            panSession
-                                .startX
-                        ),
+      setViewport({
+        x: panSession.startViewportX + (localPoint.x - panSession.startX),
 
-                    y:
-                        panSession
-                            .startViewportY +
-                        (
-                            localPoint.y -
-                            panSession
-                                .startY
-                        )
-                });
+        y: panSession.startViewportY + (localPoint.y - panSession.startY),
+      });
 
-                return true;
-            },
-            [
-                setViewport
-            ]
-        );
+      return true;
+    },
+    [setViewport],
+  );
 
-    const endPan =
-        useCallback(
-            event => {
-                const panSession =
-                    panSessionRef
-                        .current;
+  const endPan = useCallback((event) => {
+    const panSession = panSessionRef.current;
 
-                if (
-                    !panSession
-                ) {
-                    return false;
-                }
+    if (!panSession) {
+      return false;
+    }
 
-                const nativeEvent =
-                    getNativeEvent(
-                        event
-                    );
+    const nativeEvent = getNativeEvent(event);
 
-                try {
-                    if (
-                        panSession.pointerId !==
-                        null
-                    ) {
-                        nativeEvent
-                            ?.target
-                            ?.releasePointerCapture
-                            ?.(
-                                panSession
-                                    .pointerId
-                            );
-                    }
-                } catch {
-                    // Pointer release is optional.
-                }
+    try {
+      if (panSession.pointerId !== null) {
+        nativeEvent?.target?.releasePointerCapture?.(panSession.pointerId);
+      }
+    } catch {
+      // Pointer release is optional.
+    }
 
-                panSessionRef.current =
-                    null;
+    panSessionRef.current = null;
 
-                setIsPanning(
-                    false
-                );
+    setIsPanning(false);
 
-                return true;
-            },
-            []
-        );
+    return true;
+  }, []);
 
-    /*=====================================================
+  /*=====================================================
     Stage Pointer Events
     =====================================================*/
 
-    const handlePointerDown =
-        useCallback(
-            event => {
-                focusCanvas();
+  const handlePointerDown = useCallback(
+    (event) => {
+      focusCanvas();
 
-                publishPointerPosition();
+      publishPointerPosition();
 
-                if (
-                    beginTouchGesture(
-                        event
-                    )
-                ) {
-                    return;
-                }
+      if (beginTouchGesture(event)) {
+        return;
+      }
 
-                if (
-                    startPan(
-                        event
-                    )
-                ) {
-                    return;
-                }
+      if (startPan(event)) {
+        return;
+      }
 
-                managerRef.current
-                    ?.handlePointerDown(
-                        event
-                    );
-            },
-            [
-                focusCanvas,
-                publishPointerPosition,
-                beginTouchGesture,
-                startPan
-            ]
-        );
+      managerRef.current?.handlePointerDown(event);
+    },
+    [focusCanvas, publishPointerPosition, beginTouchGesture, startPan],
+  );
 
-    const handlePointerMove =
-        useCallback(
-            event => {
-                publishPointerPosition();
+  const handlePointerMove = useCallback(
+    (event) => {
+      publishPointerPosition();
 
-                if (
-                    updateTouchGesture(
-                        event
-                    )
-                ) {
-                    return;
-                }
+      if (updateTouchGesture(event)) {
+        return;
+      }
 
-                if (
-                    updatePan(
-                        event
-                    )
-                ) {
-                    return;
-                }
+      if (updatePan(event)) {
+        return;
+      }
 
-                managerRef.current
-                    ?.handlePointerMove(
-                        event
-                    );
-            },
-            [
-                publishPointerPosition,
-                updateTouchGesture,
-                updatePan
-            ]
-        );
+      managerRef.current?.handlePointerMove(event);
+    },
+    [publishPointerPosition, updateTouchGesture, updatePan],
+  );
 
-    const handlePointerUp =
-        useCallback(
-            event => {
-                publishPointerPosition();
+  const handlePointerUp = useCallback(
+    (event) => {
+      publishPointerPosition();
 
-                if (
-                    endTouchGesture(
-                        event,
-                        "end"
-                    )
-                ) {
-                    return;
-                }
+      if (endTouchGesture(event, "end")) {
+        return;
+      }
 
-                if (
-                    endPan(
-                        event
-                    )
-                ) {
-                    return;
-                }
+      if (endPan(event)) {
+        return;
+      }
 
-                managerRef.current
-                    ?.handlePointerUp(
-                        createManagerSafeEvent(
-                            event
-                        )
-                    );
-            },
-            [
-                publishPointerPosition,
-                endTouchGesture,
-                endPan
-            ]
-        );
+      managerRef.current?.handlePointerUp(createManagerSafeEvent(event));
+    },
+    [publishPointerPosition, endTouchGesture, endPan],
+  );
 
-    const handlePointerCancel =
-        useCallback(
-            event => {
-                if (
-                    endTouchGesture(
-                        event,
-                        "cancel"
-                    )
-                ) {
-                    return;
-                }
+  const handlePointerCancel = useCallback(
+    (event) => {
+      if (endTouchGesture(event, "cancel")) {
+        return;
+      }
 
-                if (
-                    endPan(
-                        event
-                    )
-                ) {
-                    return;
-                }
+      if (endPan(event)) {
+        return;
+      }
 
-                managerRef.current
-                    ?.handlePointerCancel(
-                        createManagerSafeEvent(
-                            event
-                        )
-                    );
-            },
-            [
-                endTouchGesture,
-                endPan
-            ]
-        );
+      managerRef.current?.handlePointerCancel(createManagerSafeEvent(event));
+    },
+    [endTouchGesture, endPan],
+  );
 
-    const handlePointerEnter =
-        useCallback(
-            event => {
-                publishPointerPosition();
+  const handlePointerEnter = useCallback(
+    (event) => {
+      publishPointerPosition();
 
-                managerRef.current
-                    ?.handlePointerEnter(
-                        event
-                    );
-            },
-            [
-                publishPointerPosition
-            ]
-        );
+      managerRef.current?.handlePointerEnter(event);
+    },
+    [publishPointerPosition],
+  );
 
-    const handlePointerLeave =
-        useCallback(
-            event => {
-                managerRef.current
-                    ?.handlePointerLeave(
-                        event
-                    );
-            },
-            []
-        );
+  const handlePointerLeave = useCallback((event) => {
+    managerRef.current?.handlePointerLeave(event);
+  }, []);
 
-    /*=====================================================
+  /*=====================================================
     Empty Canvas Selection
     =====================================================*/
 
-    const handleStageClick =
-        useCallback(
-            event => {
-                if (
-                    touchGestureActiveRef
-                        .current
-                ) {
-                    return;
-                }
+  const handleStageClick = useCallback(
+    (event) => {
+      if (touchGestureActiveRef.current) {
+        return;
+      }
 
-                const state =
-                    useFashionEditorStore
-                        .getState();
+      const state = useFashionEditorStore.getState();
 
-                if (
-                    state.activeTool !==
-                    EDITOR_TOOLS.SELECT
-                ) {
-                    return;
-                }
+      if (state.activeTool !== EDITOR_TOOLS.SELECT) {
+        return;
+      }
 
-                const stage =
-                    internalStageRef
-                        .current;
+      const stage = internalStageRef.current;
 
-                if (
-                    event.target ===
-                    stage
-                ) {
-                    clearSelection();
-                }
-            },
-            [
-                clearSelection
-            ]
-        );
+      if (event.target === stage) {
+        clearSelection();
+      }
+    },
+    [clearSelection],
+  );
 
-    /*=====================================================
+  /*=====================================================
     Wheel Zoom and Pan
     =====================================================*/
 
-    const handleWheel =
-        useCallback(
-            event => {
-                const nativeEvent =
-                    event.evt;
+  const handleWheel = useCallback(
+    (event) => {
+      const nativeEvent = event.evt;
 
-                safelyPreventDefault(
-                    nativeEvent
-                );
+      safelyPreventDefault(nativeEvent);
 
-                const managerResult =
-                    managerRef.current
-                        ?.handleWheel(
-                            event
-                        );
+      const managerResult = managerRef.current?.handleWheel(event);
 
-                if (
-                    managerResult ===
-                    true
-                ) {
-                    return;
-                }
+      if (managerResult === true) {
+        return;
+      }
 
-                const stage =
-                    internalStageRef
-                        .current;
+      const stage = internalStageRef.current;
 
-                const anchor =
-                    stage
-                        ?.getPointerPosition
-                        ?.();
+      const anchor = stage?.getPointerPosition?.();
 
-                const state =
-                    useFashionEditorStore
-                        .getState();
+      const state = useFashionEditorStore.getState();
 
-                if (
-                    nativeEvent
-                        ?.shiftKey
-                ) {
-                    panBy(
-                        -numberOr(
-                            nativeEvent
-                                ?.deltaY,
-                            0
-                        ),
-                        0
-                    );
+      if (nativeEvent?.shiftKey) {
+        panBy(-numberOr(nativeEvent?.deltaY, 0), 0);
 
-                    return;
-                }
+        return;
+      }
 
-                if (
-                    !wheelZoom
-                ) {
-                    panBy(
-                        -numberOr(
-                            nativeEvent
-                                ?.deltaX,
-                            0
-                        ),
+      if (!wheelZoom) {
+        panBy(
+          -numberOr(nativeEvent?.deltaX, 0),
 
-                        -numberOr(
-                            nativeEvent
-                                ?.deltaY,
-                            0
-                        )
-                    );
-
-                    return;
-                }
-
-                const deltaY =
-                    clamp(
-                        numberOr(
-                            nativeEvent
-                                ?.deltaY,
-                            0
-                        ),
-                        -240,
-                        240
-                    );
-
-                const zoomFactor =
-                    Math.exp(
-                        -deltaY *
-                        0.0018
-                    );
-
-                setZoom(
-                    state.viewport
-                        .zoom *
-                        zoomFactor,
-                    anchor
-                );
-            },
-            [
-                wheelZoom,
-                panBy,
-                setZoom
-            ]
+          -numberOr(nativeEvent?.deltaY, 0),
         );
 
-    /*=====================================================
+        return;
+      }
+
+      const deltaY = clamp(numberOr(nativeEvent?.deltaY, 0), -240, 240);
+
+      const zoomFactor = Math.exp(-deltaY * 0.0018);
+
+      setZoom(state.viewport.zoom * zoomFactor, anchor);
+    },
+    [wheelZoom, panBy, setZoom],
+  );
+
+  /*=====================================================
     Other Stage Events
     =====================================================*/
 
-    const handleDoubleClick =
-        useCallback(
-            event => {
-                managerRef.current
-                    ?.handleDoubleClick(
-                        event
-                    );
-            },
-            []
-        );
+  const handleDoubleClick = useCallback((event) => {
+    managerRef.current?.handleDoubleClick(event);
+  }, []);
 
-    const handleContextMenu =
-        useCallback(
-            event => {
-                safelyPreventDefault(
-                    event
-                );
+  const handleContextMenu = useCallback((event) => {
+    safelyPreventDefault(event);
 
-                managerRef.current
-                    ?.handleContextMenu(
-                        createManagerSafeEvent(
-                            event
-                        )
-                    );
-            },
-            []
-        );
+    managerRef.current?.handleContextMenu(createManagerSafeEvent(event));
+  }, []);
 
-    /*=====================================================
+  /*=====================================================
     Fit Current View
     =====================================================*/
 
-    const fitCurrentView =
-        useCallback(
-            () => {
-                const padding =
-                    Number.isFinite(
-                        Number(
-                            fitPadding
-                        )
-                    )
-                        ? Math.max(
-                            0,
+  const fitCurrentView = useCallback(() => {
+    const padding = Number.isFinite(Number(fitPadding))
+      ? Math.max(
+          0,
 
-                            Number(
-                                fitPadding
-                            )
-                        )
-                        : getResponsiveFitPadding(
-                            containerSize
-                                .width,
+          Number(fitPadding),
+        )
+      : getResponsiveFitPadding(
+          containerSize.width,
 
-                            containerSize
-                                .height
-                        );
-
-                fitDocumentToViewport(
-                    containerSize.width,
-                    containerSize.height,
-                    padding
-                );
-            },
-            [
-                fitPadding,
-                containerSize.width,
-                containerSize.height,
-                fitDocumentToViewport
-            ]
+          containerSize.height,
         );
 
-    /*=====================================================
+    fitDocumentToViewport(containerSize.width, containerSize.height, padding);
+  }, [
+    fitPadding,
+    containerSize.width,
+    containerSize.height,
+    fitDocumentToViewport,
+  ]);
+
+  /*=====================================================
     Keyboard Shortcuts
     =====================================================*/
 
-    useEffect(
-        () => {
-            const handleKeyDown =
-                event => {
-                    if (
-                        isEditableElement(
-                            event.target
-                        )
-                    ) {
-                        return;
-                    }
-
-                    if (
-                        !canvasHasKeyboardFocus()
-                    ) {
-                        return;
-                    }
-
-                    const key =
-                        event.key
-                            .toLowerCase();
-
-                    const commandKey =
-                        event.ctrlKey ||
-                        event.metaKey;
-
-                    if (
-                        event.code ===
-                        "Space"
-                    ) {
-                        event.preventDefault();
-
-                        if (
-                            !spacePressedRef
-                                .current
-                        ) {
-                            spacePressedRef.current =
-                                true;
-
-                            setIsSpacePressed(
-                                true
-                            );
-                        }
-
-                        return;
-                    }
-
-                    if (
-                        commandKey &&
-                        key ===
-                            "z"
-                    ) {
-                        event.preventDefault();
-
-                        if (
-                            event.shiftKey
-                        ) {
-                            redo();
-                        } else {
-                            undo();
-                        }
-
-                        return;
-                    }
-
-                    if (
-                        commandKey &&
-                        key ===
-                            "y"
-                    ) {
-                        event.preventDefault();
-
-                        redo();
-
-                        return;
-                    }
-
-                    if (
-                        commandKey &&
-                        key ===
-                            "a"
-                    ) {
-                        event.preventDefault();
-
-                        selectAllOnActiveLayer();
-
-                        return;
-                    }
-
-                    if (
-                        commandKey &&
-                        key ===
-                            "c"
-                    ) {
-                        event.preventDefault();
-
-                        copySelection();
-
-                        return;
-                    }
-
-                    if (
-                        commandKey &&
-                        key ===
-                            "x"
-                    ) {
-                        event.preventDefault();
-
-                        cutSelection();
-
-                        return;
-                    }
-
-                    if (
-                        commandKey &&
-                        key ===
-                            "v"
-                    ) {
-                        event.preventDefault();
-
-                        pasteClipboard();
-
-                        return;
-                    }
-
-                    if (
-                        commandKey &&
-                        key ===
-                            "s"
-                    ) {
-                        event.preventDefault();
-
-                        onSaveRequestedRef
-                            .current
-                            ?.(
-                                useFashionEditorStore
-                                    .getState()
-                                    .getProjectData()
-                            );
-
-                        return;
-                    }
-
-                    if (
-                        key ===
-                            "delete" ||
-                        key ===
-                            "backspace"
-                    ) {
-                        event.preventDefault();
-
-                        deleteObjects();
-
-                        return;
-                    }
-
-                    if (
-                        key ===
-                        "escape"
-                    ) {
-                        event.preventDefault();
-
-                        if (
-                            activeTool ===
-                            EDITOR_TOOLS.PATTERN_MASK
-                        ) {
-                            managerRef.current
-                                ?.handleKeyDown(
-                                    event
-                                );
-
-                            updateTemporaryObject(
-                                null
-                            );
-
-                            return;
-                        }
-
-                        if (
-                            managerRef.current
-                                ?.isInteracting()
-                        ) {
-                            managerRef.current
-                                .cancelInteraction(
-                                    "escape-key"
-                                );
-
-                            updateTemporaryObject(
-                                null
-                            );
-                        } else {
-                            clearSelection();
-                        }
-
-                        return;
-                    }
-
-                    if (
-                        activeTool ===
-                            EDITOR_TOOLS.SELECT &&
-                        (
-                            key ===
-                                "arrowleft" ||
-                            key ===
-                                "arrowright" ||
-                            key ===
-                                "arrowup" ||
-                            key ===
-                                "arrowdown"
-                        )
-                    ) {
-                        event.preventDefault();
-
-                        const distance =
-                            event.shiftKey
-                                ? 10
-                                : 1;
-
-                        if (
-                            key ===
-                            "arrowleft"
-                        ) {
-                            nudgeSelection(
-                                -distance,
-                                0
-                            );
-                        }
-
-                        if (
-                            key ===
-                            "arrowright"
-                        ) {
-                            nudgeSelection(
-                                distance,
-                                0
-                            );
-                        }
-
-                        if (
-                            key ===
-                            "arrowup"
-                        ) {
-                            nudgeSelection(
-                                0,
-                                -distance
-                            );
-                        }
-
-                        if (
-                            key ===
-                            "arrowdown"
-                        ) {
-                            nudgeSelection(
-                                0,
-                                distance
-                            );
-                        }
-
-                        return;
-                    }
-
-                    if (
-                        key === "p" &&
-                        !commandKey
-                    ) {
-                        event.preventDefault();
-
-                        setActiveTool(
-                            EDITOR_TOOLS.PENCIL
-                        );
-
-                        return;
-                    }
-
-                    if (
-                        key === "b" &&
-                        !commandKey
-                    ) {
-                        event.preventDefault();
-
-                        setActiveTool(
-                            EDITOR_TOOLS.BRUSH
-                        );
-
-                        return;
-                    }
-
-                    if (
-                        key === "l" &&
-                        !commandKey
-                    ) {
-                        event.preventDefault();
-
-                        setActiveTool(
-                            EDITOR_TOOLS.LINE
-                        );
-
-                        return;
-                    }
-
-                    if (
-                        key === "s" &&
-                        !commandKey
-                    ) {
-                        event.preventDefault();
-
-                        setActiveTool(
-                            EDITOR_TOOLS.SHAPE
-                        );
-
-                        return;
-                    }
-
-                    if (
-                        key === "f" &&
-                        !commandKey
-                    ) {
-                        event.preventDefault();
-
-                        setActiveTool(
-                            EDITOR_TOOLS.FILL
-                        );
-
-                        return;
-                    }
-
-                    if (
-                        key === "t" &&
-                        !commandKey
-                    ) {
-                        event.preventDefault();
-
-                        setActiveTool(
-                            EDITOR_TOOLS.TEXT
-                        );
-
-                        return;
-                    }
-
-                    if (
-                        key === "i" &&
-                        !commandKey
-                    ) {
-                        event.preventDefault();
-
-                        setActiveTool(
-                            EDITOR_TOOLS.IMAGE
-                        );
-
-                        return;
-                    }
-
-                    if (
-                        key === "r" &&
-                        !commandKey
-                    ) {
-                        event.preventDefault();
-
-                        setActiveTool(
-                            EDITOR_TOOLS.PATTERN
-                        );
-
-                        return;
-                    }
-
-                    if (
-                        key === "m" &&
-                        !commandKey
-                    ) {
-                        event.preventDefault();
-
-                        setActiveTool(
-                            EDITOR_TOOLS.PATTERN_MASK
-                        );
-
-                        return;
-                    }
-
-                    if (
-                        key === "v" &&
-                        !commandKey
-                    ) {
-                        event.preventDefault();
-
-                        setActiveTool(
-                            EDITOR_TOOLS.SELECT
-                        );
-
-                        return;
-                    }
-
-                    if (
-                        key === "e" &&
-                        !commandKey
-                    ) {
-                        event.preventDefault();
-
-                        setActiveTool(
-                            EDITOR_TOOLS.ERASER
-                        );
-
-                        return;
-                    }
-
-                    if (
-                        key === "h" &&
-                        !commandKey
-                    ) {
-                        event.preventDefault();
-
-                        setActiveTool(
-                            EDITOR_TOOLS.PAN
-                        );
-
-                        return;
-                    }
-
-                    if (
-                        key === "+" ||
-                        key === "="
-                    ) {
-                        event.preventDefault();
-
-                        const state =
-                            useFashionEditorStore
-                                .getState();
-
-                        setZoom(
-                            state.viewport
-                                .zoom *
-                            1.15
-                        );
-
-                        return;
-                    }
-
-                    if (
-                        key === "-" ||
-                        key === "_"
-                    ) {
-                        event.preventDefault();
-
-                        const state =
-                            useFashionEditorStore
-                                .getState();
-
-                        setZoom(
-                            state.viewport
-                                .zoom /
-                            1.15
-                        );
-
-                        return;
-                    }
-
-                    if (
-                        key === "0"
-                    ) {
-                        event.preventDefault();
-
-                        fitCurrentView();
-
-                        return;
-                    }
-
-                    managerRef.current
-                        ?.handleKeyDown(
-                            event
-                        );
-                };
-
-            const handleKeyUp =
-                event => {
-                    if (
-                        event.code ===
-                        "Space"
-                    ) {
-                        spacePressedRef.current =
-                            false;
-
-                        setIsSpacePressed(
-                            false
-                        );
-                    }
-
-                    managerRef.current
-                        ?.handleKeyUp(
-                            event
-                        );
-                };
-
-            const handleWindowBlur =
-                () => {
-                    spacePressedRef.current =
-                        false;
-
-                    setIsSpacePressed(
-                        false
-                    );
-
-                    panSessionRef.current =
-                        null;
-
-                    setIsPanning(
-                        false
-                    );
-
-                    activeTouchPointersRef
-                        .current
-                        .clear();
-
-                    pinchGestureRef.current =
-                        null;
-
-                    touchGestureActiveRef.current =
-                        false;
-
-                    setIsTouchGesturing(
-                        false
-                    );
-
-                    if (
-                        managerRef.current
-                            ?.isInteracting()
-                    ) {
-                        managerRef.current
-                            .cancelInteraction(
-                                "window-blurred"
-                            );
-                    }
-
-                    updateTemporaryObject(
-                        null
-                    );
-                };
-
-            window.addEventListener(
-                "keydown",
-                handleKeyDown
-            );
-
-            window.addEventListener(
-                "keyup",
-                handleKeyUp
-            );
-
-            window.addEventListener(
-                "blur",
-                handleWindowBlur
-            );
-
-            return () => {
-                window.removeEventListener(
-                    "keydown",
-                    handleKeyDown
-                );
-
-                window.removeEventListener(
-                    "keyup",
-                    handleKeyUp
-                );
-
-                window.removeEventListener(
-                    "blur",
-                    handleWindowBlur
-                );
-            };
-        },
-        [
-            activeTool,
-            undo,
-            redo,
-            deleteObjects,
-            clearSelection,
-            selectAllOnActiveLayer,
-            copySelection,
-            cutSelection,
-            pasteClipboard,
-            nudgeSelection,
-            setActiveTool,
-            setZoom,
-            fitCurrentView,
-            canvasHasKeyboardFocus,
-            updateTemporaryObject
-        ]
-    );
-
-    /*=====================================================
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (isEditableElement(event.target)) {
+        return;
+      }
+
+      if (!canvasHasKeyboardFocus()) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+
+      const commandKey = event.ctrlKey || event.metaKey;
+
+      if (event.code === "Space") {
+        event.preventDefault();
+
+        if (!spacePressedRef.current) {
+          spacePressedRef.current = true;
+
+          setIsSpacePressed(true);
+        }
+
+        return;
+      }
+
+      if (commandKey && key === "z") {
+        event.preventDefault();
+
+        if (event.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+
+        return;
+      }
+
+      if (commandKey && key === "y") {
+        event.preventDefault();
+
+        redo();
+
+        return;
+      }
+
+      if (commandKey && key === "a") {
+        event.preventDefault();
+
+        selectAllOnActiveLayer();
+
+        return;
+      }
+
+      if (commandKey && key === "c") {
+        event.preventDefault();
+
+        copySelection();
+
+        return;
+      }
+
+      if (commandKey && key === "x") {
+        event.preventDefault();
+
+        cutSelection();
+
+        return;
+      }
+
+      if (commandKey && key === "v") {
+        event.preventDefault();
+
+        pasteClipboard();
+
+        return;
+      }
+
+      if (commandKey && key === "s") {
+        event.preventDefault();
+
+        onSaveRequestedRef.current?.(
+          useFashionEditorStore.getState().getProjectData(),
+        );
+
+        return;
+      }
+
+      if (key === "delete" || key === "backspace") {
+        event.preventDefault();
+
+        deleteObjects();
+
+        return;
+      }
+
+      if (key === "escape") {
+        event.preventDefault();
+
+        if (activeTool === EDITOR_TOOLS.PATTERN_MASK) {
+          managerRef.current?.handleKeyDown(event);
+
+          updateTemporaryObject(null);
+
+          return;
+        }
+
+        if (managerRef.current?.isInteracting()) {
+          managerRef.current.cancelInteraction("escape-key");
+
+          updateTemporaryObject(null);
+        } else {
+          clearSelection();
+        }
+
+        return;
+      }
+
+      if (
+        activeTool === EDITOR_TOOLS.SELECT &&
+        (key === "arrowleft" ||
+          key === "arrowright" ||
+          key === "arrowup" ||
+          key === "arrowdown")
+      ) {
+        event.preventDefault();
+
+        const distance = event.shiftKey ? 10 : 1;
+
+        if (key === "arrowleft") {
+          nudgeSelection(-distance, 0);
+        }
+
+        if (key === "arrowright") {
+          nudgeSelection(distance, 0);
+        }
+
+        if (key === "arrowup") {
+          nudgeSelection(0, -distance);
+        }
+
+        if (key === "arrowdown") {
+          nudgeSelection(0, distance);
+        }
+
+        return;
+      }
+
+      if (key === "p" && !commandKey) {
+        event.preventDefault();
+
+        setActiveTool(EDITOR_TOOLS.PENCIL);
+
+        return;
+      }
+
+      if (key === "b" && !commandKey) {
+        event.preventDefault();
+
+        setActiveTool(EDITOR_TOOLS.BRUSH);
+
+        return;
+      }
+
+      if (key === "l" && !commandKey) {
+        event.preventDefault();
+
+        setActiveTool(EDITOR_TOOLS.LINE);
+
+        return;
+      }
+
+      if (key === "s" && !commandKey) {
+        event.preventDefault();
+
+        setActiveTool(EDITOR_TOOLS.SHAPE);
+
+        return;
+      }
+
+      if (key === "f" && !commandKey) {
+        event.preventDefault();
+
+        setActiveTool(EDITOR_TOOLS.FILL);
+
+        return;
+      }
+
+      if (key === "t" && !commandKey) {
+        event.preventDefault();
+
+        setActiveTool(EDITOR_TOOLS.TEXT);
+
+        return;
+      }
+
+      if (key === "i" && !commandKey) {
+        event.preventDefault();
+
+        setActiveTool(EDITOR_TOOLS.IMAGE);
+
+        return;
+      }
+
+      if (key === "r" && !commandKey) {
+        event.preventDefault();
+
+        setActiveTool(EDITOR_TOOLS.PATTERN);
+
+        return;
+      }
+
+      if (key === "m" && !commandKey) {
+        event.preventDefault();
+
+        setActiveTool(EDITOR_TOOLS.PATTERN_MASK);
+
+        return;
+      }
+
+      if (key === "v" && !commandKey) {
+        event.preventDefault();
+
+        setActiveTool(EDITOR_TOOLS.SELECT);
+
+        return;
+      }
+
+      if (key === "e" && !commandKey) {
+        event.preventDefault();
+
+        setActiveTool(EDITOR_TOOLS.ERASER);
+
+        return;
+      }
+
+      if (key === "h" && !commandKey) {
+        event.preventDefault();
+
+        setActiveTool(EDITOR_TOOLS.PAN);
+
+        return;
+      }
+
+      if (key === "+" || key === "=") {
+        event.preventDefault();
+
+        const state = useFashionEditorStore.getState();
+
+        setZoom(state.viewport.zoom * 1.15);
+
+        return;
+      }
+
+      if (key === "-" || key === "_") {
+        event.preventDefault();
+
+        const state = useFashionEditorStore.getState();
+
+        setZoom(state.viewport.zoom / 1.15);
+
+        return;
+      }
+
+      if (key === "0") {
+        event.preventDefault();
+
+        fitCurrentView();
+
+        return;
+      }
+
+      managerRef.current?.handleKeyDown(event);
+    };
+
+    const handleKeyUp = (event) => {
+      if (event.code === "Space") {
+        spacePressedRef.current = false;
+
+        setIsSpacePressed(false);
+      }
+
+      managerRef.current?.handleKeyUp(event);
+    };
+
+    const handleWindowBlur = () => {
+      spacePressedRef.current = false;
+
+      setIsSpacePressed(false);
+
+      panSessionRef.current = null;
+
+      setIsPanning(false);
+
+      activeTouchPointersRef.current.clear();
+
+      pinchGestureRef.current = null;
+
+      touchGestureActiveRef.current = false;
+
+      setIsTouchGesturing(false);
+
+      if (managerRef.current?.isInteracting()) {
+        managerRef.current.cancelInteraction("window-blurred");
+      }
+
+      updateTemporaryObject(null);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    window.addEventListener("keyup", handleKeyUp);
+
+    window.addEventListener("blur", handleWindowBlur);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+
+      window.removeEventListener("keyup", handleKeyUp);
+
+      window.removeEventListener("blur", handleWindowBlur);
+    };
+  }, [
+    activeTool,
+    undo,
+    redo,
+    deleteObjects,
+    clearSelection,
+    selectAllOnActiveLayer,
+    copySelection,
+    cutSelection,
+    pasteClipboard,
+    nudgeSelection,
+    setActiveTool,
+    setZoom,
+    fitCurrentView,
+    canvasHasKeyboardFocus,
+    updateTemporaryObject,
+  ]);
+
+  /*=====================================================
     Temporary Layer
     =====================================================*/
 
-    const temporaryLayer =
-        useMemo(
-            () => ({
-                id:
-                    TEMPORARY_LAYER_ID,
+  const temporaryLayer = useMemo(
+    () => ({
+      id: TEMPORARY_LAYER_ID,
 
-                name:
-                    "Temporary Drawing",
+      name: "Temporary Drawing",
 
-                visible:
-                    true,
+      visible: true,
 
-                locked:
-                    true,
+      locked: true,
 
-                opacity:
-                    activeLayer
-                        ?.opacity ??
-                    1,
+      opacity: activeLayer?.opacity ?? 1,
 
-                blendMode:
-                    activeLayer
-                        ?.blendMode ||
-                    "source-over",
+      blendMode: activeLayer?.blendMode || "source-over",
 
-                objectIds:
-                    temporaryObjects.map(
-                        object =>
-                            object.id
-                    )
-            }),
-            [
-                activeLayer,
-                temporaryObjects
-            ]
-        );
+      objectIds: temporaryObjects.map((object) => object.id),
+    }),
+    [activeLayer, temporaryObjects],
+  );
 
-    /*=====================================================
+  /*=====================================================
     Cursor
     =====================================================*/
 
-    const cursor =
-        useMemo(
-            () => {
-                if (
-                    isTouchGesturing
-                ) {
-                    return "grabbing";
-                }
+  const cursor = useMemo(() => {
+    if (isTouchGesturing) {
+      return "grabbing";
+    }
 
-                if (
-                    isPanning
-                ) {
-                    return "grabbing";
-                }
+    if (isPanning) {
+      return "grabbing";
+    }
 
-                if (
-                    activeTool ===
-                        EDITOR_TOOLS.PAN ||
-                    isSpacePressed
-                ) {
-                    return "grab";
-                }
+    if (activeTool === EDITOR_TOOLS.PAN || isSpacePressed) {
+      return "grab";
+    }
 
-                const managerCursor =
-                    managerRef.current
-                        ?.getCursor
-                        ?.();
+    const managerCursor = managerRef.current?.getCursor?.();
 
-                if (
-                    managerCursor &&
-                    managerCursor !==
-                        "default"
-                ) {
-                    return managerCursor;
-                }
+    if (managerCursor && managerCursor !== "default") {
+      return managerCursor;
+    }
 
-                if (
-                    activeTool ===
-                    EDITOR_TOOLS.SELECT
-                ) {
-                    return "default";
-                }
+    if (activeTool === EDITOR_TOOLS.SELECT) {
+      return "default";
+    }
 
-                return (
-                    ui.canvasCursor ||
-                    "crosshair"
-                );
-            },
-            [
-                isTouchGesturing,
-                isPanning,
-                activeTool,
-                isSpacePressed,
-                ui.canvasCursor
-            ]
-        );
+    return ui.canvasCursor || "crosshair";
+  }, [
+    isTouchGesturing,
+    isPanning,
+    activeTool,
+    isSpacePressed,
+    ui.canvasCursor,
+  ]);
 
-    /*=====================================================
+  /*=====================================================
     Document Geometry
     =====================================================*/
 
-    const documentWidth =
-        Math.max(
-            1,
+  const documentWidth = Math.max(
+    1,
 
-            numberOr(
-                documentData.width,
-                1200
-            )
-        );
+    numberOr(documentData.width, 1200),
+  );
 
-    const documentHeight =
-        Math.max(
-            1,
+  const documentHeight = Math.max(
+    1,
 
-            numberOr(
-                documentData.height,
-                1600
-            )
-        );
+    numberOr(documentData.height, 1600),
+  );
 
-    const zoom =
-        Math.max(
-            0.0001,
+  const zoom = Math.max(
+    0.0001,
 
-            numberOr(
-                viewport.zoom,
-                1
-            )
-        );
+    numberOr(viewport.zoom, 1),
+  );
 
-    const viewportX =
-        numberOr(
-            viewport.x,
-            0
-        );
+  const viewportX = numberOr(viewport.x, 0);
 
-    const viewportY =
-        numberOr(
-            viewport.y,
-            0
-        );
+  const viewportY = numberOr(viewport.y, 0);
 
-    const borderWidth =
-        1 /
-        zoom;
+  const borderWidth = 1 / zoom;
 
-    const shadowBlur =
-        24 /
-        zoom;
+  const shadowBlur = 24 / zoom;
 
-    const shadowOffsetY =
-        8 /
-        zoom;
+  const shadowOffsetY = 8 / zoom;
 
-    const symmetryGuideLines =
-        useMemo(
-            () =>
-                getSymmetryGuideLines(
-                    symmetry,
-                    documentData
-                ),
-            [
-                symmetry,
-                documentData
-            ]
-        );
+  const symmetryGuideLines = useMemo(
+    () => getSymmetryGuideLines(symmetry, documentData),
+    [symmetry, documentData],
+  );
 
-    const transformerEnabled =
-        activeTool ===
-            EDITOR_TOOLS.SELECT &&
-        !isPanning &&
-        !isTouchGesturing &&
-        !editingTextObject;
+  const transformerEnabled =
+    activeTool === EDITOR_TOOLS.SELECT &&
+    !isPanning &&
+    !isTouchGesturing &&
+    !editingTextObject;
 
-    /*=====================================================
+  /*=====================================================
     Render
     =====================================================*/
 
-    return (
-        <div
-            ref={
-                containerRef
-            }
-            className={[
-                "relative h-full w-full overflow-hidden outline-none",
-                className
-            ]
-                .filter(Boolean)
-                .join(" ")}
-            style={{
-                minHeight:
-                    minimumHeight,
+  return (
+    <div
+      ref={containerRef}
+      className={[
+        "relative h-full w-full overflow-hidden outline-none",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      style={{
+        minHeight: minimumHeight,
 
-                background:
-                    workspaceColor,
+        background: workspaceColor,
 
-                touchAction:
-                    "none",
+        touchAction: "none",
 
-                overscrollBehavior:
-                    "none",
+        overscrollBehavior: "none",
 
-                userSelect:
-                    "none",
+        userSelect: "none",
 
-                WebkitUserSelect:
-                    "none",
+        WebkitUserSelect: "none",
 
-                WebkitTouchCallout:
-                    "none",
+        WebkitTouchCallout: "none",
 
-                cursor,
+        cursor,
 
-                ...style
-            }}
-            tabIndex={
-                0
-            }
-            role="application"
-            aria-label="Fashion design drawing canvas"
-            aria-keyshortcuts="V P B L S F T I R M E H Delete Control+Z Control+Y Control+S"
-            data-active-tool={
-                activeTool
-            }
-            data-symmetry-enabled={
-                symmetry?.enabled
-                    ? "true"
-                    : "false"
-            }
-            data-symmetry-mode={
-                symmetry?.mode ||
-                "vertical"
-            }
-            data-touch-gesture={
-                isTouchGesturing
-                    ? "true"
-                    : "false"
-            }
-        >
-            <Stage
-                ref={
-                    setStageNode
-                }
-                width={
-                    containerSize.width
-                }
-                height={
-                    containerSize.height
-                }
-                draggable={
-                    false
-                }
-                onPointerDown={
-                    handlePointerDown
-                }
-                onPointerMove={
-                    handlePointerMove
-                }
-                onPointerUp={
-                    handlePointerUp
-                }
-                onPointerCancel={
-                    handlePointerCancel
-                }
-                onPointerEnter={
-                    handlePointerEnter
-                }
-                onPointerLeave={
-                    handlePointerLeave
-                }
-                onClick={
-                    handleStageClick
-                }
-                onTap={
-                    handleStageClick
-                }
-                onWheel={
-                    handleWheel
-                }
-                onDblClick={
-                    handleDoubleClick
-                }
-                onDblTap={
-                    handleDoubleClick
-                }
-                onContextMenu={
-                    handleContextMenu
-                }
-            >
-                {/* Document background */}
+        ...style,
+      }}
+      tabIndex={0}
+      role="application"
+      aria-label="Fashion design drawing canvas"
+      aria-keyshortcuts="V P B L S F T I R M E H Delete Control+Z Control+Y Control+S"
+      data-active-tool={activeTool}
+      data-symmetry-enabled={symmetry?.enabled ? "true" : "false"}
+      data-symmetry-mode={symmetry?.mode || "vertical"}
+      data-touch-gesture={isTouchGesturing ? "true" : "false"}
+    >
+      <Stage
+        ref={setStageNode}
+        width={containerSize.width}
+        height={containerSize.height}
+        draggable={false}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onPointerEnter={handlePointerEnter}
+        onPointerLeave={handlePointerLeave}
+        onClick={handleStageClick}
+        onTap={handleStageClick}
+        onWheel={handleWheel}
+        onDblClick={handleDoubleClick}
+        onDblTap={handleDoubleClick}
+        onContextMenu={handleContextMenu}
+      >
+        {/* Document background */}
 
-                <Layer
-                    name="fashion-editor-background-layer"
-                    listening={
-                        false
-                    }
-                >
-                    <Group
-                        name="fashion-editor-background-group"
-                        x={
-                            viewportX
-                        }
-                        y={
-                            viewportY
-                        }
-                        scaleX={
-                            zoom
-                        }
-                        scaleY={
-                            zoom
-                        }
-                    >
-                        <Rect
-                            x={
-                                0
-                            }
-                            y={
-                                0
-                            }
-                            width={
-                                documentWidth
-                            }
-                            height={
-                                documentHeight
-                            }
-                            fill={
-                                documentData.background ||
-                                "#ffffff"
-                            }
-                            shadowColor="#0f172a"
-                            shadowOpacity={
-                                0.22
-                            }
-                            shadowBlur={
-                                shadowBlur
-                            }
-                            shadowOffsetX={
-                                0
-                            }
-                            shadowOffsetY={
-                                shadowOffsetY
-                            }
-                            listening={
-                                false
-                            }
-                            perfectDrawEnabled={
-                                false
-                            }
-                        />
+        <Layer name="fashion-editor-background-layer" listening={false}>
+          <Group
+            name="fashion-editor-background-group"
+            x={viewportX}
+            y={viewportY}
+            scaleX={zoom}
+            scaleY={zoom}
+          >
+            <Rect
+              x={0}
+              y={0}
+              width={documentWidth}
+              height={documentHeight}
+              fill={documentData.background || "#ffffff"}
+              shadowColor="#0f172a"
+              shadowOpacity={0.22}
+              shadowBlur={shadowBlur}
+              shadowOffsetX={0}
+              shadowOffsetY={shadowOffsetY}
+              listening={false}
+              perfectDrawEnabled={false}
+            />
 
-                        {ui.showGrid && (
-                            <DocumentGrid
-                                width={
-                                    documentWidth
-                                }
-                                height={
-                                    documentHeight
-                                }
-                                gridSize={
-                                    ui.gridSize
-                                }
-                                zoom={
-                                    zoom
-                                }
-                                color={
-                                    gridColor
-                                }
-                            />
-                        )}
-
-                        <Rect
-                            x={
-                                0
-                            }
-                            y={
-                                0
-                            }
-                            width={
-                                documentWidth
-                            }
-                            height={
-                                documentHeight
-                            }
-                            stroke="#94a3b8"
-                            strokeWidth={
-                                borderWidth
-                            }
-                            listening={
-                                false
-                            }
-                            perfectDrawEnabled={
-                                false
-                            }
-                        />
-                    </Group>
-                </Layer>
-
-                {/* Artwork */}
-
-                <Layer
-                    name="fashion-editor-artwork-layer"
-                >
-                    <Group
-                        name="fashion-editor-artwork-group"
-                        x={
-                            viewportX
-                        }
-                        y={
-                            viewportY
-                        }
-                        scaleX={
-                            zoom
-                        }
-                        scaleY={
-                            zoom
-                        }
-                    >
-                        <LayerRenderer
-                            document={
-                                documentData
-                            }
-                            clipToDocument={
-                                clipToDocument
-                            }
-                            listening={
-                                !isPanning &&
-                                !isTouchGesturing
-                            }
-                        />
-
-                        <SelectionTransformer
-                            stageRef={
-                                internalStageRef
-                            }
-                            enabled={
-                                transformerEnabled
-                            }
-                            resizeEnabled
-                            rotateEnabled
-                            keepRatio={
-                                false
-                            }
-                            flipEnabled={
-                                false
-                            }
-                        />
-                    </Group>
-                </Layer>
-
-                {/* Temporary previews and symmetry guides */}
-
-                <Layer
-                    name="fashion-editor-interaction-layer"
-                    listening={
-                        false
-                    }
-                >
-                    <Group
-                        name="fashion-editor-interaction-group"
-                        x={
-                            viewportX
-                        }
-                        y={
-                            viewportY
-                        }
-                        scaleX={
-                            zoom
-                        }
-                        scaleY={
-                            zoom
-                        }
-                        clipX={
-                            clipToDocument
-                                ? 0
-                                : undefined
-                        }
-                        clipY={
-                            clipToDocument
-                                ? 0
-                                : undefined
-                        }
-                        clipWidth={
-                            clipToDocument
-                                ? documentWidth
-                                : undefined
-                        }
-                        clipHeight={
-                            clipToDocument
-                                ? documentHeight
-                                : undefined
-                        }
-                    >
-                        {symmetryGuideLines.map(
-                            guide => (
-                                <Line
-                                    key={
-                                        guide.id
-                                    }
-                                    id={
-                                        guide.id
-                                    }
-                                    name="fashion-editor-symmetry-guide"
-                                    points={
-                                        guide.points
-                                    }
-                                    stroke={
-                                        guide.stroke
-                                    }
-                                    strokeWidth={
-                                        numberOr(
-                                            guide.strokeWidth,
-                                            1
-                                        ) /
-                                        zoom
-                                    }
-                                    opacity={
-                                        guide.opacity
-                                    }
-                                    dash={
-                                        Array.isArray(
-                                            guide.dash
-                                        )
-                                            ? guide.dash.map(
-                                                value =>
-                                                    numberOr(
-                                                        value,
-                                                        0
-                                                    ) /
-                                                    zoom
-                                            )
-                                            : undefined
-                                    }
-                                    listening={
-                                        false
-                                    }
-                                    perfectDrawEnabled={
-                                        false
-                                    }
-                                    shadowForStrokeEnabled={
-                                        false
-                                    }
-                                />
-                            )
-                        )}
-
-                        {temporaryObjects.map(
-                            (
-                                object,
-                                index
-                            ) => (
-                                <ObjectRenderer
-                                    key={
-                                        object.id ||
-                                        `temporary-object-${index}`
-                                    }
-                                    object={
-                                        object
-                                    }
-                                    layer={
-                                        temporaryLayer
-                                    }
-                                    listening={
-                                        false
-                                    }
-                                    transient
-                                />
-                            )
-                        )}
-                    </Group>
-                </Layer>
-            </Stage>
-
-            {editingTextObject && (
-                <TextEditOverlay
-                    key={
-                        editingTextObject.id
-                    }
-                    object={
-                        editingTextObject
-                    }
-                    stageRef={
-                        internalStageRef
-                    }
-                    open
-                    historyLabel="Edit text"
-                    autoFocus
-                    selectAllOnOpen={
-                        false
-                    }
-                    commitOnBlur
-                    allowEmpty
-                    onClose={
-                        mode => {
-                            closeTextEditor(
-                                mode,
-                                editingTextObject
-                            );
-                        }
-                    }
-                />
+            {ui.showGrid && (
+              <DocumentGrid
+                width={documentWidth}
+                height={documentHeight}
+                gridSize={ui.gridSize}
+                zoom={zoom}
+                color={gridColor}
+              />
             )}
 
-            {isTouchGesturing && (
-                <div className="pointer-events-none absolute left-1/2 top-3 z-20 -translate-x-1/2 rounded-full border border-slate-700 bg-slate-950/85 px-3 py-1.5 text-[10px] font-semibold text-slate-300 shadow-lg backdrop-blur">
-                    Pinch to zoom · move two fingers to pan
-                </div>
-            )}
+            <Rect
+              x={0}
+              y={0}
+              width={documentWidth}
+              height={documentHeight}
+              stroke="#94a3b8"
+              strokeWidth={borderWidth}
+              listening={false}
+              perfectDrawEnabled={false}
+            />
+          </Group>
+        </Layer>
+
+        {/* Artwork */}
+
+        <Layer name="fashion-editor-artwork-layer">
+          <Group
+            name="fashion-editor-artwork-group"
+            x={viewportX}
+            y={viewportY}
+            scaleX={zoom}
+            scaleY={zoom}
+          >
+            <LayerRenderer
+              document={documentData}
+              clipToDocument={clipToDocument}
+              listening={!isPanning && !isTouchGesturing}
+            />
+
+            <SelectionTransformer
+              stageRef={internalStageRef}
+              enabled={transformerEnabled}
+              resizeEnabled
+              rotateEnabled
+              keepRatio={false}
+              flipEnabled={false}
+            />
+          </Group>
+        </Layer>
+
+        {/* Temporary previews and symmetry guides */}
+
+        <Layer name="fashion-editor-interaction-layer" listening={false}>
+          <Group
+            name="fashion-editor-interaction-group"
+            x={viewportX}
+            y={viewportY}
+            scaleX={zoom}
+            scaleY={zoom}
+            clipX={clipToDocument ? 0 : undefined}
+            clipY={clipToDocument ? 0 : undefined}
+            clipWidth={clipToDocument ? documentWidth : undefined}
+            clipHeight={clipToDocument ? documentHeight : undefined}
+          >
+            {symmetryGuideLines.map((guide) => (
+              <Line
+                key={guide.id}
+                id={guide.id}
+                name="fashion-editor-symmetry-guide"
+                points={guide.points}
+                stroke={guide.stroke}
+                strokeWidth={numberOr(guide.strokeWidth, 1) / zoom}
+                opacity={guide.opacity}
+                dash={
+                  Array.isArray(guide.dash)
+                    ? guide.dash.map((value) => numberOr(value, 0) / zoom)
+                    : undefined
+                }
+                listening={false}
+                perfectDrawEnabled={false}
+                shadowForStrokeEnabled={false}
+              />
+            ))}
+
+            {temporaryObjects.map((object, index) => (
+              <ObjectRenderer
+                key={object.id || `temporary-object-${index}`}
+                object={object}
+                layer={temporaryLayer}
+                listening={false}
+                transient
+              />
+            ))}
+          </Group>
+        </Layer>
+      </Stage>
+
+      {editingTextObject && (
+        <TextEditOverlay
+          key={editingTextObject.id}
+          object={editingTextObject}
+          stageRef={internalStageRef}
+          open
+          historyLabel="Edit text"
+          autoFocus
+          selectAllOnOpen={false}
+          commitOnBlur
+          allowEmpty
+          onClose={(mode) => {
+            closeTextEditor(mode, editingTextObject);
+          }}
+        />
+      )}
+
+      {isTouchGesturing && (
+        <div className="pointer-events-none absolute left-1/2 top-3 z-20 -translate-x-1/2 rounded-full border border-slate-700 bg-slate-950/85 px-3 py-1.5 text-[10px] font-semibold text-slate-300 shadow-lg backdrop-blur">
+          Pinch to zoom · move two fingers to pan
         </div>
-    );
+      )}
+    </div>
+  );
 }
 
 /*=========================================================
 Export
 =========================================================*/
 
-const ForwardedEditorCanvas =
-    forwardRef(
-        EditorCanvas
-    );
+const ForwardedEditorCanvas = forwardRef(EditorCanvas);
 
-ForwardedEditorCanvas.displayName =
-    "EditorCanvas";
+ForwardedEditorCanvas.displayName = "EditorCanvas";
 
-export default memo(
-    ForwardedEditorCanvas
-);
+export default memo(ForwardedEditorCanvas);

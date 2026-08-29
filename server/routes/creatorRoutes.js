@@ -4,13 +4,14 @@
  * =========================================================
  * DesignByYou / FashionVision
  * Creator Routes
- * Version 5.1
+ * Version 5.2
  * =========================================================
  *
  * Creator routes are NOT ecommerce/marketplace routes.
  *
- * CURRENT CREATOR STUDIO ENDPOINTS
- * ---------------------------------------------------------
+ * =========================================================
+ * CREATOR STUDIO ENDPOINTS
+ * =========================================================
  *
  * GET
  * /api/v1/creators/studio/categories
@@ -34,14 +35,84 @@
  * PUT
  * /api/v1/creators/editor-projects/:projectId
  *
- * These routes manage Creator-owned editable Fashion Editor
- * project state stored in:
+ * POST
+ * /api/v1/creators/editor-projects/:projectId/share
+ *
+ * POST
+ * /api/v1/creators/showcase/:designId/remix
+ *
+ * =========================================================
+ * FASHION EDITOR / SHOWCASE FLOW
+ * =========================================================
+ *
+ * PRIVATE EDITOR PROJECT
+ *
+ * FashionEditor
+ *      ↓
+ * editor_projects
+ *
+ * Saving an editor project does NOT automatically publish
+ * it to the Creator Showcase.
+ *
+ * ---------------------------------------------------------
+ * SHARE TO SHOWCASE
+ * ---------------------------------------------------------
+ *
+ * POST
+ * /editor-projects/:projectId/share
+ *
+ * The authenticated Creator may publish an editor project
+ * that they own.
+ *
+ * The controller validates:
+ *
+ * editor_projects.owner_id
+ * =
+ * authenticated Creator ID
+ *
+ * A successful Fashion Editor publication uses:
+ *
+ * source_type        = fashion_editor
+ * editor_project_id  = project ID
+ * is_editable        = TRUE
+ * allow_remix        = Creator choice
+ *
+ * The full editable project state remains stored in:
+ *
+ * editor_projects.project_data
+ *
+ * The Showcase design stores the corresponding editable
+ * canvas state for presentation/compatibility.
+ *
+ * ---------------------------------------------------------
+ * REMIX / REDESIGN
+ * ---------------------------------------------------------
+ *
+ * POST
+ * /showcase/:designId/remix
+ *
+ * A remix:
+ *
+ * - requires a published/public Creator Showcase design
+ * - requires source_type = fashion_editor
+ * - requires is_editable = TRUE
+ * - requires allow_remix = TRUE
+ * - NEVER modifies the original project
+ * - NEVER changes ownership of the original
+ *
+ * Instead, the controller creates a completely new private:
  *
  * editor_projects
  *
- * Project ownership is enforced by:
+ * row owned by the authenticated Creator.
  *
- * editor_projects.owner_id = authenticated Creator user ID
+ * The new project records:
+ *
+ * source_project_id = source editor project ID
+ *
+ * The Creator can then open that new project in the
+ * Fashion Editor, redesign it, save it independently, and
+ * optionally publish their remix later.
  *
  * =========================================================
  * SECURITY MODEL
@@ -54,12 +125,16 @@
  *
  * Creator accounts do NOT require admin approval.
  *
- * Creator Studio uploads and Fashion Editor project
- * save/load operations are not sensitive financial actions,
- * so these routes do NOT use:
+ * Creator Studio uploads, Fashion Editor project CRUD,
+ * Showcase sharing, and remix creation are not sensitive
+ * financial actions.
+ *
+ * Therefore these routes do NOT use:
  *
  * - requireApprovedAccount
- * - payout/deposit middleware
+ * - payout middleware
+ * - withdrawal middleware
+ * - deposit middleware
  *
  * =========================================================
  * CATEGORY MODEL
@@ -72,7 +147,7 @@
  *
  * design_categories
  *
- * The upload sends:
+ * Creator Studio publishing sends:
  *
  * category_id
  *
@@ -89,7 +164,7 @@
  * GET
  * /api/v1/creator-showcase/discovery
  *
- * The Creator Studio upload then submits:
+ * Creator Studio publishing submits:
  *
  * showcase_term_ids
  *
@@ -105,7 +180,7 @@
  * design_showcase_terms
  *
  * =========================================================
- * UPLOAD MODEL
+ * NORMAL CREATOR STUDIO UPLOAD
  * =========================================================
  *
  * POST
@@ -126,20 +201,59 @@
  * tags
  * canvas_state
  *
+ * Normal Creator Studio uploads are not automatically
+ * editable/remixable Fashion Editor projects.
+ *
+ * They are stored conceptually as:
+ *
+ * source_type        = upload
+ * editor_project_id  = NULL
+ * is_editable        = FALSE
+ * allow_remix        = FALSE
+ *
  * IMPORTANT:
  *
  * style_category is retained for frontend/database
- * compatibility, but the controller derives the authoritative
- * stored style from the validated Showcase Style term.
+ * compatibility, but the controller derives the
+ * authoritative stored style from the validated Showcase
+ * Style term.
+ *
+ * =========================================================
+ * FASHION EDITOR SHARE MODEL
+ * =========================================================
+ *
+ * POST
+ * /api/v1/creators/editor-projects/:projectId/share
+ *
+ * Multipart:
+ *
+ * preview
+ * title
+ * description
+ * format
+ * category_id
+ * showcase_term_ids
+ * tags
+ * allow_remix
+ *
+ * The controller loads project_data from the authenticated
+ * Creator's editor_projects row.
+ *
+ * Browser supplied canvas data is therefore not trusted as
+ * the source of the editable Fashion Editor project.
+ *
+ * Sharing the same project again updates its existing
+ * Fashion Editor-backed Showcase design instead of creating
+ * duplicate published records.
  *
  * =========================================================
  * FASHION EDITOR PROJECT MODEL
  * =========================================================
  *
  * Fashion Editor projects are editable Creator-owned cloud
- * documents.
+ * documents stored in:
  *
- * They are separate from published Showcase assets.
+ * editor_projects
  *
  * Creating or saving an editor project does NOT:
  *
@@ -149,47 +263,35 @@
  * - create a booking
  * - expose pricing
  *
- * Current phase supports:
+ * Supported operations:
  *
  * - list projects
  * - create project
  * - load project
  * - update project
- *
- * Creator Showcase sharing is intentionally handled
- * separately because it must use the Creator Showcase
- * category/discovery model.
- *
- * There is currently NO:
- *
- * POST /editor-projects/:projectId/share
- *
- * and NO:
- *
- * POST /editor-projects/:projectId/remix
+ * - share project to Creator Showcase
+ * - remix an eligible Showcase design into a new project
  *
  * =========================================================
  * VISIBILITY
  * =========================================================
  *
- * New Creator Studio uploads are published to the Creator
- * Showcase as:
+ * Creator Studio Showcase assets are published as:
  *
  * is_public    = TRUE
  * is_published = TRUE
  *
- * This represents Showcase visibility only.
+ * These values mean Showcase visibility/readiness only.
  *
- * It does NOT mean:
+ * They do NOT mean:
  *
  * - sale
  * - ecommerce listing
  * - purchasable product
  * - licensing offer
  *
- * Fashion Editor projects themselves remain private project
- * records until a separate Creator Showcase publishing flow
- * explicitly creates a Showcase asset.
+ * Fashion Editor projects themselves remain private until
+ * explicitly shared to the Showcase.
  *
  * =========================================================
  * UPLOAD MIDDLEWARE
@@ -203,6 +305,14 @@
  *
  * uploadPreview.single("preview")
  *
+ * Used by:
+ *
+ * POST /studio/upload
+ *
+ * and:
+ *
+ * POST /editor-projects/:projectId/share
+ *
  * Expected protections include:
  *
  * - image-only
@@ -210,8 +320,8 @@
  * - max configured upload size
  * - Cloudinary-backed storage
  *
- * Fashion Editor project CRUD uses JSON requests and does
- * not use upload middleware.
+ * Fashion Editor CRUD and remix creation use JSON requests
+ * and do not require upload middleware.
  *
  * =========================================================
  * IMPORTANT
@@ -222,6 +332,9 @@
  * /marketplace/upload
  *
  * route.
+ *
+ * Creator Showcase remains a creative discovery/showcase
+ * system, not an ecommerce system.
  *
  * =========================================================
  */
@@ -286,6 +399,8 @@ Creator Studio Asset Upload
 POST
 /api/v1/creators/studio/upload
 
+Normal Creator Studio upload.
+
 Multipart:
 
 preview
@@ -314,6 +429,9 @@ showcase_discovery_terms
 and stores the relationships in:
 
 design_showcase_terms
+
+Normal Studio uploads are NOT Fashion Editor-backed
+remixable designs.
 =========================================================*/
 
 router.post(
@@ -336,14 +454,16 @@ GET
 Lists the authenticated Creator's private Fashion Editor
 projects.
 
+
 POST
 /api/v1/creators/editor-projects
 
 Creates a new Creator-owned editable Fashion Editor
 project.
 
-The project remains private editor state. It is not
-automatically published to the Showcase.
+The project remains private editor state.
+
+It is NOT automatically published to the Showcase.
 =========================================================*/
 
 router
@@ -362,6 +482,64 @@ router
       creatorController.createEditorProject,
     ),
   );
+
+/*=========================================================
+Creator Fashion Editor Showcase Sharing
+
+POST
+/api/v1/creators/editor-projects/:projectId/share
+
+Publishes an authenticated Creator-owned Fashion Editor
+project to the Creator Showcase.
+
+Multipart:
+
+preview
+title
+description
+format
+category_id
+showcase_term_ids
+tags
+allow_remix
+
+The controller verifies:
+
+editor_projects.id = :projectId
+
+AND
+
+editor_projects.owner_id
+=
+authenticated Creator ID
+
+The editable state is loaded from:
+
+editor_projects.project_data
+
+rather than trusting arbitrary browser project state.
+
+Published Fashion Editor designs use:
+
+source_type        = fashion_editor
+editor_project_id  = :projectId
+is_editable        = TRUE
+allow_remix        = submitted Creator preference
+
+Re-sharing the same editor project updates its existing
+Showcase item instead of creating a duplicate.
+=========================================================*/
+
+router.post(
+  "/editor-projects/:projectId/share",
+
+  uploadPreview.single("preview"),
+
+  requireHandler(
+    "creatorController.uploadCreatorStudioAsset",
+    creatorController.uploadCreatorStudioAsset,
+  ),
+);
 
 /*=========================================================
 Creator Fashion Editor Project
@@ -412,28 +590,57 @@ router
   );
 
 /*=========================================================
-Creator Fashion Editor Showcase Sharing
+Creator Showcase Fashion Editor Remix / Redesign
 
-NOT ENABLED YET
+POST
+/api/v1/creators/showcase/:designId/remix
+
+Creates a NEW private Fashion Editor project from an
+eligible Creator Showcase design.
+
+The source Showcase item must be:
+
+is_public    = TRUE
+is_published = TRUE
+source_type  = fashion_editor
+is_editable  = TRUE
+allow_remix  = TRUE
+
+The source Creator's:
+
+designs row
+editor_projects row
+project_data
+
+are NEVER modified.
+
+Instead a new editor_projects row is created with:
+
+owner_id = authenticated Creator
+
+source_project_id = source project's editor project ID
+
+The returned project can then be opened by the authenticated
+Creator in FashionEditor.jsx and edited independently.
+
+Optional JSON body:
+
+{
+  "title": "My Remix"
+}
+
+If title is omitted, the controller derives a Remix title
+from the source Showcase design.
 =========================================================*/
 
-/*
-Do NOT copy the old Designer routes here:
+router.post(
+  "/showcase/:designId/remix",
 
-POST /editor-projects/:projectId/share
-POST /editor-projects/:projectId/remix
-
-Creator Showcase publishing must use the Creator model:
-
-category_id
-showcase_term_ids
-format
-tags
-canvas_state
-preview
-
-instead of the old Designer Fashion Editor taxonomy.
-*/
+  requireHandler(
+    "creatorController.remixCreatorShowcaseDesign",
+    creatorController.remixCreatorShowcaseDesign,
+  ),
+);
 
 /*=========================================================
 Export

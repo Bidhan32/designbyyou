@@ -31,6 +31,7 @@ export const EDITOR_TOOLS = Object.freeze({
 
     LINE: "line",
     SHAPE: "shape",
+    CLOTHING: "clothing",
     FILL: "fill",
 
     TEXT: "text",

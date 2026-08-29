@@ -4,7 +4,7 @@
 =========================================================
 DesignByYou
 Creator Showcase Controller
-Version 5.0
+Version 5.1
 =========================================================
 
 PURPOSE
@@ -113,6 +113,39 @@ Designer-specific information is available only when the
 owner is actually a Designer.
 
 =========================================================
+CREATOR FASHION EDITOR REMIX MODEL
+=========================================================
+
+Creator-owned Showcase items may expose safe remix
+capability metadata:
+
+source_type
+is_editable
+allow_remix
+original_design_id
+can_remix
+
+A Showcase item is remixable through the Creator flow only
+when:
+
+owner_role = creator
+source_type = fashion_editor
+is_editable = TRUE
+allow_remix = TRUE
+
+Designer-owned Showcase items are never enabled for this
+Creator-only remix flow.
+
+The public Showcase API does NOT expose:
+
+editor_project_id
+project_data
+canvas_state
+
+The authenticated remix endpoint resolves the underlying
+Fashion Editor project internally from the public design ID.
+
+=========================================================
 SECURITY
 =========================================================
 
@@ -121,9 +154,22 @@ Showcase endpoints never expose:
 - email
 - canvas_state
 - raw editable source
+- editor_project_id
 - payment information
 - price
 - licensing information
+
+Safe Creator Fashion Editor capability metadata may be
+returned:
+
+- source_type
+- is_editable
+- allow_remix
+- original_design_id
+- can_remix
+
+Designer-owned Showcase items always return can_remix as
+FALSE through this Creator-only remix model.
 =========================================================
 */
 
@@ -519,6 +565,39 @@ exports.getShowcase = async (req, res) => {
 
           d.created_at,
 
+          d.source_type,
+
+          CASE
+            WHEN u.role = 'creator'
+              THEN COALESCE(d.is_editable, FALSE)
+
+            ELSE FALSE
+          END AS is_editable,
+
+          CASE
+            WHEN u.role = 'creator'
+              THEN COALESCE(d.allow_remix, FALSE)
+
+            ELSE FALSE
+          END AS allow_remix,
+
+          CASE
+            WHEN u.role = 'creator'
+              THEN d.original_design_id
+
+            ELSE NULL
+          END AS original_design_id,
+
+          CASE
+            WHEN u.role = 'creator'
+              AND d.source_type = 'fashion_editor'
+              AND COALESCE(d.is_editable, FALSE) = TRUE
+              AND COALESCE(d.allow_remix, FALSE) = TRUE
+              THEN TRUE
+
+            ELSE FALSE
+          END AS can_remix,
+
           dc.id AS category_id,
 
           dc.name AS category_name,
@@ -850,6 +929,10 @@ Returns one safe public Showcase item.
 Also returns active relational Showcase classifications.
 
 canvas_state is deliberately NOT returned.
+
+Safe Creator Fashion Editor capability metadata may be
+returned, but editor_project_id and project_data remain
+private.
 =========================================================*/
 
 exports.getShowcaseItem = async (req, res) => {
@@ -892,6 +975,39 @@ exports.getShowcaseItem = async (req, res) => {
               d.style_category,
 
               d.created_at,
+
+              d.source_type,
+
+              CASE
+                WHEN u.role = 'creator'
+                  THEN COALESCE(d.is_editable, FALSE)
+
+                ELSE FALSE
+              END AS is_editable,
+
+              CASE
+                WHEN u.role = 'creator'
+                  THEN COALESCE(d.allow_remix, FALSE)
+
+                ELSE FALSE
+              END AS allow_remix,
+
+              CASE
+                WHEN u.role = 'creator'
+                  THEN d.original_design_id
+
+                ELSE NULL
+              END AS original_design_id,
+
+              CASE
+                WHEN u.role = 'creator'
+                  AND d.source_type = 'fashion_editor'
+                  AND COALESCE(d.is_editable, FALSE) = TRUE
+                  AND COALESCE(d.allow_remix, FALSE) = TRUE
+                  THEN TRUE
+
+                ELSE FALSE
+              END AS can_remix,
 
               dc.id AS category_id,
 

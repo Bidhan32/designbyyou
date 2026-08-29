@@ -2,7 +2,7 @@
 =========================================================
 FashionVision Professional Editor
 Responsive Main Fashion Editor
-Version 3.1.0 — Creator Cloud Projects
+Version 3.7.0 — Creator Showcase Share
 =========================================================
 */
 
@@ -25,6 +25,23 @@ import ImageTool, {
   IMAGE_FILE_ACCEPT,
   loadImageAsset,
 } from "../tools/ImageTool";
+
+import ClothingTool from "../tools/ClothingTool";
+
+import {
+  CLOTHING_TEMPLATES,
+  CLOTHING_ARTWORK_DEFAULTS,
+  CLOTHING_ARTWORK_TYPES,
+  createClothingTemplateFile,
+  createClothingTemplatePreview,
+  createClothingTemplateMetadata,
+  getClothingTemplateColourRegions,
+  getClothingTemplateDefaultColours,
+  getClothingTemplateViews,
+  getClothingTemplateArtworkRegions,
+  isDualViewClothingTemplate,
+  normaliseClothingTemplateArtwork,
+} from "../templates/ClothingTemplates";
 
 import PatternTool, {
   PATTERN_FILE_ACCEPT,
@@ -74,6 +91,75 @@ const DEFAULT_COLOURS = Object.freeze([
   "#ec4899",
   "#78716c",
 ]);
+
+const CLOTHING_VIEW_LABELS = Object.freeze({
+  front: "Front",
+  back: "Back",
+  other: "Other",
+});
+
+const CLOTHING_GROUP_LABELS = Object.freeze({
+  body: "Body",
+  bodice: "Bodice",
+  skirt: "Skirt",
+  sleeves: "Sleeves",
+  collar: "Collars",
+  neckline: "Necklines",
+  hood: "Hood",
+  hem: "Hems",
+  cuffs: "Cuffs",
+  waist: "Waist",
+  legs: "Legs",
+  pockets: "Pockets",
+  panels: "Panels",
+  details: "Details",
+});
+
+const CLOTHING_ARTWORK_FIT_OPTIONS = Object.freeze([
+  {
+    value: "contain",
+    label: "Contain",
+  },
+  {
+    value: "cover",
+    label: "Cover",
+  },
+  {
+    value: "fill",
+    label: "Stretch",
+  },
+]);
+
+const CLOTHING_ARTWORK_TYPE_LABELS = Object.freeze({
+  [CLOTHING_ARTWORK_TYPES.IMAGE]: "Graphic",
+  [CLOTHING_ARTWORK_TYPES.PATTERN]: "Pattern",
+});
+
+const AI_FASHION_ENDPOINT = "/ai-fashion/render";
+
+const AI_FASHION_DEFAULT_STYLE =
+  "premium realistic fashion product photography";
+
+const AI_FASHION_DEFAULT_NOTES =
+  "Preserve the exact visible silhouette, proportions, colors, graphics, text, pattern placement and construction details from the supplied editor design.";
+
+const AI_FASHION_CLOTHING_NOTES =
+  "Treat the supplied garment board as a strict technical fashion reference. Preserve the exact garment silhouette, neckline, sleeve shape, hem, proportions, panel construction, colors, color blocking, graphics, logos, text and pattern placement. Do not redesign, simplify, replace or invent garment details. Only add realistic fabric texture, stitching, seams, folds, material depth, shadows and professional studio lighting.";
+
+const AI_FASHION_DUAL_VIEW_NOTES = [
+  "The supplied reference is one clean technical fashion board containing two separate views of the same garment.",
+  "LEFT SIDE IS THE FRONT VIEW. RIGHT SIDE IS THE BACK VIEW.",
+  "Generate one realistic product image containing BOTH views side by side in that same left-to-right order.",
+  "Preserve the front and back independently. Do not merge the two views and do not copy artwork from one side to the other.",
+  "Keep every front graphic, logo, text element, color block and pattern only where it appears on the front reference.",
+  "Keep every back graphic, logo, text element, color block and pattern only where it appears on the back reference.",
+  "Do not remove the back artwork. Do not replace either side's artwork with invented artwork.",
+  "Preserve the exact silhouette, neckline, sleeve shape, hem, proportions, panel construction, seam layout and colors of both views.",
+  "Only convert the flat fashion board into a believable manufactured garment by adding realistic fabric texture, stitching, seams, folds, material depth, shadows and professional studio lighting.",
+  "Faithfulness to the supplied front and back design is more important than creative reinterpretation.",
+].join(" ");
+
+const AI_FASHION_CAPTURE_MAX_DIMENSION = 1536;
 
 const LINE_STYLE_OPTIONS = Object.freeze([
   {
@@ -299,6 +385,46 @@ const CREATOR_EDITOR_ENDPOINT = "/creators/editor-projects";
 
 const CREATOR_EDITOR_ROUTE = "/creator/fashion-editor";
 
+const SHOWCASE_CATEGORIES_ENDPOINT = "/creators/studio/categories";
+
+const SHOWCASE_DISCOVERY_ENDPOINT = "/creator-showcase/discovery";
+
+const SHOWCASE_PREVIEW_MAX_BYTES = 5 * 1024 * 1024;
+
+const SHOWCASE_MAX_TITLE_LENGTH = 120;
+
+const SHOWCASE_MAX_DESCRIPTION_LENGTH = 3000;
+
+const SHOWCASE_MAX_TAG_LENGTH = 30;
+
+const SHOWCASE_MAX_TAGS = 12;
+
+const SHOWCASE_FORMAT_OPTIONS = Object.freeze([
+  {
+    value: "sketch",
+    label: "Fashion Sketch",
+  },
+  {
+    value: "3d_garment",
+    label: "3D Garment",
+  },
+  {
+    value: "tech_pack",
+    label: "Technical Design",
+  },
+]);
+
+const INITIAL_SHOWCASE_SHARE_FORM = Object.freeze({
+  title: "",
+  description: "",
+  format: "sketch",
+  category_id: "",
+  style_term_id: "",
+  garment_term_id: "",
+  occasion_term_ids: [],
+  allow_remix: true,
+});
+
 const TOOL_DEFINITIONS = Object.freeze([
   {
     id: EDITOR_TOOLS.SELECT,
@@ -347,6 +473,13 @@ const TOOL_DEFINITIONS = Object.freeze([
     label: "Shape",
     shortcut: "S",
     symbol: "S",
+    enabled: true,
+  },
+  {
+    id: EDITOR_TOOLS.CLOTHING,
+    label: "Clothing",
+    shortcut: "C",
+    symbol: "C",
     enabled: true,
   },
   {
@@ -658,6 +791,86 @@ function downloadDataUrl(filename, dataUrl) {
   anchor.remove();
 }
 
+function rasterizeImageSourceToPngDataUrl(
+  source,
+  {
+    maxDimension = AI_FASHION_CAPTURE_MAX_DIMENSION,
+    background = "#ffffff",
+  } = {},
+) {
+  const safeSource = typeof source === "string" ? source.trim() : "";
+
+  if (!safeSource) {
+    return Promise.reject(new Error("The garment reference image is empty."));
+  }
+
+  return new Promise((resolve, reject) => {
+    const image = new globalThis.Image();
+
+    image.decoding = "async";
+
+    image.onload = () => {
+      try {
+        const sourceWidth = Math.max(
+          1,
+          numberOr(image.naturalWidth || image.width, 1),
+        );
+
+        const sourceHeight = Math.max(
+          1,
+          numberOr(image.naturalHeight || image.height, 1),
+        );
+
+        const safeMaximum = Math.max(
+          256,
+          numberOr(maxDimension, AI_FASHION_CAPTURE_MAX_DIMENSION),
+        );
+
+        const scale = Math.min(
+          1,
+          safeMaximum / Math.max(sourceWidth, sourceHeight),
+        );
+
+        const outputWidth = Math.max(1, Math.round(sourceWidth * scale));
+
+        const outputHeight = Math.max(1, Math.round(sourceHeight * scale));
+
+        const canvas = globalThis.document.createElement("canvas");
+
+        canvas.width = outputWidth;
+        canvas.height = outputHeight;
+
+        const context = canvas.getContext("2d");
+
+        if (!context) {
+          throw new Error("The browser could not prepare the garment image.");
+        }
+
+        context.fillStyle = background;
+        context.fillRect(0, 0, outputWidth, outputHeight);
+
+        context.imageSmoothingEnabled = true;
+
+        if ("imageSmoothingQuality" in context) {
+          context.imageSmoothingQuality = "high";
+        }
+
+        context.drawImage(image, 0, 0, outputWidth, outputHeight);
+
+        resolve(canvas.toDataURL("image/png", 1));
+      } catch (error) {
+        reject(error);
+      }
+    };
+
+    image.onerror = () => {
+      reject(new Error("The garment reference image could not be prepared."));
+    };
+
+    image.src = safeSource;
+  });
+}
+
 function getApiErrorMessage(error, fallbackMessage) {
   if (
     error?.code === "ERR_CANCELED" ||
@@ -703,6 +916,184 @@ function isPositiveProjectId(value) {
   return /^[1-9]\d*$/.test(String(value || "").trim());
 }
 
+function cleanShowcaseText(value, fallback = "") {
+  const text = String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return text || fallback;
+}
+
+function normalizeShowcaseCategoriesResponse(response) {
+  const raw = Array.isArray(response?.data?.data)
+    ? response.data.data
+    : Array.isArray(response?.data?.categories)
+      ? response.data.categories
+      : [];
+
+  const result = [];
+
+  const seen = new Set();
+
+  for (const item of raw) {
+    const id = cleanShowcaseText(item?.id);
+
+    const name = cleanShowcaseText(item?.name);
+
+    if (!id || !name || seen.has(id)) {
+      continue;
+    }
+
+    seen.add(id);
+
+    result.push({
+      id,
+      name,
+      slug: cleanShowcaseText(item?.slug) || null,
+      description: cleanShowcaseText(item?.description) || null,
+      sort_order: Number.isFinite(Number(item?.sort_order))
+        ? Number(item.sort_order)
+        : 0,
+    });
+  }
+
+  return result;
+}
+
+function normalizeShowcaseDiscoveryTerm(item) {
+  if (!item || typeof item !== "object") {
+    return null;
+  }
+
+  const id = cleanShowcaseText(item.id);
+
+  const name = cleanShowcaseText(item.name);
+
+  if (!id || !name) {
+    return null;
+  }
+
+  return {
+    id,
+    name,
+    slug: cleanShowcaseText(item.slug) || null,
+    search_term: cleanShowcaseText(item.search_term, name),
+    emoji: cleanShowcaseText(item.emoji) || null,
+    description: cleanShowcaseText(item.description) || null,
+    sort_order: Number.isFinite(Number(item.sort_order))
+      ? Number(item.sort_order)
+      : 0,
+  };
+}
+
+function normalizeShowcaseDiscoveryArray(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const result = [];
+
+  const seen = new Set();
+
+  for (const item of value) {
+    const normalized = normalizeShowcaseDiscoveryTerm(item);
+
+    if (!normalized || seen.has(normalized.id)) {
+      continue;
+    }
+
+    seen.add(normalized.id);
+
+    result.push(normalized);
+  }
+
+  return result;
+}
+
+function normalizeShowcaseDiscoveryResponse(response) {
+  const data = response?.data?.data || {};
+
+  return {
+    styles: normalizeShowcaseDiscoveryArray(data.styles),
+    garments: normalizeShowcaseDiscoveryArray(data.garments),
+    occasions: normalizeShowcaseDiscoveryArray(data.occasions),
+  };
+}
+
+function normalizeShowcaseTag(value) {
+  return cleanShowcaseText(value)
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s_-]/gu, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^[-_]+|[-_]+$/g, "")
+    .slice(0, SHOWCASE_MAX_TAG_LENGTH);
+}
+
+function uniqueShowcaseTags(values) {
+  const result = [];
+
+  const seen = new Set();
+
+  for (const value of values) {
+    const tag = normalizeShowcaseTag(value);
+
+    if (!tag || seen.has(tag)) {
+      continue;
+    }
+
+    seen.add(tag);
+    result.push(tag);
+
+    if (result.length >= SHOWCASE_MAX_TAGS) {
+      break;
+    }
+  }
+
+  return result;
+}
+
+function createFileFromDataUrl(
+  dataUrl,
+  filename = "fashion-editor-showcase.png",
+) {
+  const source = String(dataUrl || "").trim();
+
+  const match = source.match(/^data:([^;,]+)(;base64)?,(.*)$/s);
+
+  if (!match) {
+    throw new Error("The Showcase preview is not a valid image.");
+  }
+
+  const mimeType = String(match[1] || "image/png").toLowerCase();
+
+  const encoded = match[3] || "";
+
+  let byteString;
+
+  try {
+    byteString = match[2] ? window.atob(encoded) : decodeURIComponent(encoded);
+  } catch {
+    throw new Error("The Showcase preview could not be decoded.");
+  }
+
+  const bytes = new Uint8Array(byteString.length);
+
+  for (let index = 0; index < byteString.length; index += 1) {
+    bytes[index] = byteString.charCodeAt(index);
+  }
+
+  const file = new File([bytes], filename, {
+    type: mimeType,
+  });
+
+  if (file.size <= 0) {
+    throw new Error("The Showcase preview is empty.");
+  }
+
+  return file;
+}
+
 function getFirstChild(node) {
   const children = node?.getChildren?.();
 
@@ -719,6 +1110,70 @@ function getFirstChild(node) {
   } catch {
     return null;
   }
+}
+
+function getClothingRegionView(region) {
+  const explicitView = String(region?.view || "")
+    .trim()
+    .toLowerCase();
+
+  if (explicitView === "front" || explicitView === "back") {
+    return explicitView;
+  }
+
+  const regionId = String(region?.id || "");
+
+  if (/^front[A-Z]/.test(regionId)) {
+    return "front";
+  }
+
+  if (/^back[A-Z]/.test(regionId)) {
+    return "back";
+  }
+
+  return "other";
+}
+
+function getPairedClothingRegionId(regionId, targetView) {
+  const id = String(regionId || "").trim();
+  const target = String(targetView || "")
+    .trim()
+    .toLowerCase();
+
+  if (!id || (target !== "front" && target !== "back")) {
+    return "";
+  }
+
+  if (/^front[A-Z]/.test(id)) {
+    const suffix = id.slice("front".length);
+
+    return target === "front" ? id : `back${suffix}`;
+  }
+
+  if (/^back[A-Z]/.test(id)) {
+    const suffix = id.slice("back".length);
+
+    return target === "back" ? id : `front${suffix}`;
+  }
+
+  return "";
+}
+
+function getClothingGroupLabel(groupId) {
+  const normalized = String(groupId || "")
+    .trim()
+    .toLowerCase();
+
+  if (!normalized) {
+    return "Regions";
+  }
+
+  return (
+    CLOTHING_GROUP_LABELS[normalized] ||
+    normalized
+      .replace(/[-_]+/g, " ")
+      .replace(/\b\w/g, (character) => character.toUpperCase())
+  );
 }
 
 /*=========================================================
@@ -1006,6 +1461,14 @@ function FashionEditor() {
     objectId: null,
   });
 
+  const clothingArtworkFileInputRef = useRef(null);
+
+  const clothingArtworkInputModeRef = useRef({
+    regionId: null,
+
+    type: CLOTHING_ARTWORK_TYPES.IMAGE,
+  });
+
   const patternFileInputRef = useRef(null);
 
   const patternInputModeRef = useRef({
@@ -1021,6 +1484,12 @@ function FashionEditor() {
   const projectLoadControllerRef = useRef(null);
 
   const projectSaveControllerRef = useRef(null);
+
+  const showcaseMetadataControllerRef = useRef(null);
+
+  const showcaseShareControllerRef = useRef(null);
+
+  const aiFashionControllerRef = useRef(null);
 
   const saveInFlightRef = useRef(false);
 
@@ -1267,7 +1736,24 @@ function FashionEditor() {
 
   const [exporting, setExporting] = useState(false);
 
+  const [aiFashionGenerating, setAiFashionGenerating] = useState(false);
+
+  const [aiFashionSaving, setAiFashionSaving] = useState(false);
+
+  const [aiFashionPreviewOpen, setAiFashionPreviewOpen] = useState(false);
+
+  const [aiFashionResult, setAiFashionResult] = useState(null);
+
+  const [aiFashionError, setAiFashionError] = useState("");
+
   const [imageImporting, setImageImporting] = useState(false);
+
+  const [clothingImporting, setClothingImporting] = useState(false);
+
+  const [clothingArtworkImporting, setClothingArtworkImporting] =
+    useState(false);
+
+  const [clothingArtworkRegionId, setClothingArtworkRegionId] = useState("");
 
   const [patternImporting, setPatternImporting] = useState(false);
 
@@ -1280,6 +1766,37 @@ function FashionEditor() {
   const [projectLoading, setProjectLoading] = useState(Boolean(routeProjectId));
 
   const [projectSaving, setProjectSaving] = useState(false);
+
+  const [showcaseShareOpen, setShowcaseShareOpen] = useState(false);
+
+  const [showcaseSharing, setShowcaseSharing] = useState(false);
+
+  const [showcaseUploadProgress, setShowcaseUploadProgress] = useState(0);
+
+  const [showcaseShareError, setShowcaseShareError] = useState("");
+
+  const [showcasePreviewDataUrl, setShowcasePreviewDataUrl] = useState("");
+
+  const [showcaseMetadataLoading, setShowcaseMetadataLoading] = useState(false);
+
+  const [showcaseMetadataError, setShowcaseMetadataError] = useState("");
+
+  const [showcaseCategories, setShowcaseCategories] = useState([]);
+
+  const [showcaseDiscovery, setShowcaseDiscovery] = useState({
+    styles: [],
+    garments: [],
+    occasions: [],
+  });
+
+  const [showcaseShareForm, setShowcaseShareForm] = useState(() => ({
+    ...INITIAL_SHOWCASE_SHARE_FORM,
+    occasion_term_ids: [],
+  }));
+
+  const [showcaseTags, setShowcaseTags] = useState([]);
+
+  const [showcaseTagInput, setShowcaseTagInput] = useState("");
 
   /*=====================================================
     Derived State
@@ -1358,6 +1875,267 @@ function FashionEditor() {
     (selectedImageObject?.imageSmoothingEnabled ??
       selectedImageObject?.style?.imageSmoothingEnabled ??
       true) !== false;
+
+  /*
+  =========================================================
+  Selected Clothing Template
+
+  Clothing templates are stored as normal IMAGE objects so
+  they keep all existing selection, transform, layer, save
+  and export behaviour.
+
+  New clothing objects are identified by their metadata once
+  colours are edited. Existing/default objects can also be
+  recognised by the built-in template filename.
+  =========================================================
+  */
+
+  const selectedClothingTemplate = useMemo(() => {
+    if (!selectedImageObject) {
+      return null;
+    }
+
+    const metadata =
+      selectedImageObject.metadata &&
+      typeof selectedImageObject.metadata === "object"
+        ? selectedImageObject.metadata
+        : {};
+
+    const explicitTemplateId = String(metadata.clothingTemplateId || "").trim();
+
+    if (explicitTemplateId) {
+      const explicitTemplate =
+        CLOTHING_TEMPLATES.find(
+          (template) => template.id === explicitTemplateId,
+        ) || null;
+
+      if (explicitTemplate) {
+        return explicitTemplate;
+      }
+    }
+
+    const fileName = String(
+      selectedImageObject.fileName || metadata.originalFileName || "",
+    )
+      .trim()
+      .toLowerCase();
+
+    if (!fileName) {
+      return null;
+    }
+
+    return (
+      CLOTHING_TEMPLATES.find(
+        (template) =>
+          String(template.fileName || "")
+            .trim()
+            .toLowerCase() === fileName,
+      ) || null
+    );
+  }, [selectedImageObject]);
+
+  const selectedClothingColourRegions = useMemo(
+    () =>
+      selectedClothingTemplate
+        ? getClothingTemplateColourRegions(selectedClothingTemplate)
+        : [],
+    [selectedClothingTemplate],
+  );
+
+  const selectedClothingColours = useMemo(() => {
+    if (!selectedClothingTemplate) {
+      return {};
+    }
+
+    const defaults = getClothingTemplateDefaultColours(
+      selectedClothingTemplate,
+    );
+
+    const storedColours =
+      selectedImageObject?.metadata?.clothingColours &&
+      typeof selectedImageObject.metadata.clothingColours === "object"
+        ? selectedImageObject.metadata.clothingColours
+        : {};
+
+    return {
+      ...defaults,
+      ...storedColours,
+    };
+  }, [selectedClothingTemplate, selectedImageObject]);
+
+  const selectedClothingEditable = Boolean(
+    selectedClothingTemplate?.editableColours === true &&
+    selectedClothingColourRegions.length > 0,
+  );
+
+  const selectedClothingViews = useMemo(
+    () =>
+      selectedClothingTemplate
+        ? getClothingTemplateViews(selectedClothingTemplate)
+        : [],
+    [selectedClothingTemplate],
+  );
+
+  const selectedClothingDualView = Boolean(
+    selectedClothingTemplate &&
+    isDualViewClothingTemplate(selectedClothingTemplate),
+  );
+
+  const selectedClothingRegionsByView = useMemo(() => {
+    const grouped = {
+      front: [],
+      back: [],
+      other: [],
+    };
+
+    selectedClothingColourRegions.forEach((region) => {
+      const view = getClothingRegionView(region);
+
+      grouped[view].push(region);
+    });
+
+    return grouped;
+  }, [selectedClothingColourRegions]);
+
+  const selectedClothingRegionGroups = useMemo(() => {
+    const groups = new Map();
+
+    selectedClothingColourRegions.forEach((region) => {
+      const groupId = String(region?.group || "")
+        .trim()
+        .toLowerCase();
+
+      if (!groupId) {
+        return;
+      }
+
+      if (!groups.has(groupId)) {
+        groups.set(groupId, []);
+      }
+
+      groups.get(groupId).push(region);
+    });
+
+    return [...groups.entries()]
+      .map(([id, regions]) => ({
+        id,
+        label: getClothingGroupLabel(id),
+        regions,
+      }))
+      .filter((group) => group.regions.length > 1);
+  }, [selectedClothingColourRegions]);
+
+  const selectedClothingPairedRegionCount = useMemo(() => {
+    const regionIds = new Set(
+      selectedClothingColourRegions.map((region) => region.id),
+    );
+
+    return selectedClothingColourRegions.filter((region) => {
+      if (getClothingRegionView(region) !== "front") {
+        return false;
+      }
+
+      const pairedId = getPairedClothingRegionId(region.id, "back");
+
+      return Boolean(pairedId && regionIds.has(pairedId));
+    }).length;
+  }, [selectedClothingColourRegions]);
+
+  const selectedClothingArtworkRegions = useMemo(
+    () =>
+      selectedClothingTemplate
+        ? getClothingTemplateArtworkRegions(selectedClothingTemplate)
+        : [],
+    [selectedClothingTemplate],
+  );
+
+  const selectedClothingArtworkEditable = Boolean(
+    selectedClothingTemplate?.editableArtwork === true &&
+    selectedClothingArtworkRegions.length > 0,
+  );
+
+  const selectedClothingArtwork = useMemo(() => {
+    if (!selectedClothingTemplate) {
+      return {};
+    }
+
+    const storedArtwork =
+      selectedImageObject?.metadata?.clothingArtwork &&
+      typeof selectedImageObject.metadata.clothingArtwork === "object" &&
+      !Array.isArray(selectedImageObject.metadata.clothingArtwork)
+        ? selectedImageObject.metadata.clothingArtwork
+        : {};
+
+    return normaliseClothingTemplateArtwork(
+      selectedClothingTemplate,
+      storedArtwork,
+    );
+  }, [selectedClothingTemplate, selectedImageObject]);
+
+  const selectedClothingArtworkRegionId = useMemo(() => {
+    const requested = String(clothingArtworkRegionId || "").trim();
+
+    if (
+      requested &&
+      selectedClothingArtworkRegions.some((region) => region.id === requested)
+    ) {
+      return requested;
+    }
+
+    return (
+      selectedClothingArtworkRegions.find(
+        (region) =>
+          getClothingRegionView(region) === "front" &&
+          ["body", "bodice", "skirt", "legs", "panels"].includes(
+            String(region.group || "")
+              .trim()
+              .toLowerCase(),
+          ),
+      )?.id ||
+      selectedClothingArtworkRegions.find(
+        (region) => getClothingRegionView(region) === "front",
+      )?.id ||
+      selectedClothingArtworkRegions[0]?.id ||
+      ""
+    );
+  }, [clothingArtworkRegionId, selectedClothingArtworkRegions]);
+
+  const selectedClothingArtworkRegion = useMemo(
+    () =>
+      selectedClothingArtworkRegions.find(
+        (region) => region.id === selectedClothingArtworkRegionId,
+      ) || null,
+    [selectedClothingArtworkRegions, selectedClothingArtworkRegionId],
+  );
+
+  const selectedClothingArtworkEntry = selectedClothingArtworkRegionId
+    ? selectedClothingArtwork[selectedClothingArtworkRegionId] || null
+    : null;
+
+  const selectedClothingArtworkPairedRegionId = useMemo(() => {
+    if (!selectedClothingArtworkRegion) {
+      return "";
+    }
+
+    const currentView = getClothingRegionView(selectedClothingArtworkRegion);
+
+    if (currentView !== "front" && currentView !== "back") {
+      return "";
+    }
+
+    const targetView = currentView === "front" ? "back" : "front";
+
+    const pairedId = getPairedClothingRegionId(
+      selectedClothingArtworkRegion.id,
+      targetView,
+    );
+
+    return selectedClothingArtworkRegions.some(
+      (region) => region.id === pairedId,
+    )
+      ? pairedId
+      : "";
+  }, [selectedClothingArtworkRegion, selectedClothingArtworkRegions]);
 
   const selectedPatternObject = useMemo(
     () =>
@@ -1592,6 +2370,72 @@ function FashionEditor() {
 
   const symmetryModeLabel = getSymmetryModeLabel(symmetry.mode);
 
+  const selectedShowcaseCategory = useMemo(
+    () =>
+      showcaseCategories.find(
+        (category) => category.id === showcaseShareForm.category_id,
+      ) || null,
+    [showcaseCategories, showcaseShareForm.category_id],
+  );
+
+  const selectedShowcaseStyle = useMemo(
+    () =>
+      showcaseDiscovery.styles.find(
+        (style) => style.id === showcaseShareForm.style_term_id,
+      ) || null,
+    [showcaseDiscovery.styles, showcaseShareForm.style_term_id],
+  );
+
+  const selectedShowcaseGarment = useMemo(
+    () =>
+      showcaseDiscovery.garments.find(
+        (garment) => garment.id === showcaseShareForm.garment_term_id,
+      ) || null,
+    [showcaseDiscovery.garments, showcaseShareForm.garment_term_id],
+  );
+
+  const selectedShowcaseOccasions = useMemo(() => {
+    const selectedIds = new Set(
+      Array.isArray(showcaseShareForm.occasion_term_ids)
+        ? showcaseShareForm.occasion_term_ids
+        : [],
+    );
+
+    return showcaseDiscovery.occasions.filter((occasion) =>
+      selectedIds.has(occasion.id),
+    );
+  }, [showcaseDiscovery.occasions, showcaseShareForm.occasion_term_ids]);
+
+  const selectedShowcaseTermIds = useMemo(() => {
+    const ids = [];
+
+    if (selectedShowcaseStyle?.id) {
+      ids.push(selectedShowcaseStyle.id);
+    }
+
+    if (selectedShowcaseGarment?.id) {
+      ids.push(selectedShowcaseGarment.id);
+    }
+
+    selectedShowcaseOccasions.forEach((occasion) => {
+      if (occasion?.id) {
+        ids.push(occasion.id);
+      }
+    });
+
+    return [...new Set(ids)];
+  }, [
+    selectedShowcaseStyle,
+    selectedShowcaseGarment,
+    selectedShowcaseOccasions,
+  ]);
+
+  const showcaseMetadataReady = Boolean(
+    showcaseCategories.length > 0 &&
+    showcaseDiscovery.styles.length > 0 &&
+    showcaseDiscovery.garments.length > 0,
+  );
+
   /*=====================================================
     Responsive UI Effects
     =====================================================*/
@@ -1659,6 +2503,8 @@ function FashionEditor() {
     return () => {
       projectLoadControllerRef.current?.abort();
       projectSaveControllerRef.current?.abort();
+      showcaseMetadataControllerRef.current?.abort();
+      showcaseShareControllerRef.current?.abort();
     };
   }, []);
 
@@ -2083,6 +2929,16 @@ function FashionEditor() {
   }, [routeProjectId, loadProject, fitCanvas, showToast]);
 
   /*=====================================================
+    AI Fashion Request Cleanup
+    =====================================================*/
+
+  useEffect(() => {
+    return () => {
+      aiFashionControllerRef.current?.abort();
+    };
+  }, []);
+
+  /*=====================================================
     PNG Export
     =====================================================*/
 
@@ -2220,6 +3076,821 @@ function FashionEditor() {
       setExporting(false);
     }
   }, [exporting, captureStagePngDataUrl, documentData.name, showToast]);
+
+  /*=====================================================
+    Share to Creator Showcase
+
+    Fashion Editor owns its own Showcase publishing flow.
+    It never routes through CreatorUpload.
+
+    Workflow:
+
+    1. Open the in-editor Share modal.
+    2. Load Creator Showcase classification metadata.
+    3. Save the private cloud project first.
+    4. Capture a rendered preview from the current editor.
+    5. POST directly to:
+       /creators/editor-projects/:projectId/share
+    6. Keep the Creator inside Fashion Editor.
+    =====================================================*/
+
+  const loadShowcaseMetadata = useCallback(async () => {
+    showcaseMetadataControllerRef.current?.abort();
+
+    const abortController = new AbortController();
+
+    showcaseMetadataControllerRef.current = abortController;
+
+    setShowcaseMetadataLoading(true);
+    setShowcaseMetadataError("");
+
+    try {
+      const [categoriesResponse, discoveryResponse] = await Promise.all([
+        API.get(SHOWCASE_CATEGORIES_ENDPOINT, {
+          signal: abortController.signal,
+        }),
+        API.get(SHOWCASE_DISCOVERY_ENDPOINT, {
+          signal: abortController.signal,
+        }),
+      ]);
+
+      const loadedCategories =
+        normalizeShowcaseCategoriesResponse(categoriesResponse);
+
+      const loadedDiscovery =
+        normalizeShowcaseDiscoveryResponse(discoveryResponse);
+
+      if (loadedCategories.length === 0) {
+        throw new Error(
+          "No active creative categories are currently available.",
+        );
+      }
+
+      if (
+        loadedDiscovery.styles.length === 0 ||
+        loadedDiscovery.garments.length === 0
+      ) {
+        throw new Error("Showcase discovery options are incomplete.");
+      }
+
+      setShowcaseCategories(loadedCategories);
+      setShowcaseDiscovery(loadedDiscovery);
+
+      setShowcaseShareForm((current) => {
+        const categoryStillExists = loadedCategories.some(
+          (category) => category.id === current.category_id,
+        );
+
+        const styleStillExists = loadedDiscovery.styles.some(
+          (style) => style.id === current.style_term_id,
+        );
+
+        const garmentStillExists = loadedDiscovery.garments.some(
+          (garment) => garment.id === current.garment_term_id,
+        );
+
+        const validOccasionIds = new Set(
+          loadedDiscovery.occasions.map((occasion) => occasion.id),
+        );
+
+        return {
+          ...current,
+          category_id: categoryStillExists ? current.category_id : "",
+          style_term_id: styleStillExists ? current.style_term_id : "",
+          garment_term_id: garmentStillExists ? current.garment_term_id : "",
+          occasion_term_ids: Array.isArray(current.occasion_term_ids)
+            ? current.occasion_term_ids.filter((id) => validOccasionIds.has(id))
+            : [],
+        };
+      });
+    } catch (error) {
+      const message = getApiErrorMessage(
+        error,
+        "Showcase classification options could not be loaded.",
+      );
+
+      if (!message) {
+        return;
+      }
+
+      setShowcaseCategories([]);
+      setShowcaseDiscovery({
+        styles: [],
+        garments: [],
+        occasions: [],
+      });
+      setShowcaseMetadataError(message);
+    } finally {
+      if (showcaseMetadataControllerRef.current === abortController) {
+        showcaseMetadataControllerRef.current = null;
+        setShowcaseMetadataLoading(false);
+      }
+    }
+  }, []);
+
+  const handleShowcaseFormChange = useCallback((field, value) => {
+    setShowcaseShareForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+
+    setShowcaseShareError("");
+  }, []);
+
+  const handleToggleShowcaseOccasion = useCallback((occasionId) => {
+    const safeId = String(occasionId || "").trim();
+
+    if (!safeId) {
+      return;
+    }
+
+    setShowcaseShareForm((current) => {
+      const currentIds = Array.isArray(current.occasion_term_ids)
+        ? current.occasion_term_ids
+        : [];
+
+      return {
+        ...current,
+        occasion_term_ids: currentIds.includes(safeId)
+          ? currentIds.filter((id) => id !== safeId)
+          : [...currentIds, safeId],
+      };
+    });
+
+    setShowcaseShareError("");
+  }, []);
+
+  const handleAddShowcaseTag = useCallback(() => {
+    const tag = normalizeShowcaseTag(showcaseTagInput);
+
+    if (!tag) {
+      setShowcaseTagInput("");
+      return;
+    }
+
+    if (showcaseTags.includes(tag)) {
+      setShowcaseTagInput("");
+      return;
+    }
+
+    if (showcaseTags.length >= SHOWCASE_MAX_TAGS) {
+      setShowcaseShareError(
+        `You can add up to ${SHOWCASE_MAX_TAGS} Showcase tags.`,
+      );
+      return;
+    }
+
+    setShowcaseTags((current) => uniqueShowcaseTags([...current, tag]));
+    setShowcaseTagInput("");
+    setShowcaseShareError("");
+  }, [showcaseTagInput, showcaseTags]);
+
+  const handleShowcaseTagKeyDown = useCallback(
+    (event) => {
+      if (event.key === "Enter" || event.key === ",") {
+        event.preventDefault();
+        handleAddShowcaseTag();
+        return;
+      }
+
+      if (
+        event.key === "Backspace" &&
+        !showcaseTagInput &&
+        showcaseTags.length > 0
+      ) {
+        setShowcaseTags((current) => current.slice(0, -1));
+      }
+    },
+    [handleAddShowcaseTag, showcaseTagInput, showcaseTags.length],
+  );
+
+  const captureShowcasePreviewAsset = useCallback(() => {
+    const largestDocumentDimension = Math.max(
+      1,
+      numberOr(documentData.width, 1),
+      numberOr(documentData.height, 1),
+    );
+
+    let pixelRatio = clamp(1536 / largestDocumentDimension, 0.1, 1);
+
+    let lastFile = null;
+
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const dataUrl = captureStagePngDataUrl({
+        pixelRatio,
+      });
+
+      const file = createFileFromDataUrl(
+        dataUrl,
+        `${createSafeFilename(showcaseShareForm.title || documentData.name)}-showcase.png`,
+      );
+
+      lastFile = file;
+
+      if (file.size <= SHOWCASE_PREVIEW_MAX_BYTES) {
+        return {
+          file,
+          dataUrl,
+        };
+      }
+
+      pixelRatio = Math.max(0.06, pixelRatio * 0.72);
+    }
+
+    throw new Error(
+      lastFile
+        ? `The Showcase preview is ${(lastFile.size / 1024 / 1024).toFixed(2)} MB. Reduce the canvas complexity and try again.`
+        : "The Showcase preview could not be prepared.",
+    );
+  }, [
+    captureStagePngDataUrl,
+    documentData.width,
+    documentData.height,
+    documentData.name,
+    showcaseShareForm.title,
+  ]);
+
+  const handleOpenShowcaseShare = useCallback(() => {
+    setMobileMenuOpen(false);
+
+    if (
+      showcaseSharing ||
+      projectLoading ||
+      projectSaving ||
+      saveInFlightRef.current
+    ) {
+      return;
+    }
+
+    if (objectCount <= 0) {
+      showToast(
+        "Add something to the canvas before sharing this design.",
+        "error",
+      );
+      return;
+    }
+
+    try {
+      const largestDocumentDimension = Math.max(
+        1,
+        numberOr(documentData.width, 1),
+        numberOr(documentData.height, 1),
+      );
+
+      const previewPixelRatio = clamp(960 / largestDocumentDimension, 0.08, 1);
+
+      const previewDataUrl = captureStagePngDataUrl({
+        pixelRatio: previewPixelRatio,
+      });
+
+      setShowcasePreviewDataUrl(previewDataUrl);
+    } catch (error) {
+      console.error(error);
+      setShowcasePreviewDataUrl("");
+    }
+
+    setShowcaseShareForm({
+      ...INITIAL_SHOWCASE_SHARE_FORM,
+      title: String(documentData.name || "Untitled Fashion Design")
+        .trim()
+        .slice(0, SHOWCASE_MAX_TITLE_LENGTH),
+      occasion_term_ids: [],
+      allow_remix: true,
+    });
+
+    setShowcaseTags([]);
+    setShowcaseTagInput("");
+    setShowcaseShareError("");
+    setShowcaseUploadProgress(0);
+    setShowcaseShareOpen(true);
+
+    void loadShowcaseMetadata();
+  }, [
+    showcaseSharing,
+    projectLoading,
+    projectSaving,
+    objectCount,
+    documentData.width,
+    documentData.height,
+    documentData.name,
+    captureStagePngDataUrl,
+    loadShowcaseMetadata,
+    showToast,
+  ]);
+
+  const handleCloseShowcaseShare = useCallback(() => {
+    if (showcaseSharing) {
+      return;
+    }
+
+    showcaseMetadataControllerRef.current?.abort();
+    showcaseMetadataControllerRef.current = null;
+
+    setShowcaseShareOpen(false);
+    setShowcaseShareError("");
+    setShowcaseUploadProgress(0);
+    setShowcaseMetadataLoading(false);
+    setShowcasePreviewDataUrl("");
+  }, [showcaseSharing]);
+
+  useEffect(() => {
+    if (!showcaseShareOpen) {
+      return undefined;
+    }
+
+    const handleEscape = (event) => {
+      if (event.key !== "Escape" || showcaseSharing) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      handleCloseShowcaseShare();
+    };
+
+    window.addEventListener("keydown", handleEscape, true);
+
+    return () => {
+      window.removeEventListener("keydown", handleEscape, true);
+    };
+  }, [showcaseShareOpen, showcaseSharing, handleCloseShowcaseShare]);
+
+  const handleShareToShowcase = useCallback(
+    async (event) => {
+      event?.preventDefault?.();
+
+      if (
+        showcaseSharing ||
+        projectLoading ||
+        projectSaving ||
+        saveInFlightRef.current
+      ) {
+        return;
+      }
+
+      setShowcaseShareError("");
+
+      if (objectCount <= 0) {
+        setShowcaseShareError(
+          "Add something to the canvas before sharing this design.",
+        );
+        return;
+      }
+
+      const title = cleanShowcaseText(showcaseShareForm.title);
+
+      if (title.length < 2) {
+        setShowcaseShareError("Title must contain at least 2 characters.");
+        return;
+      }
+
+      if (title.length > SHOWCASE_MAX_TITLE_LENGTH) {
+        setShowcaseShareError(
+          `Title must not exceed ${SHOWCASE_MAX_TITLE_LENGTH} characters.`,
+        );
+        return;
+      }
+
+      const description = String(showcaseShareForm.description || "").trim();
+
+      if (description.length < 10) {
+        setShowcaseShareError(
+          "Description must contain at least 10 characters.",
+        );
+        return;
+      }
+
+      if (description.length > SHOWCASE_MAX_DESCRIPTION_LENGTH) {
+        setShowcaseShareError(
+          `Description must not exceed ${SHOWCASE_MAX_DESCRIPTION_LENGTH} characters.`,
+        );
+        return;
+      }
+
+      if (showcaseMetadataLoading) {
+        setShowcaseShareError("Showcase options are still loading.");
+        return;
+      }
+
+      if (showcaseMetadataError || !showcaseMetadataReady) {
+        setShowcaseShareError(
+          showcaseMetadataError ||
+            "Showcase classification options are currently unavailable.",
+        );
+        return;
+      }
+
+      const categoryId = cleanShowcaseText(showcaseShareForm.category_id);
+
+      if (!categoryId || !selectedShowcaseCategory) {
+        setShowcaseShareError("Select a creative category.");
+        return;
+      }
+
+      if (!selectedShowcaseStyle) {
+        setShowcaseShareError("Select a Showcase style.");
+        return;
+      }
+
+      if (!selectedShowcaseGarment) {
+        setShowcaseShareError("Select a garment type.");
+        return;
+      }
+
+      if (selectedShowcaseTermIds.length < 2) {
+        setShowcaseShareError("Select a Showcase style and garment type.");
+        return;
+      }
+
+      const finalTags = uniqueShowcaseTags([...showcaseTags, showcaseTagInput]);
+
+      setShowcaseSharing(true);
+      setShowcaseUploadProgress(0);
+
+      try {
+        const savedRecord = await handleSaveProject(null, {
+          silent: true,
+        });
+
+        const savedProjectId = String(savedRecord?.id || "").trim();
+
+        if (!isPositiveProjectId(savedProjectId)) {
+          throw new Error(
+            "The Fashion Editor project could not be saved before sharing.",
+          );
+        }
+
+        const previewAsset = captureShowcasePreviewAsset();
+
+        if (!previewAsset?.file) {
+          throw new Error("The Showcase preview could not be prepared.");
+        }
+
+        setShowcasePreviewDataUrl(previewAsset.dataUrl);
+
+        const formData = new FormData();
+
+        formData.append("preview", previewAsset.file);
+        formData.append("title", title);
+        formData.append("description", description);
+        formData.append("style_category", selectedShowcaseStyle.name);
+        formData.append("format", showcaseShareForm.format || "sketch");
+        formData.append("category_id", categoryId);
+        formData.append(
+          "showcase_term_ids",
+          JSON.stringify(selectedShowcaseTermIds),
+        );
+        formData.append("tags", JSON.stringify(finalTags));
+        formData.append(
+          "allow_remix",
+          showcaseShareForm.allow_remix ? "true" : "false",
+        );
+
+        showcaseShareControllerRef.current?.abort();
+
+        const abortController = new AbortController();
+
+        showcaseShareControllerRef.current = abortController;
+
+        await API.post(
+          `${CREATOR_EDITOR_ENDPOINT}/${encodeURIComponent(savedProjectId)}/share`,
+          formData,
+          {
+            signal: abortController.signal,
+            onUploadProgress: (progressEvent) => {
+              const total = Number(progressEvent.total || 0);
+              const loaded = Number(progressEvent.loaded || 0);
+
+              if (total <= 0) {
+                return;
+              }
+
+              setShowcaseUploadProgress(
+                Math.min(100, Math.round((loaded / total) * 100)),
+              );
+            },
+          },
+        );
+
+        setShowcaseTags(finalTags);
+        setShowcaseTagInput("");
+        setShowcaseUploadProgress(100);
+        setShowcaseShareError("");
+        setShowcaseShareOpen(false);
+        setEditorError(null);
+
+        showToast("Design shared to the Creator Showcase.");
+      } catch (error) {
+        const message = getApiErrorMessage(
+          error,
+          "This Fashion Editor design could not be shared to the Showcase.",
+        );
+
+        if (!message) {
+          return;
+        }
+
+        console.error(error);
+        setShowcaseUploadProgress(0);
+        setShowcaseShareError(message);
+        showToast("Showcase share failed.", "error");
+      } finally {
+        showcaseShareControllerRef.current = null;
+        setShowcaseSharing(false);
+      }
+    },
+    [
+      showcaseSharing,
+      projectLoading,
+      projectSaving,
+      objectCount,
+      showcaseShareForm,
+      showcaseMetadataLoading,
+      showcaseMetadataError,
+      showcaseMetadataReady,
+      selectedShowcaseCategory,
+      selectedShowcaseStyle,
+      selectedShowcaseGarment,
+      selectedShowcaseTermIds,
+      showcaseTags,
+      showcaseTagInput,
+      handleSaveProject,
+      captureShowcasePreviewAsset,
+      showToast,
+    ],
+  );
+
+  /*=====================================================
+    AI Realistic Fashion Preview
+    =====================================================*/
+
+  const handleGenerateAiFashionPreview = useCallback(async () => {
+    setMobileMenuOpen(false);
+
+    if (aiFashionGenerating) {
+      setAiFashionPreviewOpen(true);
+      return;
+    }
+
+    if (objectCount <= 0) {
+      const message =
+        "Add a sketch, drawing, image or clothing template before generating an AI preview.";
+
+      setAiFashionPreviewOpen(true);
+      setAiFashionError(message);
+      showToast(message, "error");
+      return;
+    }
+
+    aiFashionControllerRef.current?.abort();
+
+    const abortController = new AbortController();
+
+    aiFashionControllerRef.current = abortController;
+
+    setAiFashionPreviewOpen(true);
+    setAiFashionGenerating(true);
+    setAiFashionError("");
+
+    try {
+      /*
+      =====================================================
+      AI input selection
+
+      When an editable clothing template is selected, do not
+      send the whole editor page. Regenerate the garment's
+      own clean SVG from its current colours + region artwork,
+      rasterize that board to PNG, and send it as the strict
+      AI reference. This keeps front + back together in one
+      paid generation while removing unrelated canvas space.
+
+      Freehand sketches, drawings and ordinary images continue
+      to use the clean stage capture fallback.
+      =====================================================
+      */
+
+      let imageDataUrl = "";
+
+      let inputMode = "canvas";
+
+      if (selectedClothingTemplate) {
+        const cleanClothingSource = createClothingTemplatePreview(
+          selectedClothingTemplate,
+          selectedClothingColours,
+          selectedClothingArtwork,
+        );
+
+        if (cleanClothingSource) {
+          imageDataUrl = await rasterizeImageSourceToPngDataUrl(
+            cleanClothingSource,
+            {
+              maxDimension: AI_FASHION_CAPTURE_MAX_DIMENSION,
+              background: "#ffffff",
+            },
+          );
+
+          inputMode = "clean-garment";
+        }
+      }
+
+      if (!imageDataUrl) {
+        const largestDocumentDimension = Math.max(
+          numberOr(documentData.width, 1),
+          numberOr(documentData.height, 1),
+        );
+
+        const capturePixelRatio = clamp(
+          AI_FASHION_CAPTURE_MAX_DIMENSION / largestDocumentDimension,
+          0.1,
+          1,
+        );
+
+        imageDataUrl = captureStagePngDataUrl({
+          pixelRatio: capturePixelRatio,
+        });
+      }
+
+      const garmentType =
+        selectedClothingTemplate?.label || "fashion garment or accessory";
+
+      const view = selectedClothingDualView ? "front-back" : "front";
+
+      const designNotes = selectedClothingDualView
+        ? AI_FASHION_DUAL_VIEW_NOTES
+        : selectedClothingTemplate
+          ? AI_FASHION_CLOTHING_NOTES
+          : AI_FASHION_DEFAULT_NOTES;
+
+      const response = await API.post(
+        AI_FASHION_ENDPOINT,
+        {
+          imageDataUrl,
+          garmentType,
+          material: "",
+          style: AI_FASHION_DEFAULT_STYLE,
+          designNotes,
+          view,
+          background: "studio",
+          preserveGraphics: true,
+          preserveText: true,
+          aspectRatio: "1:1",
+          outputFormat: "png",
+        },
+        {
+          signal: abortController.signal,
+          timeout: 90000,
+        },
+      );
+
+      const generatedData = response?.data?.data;
+
+      const generatedImageUrl = String(generatedData?.image?.url || "").trim();
+
+      if (!generatedImageUrl) {
+        throw new Error(
+          "The AI provider completed the request but did not return an image.",
+        );
+      }
+
+      setAiFashionResult({
+        requestId: generatedData?.requestId || null,
+        model: generatedData?.model || null,
+        imageUrl: generatedImageUrl,
+        width: numberOr(generatedData?.image?.width, null),
+        height: numberOr(generatedData?.image?.height, null),
+        garmentType: generatedData?.garmentType || garmentType,
+        view: generatedData?.view || view,
+        inputMode,
+      });
+
+      setAiFashionError("");
+      setEditorError(null);
+
+      showToast(
+        inputMode === "clean-garment"
+          ? "AI preview generated from the clean garment design."
+          : "AI realistic fashion preview generated.",
+      );
+    } catch (error) {
+      const message = getApiErrorMessage(
+        error,
+        "The AI fashion preview could not be generated.",
+      );
+
+      if (!message) {
+        return;
+      }
+
+      console.error(error);
+
+      setAiFashionError(message);
+      showToast(message, "error");
+    } finally {
+      if (aiFashionControllerRef.current === abortController) {
+        aiFashionControllerRef.current = null;
+      }
+
+      setAiFashionGenerating(false);
+    }
+  }, [
+    aiFashionGenerating,
+    objectCount,
+    documentData.width,
+    documentData.height,
+    captureStagePngDataUrl,
+    selectedClothingTemplate,
+    selectedClothingDualView,
+    selectedClothingColours,
+    selectedClothingArtwork,
+    showToast,
+  ]);
+
+  const handleOpenAiFashionImage = useCallback(() => {
+    const imageUrl = String(aiFashionResult?.imageUrl || "").trim();
+
+    if (!imageUrl) {
+      return;
+    }
+
+    window.open(imageUrl, "_blank", "noopener,noreferrer");
+  }, [aiFashionResult]);
+
+  const handleSaveAiFashionImage = useCallback(async () => {
+    const imageUrl = String(aiFashionResult?.imageUrl || "").trim();
+
+    if (!imageUrl || aiFashionSaving) {
+      return;
+    }
+
+    setAiFashionSaving(true);
+
+    try {
+      const response = await fetch(imageUrl, {
+        method: "GET",
+        mode: "cors",
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `The generated image could not be downloaded (${response.status}).`,
+        );
+      }
+
+      const blob = await response.blob();
+
+      const mimeType = String(blob.type || "").toLowerCase();
+
+      const extension = mimeType.includes("jpeg")
+        ? "jpg"
+        : mimeType.includes("webp")
+          ? "webp"
+          : "png";
+
+      const objectUrl = URL.createObjectURL(blob);
+
+      const anchor = globalThis.document.createElement("a");
+
+      anchor.href = objectUrl;
+
+      anchor.download = `${createSafeFilename(
+        documentData.name,
+      )}-ai-realistic-preview.${extension}`;
+
+      globalThis.document.body.appendChild(anchor);
+
+      anchor.click();
+      anchor.remove();
+
+      window.setTimeout(() => {
+        URL.revokeObjectURL(objectUrl);
+      }, 1000);
+
+      showToast("AI image saved to your device.");
+    } catch (error) {
+      console.error(error);
+
+      showToast(
+        "Direct download was blocked. Opening the full image so you can save it.",
+        "error",
+      );
+
+      window.open(imageUrl, "_blank", "noopener,noreferrer");
+    } finally {
+      setAiFashionSaving(false);
+    }
+  }, [aiFashionResult, aiFashionSaving, documentData.name, showToast]);
+
+  const handleOpenOrGenerateAiFashionPreview = useCallback(() => {
+    setMobileMenuOpen(false);
+    setAiFashionPreviewOpen(true);
+
+    if (aiFashionGenerating || aiFashionResult?.imageUrl) {
+      return;
+    }
+
+    void handleGenerateAiFashionPreview();
+  }, [aiFashionGenerating, aiFashionResult, handleGenerateAiFashionPreview]);
 
   /*=====================================================
     Layer Helpers
@@ -2839,6 +4510,797 @@ function FashionEditor() {
     },
     [updateObject, setActiveTool, setUiState, showToast],
   );
+
+  const handleChooseClothingTemplate = useCallback(
+    async (template) => {
+      if (
+        clothingImporting ||
+        !template ||
+        !activeLayer ||
+        activeLayer.locked ||
+        activeLayer.visible === false
+      ) {
+        return;
+      }
+
+      setClothingImporting(true);
+
+      try {
+        const file = createClothingTemplateFile(template);
+
+        const asset = await loadImageAsset(file);
+
+        await ClothingTool.queueAsset(asset);
+
+        setActiveTool(EDITOR_TOOLS.CLOTHING);
+
+        setUiState({
+          rightPanelTab: "properties",
+        });
+
+        showToast(
+          `${template.label} front + back ready. Click the canvas to place it.`,
+        );
+      } catch (error) {
+        console.error(error);
+
+        setEditorError(error);
+
+        showToast(
+          error?.message || "The clothing template could not be loaded.",
+          "error",
+        );
+      } finally {
+        setClothingImporting(false);
+      }
+    },
+    [clothingImporting, activeLayer, setActiveTool, setUiState, showToast],
+  );
+
+  /*
+  =========================================================
+  Selected Clothing Colour Editing
+  =========================================================
+  */
+
+  const applySelectedClothingColours = useCallback(
+    (requestedColours, label = "Change clothing colours") => {
+      if (
+        !selectedImageObject ||
+        selectedImageLocked ||
+        !selectedClothingTemplate ||
+        !selectedClothingEditable
+      ) {
+        return false;
+      }
+
+      const defaults = getClothingTemplateDefaultColours(
+        selectedClothingTemplate,
+      );
+
+      const requested =
+        requestedColours &&
+        typeof requestedColours === "object" &&
+        !Array.isArray(requestedColours)
+          ? requestedColours
+          : {};
+
+      /*
+      Persist only colour keys defined by the current template.
+      This also cleans legacy single-view keys when an older
+      project is edited with the dual-view templates.
+      */
+
+      const nextColours = selectedClothingColourRegions.reduce(
+        (result, region) => {
+          const regionId = region.id;
+
+          result[regionId] =
+            requested[regionId] ||
+            selectedClothingColours[regionId] ||
+            defaults[regionId] ||
+            "#ffffff";
+
+          return result;
+        },
+        {},
+      );
+
+      const nextDataUrl = createClothingTemplatePreview(
+        selectedClothingTemplate,
+        nextColours,
+        selectedClothingArtwork,
+      );
+
+      if (!nextDataUrl) {
+        showToast("The clothing colours could not be updated.", "error");
+
+        return false;
+      }
+
+      const clothingMetadata =
+        createClothingTemplateMetadata(
+          selectedClothingTemplate,
+          nextColours,
+          selectedClothingArtwork,
+        ) || {};
+
+      updateSelectedImage(
+        {
+          src: nextDataUrl,
+
+          source: nextDataUrl,
+
+          dataUrl: nextDataUrl,
+
+          imageSource: nextDataUrl,
+
+          fileName: selectedClothingTemplate.fileName,
+
+          mimeType: "image/svg+xml",
+
+          metadata: {
+            ...(selectedImageObject.metadata || {}),
+
+            ...clothingMetadata,
+
+            clothingColours: nextColours,
+
+            clothingDualView: selectedClothingTemplate.dualView === true,
+
+            clothingViews: selectedClothingViews,
+
+            clothingUpdatedAt: new Date().toISOString(),
+          },
+        },
+        label,
+      );
+
+      return true;
+    },
+    [
+      selectedImageObject,
+      selectedImageLocked,
+      selectedClothingTemplate,
+      selectedClothingEditable,
+      selectedClothingColourRegions,
+      selectedClothingColours,
+      selectedClothingViews,
+      selectedClothingArtwork,
+      updateSelectedImage,
+      showToast,
+    ],
+  );
+
+  const handleSelectedClothingColourChange = useCallback(
+    (regionId, colour) => {
+      if (
+        !selectedClothingEditable ||
+        typeof regionId !== "string" ||
+        !/^#[0-9a-f]{6}$/i.test(String(colour || ""))
+      ) {
+        return;
+      }
+
+      const region = selectedClothingColourRegions.find(
+        (item) => item.id === regionId,
+      );
+
+      if (!region) {
+        return;
+      }
+
+      const safeColour = String(colour).toLowerCase();
+
+      const changed = applySelectedClothingColours(
+        {
+          [regionId]: safeColour,
+        },
+        `Change ${region.label} colour`,
+      );
+
+      if (changed) {
+        setPrimaryColor(safeColour);
+      }
+    },
+    [
+      selectedClothingEditable,
+      selectedClothingColourRegions,
+      applySelectedClothingColours,
+      setPrimaryColor,
+    ],
+  );
+
+  const handleMatchSelectedClothingGroup = useCallback(
+    (groupId) => {
+      if (!selectedClothingEditable) {
+        return;
+      }
+
+      const normalizedGroupId = String(groupId || "")
+        .trim()
+        .toLowerCase();
+
+      const groupRegions = selectedClothingColourRegions.filter(
+        (region) =>
+          String(region?.group || "")
+            .trim()
+            .toLowerCase() === normalizedGroupId,
+      );
+
+      if (groupRegions.length < 2) {
+        return;
+      }
+
+      const sourceRegion =
+        groupRegions.find(
+          (region) => getClothingRegionView(region) === "front",
+        ) || groupRegions[0];
+
+      const sourceColour =
+        selectedClothingColours[sourceRegion.id] || "#ffffff";
+
+      const updates = groupRegions.reduce((result, region) => {
+        result[region.id] = sourceColour;
+
+        return result;
+      }, {});
+
+      applySelectedClothingColours(
+        updates,
+        `Match ${getClothingGroupLabel(normalizedGroupId)} colours`,
+      );
+    },
+    [
+      selectedClothingEditable,
+      selectedClothingColourRegions,
+      selectedClothingColours,
+      applySelectedClothingColours,
+    ],
+  );
+
+  const handleCopySelectedClothingView = useCallback(
+    (sourceView, targetView) => {
+      if (!selectedClothingEditable || sourceView === targetView) {
+        return;
+      }
+
+      const normalizedSource = String(sourceView || "")
+        .trim()
+        .toLowerCase();
+
+      const normalizedTarget = String(targetView || "")
+        .trim()
+        .toLowerCase();
+
+      if (
+        !["front", "back"].includes(normalizedSource) ||
+        !["front", "back"].includes(normalizedTarget)
+      ) {
+        return;
+      }
+
+      const regionIds = new Set(
+        selectedClothingColourRegions.map((region) => region.id),
+      );
+
+      const updates = {};
+
+      selectedClothingColourRegions.forEach((region) => {
+        if (getClothingRegionView(region) !== normalizedSource) {
+          return;
+        }
+
+        const pairedId = getPairedClothingRegionId(region.id, normalizedTarget);
+
+        if (!pairedId || !regionIds.has(pairedId)) {
+          return;
+        }
+
+        updates[pairedId] = selectedClothingColours[region.id] || "#ffffff";
+      });
+
+      if (Object.keys(updates).length === 0) {
+        showToast(
+          `No matching ${normalizedTarget} regions are available for this garment.`,
+          "error",
+        );
+
+        return;
+      }
+
+      applySelectedClothingColours(
+        updates,
+        `Copy ${CLOTHING_VIEW_LABELS[normalizedSource]} colours to ${CLOTHING_VIEW_LABELS[normalizedTarget]}`,
+      );
+    },
+    [
+      selectedClothingEditable,
+      selectedClothingColourRegions,
+      selectedClothingColours,
+      applySelectedClothingColours,
+      showToast,
+    ],
+  );
+
+  const handleApplyPrimaryToSelectedClothingView = useCallback(
+    (view) => {
+      if (!selectedClothingEditable) {
+        return;
+      }
+
+      const normalizedView = String(view || "")
+        .trim()
+        .toLowerCase();
+
+      if (!["front", "back"].includes(normalizedView)) {
+        return;
+      }
+
+      const viewRegions = selectedClothingColourRegions.filter(
+        (region) => getClothingRegionView(region) === normalizedView,
+      );
+
+      if (viewRegions.length === 0) {
+        return;
+      }
+
+      const primaryColour = /^#[0-9a-f]{6}$/i.test(
+        String(colours.primary || ""),
+      )
+        ? String(colours.primary).toLowerCase()
+        : "#111111";
+
+      const updates = viewRegions.reduce((result, region) => {
+        result[region.id] = primaryColour;
+
+        return result;
+      }, {});
+
+      applySelectedClothingColours(
+        updates,
+        `Apply primary colour to ${CLOTHING_VIEW_LABELS[normalizedView]}`,
+      );
+    },
+    [
+      selectedClothingEditable,
+      selectedClothingColourRegions,
+      colours.primary,
+      applySelectedClothingColours,
+    ],
+  );
+
+  const handleResetSelectedClothingColours = useCallback(() => {
+    if (!selectedClothingEditable || !selectedClothingTemplate) {
+      return;
+    }
+
+    applySelectedClothingColours(
+      getClothingTemplateDefaultColours(selectedClothingTemplate),
+      "Reset clothing colours",
+    );
+  }, [
+    selectedClothingEditable,
+    selectedClothingTemplate,
+    applySelectedClothingColours,
+  ]);
+
+  /*
+  =========================================================
+  Selected Clothing Region Artwork
+  =========================================================
+
+  Clothing artwork remains inside the garment IMAGE object.
+  The SVG template clips graphics and patterns to the chosen
+  construction region, so existing canvas transforms, cloud
+  persistence and PNG export continue to work normally.
+  =========================================================
+  */
+
+  const applySelectedClothingArtwork = useCallback(
+    (requestedArtwork, label = "Update garment artwork") => {
+      if (
+        !selectedImageObject ||
+        selectedImageLocked ||
+        !selectedClothingTemplate ||
+        !selectedClothingArtworkEditable
+      ) {
+        return false;
+      }
+
+      const nextArtwork = normaliseClothingTemplateArtwork(
+        selectedClothingTemplate,
+        requestedArtwork,
+      );
+
+      const nextDataUrl = createClothingTemplatePreview(
+        selectedClothingTemplate,
+        selectedClothingColours,
+        nextArtwork,
+      );
+
+      if (!nextDataUrl) {
+        showToast("The garment artwork could not be updated.", "error");
+
+        return false;
+      }
+
+      const clothingMetadata =
+        createClothingTemplateMetadata(
+          selectedClothingTemplate,
+          selectedClothingColours,
+          nextArtwork,
+        ) || {};
+
+      updateSelectedImage(
+        {
+          src: nextDataUrl,
+
+          source: nextDataUrl,
+
+          dataUrl: nextDataUrl,
+
+          imageSource: nextDataUrl,
+
+          fileName: selectedClothingTemplate.fileName,
+
+          mimeType: "image/svg+xml",
+
+          metadata: {
+            ...(selectedImageObject.metadata || {}),
+
+            ...clothingMetadata,
+
+            clothingColours: selectedClothingColours,
+
+            clothingArtwork: nextArtwork,
+
+            clothingDualView: selectedClothingTemplate.dualView === true,
+
+            clothingViews: selectedClothingViews,
+
+            clothingUpdatedAt: new Date().toISOString(),
+          },
+        },
+        label,
+      );
+
+      return true;
+    },
+    [
+      selectedImageObject,
+      selectedImageLocked,
+      selectedClothingTemplate,
+      selectedClothingArtworkEditable,
+      selectedClothingColours,
+      selectedClothingViews,
+      updateSelectedImage,
+      showToast,
+    ],
+  );
+
+  const handleChooseClothingArtwork = useCallback(
+    (type) => {
+      if (
+        !selectedClothingArtworkEditable ||
+        !selectedClothingArtworkRegionId ||
+        selectedImageLocked ||
+        clothingArtworkImporting
+      ) {
+        return;
+      }
+
+      const safeType =
+        type === CLOTHING_ARTWORK_TYPES.PATTERN
+          ? CLOTHING_ARTWORK_TYPES.PATTERN
+          : CLOTHING_ARTWORK_TYPES.IMAGE;
+
+      clothingArtworkInputModeRef.current = {
+        regionId: selectedClothingArtworkRegionId,
+
+        type: safeType,
+      };
+
+      clothingArtworkFileInputRef.current?.click();
+    },
+    [
+      selectedClothingArtworkEditable,
+      selectedClothingArtworkRegionId,
+      selectedImageLocked,
+      clothingArtworkImporting,
+    ],
+  );
+
+  const handleClothingArtworkFileChange = useCallback(
+    async (event) => {
+      const file = event.target.files?.[0] || null;
+
+      event.target.value = "";
+
+      if (!file) {
+        return;
+      }
+
+      const inputMode = {
+        ...clothingArtworkInputModeRef.current,
+      };
+
+      clothingArtworkInputModeRef.current = {
+        regionId: null,
+
+        type: CLOTHING_ARTWORK_TYPES.IMAGE,
+      };
+
+      if (
+        !selectedClothingTemplate ||
+        !selectedClothingArtworkEditable ||
+        !inputMode.regionId ||
+        !selectedClothingArtworkRegions.some(
+          (region) => region.id === inputMode.regionId,
+        )
+      ) {
+        showToast("Choose a valid garment region first.", "error");
+
+        return;
+      }
+
+      setClothingArtworkImporting(true);
+
+      try {
+        /*
+        Reuse the editor's existing image loader so SVG uploads are
+        sanitized and all artwork becomes a portable data URL.
+        */
+
+        const asset = await loadImageAsset(file);
+
+        const previousEntry =
+          selectedClothingArtwork[inputMode.regionId] || null;
+
+        const safeType =
+          inputMode.type === CLOTHING_ARTWORK_TYPES.PATTERN
+            ? CLOTHING_ARTWORK_TYPES.PATTERN
+            : CLOTHING_ARTWORK_TYPES.IMAGE;
+
+        const nextEntry = {
+          ...CLOTHING_ARTWORK_DEFAULTS,
+
+          ...(previousEntry || {}),
+
+          type: safeType,
+
+          source: asset.dataUrl,
+
+          fit:
+            previousEntry?.type === safeType && previousEntry?.fit
+              ? previousEntry.fit
+              : safeType === CLOTHING_ARTWORK_TYPES.PATTERN
+                ? "cover"
+                : "contain",
+        };
+
+        const nextArtwork = {
+          ...selectedClothingArtwork,
+
+          [inputMode.regionId]: nextEntry,
+        };
+
+        const region =
+          selectedClothingArtworkRegions.find(
+            (item) => item.id === inputMode.regionId,
+          ) || null;
+
+        const changed = applySelectedClothingArtwork(
+          nextArtwork,
+          `Add ${safeType === CLOTHING_ARTWORK_TYPES.PATTERN ? "pattern" : "graphic"} to ${region?.label || "garment region"}`,
+        );
+
+        if (changed) {
+          setClothingArtworkRegionId(inputMode.regionId);
+
+          showToast(
+            `${safeType === CLOTHING_ARTWORK_TYPES.PATTERN ? "Pattern" : "Graphic"} added to ${region?.label || "garment region"}.`,
+          );
+        }
+      } catch (error) {
+        console.error(error);
+
+        setEditorError(error);
+
+        showToast(
+          error?.message || "The garment artwork could not be imported.",
+          "error",
+        );
+      } finally {
+        setClothingArtworkImporting(false);
+      }
+    },
+    [
+      selectedClothingTemplate,
+      selectedClothingArtworkEditable,
+      selectedClothingArtworkRegions,
+      selectedClothingArtwork,
+      applySelectedClothingArtwork,
+      showToast,
+    ],
+  );
+
+  const handleSelectedClothingArtworkSettingChange = useCallback(
+    (key, value) => {
+      if (
+        !selectedClothingArtworkEntry ||
+        !selectedClothingArtworkRegionId ||
+        selectedImageLocked
+      ) {
+        return;
+      }
+
+      const updates = {};
+
+      if (key === "scale") {
+        updates.scale = clamp(value, 0.05, 12);
+      } else if (key === "rotation") {
+        updates.rotation = clamp(value, -3600, 3600);
+      } else if (key === "offsetX") {
+        updates.offsetX = clamp(value, -2000, 2000);
+      } else if (key === "offsetY") {
+        updates.offsetY = clamp(value, -2000, 2000);
+      } else if (key === "opacity") {
+        updates.opacity = clamp(value, 0, 1);
+      } else if (key === "fit") {
+        updates.fit = ["contain", "cover", "fill"].includes(value)
+          ? value
+          : "contain";
+      } else if (key === "type") {
+        updates.type =
+          value === CLOTHING_ARTWORK_TYPES.PATTERN
+            ? CLOTHING_ARTWORK_TYPES.PATTERN
+            : CLOTHING_ARTWORK_TYPES.IMAGE;
+      } else {
+        return;
+      }
+
+      const nextArtwork = {
+        ...selectedClothingArtwork,
+
+        [selectedClothingArtworkRegionId]: {
+          ...selectedClothingArtworkEntry,
+          ...updates,
+        },
+      };
+
+      applySelectedClothingArtwork(
+        nextArtwork,
+        `Adjust ${selectedClothingArtworkRegion?.label || "garment"} artwork`,
+      );
+    },
+    [
+      selectedClothingArtworkEntry,
+      selectedClothingArtworkRegionId,
+      selectedClothingArtworkRegion,
+      selectedClothingArtwork,
+      selectedImageLocked,
+      applySelectedClothingArtwork,
+    ],
+  );
+
+  const handleResetSelectedClothingArtworkTransform = useCallback(() => {
+    if (
+      !selectedClothingArtworkEntry ||
+      !selectedClothingArtworkRegionId ||
+      selectedImageLocked
+    ) {
+      return;
+    }
+
+    const nextArtwork = {
+      ...selectedClothingArtwork,
+
+      [selectedClothingArtworkRegionId]: {
+        ...selectedClothingArtworkEntry,
+
+        scale: 1,
+
+        rotation: 0,
+
+        offsetX: 0,
+
+        offsetY: 0,
+
+        opacity: 1,
+
+        fit:
+          selectedClothingArtworkEntry.type === CLOTHING_ARTWORK_TYPES.PATTERN
+            ? "cover"
+            : "contain",
+      },
+    };
+
+    applySelectedClothingArtwork(
+      nextArtwork,
+      `Reset ${selectedClothingArtworkRegion?.label || "garment"} artwork`,
+    );
+  }, [
+    selectedClothingArtworkEntry,
+    selectedClothingArtworkRegionId,
+    selectedClothingArtworkRegion,
+    selectedClothingArtwork,
+    selectedImageLocked,
+    applySelectedClothingArtwork,
+  ]);
+
+  const handleRemoveSelectedClothingArtwork = useCallback(() => {
+    if (
+      !selectedClothingArtworkEntry ||
+      !selectedClothingArtworkRegionId ||
+      selectedImageLocked
+    ) {
+      return;
+    }
+
+    const nextArtwork = {
+      ...selectedClothingArtwork,
+    };
+
+    delete nextArtwork[selectedClothingArtworkRegionId];
+
+    const changed = applySelectedClothingArtwork(
+      nextArtwork,
+      `Remove ${selectedClothingArtworkRegion?.label || "garment"} artwork`,
+    );
+
+    if (changed) {
+      showToast("Artwork removed from garment region.");
+    }
+  }, [
+    selectedClothingArtworkEntry,
+    selectedClothingArtworkRegionId,
+    selectedClothingArtworkRegion,
+    selectedClothingArtwork,
+    selectedImageLocked,
+    applySelectedClothingArtwork,
+    showToast,
+  ]);
+
+  const handleCopySelectedClothingArtworkToPairedRegion = useCallback(() => {
+    if (
+      !selectedClothingArtworkEntry ||
+      !selectedClothingArtworkPairedRegionId ||
+      selectedImageLocked
+    ) {
+      return;
+    }
+
+    const pairedRegion =
+      selectedClothingArtworkRegions.find(
+        (region) => region.id === selectedClothingArtworkPairedRegionId,
+      ) || null;
+
+    const nextArtwork = {
+      ...selectedClothingArtwork,
+
+      [selectedClothingArtworkPairedRegionId]: {
+        ...selectedClothingArtworkEntry,
+      },
+    };
+
+    const changed = applySelectedClothingArtwork(
+      nextArtwork,
+      `Copy artwork to ${pairedRegion?.label || "paired garment region"}`,
+    );
+
+    if (changed) {
+      showToast(`Artwork copied to ${pairedRegion?.label || "paired region"}.`);
+    }
+  }, [
+    selectedClothingArtworkEntry,
+    selectedClothingArtworkPairedRegionId,
+    selectedClothingArtworkRegions,
+    selectedClothingArtwork,
+    selectedImageLocked,
+    applySelectedClothingArtwork,
+    showToast,
+  ]);
 
   const updatePatternSettings = useCallback(
     (updates) => {
@@ -4679,6 +7141,108 @@ function FashionEditor() {
               </PanelSection>
             )}
 
+            {activeTool === EDITOR_TOOLS.CLOTHING && (
+              <PanelSection title="Clothing Templates">
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs font-semibold text-slate-200">
+                        Front + Back Fashion Flats
+                      </p>
+
+                      <span className="shrink-0 rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-violet-200">
+                        Dual View
+                      </span>
+                    </div>
+
+                    <p className="mt-1 text-[10px] leading-relaxed text-slate-500">
+                      Each garment includes realistic front and back fashion
+                      flats with editable colours, graphics and fabric patterns
+                      clipped safely inside construction regions.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3">
+                    {CLOTHING_TEMPLATES.map((template) => {
+                      const regionCount =
+                        getClothingTemplateColourRegions(template).length;
+
+                      return (
+                        <button
+                          key={template.id}
+                          type="button"
+                          disabled={
+                            clothingImporting ||
+                            !activeLayer ||
+                            activeLayer.locked ||
+                            activeLayer.visible === false
+                          }
+                          onClick={() => {
+                            void handleChooseClothingTemplate(template);
+                          }}
+                          className="group overflow-hidden rounded-xl border border-slate-700 bg-slate-900 p-2 text-left transition hover:border-violet-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <div className="flex aspect-[14/9] items-center justify-center overflow-hidden rounded-lg bg-white p-2">
+                            <img
+                              src={createClothingTemplatePreview(template)}
+                              alt={`${template.label} front and back clothing template`}
+                              className="h-full w-full object-contain"
+                              draggable={false}
+                            />
+                          </div>
+
+                          <div className="mt-2 flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <span className="block text-xs font-semibold text-slate-200 group-hover:text-white">
+                                {template.label}
+                              </span>
+
+                              {template.description && (
+                                <span className="mt-1 block text-[9px] leading-relaxed text-slate-500">
+                                  {template.description}
+                                </span>
+                              )}
+                            </div>
+
+                            <span className="shrink-0 rounded-full border border-slate-700 bg-slate-950 px-2 py-1 text-[8px] font-bold uppercase tracking-wide text-slate-400">
+                              {template.dualView ? "Front + Back" : "Front"}
+                            </span>
+                          </div>
+
+                          <span className="mt-2 block text-[9px] font-semibold uppercase tracking-wide text-violet-300">
+                            {regionCount} colour + artwork region
+                            {regionCount === 1 ? "" : "s"}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {clothingImporting && (
+                    <div className="rounded-lg border border-violet-500/30 bg-violet-500/10 p-3">
+                      <p className="text-xs font-semibold text-violet-200">
+                        Preparing dual-view template…
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-3">
+                    <p className="text-xs font-semibold text-violet-100">
+                      How to use
+                    </p>
+
+                    <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
+                      Select a garment and click the canvas once. Front and back
+                      are placed together as one editable fashion board. Select
+                      it afterward to colour front/back regions independently,
+                      add clipped graphics or patterns, resize, rotate, move,
+                      duplicate, save or export it.
+                    </p>
+                  </div>
+                </div>
+              </PanelSection>
+            )}
+
             {activeTool === EDITOR_TOOLS.LINE && (
               <PanelSection title="Line">
                 <div className="space-y-5">
@@ -5838,6 +8402,669 @@ function FashionEditor() {
                             </span>
                           )}
                         </div>
+
+                        {selectedClothingEditable && (
+                          <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-violet-100">
+                                  {selectedClothingTemplate.label} Design
+                                </p>
+
+                                <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
+                                  {selectedClothingTemplate.description ||
+                                    "Edit each garment construction region independently."}
+                                </p>
+                              </div>
+
+                              <span className="shrink-0 rounded-full border border-violet-400/30 bg-violet-500/15 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-violet-200">
+                                {selectedClothingDualView
+                                  ? "Front + Back"
+                                  : "Editable"}
+                              </span>
+                            </div>
+
+                            {selectedClothingDualView && (
+                              <div className="mt-4 grid grid-cols-2 gap-2">
+                                <div className="rounded-lg border border-slate-700/80 bg-slate-950/70 p-2">
+                                  <span className="block text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500">
+                                    Front View
+                                  </span>
+
+                                  <span className="mt-1 block text-xs font-semibold text-slate-200">
+                                    {selectedClothingRegionsByView.front.length}{" "}
+                                    editable regions
+                                  </span>
+                                </div>
+
+                                <div className="rounded-lg border border-slate-700/80 bg-slate-950/70 p-2">
+                                  <span className="block text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500">
+                                    Back View
+                                  </span>
+
+                                  <span className="mt-1 block text-xs font-semibold text-slate-200">
+                                    {selectedClothingRegionsByView.back.length}{" "}
+                                    editable regions
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedClothingDualView && (
+                              <div className="mt-3 grid grid-cols-2 gap-2">
+                                <button
+                                  type="button"
+                                  disabled={
+                                    selectedImageLocked ||
+                                    selectedClothingRegionsByView.front
+                                      .length === 0
+                                  }
+                                  onClick={() => {
+                                    handleApplyPrimaryToSelectedClothingView(
+                                      "front",
+                                    );
+                                  }}
+                                  className="min-h-10 rounded-lg border border-violet-500/40 bg-violet-500/10 px-2 py-2 text-[10px] font-semibold text-violet-200 transition hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                  Primary → Front
+                                </button>
+
+                                <button
+                                  type="button"
+                                  disabled={
+                                    selectedImageLocked ||
+                                    selectedClothingRegionsByView.back
+                                      .length === 0
+                                  }
+                                  onClick={() => {
+                                    handleApplyPrimaryToSelectedClothingView(
+                                      "back",
+                                    );
+                                  }}
+                                  className="min-h-10 rounded-lg border border-violet-500/40 bg-violet-500/10 px-2 py-2 text-[10px] font-semibold text-violet-200 transition hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                  Primary → Back
+                                </button>
+
+                                <button
+                                  type="button"
+                                  disabled={
+                                    selectedImageLocked ||
+                                    selectedClothingPairedRegionCount === 0
+                                  }
+                                  onClick={() => {
+                                    handleCopySelectedClothingView(
+                                      "front",
+                                      "back",
+                                    );
+                                  }}
+                                  className="min-h-10 rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-semibold text-slate-300 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                  Copy Front → Back
+                                </button>
+
+                                <button
+                                  type="button"
+                                  disabled={
+                                    selectedImageLocked ||
+                                    selectedClothingPairedRegionCount === 0
+                                  }
+                                  onClick={() => {
+                                    handleCopySelectedClothingView(
+                                      "back",
+                                      "front",
+                                    );
+                                  }}
+                                  className="min-h-10 rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-semibold text-slate-300 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                  Copy Back → Front
+                                </button>
+                              </div>
+                            )}
+
+                            {["front", "back", "other"].map((view) => {
+                              const viewRegions =
+                                selectedClothingRegionsByView[view] || [];
+
+                              if (viewRegions.length === 0) {
+                                return null;
+                              }
+
+                              return (
+                                <div
+                                  key={view}
+                                  className="mt-4 rounded-xl border border-slate-700/70 bg-slate-950/50 p-3"
+                                >
+                                  <div className="mb-3 flex items-center justify-between gap-3">
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                                      {CLOTHING_VIEW_LABELS[view] || "Other"}{" "}
+                                      Regions
+                                    </p>
+
+                                    <span className="rounded-full border border-slate-700 bg-slate-900 px-2 py-1 text-[8px] font-bold text-slate-500">
+                                      {viewRegions.length}
+                                    </span>
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-2">
+                                    {viewRegions.map((region) => {
+                                      const regionColour =
+                                        selectedClothingColours[region.id] ||
+                                        "#ffffff";
+
+                                      return (
+                                        <label
+                                          key={region.id}
+                                          className="block rounded-lg border border-slate-700/80 bg-slate-900/80 p-2"
+                                        >
+                                          <span className="mb-2 block min-h-[24px] text-[10px] font-semibold leading-tight text-slate-300">
+                                            {region.label}
+                                          </span>
+
+                                          <div className="flex items-center gap-2">
+                                            <input
+                                              type="color"
+                                              value={regionColour}
+                                              disabled={selectedImageLocked}
+                                              onChange={(event) => {
+                                                handleSelectedClothingColourChange(
+                                                  region.id,
+                                                  event.target.value,
+                                                );
+                                              }}
+                                              className="h-10 w-12 shrink-0 cursor-pointer rounded-md border border-slate-700 bg-slate-950 p-1 disabled:cursor-not-allowed disabled:opacity-50"
+                                            />
+
+                                            <span className="min-w-0 truncate font-mono text-[8px] uppercase text-slate-500">
+                                              {regionColour}
+                                            </span>
+                                          </div>
+
+                                          {region.group && (
+                                            <span className="mt-2 block truncate text-[8px] font-semibold uppercase tracking-wide text-slate-600">
+                                              {getClothingGroupLabel(
+                                                region.group,
+                                              )}
+                                            </span>
+                                          )}
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })}
+
+                            {selectedClothingRegionGroups.length > 0 && (
+                              <div className="mt-4">
+                                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                                  Match Construction Parts
+                                </p>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                  {selectedClothingRegionGroups.map((group) => (
+                                    <button
+                                      key={group.id}
+                                      type="button"
+                                      disabled={selectedImageLocked}
+                                      onClick={() => {
+                                        handleMatchSelectedClothingGroup(
+                                          group.id,
+                                        );
+                                      }}
+                                      className="min-h-10 rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-semibold text-slate-300 transition hover:border-violet-500 hover:bg-violet-500/10 hover:text-violet-200 disabled:cursor-not-allowed disabled:opacity-40"
+                                    >
+                                      Match {group.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            <button
+                              type="button"
+                              disabled={selectedImageLocked}
+                              onClick={handleResetSelectedClothingColours}
+                              className="mt-4 min-h-10 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-[10px] font-semibold text-slate-300 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              Reset All Garment Colours
+                            </button>
+
+                            {selectedClothingArtworkEditable && (
+                              <div className="mt-5 rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <p className="text-xs font-semibold text-cyan-100">
+                                      Region Artwork
+                                    </p>
+
+                                    <p className="mt-1 text-[9px] leading-relaxed text-slate-400">
+                                      Add a logo, graphic or repeating fabric
+                                      pattern. Artwork is clipped to the
+                                      selected garment construction region.
+                                    </p>
+                                  </div>
+
+                                  <span className="shrink-0 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2 py-1 text-[8px] font-bold uppercase tracking-wide text-cyan-200">
+                                    Clipped
+                                  </span>
+                                </div>
+
+                                <label className="mt-4 block">
+                                  <span className="mb-2 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                    Artwork Region
+                                  </span>
+
+                                  <select
+                                    value={selectedClothingArtworkRegionId}
+                                    disabled={
+                                      selectedImageLocked ||
+                                      selectedClothingArtworkRegions.length ===
+                                        0
+                                    }
+                                    onChange={(event) => {
+                                      setClothingArtworkRegionId(
+                                        event.target.value,
+                                      );
+                                    }}
+                                    className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    {selectedClothingArtworkRegions.map(
+                                      (region) => (
+                                        <option
+                                          key={region.id}
+                                          value={region.id}
+                                        >
+                                          {CLOTHING_VIEW_LABELS[
+                                            getClothingRegionView(region)
+                                          ] || "Other"}{" "}
+                                          — {region.label}
+                                        </option>
+                                      ),
+                                    )}
+                                  </select>
+                                </label>
+
+                                {selectedClothingArtworkRegion && (
+                                  <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-slate-700/70 bg-slate-950/70 p-2.5">
+                                    <div className="min-w-0">
+                                      <span className="block truncate text-[10px] font-semibold text-slate-200">
+                                        {selectedClothingArtworkRegion.label}
+                                      </span>
+
+                                      <span className="mt-0.5 block text-[8px] font-bold uppercase tracking-wide text-slate-500">
+                                        {getClothingGroupLabel(
+                                          selectedClothingArtworkRegion.group,
+                                        )}
+                                      </span>
+                                    </div>
+
+                                    <span
+                                      className={[
+                                        "shrink-0 rounded-full border px-2 py-1 text-[8px] font-bold uppercase tracking-wide",
+                                        selectedClothingArtworkEntry
+                                          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                                          : "border-slate-700 bg-slate-900 text-slate-500",
+                                      ].join(" ")}
+                                    >
+                                      {selectedClothingArtworkEntry
+                                        ? CLOTHING_ARTWORK_TYPE_LABELS[
+                                            selectedClothingArtworkEntry.type
+                                          ] || "Artwork"
+                                        : "Empty"}
+                                    </span>
+                                  </div>
+                                )}
+
+                                <div className="mt-3 grid grid-cols-2 gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={
+                                      selectedImageLocked ||
+                                      clothingArtworkImporting ||
+                                      !selectedClothingArtworkRegionId
+                                    }
+                                    onClick={() => {
+                                      handleChooseClothingArtwork(
+                                        CLOTHING_ARTWORK_TYPES.IMAGE,
+                                      );
+                                    }}
+                                    className="min-h-11 rounded-lg bg-cyan-500 px-3 py-2 text-xs font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
+                                  >
+                                    {clothingArtworkImporting
+                                      ? "Loading…"
+                                      : selectedClothingArtworkEntry?.type ===
+                                          CLOTHING_ARTWORK_TYPES.IMAGE
+                                        ? "Replace Graphic"
+                                        : "Add Graphic"}
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    disabled={
+                                      selectedImageLocked ||
+                                      clothingArtworkImporting ||
+                                      !selectedClothingArtworkRegionId
+                                    }
+                                    onClick={() => {
+                                      handleChooseClothingArtwork(
+                                        CLOTHING_ARTWORK_TYPES.PATTERN,
+                                      );
+                                    }}
+                                    className="min-h-11 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-200 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                  >
+                                    {clothingArtworkImporting
+                                      ? "Loading…"
+                                      : selectedClothingArtworkEntry?.type ===
+                                          CLOTHING_ARTWORK_TYPES.PATTERN
+                                        ? "Replace Pattern"
+                                        : "Add Pattern"}
+                                  </button>
+                                </div>
+
+                                {selectedClothingArtworkEntry && (
+                                  <div className="mt-4 space-y-4">
+                                    <div className="overflow-hidden rounded-lg border border-slate-700 bg-white p-2">
+                                      <div className="flex h-28 items-center justify-center overflow-hidden rounded-md bg-slate-100">
+                                        <img
+                                          src={
+                                            selectedClothingArtworkEntry.source
+                                          }
+                                          alt={`${selectedClothingArtworkRegion?.label || "Garment"} artwork`}
+                                          className="h-full w-full object-contain"
+                                          draggable={false}
+                                        />
+                                      </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <button
+                                        type="button"
+                                        aria-pressed={
+                                          selectedClothingArtworkEntry.type ===
+                                          CLOTHING_ARTWORK_TYPES.IMAGE
+                                        }
+                                        disabled={selectedImageLocked}
+                                        onClick={() => {
+                                          handleSelectedClothingArtworkSettingChange(
+                                            "type",
+                                            CLOTHING_ARTWORK_TYPES.IMAGE,
+                                          );
+                                        }}
+                                        className={[
+                                          "min-h-10 rounded-lg border px-2 py-2 text-[10px] font-semibold transition",
+                                          selectedClothingArtworkEntry.type ===
+                                          CLOTHING_ARTWORK_TYPES.IMAGE
+                                            ? "border-cyan-500 bg-cyan-500/20 text-cyan-100"
+                                            : "border-slate-700 bg-slate-950 text-slate-400 hover:border-slate-500",
+                                        ].join(" ")}
+                                      >
+                                        Single Graphic
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        aria-pressed={
+                                          selectedClothingArtworkEntry.type ===
+                                          CLOTHING_ARTWORK_TYPES.PATTERN
+                                        }
+                                        disabled={selectedImageLocked}
+                                        onClick={() => {
+                                          handleSelectedClothingArtworkSettingChange(
+                                            "type",
+                                            CLOTHING_ARTWORK_TYPES.PATTERN,
+                                          );
+                                        }}
+                                        className={[
+                                          "min-h-10 rounded-lg border px-2 py-2 text-[10px] font-semibold transition",
+                                          selectedClothingArtworkEntry.type ===
+                                          CLOTHING_ARTWORK_TYPES.PATTERN
+                                            ? "border-cyan-500 bg-cyan-500/20 text-cyan-100"
+                                            : "border-slate-700 bg-slate-950 text-slate-400 hover:border-slate-500",
+                                        ].join(" ")}
+                                      >
+                                        Repeat Pattern
+                                      </button>
+                                    </div>
+
+                                    <label className="block">
+                                      <span className="mb-2 block text-[10px] font-semibold text-slate-300">
+                                        Fit inside region
+                                      </span>
+
+                                      <select
+                                        value={
+                                          selectedClothingArtworkEntry.fit ||
+                                          "contain"
+                                        }
+                                        disabled={selectedImageLocked}
+                                        onChange={(event) => {
+                                          handleSelectedClothingArtworkSettingChange(
+                                            "fit",
+                                            event.target.value,
+                                          );
+                                        }}
+                                        className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                      >
+                                        {CLOTHING_ARTWORK_FIT_OPTIONS.map(
+                                          (option) => (
+                                            <option
+                                              key={option.value}
+                                              value={option.value}
+                                            >
+                                              {option.label}
+                                            </option>
+                                          ),
+                                        )}
+                                      </select>
+                                    </label>
+
+                                    <SliderField
+                                      label={
+                                        selectedClothingArtworkEntry.type ===
+                                        CLOTHING_ARTWORK_TYPES.PATTERN
+                                          ? "Pattern Scale"
+                                          : "Graphic Scale"
+                                      }
+                                      value={Math.round(
+                                        clamp(
+                                          selectedClothingArtworkEntry.scale,
+                                          0.05,
+                                          12,
+                                        ) * 100,
+                                      )}
+                                      minimum={5}
+                                      maximum={600}
+                                      suffix="%"
+                                      disabled={selectedImageLocked}
+                                      onStart={() => {
+                                        beginHistoryTransaction(
+                                          "Scale garment artwork",
+                                        );
+                                      }}
+                                      onEnd={() => {
+                                        commitHistoryTransaction();
+                                      }}
+                                      onChange={(value) => {
+                                        handleSelectedClothingArtworkSettingChange(
+                                          "scale",
+                                          value / 100,
+                                        );
+                                      }}
+                                    />
+
+                                    <SliderField
+                                      label="Rotation"
+                                      value={Math.round(
+                                        numberOr(
+                                          selectedClothingArtworkEntry.rotation,
+                                          0,
+                                        ),
+                                      )}
+                                      minimum={-180}
+                                      maximum={180}
+                                      suffix="°"
+                                      disabled={selectedImageLocked}
+                                      onStart={() => {
+                                        beginHistoryTransaction(
+                                          "Rotate garment artwork",
+                                        );
+                                      }}
+                                      onEnd={() => {
+                                        commitHistoryTransaction();
+                                      }}
+                                      onChange={(value) => {
+                                        handleSelectedClothingArtworkSettingChange(
+                                          "rotation",
+                                          value,
+                                        );
+                                      }}
+                                    />
+
+                                    <SliderField
+                                      label="Opacity"
+                                      value={Math.round(
+                                        clamp(
+                                          selectedClothingArtworkEntry.opacity,
+                                          0,
+                                          1,
+                                        ) * 100,
+                                      )}
+                                      minimum={0}
+                                      maximum={100}
+                                      suffix="%"
+                                      disabled={selectedImageLocked}
+                                      onStart={() => {
+                                        beginHistoryTransaction(
+                                          "Change garment artwork opacity",
+                                        );
+                                      }}
+                                      onEnd={() => {
+                                        commitHistoryTransaction();
+                                      }}
+                                      onChange={(value) => {
+                                        handleSelectedClothingArtworkSettingChange(
+                                          "opacity",
+                                          value / 100,
+                                        );
+                                      }}
+                                    />
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <label className="block">
+                                        <span className="mb-2 block text-[10px] font-semibold text-slate-300">
+                                          Position X
+                                        </span>
+
+                                        <input
+                                          type="number"
+                                          step="1"
+                                          min="-2000"
+                                          max="2000"
+                                          value={Math.round(
+                                            numberOr(
+                                              selectedClothingArtworkEntry.offsetX,
+                                              0,
+                                            ),
+                                          )}
+                                          disabled={selectedImageLocked}
+                                          onChange={(event) => {
+                                            handleSelectedClothingArtworkSettingChange(
+                                              "offsetX",
+                                              Number(event.target.value) || 0,
+                                            );
+                                          }}
+                                          className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                        />
+                                      </label>
+
+                                      <label className="block">
+                                        <span className="mb-2 block text-[10px] font-semibold text-slate-300">
+                                          Position Y
+                                        </span>
+
+                                        <input
+                                          type="number"
+                                          step="1"
+                                          min="-2000"
+                                          max="2000"
+                                          value={Math.round(
+                                            numberOr(
+                                              selectedClothingArtworkEntry.offsetY,
+                                              0,
+                                            ),
+                                          )}
+                                          disabled={selectedImageLocked}
+                                          onChange={(event) => {
+                                            handleSelectedClothingArtworkSettingChange(
+                                              "offsetY",
+                                              Number(event.target.value) || 0,
+                                            );
+                                          }}
+                                          className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                        />
+                                      </label>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <button
+                                        type="button"
+                                        disabled={selectedImageLocked}
+                                        onClick={
+                                          handleResetSelectedClothingArtworkTransform
+                                        }
+                                        className="min-h-10 rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-semibold text-slate-300 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                                      >
+                                        Reset Placement
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        disabled={
+                                          selectedImageLocked ||
+                                          !selectedClothingArtworkPairedRegionId
+                                        }
+                                        onClick={
+                                          handleCopySelectedClothingArtworkToPairedRegion
+                                        }
+                                        className="min-h-10 rounded-lg border border-violet-500/40 bg-violet-500/10 px-2 py-2 text-[10px] font-semibold text-violet-200 transition hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                      >
+                                        Copy to Paired Side
+                                      </button>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      disabled={selectedImageLocked}
+                                      onClick={
+                                        handleRemoveSelectedClothingArtwork
+                                      }
+                                      className="min-h-10 w-full rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[10px] font-semibold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                    >
+                                      Remove Artwork From Region
+                                    </button>
+                                  </div>
+                                )}
+
+                                {!selectedClothingArtworkEntry && (
+                                  <p className="mt-3 rounded-lg border border-slate-700/70 bg-slate-950/60 p-2.5 text-[9px] leading-relaxed text-slate-500">
+                                    This region has no artwork yet. Add a
+                                    graphic for logos/prints, or add a pattern
+                                    for repeating fabric-style artwork.
+                                  </p>
+                                )}
+                              </div>
+                            )}
+
+                            <p className="mt-3 text-[9px] leading-relaxed text-slate-500">
+                              Front and back stay inside one movable image
+                              object. Colour and region-artwork changes
+                              regenerate the SVG only, so the garment keeps its
+                              position, size, rotation, layer, cloud save state
+                              and export behaviour.
+                            </p>
+                          </div>
+                        )}
 
                         <label className="block">
                           <span className="mb-2 block text-xs font-medium text-slate-300">
@@ -7004,6 +10231,14 @@ function FashionEditor() {
       />
 
       <input
+        ref={clothingArtworkFileInputRef}
+        type="file"
+        accept={IMAGE_FILE_ACCEPT}
+        onChange={handleClothingArtworkFileChange}
+        className="hidden"
+      />
+
+      <input
         ref={patternFileInputRef}
         type="file"
         accept={PATTERN_FILE_ACCEPT}
@@ -7093,8 +10328,30 @@ function FashionEditor() {
                   : "Save Cloud"}
             </HeaderButton>
 
+            <HeaderButton
+              onClick={handleOpenShowcaseShare}
+              disabled={
+                projectLoading ||
+                projectSaving ||
+                showcaseSharing ||
+                objectCount <= 0
+              }
+              title="Open the in-editor Share to Showcase panel"
+            >
+              {showcaseSharing ? "Sharing…" : "Share"}
+            </HeaderButton>
+
             <HeaderButton onClick={handleExportPng} disabled={exporting}>
               {exporting ? "Exporting…" : "Export PNG"}
+            </HeaderButton>
+
+            <HeaderButton
+              onClick={handleOpenOrGenerateAiFashionPreview}
+              disabled={projectLoading}
+              active={aiFashionPreviewOpen}
+              title="Turn the current editor design into a realistic AI fashion image"
+            >
+              {aiFashionGenerating ? "AI Generating…" : "AI Preview"}
             </HeaderButton>
           </div>
 
@@ -7192,6 +10449,20 @@ function FashionEditor() {
 
               <button
                 type="button"
+                disabled={
+                  projectLoading ||
+                  projectSaving ||
+                  showcaseSharing ||
+                  objectCount <= 0
+                }
+                onClick={handleOpenShowcaseShare}
+                className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm font-semibold text-amber-200 hover:bg-amber-950/40 disabled:opacity-40"
+              >
+                {showcaseSharing ? "Sharing to Showcase…" : "Share to Showcase"}
+              </button>
+
+              <button
+                type="button"
                 onClick={handleDownloadProject}
                 className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm text-slate-200 hover:bg-slate-800"
               >
@@ -7205,6 +10476,19 @@ function FashionEditor() {
                 className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-40"
               >
                 {exporting ? "Exporting PNG…" : "Export PNG"}
+              </button>
+
+              <button
+                type="button"
+                disabled={projectLoading}
+                onClick={handleOpenOrGenerateAiFashionPreview}
+                className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm font-semibold text-violet-200 hover:bg-violet-950/50 disabled:opacity-40"
+              >
+                {aiFashionGenerating
+                  ? "View AI generation…"
+                  : aiFashionResult?.imageUrl
+                    ? "View AI Preview"
+                    : "Generate AI Preview"}
               </button>
 
               <div className="my-1 h-px bg-slate-800 sm:hidden" />
@@ -8225,6 +11509,741 @@ function FashionEditor() {
           </span>
         </div>
       </footer>
+
+      {/* Creator Showcase share modal */}
+
+      {showcaseShareOpen && (
+        <div className="fixed inset-0 z-[115] flex items-center justify-center bg-black/80 p-3 backdrop-blur-md sm:p-6">
+          <button
+            type="button"
+            aria-label="Close Share to Showcase"
+            disabled={showcaseSharing}
+            onClick={handleCloseShowcaseShare}
+            className="absolute inset-0 h-full w-full cursor-default disabled:cursor-wait"
+          />
+
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="showcase-share-title"
+            className="relative z-10 flex max-h-[94dvh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-amber-500/20 bg-slate-950 shadow-2xl shadow-black/60"
+          >
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-800 px-4 py-4 sm:px-5">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-amber-300">
+                    Showcase
+                  </span>
+
+                  <span className="rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                    {cloudProjectId
+                      ? `Private project #${cloudProjectId}`
+                      : "Cloud project created on share"}
+                  </span>
+                </div>
+
+                <h2
+                  id="showcase-share-title"
+                  className="mt-2 text-base font-bold text-white sm:text-lg"
+                >
+                  Share to Creator Showcase
+                </h2>
+
+                <p className="mt-1 max-w-2xl text-[11px] leading-5 text-slate-400">
+                  Publish a Showcase representation of this Fashion Editor
+                  project. The editable source stays private in your account.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                disabled={showcaseSharing}
+                onClick={handleCloseShowcaseShare}
+                aria-label="Close Share to Showcase"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-lg text-slate-300 transition hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                ×
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleShareToShowcase}
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">
+                {showcaseShareError && (
+                  <div
+                    role="alert"
+                    className="mb-4 rounded-xl border border-red-800 bg-red-950/60 px-4 py-3 text-xs leading-5 text-red-200"
+                  >
+                    {showcaseShareError}
+                  </div>
+                )}
+
+                {showcaseMetadataError && (
+                  <div className="mb-4 flex flex-col gap-3 rounded-xl border border-red-800 bg-red-950/40 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs leading-5 text-red-200">
+                      {showcaseMetadataError}
+                    </p>
+
+                    <button
+                      type="button"
+                      disabled={showcaseMetadataLoading || showcaseSharing}
+                      onClick={() => {
+                        void loadShowcaseMetadata();
+                      }}
+                      className="min-h-9 shrink-0 rounded-lg border border-red-700 bg-red-950 px-3 text-[10px] font-bold uppercase tracking-wide text-red-200 hover:bg-red-900/70 disabled:opacity-40"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
+
+                <div className="grid gap-5 md:grid-cols-[220px_minmax(0,1fr)]">
+                  <div className="space-y-4">
+                    <div className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-900">
+                      <div className="flex aspect-[4/5] items-center justify-center bg-black/40 p-3">
+                        {showcasePreviewDataUrl ? (
+                          <img
+                            src={showcasePreviewDataUrl}
+                            alt="Fashion Editor Showcase preview"
+                            className="max-h-full max-w-full object-contain"
+                            draggable={false}
+                          />
+                        ) : (
+                          <div className="px-4 text-center">
+                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 text-lg font-black text-amber-300">
+                              FV
+                            </div>
+
+                            <p className="mt-3 text-xs font-semibold text-slate-300">
+                              Preview prepared when sharing
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="border-t border-slate-800 px-3 py-3">
+                        <p className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-500">
+                          Fashion Editor Preview
+                        </p>
+
+                        <p className="mt-1 text-[10px] leading-4 text-slate-400">
+                          {documentData.width} × {documentData.height}px ·{" "}
+                          {objectCount} object{objectCount === 1 ? "" : "s"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-violet-500/25 bg-violet-500/10 p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-violet-200">
+                        Private editable source
+                      </p>
+
+                      <p className="mt-2 text-[10px] leading-5 text-slate-400">
+                        The Showcase receives this preview and discovery
+                        metadata. Your full Fashion Editor project_data stays in
+                        the private cloud project.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="block">
+                      <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                        Title
+                      </span>
+
+                      <input
+                        type="text"
+                        required
+                        minLength={2}
+                        maxLength={SHOWCASE_MAX_TITLE_LENGTH}
+                        value={showcaseShareForm.title}
+                        disabled={showcaseSharing}
+                        onChange={(event) => {
+                          handleShowcaseFormChange("title", event.target.value);
+                        }}
+                        placeholder="e.g. Asymmetrical Silk Blazer"
+                        className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-amber-500 disabled:opacity-50"
+                      />
+                    </label>
+
+                    <label className="block">
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                          Description
+                        </span>
+
+                        <span className="font-mono text-[9px] text-slate-600">
+                          {showcaseShareForm.description.length}/
+                          {SHOWCASE_MAX_DESCRIPTION_LENGTH}
+                        </span>
+                      </div>
+
+                      <textarea
+                        required
+                        minLength={10}
+                        maxLength={SHOWCASE_MAX_DESCRIPTION_LENGTH}
+                        rows={4}
+                        value={showcaseShareForm.description}
+                        disabled={showcaseSharing}
+                        onChange={(event) => {
+                          handleShowcaseFormChange(
+                            "description",
+                            event.target.value,
+                          );
+                        }}
+                        placeholder="Describe the silhouette, materials, inspiration, construction details, mood, or visual direction..."
+                        className="w-full resize-y rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm leading-6 text-slate-100 outline-none placeholder:text-slate-600 focus:border-amber-500 disabled:opacity-50"
+                      />
+                    </label>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="block">
+                        <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                          Creative Category
+                        </span>
+
+                        <select
+                          value={showcaseShareForm.category_id}
+                          disabled={
+                            showcaseSharing ||
+                            showcaseMetadataLoading ||
+                            showcaseCategories.length === 0
+                          }
+                          onChange={(event) => {
+                            handleShowcaseFormChange(
+                              "category_id",
+                              event.target.value,
+                            );
+                          }}
+                          className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-amber-500 disabled:opacity-50"
+                        >
+                          <option value="">
+                            {showcaseMetadataLoading
+                              ? "Loading categories…"
+                              : "Select category"}
+                          </option>
+
+                          {showcaseCategories.map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {category.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                          Creative Format
+                        </span>
+
+                        <select
+                          value={showcaseShareForm.format}
+                          disabled={showcaseSharing}
+                          onChange={(event) => {
+                            handleShowcaseFormChange(
+                              "format",
+                              event.target.value,
+                            );
+                          }}
+                          className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-amber-500 disabled:opacity-50"
+                        >
+                          {SHOWCASE_FORMAT_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+
+                    {selectedShowcaseCategory?.description && (
+                      <p className="-mt-2 text-[9px] leading-4 text-slate-500">
+                        {selectedShowcaseCategory.description}
+                      </p>
+                    )}
+
+                    <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-4">
+                      <div className="mb-3">
+                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-300">
+                          Showcase Discovery
+                        </p>
+
+                        <p className="mt-1 text-[10px] leading-4 text-slate-500">
+                          Choose one style and one garment. Occasions are
+                          optional and may include more than one.
+                        </p>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label className="block">
+                          <span className="mb-2 block text-[10px] font-semibold text-slate-400">
+                            Style
+                          </span>
+
+                          <select
+                            value={showcaseShareForm.style_term_id}
+                            disabled={
+                              showcaseSharing ||
+                              showcaseMetadataLoading ||
+                              showcaseDiscovery.styles.length === 0
+                            }
+                            onChange={(event) => {
+                              handleShowcaseFormChange(
+                                "style_term_id",
+                                event.target.value,
+                              );
+                            }}
+                            className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-amber-500 disabled:opacity-50"
+                          >
+                            <option value="">
+                              {showcaseMetadataLoading
+                                ? "Loading styles…"
+                                : "Select style"}
+                            </option>
+
+                            {showcaseDiscovery.styles.map((style) => (
+                              <option key={style.id} value={style.id}>
+                                {style.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <label className="block">
+                          <span className="mb-2 block text-[10px] font-semibold text-slate-400">
+                            Garment
+                          </span>
+
+                          <select
+                            value={showcaseShareForm.garment_term_id}
+                            disabled={
+                              showcaseSharing ||
+                              showcaseMetadataLoading ||
+                              showcaseDiscovery.garments.length === 0
+                            }
+                            onChange={(event) => {
+                              handleShowcaseFormChange(
+                                "garment_term_id",
+                                event.target.value,
+                              );
+                            }}
+                            className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-amber-500 disabled:opacity-50"
+                          >
+                            <option value="">
+                              {showcaseMetadataLoading
+                                ? "Loading garments…"
+                                : "Select garment"}
+                            </option>
+
+                            {showcaseDiscovery.garments.map((garment) => (
+                              <option key={garment.id} value={garment.id}>
+                                {garment.emoji ? `${garment.emoji} ` : ""}
+                                {garment.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+
+                      {showcaseDiscovery.occasions.length > 0 && (
+                        <div className="mt-4">
+                          <span className="mb-2 block text-[10px] font-semibold text-slate-400">
+                            Occasions · Optional
+                          </span>
+
+                          <div className="flex flex-wrap gap-2">
+                            {showcaseDiscovery.occasions.map((occasion) => {
+                              const selected =
+                                showcaseShareForm.occasion_term_ids.includes(
+                                  occasion.id,
+                                );
+
+                              return (
+                                <button
+                                  key={occasion.id}
+                                  type="button"
+                                  disabled={showcaseSharing}
+                                  aria-pressed={selected}
+                                  onClick={() => {
+                                    handleToggleShowcaseOccasion(occasion.id);
+                                  }}
+                                  className={[
+                                    "rounded-full border px-3 py-2 text-[10px] font-semibold transition disabled:opacity-40",
+                                    selected
+                                      ? "border-amber-500 bg-amber-500/15 text-amber-200"
+                                      : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500 hover:text-white",
+                                  ].join(" ")}
+                                >
+                                  {occasion.emoji ? `${occasion.emoji} ` : ""}
+                                  {occasion.name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                          Tags · Optional
+                        </span>
+
+                        <span className="text-[9px] text-slate-600">
+                          {showcaseTags.length}/{SHOWCASE_MAX_TAGS}
+                        </span>
+                      </div>
+
+                      <div className="flex min-h-11 items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-2 focus-within:border-amber-500">
+                        <input
+                          type="text"
+                          maxLength={SHOWCASE_MAX_TAG_LENGTH}
+                          value={showcaseTagInput}
+                          disabled={
+                            showcaseSharing ||
+                            showcaseTags.length >= SHOWCASE_MAX_TAGS
+                          }
+                          onChange={(event) => {
+                            setShowcaseTagInput(event.target.value);
+                            setShowcaseShareError("");
+                          }}
+                          onKeyDown={handleShowcaseTagKeyDown}
+                          placeholder="silk, layered, modern…"
+                          className="h-10 min-w-0 flex-1 bg-transparent px-1 text-xs text-slate-200 outline-none placeholder:text-slate-600 disabled:opacity-50"
+                        />
+
+                        <button
+                          type="button"
+                          disabled={
+                            showcaseSharing ||
+                            showcaseTags.length >= SHOWCASE_MAX_TAGS ||
+                            !normalizeShowcaseTag(showcaseTagInput)
+                          }
+                          onClick={handleAddShowcaseTag}
+                          className="h-8 rounded-md bg-slate-800 px-3 text-[10px] font-bold text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-30"
+                        >
+                          Add
+                        </button>
+                      </div>
+
+                      <p className="mt-1.5 text-[9px] text-slate-600">
+                        Press Enter or comma to add a tag.
+                      </p>
+
+                      {showcaseTags.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {showcaseTags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900 py-1 pl-2.5 pr-1 text-[9px] text-slate-400"
+                            >
+                              #{tag}
+                              <button
+                                type="button"
+                                disabled={showcaseSharing}
+                                onClick={() => {
+                                  setShowcaseTags((current) =>
+                                    current.filter((item) => item !== tag),
+                                  );
+                                }}
+                                className="flex h-5 w-5 items-center justify-center rounded-full text-slate-500 hover:bg-slate-800 hover:text-white disabled:opacity-40"
+                                aria-label={`Remove ${tag} tag`}
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-violet-500/25 bg-violet-500/10 p-4">
+                      <input
+                        type="checkbox"
+                        checked={showcaseShareForm.allow_remix}
+                        disabled={showcaseSharing}
+                        onChange={(event) => {
+                          handleShowcaseFormChange(
+                            "allow_remix",
+                            event.target.checked,
+                          );
+                        }}
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-violet-500"
+                      />
+
+                      <span className="min-w-0">
+                        <span className="block text-xs font-semibold text-violet-100">
+                          Allow Remix
+                        </span>
+
+                        <span className="mt-1 block text-[10px] leading-5 text-slate-400">
+                          Other Creators may make their own private editable
+                          copy from the Showcase. Your original project is never
+                          changed.
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="shrink-0 border-t border-slate-800 bg-slate-950/95 px-4 py-4 sm:px-5">
+                {showcaseSharing && (
+                  <div className="mb-3">
+                    <div className="mb-1.5 flex items-center justify-between gap-3 text-[9px] font-bold uppercase tracking-[0.14em] text-slate-500">
+                      <span>Publishing to Showcase</span>
+                      <span>{showcaseUploadProgress}%</span>
+                    </div>
+
+                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
+                      <div
+                        className="h-full rounded-full bg-amber-400 transition-all"
+                        style={{
+                          width: `${showcaseUploadProgress}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-[9px] leading-4 text-slate-500">
+                    Sharing saves the latest editor state first. You stay in
+                    Fashion Editor after publishing.
+                  </p>
+
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      type="button"
+                      disabled={showcaseSharing}
+                      onClick={handleCloseShowcaseShare}
+                      className="min-h-10 rounded-lg border border-slate-700 bg-slate-900 px-4 text-xs font-semibold text-slate-300 hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="submit"
+                      disabled={
+                        showcaseSharing ||
+                        showcaseMetadataLoading ||
+                        !showcaseMetadataReady
+                      }
+                      className="min-h-10 rounded-lg bg-amber-400 px-5 text-xs font-black text-slate-950 shadow-lg shadow-amber-950/30 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500 disabled:shadow-none"
+                    >
+                      {showcaseSharing
+                        ? showcaseUploadProgress > 0
+                          ? `Sharing ${showcaseUploadProgress}%`
+                          : "Saving & Sharing…"
+                        : showcaseMetadataLoading
+                          ? "Loading Options…"
+                          : "Share to Showcase"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {/* AI realistic fashion preview */}
+
+      {aiFashionPreviewOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/75 p-3 backdrop-blur-md sm:p-6">
+          <button
+            type="button"
+            aria-label="Close AI fashion preview"
+            onClick={() => {
+              setAiFashionPreviewOpen(false);
+            }}
+            className="absolute inset-0 h-full w-full cursor-default"
+          />
+
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-label="AI realistic fashion preview"
+            className="relative z-10 flex max-h-[92dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 shadow-2xl"
+          >
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-800 px-4 py-3 sm:px-5">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full border border-violet-700/70 bg-violet-950/70 px-2 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-violet-300">
+                    AI
+                  </span>
+
+                  <h2 className="truncate text-sm font-bold text-white sm:text-base">
+                    Realistic Fashion Preview
+                  </h2>
+                </div>
+
+                <p className="mt-1 text-[11px] text-slate-400">
+                  Uses the selected clothing template as a clean garment
+                  reference when available, otherwise uses the current canvas.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setAiFashionPreviewOpen(false);
+                }}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-lg text-slate-300 hover:border-slate-600 hover:text-white"
+                aria-label="Close AI preview"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+              {aiFashionGenerating ? (
+                <div className="flex min-h-[420px] flex-col items-center justify-center rounded-2xl border border-violet-900/60 bg-violet-950/20 p-8 text-center">
+                  <span className="h-12 w-12 animate-spin rounded-full border-2 border-slate-700 border-t-violet-400" />
+
+                  <p className="mt-5 text-base font-bold text-white">
+                    Generating realistic fashion preview…
+                  </p>
+
+                  <p className="mt-2 max-w-lg text-xs leading-5 text-slate-400">
+                    {selectedClothingTemplate
+                      ? "The clean front + back garment board is being sent through the DesignByYou backend as the strict AI reference."
+                      : "Your clean canvas capture is being sent through the DesignByYou backend as the AI reference."}{" "}
+                    This may take a little while.
+                  </p>
+                </div>
+              ) : aiFashionResult?.imageUrl ? (
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_230px]">
+                  <div className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-900">
+                    <img
+                      src={aiFashionResult.imageUrl}
+                      alt="AI-generated realistic fashion preview"
+                      className="block max-h-[64dvh] w-full object-contain"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
+                        Generated from
+                      </p>
+
+                      <p className="mt-2 text-sm font-semibold text-white">
+                        {aiFashionResult.garmentType ||
+                          selectedClothingTemplate?.label ||
+                          "Fashion design"}
+                      </p>
+
+                      <dl className="mt-3 space-y-2 text-xs">
+                        <div className="flex items-center justify-between gap-3">
+                          <dt className="text-slate-500">View</dt>
+                          <dd className="text-right font-semibold text-slate-300">
+                            {aiFashionResult.view === "front-back"
+                              ? "Front + Back"
+                              : aiFashionResult.view === "back"
+                                ? "Back"
+                                : "Front"}
+                          </dd>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3">
+                          <dt className="text-slate-500">Reference</dt>
+                          <dd className="text-right font-semibold text-slate-300">
+                            {aiFashionResult.inputMode === "clean-garment"
+                              ? "Clean garment board"
+                              : "Canvas capture"}
+                          </dd>
+                        </div>
+
+                        {aiFashionResult.width && aiFashionResult.height ? (
+                          <div className="flex items-center justify-between gap-3">
+                            <dt className="text-slate-500">Output</dt>
+                            <dd className="text-right font-semibold text-slate-300">
+                              {aiFashionResult.width} × {aiFashionResult.height}
+                            </dd>
+                          </div>
+                        ) : null}
+                      </dl>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleOpenAiFashionImage}
+                      className="flex min-h-11 items-center justify-center rounded-xl bg-violet-600 px-4 text-sm font-bold text-white shadow-lg shadow-violet-950/40 hover:bg-violet-500"
+                    >
+                      Open Full Image
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={aiFashionSaving}
+                      onClick={() => {
+                        void handleSaveAiFashionImage();
+                      }}
+                      className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-600/60 bg-emerald-500/10 px-4 text-sm font-bold text-emerald-200 transition hover:border-emerald-500 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {aiFashionSaving ? "Saving Image…" : "Save Image"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleGenerateAiFashionPreview}
+                      className="flex min-h-11 items-center justify-center rounded-xl border border-slate-700 bg-slate-900 px-4 text-sm font-semibold text-slate-200 hover:border-violet-700 hover:text-white"
+                    >
+                      Generate Again
+                    </button>
+
+                    <p className="rounded-xl border border-amber-900/50 bg-amber-950/20 p-3 text-[10px] leading-4 text-amber-200/80">
+                      Generate Again creates another paid AI generation. The
+                      current editor design is not modified.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex min-h-[360px] flex-col items-center justify-center rounded-2xl border border-slate-800 bg-slate-900/60 p-8 text-center">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-950 text-xl font-black text-violet-300">
+                    AI
+                  </div>
+
+                  <p className="mt-4 text-base font-bold text-white">
+                    No AI preview yet
+                  </p>
+
+                  <p className="mt-2 max-w-md text-xs leading-5 text-slate-400">
+                    Generate a realistic product-style image from the sketch,
+                    drawing, image, graphics or clothing template currently on
+                    the canvas.
+                  </p>
+
+                  {aiFashionError ? (
+                    <p className="mt-4 max-w-lg rounded-xl border border-red-900 bg-red-950/50 px-4 py-3 text-xs text-red-200">
+                      {aiFashionError}
+                    </p>
+                  ) : null}
+
+                  <button
+                    type="button"
+                    onClick={handleGenerateAiFashionPreview}
+                    className="mt-5 min-h-11 rounded-xl bg-violet-600 px-5 text-sm font-bold text-white hover:bg-violet-500"
+                  >
+                    Generate AI Preview
+                  </button>
+                </div>
+              )}
+
+              {!aiFashionGenerating && aiFashionError && aiFashionResult ? (
+                <p className="mt-4 rounded-xl border border-red-900 bg-red-950/40 px-4 py-3 text-xs text-red-200">
+                  {aiFashionError}
+                </p>
+              ) : null}
+            </div>
+          </section>
+        </div>
+      )}
 
       {/* Tablet/mobile panel drawer */}
 

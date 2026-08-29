@@ -1618,9 +1618,11 @@ export default function CreatorUpload() {
 
       setUploadProgress(0);
 
+      const requestEndpoint = UPLOAD_ENDPOINT;
+
       try {
         await API.post(
-          UPLOAD_ENDPOINT,
+          requestEndpoint,
 
           formData,
 
@@ -1682,7 +1684,6 @@ export default function CreatorUpload() {
         setErrorMsg(
           getErrorMessage(
             error,
-
             "The Studio asset could not be saved. Please try again.",
           ),
         );
