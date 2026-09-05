@@ -3,15 +3,38 @@
 /*
 =========================================================
 DesignByYou Super Admin Settings
-Platform Financial + Showcase Configuration
-Version 3.0
+Designer Tier Policy + Showcase Configuration
+Version 3.1
 =========================================================
 
 Current backend support:
 
-COMMISSION
-GET   /api/v1/superadmin/commission
-PATCH /api/v1/superadmin/update-commission
+DESIGNER TIER COMMISSION POLICY
+GET /api/v1/superadmin/commission
+
+The commission policy is READ-ONLY.
+
+Bronze
+- 0 to 4 completed bookings
+- Designer receives 10%
+
+Silver
+- 5 to 19 completed bookings
+- Designer receives 15%
+
+Gold
+- 20 to 34 completed bookings
+- Designer receives 20%
+
+Platinum
+- 35 to 49 completed bookings
+- Designer receives 25%
+
+Diamond
+- 50+ completed bookings
+- Designer receives 30%
+
+There is intentionally NO global commission update endpoint.
 
 SHOWCASE HERO
 GET   /api/v1/superadmin/showcase-hero
@@ -111,17 +134,51 @@ const normalizeHeroForComparison = (hero) => ({
 });
 
 /*=========================================================
+Commission Helpers
+=========================================================*/
+
+const formatTierLabel = (value) => {
+  const text = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  if (!text) {
+    return "Unknown";
+  }
+
+  return text.charAt(0).toUpperCase() + text.slice(1);
+};
+
+const formatBookingRange = (tier) => {
+  const minimum = Number(tier?.minimum_completed_bookings);
+
+  const maximum = tier?.maximum_completed_bookings;
+
+  if (!Number.isFinite(minimum)) {
+    return "—";
+  }
+
+  if (maximum === null || maximum === undefined) {
+    return `${minimum}+`;
+  }
+
+  const parsedMaximum = Number(maximum);
+
+  if (!Number.isFinite(parsedMaximum)) {
+    return `${minimum}+`;
+  }
+
+  return `${minimum}–${parsedMaximum}`;
+};
+
+/*=========================================================
 System Settings
 =========================================================*/
 
 const SystemSettings = () => {
   /*=======================================================
-  Commission State
+  Designer Tier Commission State
   =======================================================*/
-
-  const [commission, setCommission] = useState("");
-
-  const [originalCommission, setOriginalCommission] = useState("");
 
   const [commissionInfo, setCommissionInfo] = useState(null);
 
@@ -140,8 +197,6 @@ const SystemSettings = () => {
   =======================================================*/
 
   const [loading, setLoading] = useState(true);
-
-  const [savingCommission, setSavingCommission] = useState(false);
 
   const [savingHero, setSavingHero] = useState(false);
 
@@ -167,28 +222,20 @@ const SystemSettings = () => {
       ]);
 
       /* ------------------------------------------------
-        Commission
-        ------------------------------------------------ */
+          Designer Tier Commission Policy
+          ------------------------------------------------ */
 
       const commissionData = commissionResponse.data?.data;
 
       if (!commissionData) {
-        throw new Error("Commission configuration was not returned.");
+        throw new Error("Designer tier commission policy was not returned.");
       }
-
-      const rate = Number(commissionData.commission_rate);
-
-      const normalizedRate = Number.isFinite(rate) ? String(rate) : "0";
-
-      setCommission(normalizedRate);
-
-      setOriginalCommission(normalizedRate);
 
       setCommissionInfo(commissionData);
 
       /* ------------------------------------------------
-        Showcase Hero
-        ------------------------------------------------ */
+          Showcase Hero
+          ------------------------------------------------ */
 
       const heroData = heroResponse.data?.data;
 
@@ -224,16 +271,15 @@ const SystemSettings = () => {
   Commission Derived State
   =======================================================*/
 
-  const commissionNumber = useMemo(() => Number(commission), [commission]);
+  const tierPolicy = useMemo(() => {
+    return Array.isArray(commissionInfo?.policy) ? commissionInfo.policy : [];
+  }, [commissionInfo]);
 
-  const commissionValid =
-    commission !== "" &&
-    Number.isFinite(commissionNumber) &&
-    commissionNumber >= 0 &&
-    commissionNumber <= 100;
+  const designerProfiles = Number(commissionInfo?.designer_profiles || 0);
 
-  const commissionHasChanges =
-    String(commission) !== String(originalCommission);
+  const policyMismatches = Number(commissionInfo?.policy_mismatches || 0);
+
+  const policyConsistent = commissionInfo?.policy_consistent === true;
 
   /*=======================================================
   Hero Derived State
@@ -311,80 +357,6 @@ const SystemSettings = () => {
       setHeroPreviewIndex(0);
     }
   }, [cleanedHeroImages.length, heroPreviewIndex]);
-
-  /*=======================================================
-  Update Commission
-  =======================================================*/
-
-  const handleUpdateCommission = async (event) => {
-    event.preventDefault();
-
-    if (savingCommission) {
-      return;
-    }
-
-    setError("");
-    setSuccess("");
-
-    if (!commissionValid) {
-      setError("Commission rate must be between 0 and 100.");
-
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `Change the platform booking commission to ${commissionNumber}% for all existing Designer profiles?\n\nThis rate will affect future booking releases.`,
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    setSavingCommission(true);
-
-    try {
-      const response = await API.patch("/superadmin/update-commission", {
-        rate: commissionNumber,
-      });
-
-      const returnedRate = Number(
-        response.data?.data?.commission_rate ?? commissionNumber,
-      );
-
-      const normalizedRate = String(returnedRate);
-
-      setCommission(normalizedRate);
-
-      setOriginalCommission(normalizedRate);
-
-      setCommissionInfo((current) => ({
-        ...(current || {}),
-
-        commission_rate: returnedRate,
-
-        minimum_rate: returnedRate,
-
-        maximum_rate: returnedRate,
-
-        average_rate: returnedRate,
-
-        consistent: true,
-      }));
-
-      setSuccess(
-        response.data?.message ||
-          `Commission rate updated to ${returnedRate}%.`,
-      );
-    } catch (err) {
-      console.error("Failed to update commission:", err);
-
-      setError(
-        err.response?.data?.message || "Failed to update commission rate.",
-      );
-    } finally {
-      setSavingCommission(false);
-    }
-  };
 
   /*=======================================================
   Hero Form Helpers
@@ -591,14 +563,15 @@ const SystemSettings = () => {
           </h1>
 
           <p className="text-gray-400 text-sm mt-1">
-            Manage platform commission and shared Showcase presentation.
+            Review Designer tier commission policy and manage the shared
+            Showcase presentation.
           </p>
         </div>
 
         <button
           type="button"
           onClick={fetchSettings}
-          disabled={savingCommission || savingHero}
+          disabled={savingHero}
           className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-white border border-gray-200 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-500 hover:border-black hover:text-black transition-all disabled:opacity-50"
         >
           <RefreshCw size={14} aria-hidden="true" />
@@ -650,96 +623,66 @@ const SystemSettings = () => {
       )}
 
       {/*===============================================
-      Financial Configuration
+      Designer Tier Commission Policy
       ===============================================*/}
 
       <section className="bg-white border border-gray-100 shadow-sm rounded-[2rem] overflow-hidden">
         <div className="p-6 md:p-8 border-b border-gray-100">
-          <div className="flex items-start gap-4">
-            <div className="p-3 rounded-2xl bg-[#D4AF37]/10">
-              <DollarSign
-                size={22}
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-2xl bg-[#D4AF37]/10">
+                <DollarSign
+                  size={22}
+                  className="text-[#D4AF37]"
+                  aria-hidden="true"
+                />
+              </div>
+
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">
+                  Designer Tier Commission
+                </h2>
+
+                <p className="text-sm text-gray-400 mt-1 max-w-2xl leading-relaxed">
+                  Designer commission is determined automatically by completed
+                  bookings. The percentage shown for each tier is the portion of
+                  the booking base amount credited to the Designer when a
+                  completed booking is released.
+                </p>
+              </div>
+            </div>
+
+            <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gray-50 border border-gray-100 text-gray-600">
+              <ShieldCheck
+                size={14}
                 className="text-[#D4AF37]"
                 aria-hidden="true"
               />
-            </div>
 
-            <div>
-              <h2 className="text-lg font-bold text-gray-900">
-                Booking Commission
-              </h2>
-
-              <p className="text-sm text-gray-400 mt-1 max-w-2xl leading-relaxed">
-                This percentage is deducted from a Designer&apos;s booking
-                earnings when a completed booking is released.
-              </p>
+              <span className="text-[10px] font-black uppercase tracking-widest">
+                Read Only Policy
+              </span>
             </div>
           </div>
         </div>
 
-        <form
-          onSubmit={handleUpdateCommission}
-          className="p-6 md:p-8 space-y-8"
-        >
-          <div className="max-w-md">
-            <label
-              htmlFor="platform-commission"
-              className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2"
-            >
-              Platform Commission Rate
-            </label>
-
-            <div className="relative">
-              <input
-                id="platform-commission"
-                type="number"
-                min="0"
-                max="100"
-                step="0.01"
-                value={commission}
-                disabled={savingCommission}
-                onChange={(event) => {
-                  setCommission(event.target.value);
-
-                  if (error) {
-                    setError("");
-                  }
-
-                  if (success) {
-                    setSuccess("");
-                  }
-                }}
-                className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 pr-12 py-4 text-lg font-mono font-bold text-gray-900 outline-none focus:bg-white focus:border-[#D4AF37] transition-all disabled:opacity-60"
-              />
-
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">
-                %
-              </span>
-            </div>
-
-            <p className="text-[11px] text-gray-400 mt-3 leading-relaxed">
-              Allowed range: 0% to 100%.
-            </p>
-          </div>
+        <div className="p-6 md:p-8 space-y-7">
+          {/* Summary */}
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <InfoCard
-              label="Minimum Rate"
-              value={`${Number(commissionInfo?.minimum_rate || 0)}%`}
-            />
+            <InfoCard label="Designer Profiles" value={designerProfiles} />
+
+            <InfoCard label="Policy Mismatches" value={policyMismatches} />
 
             <InfoCard
-              label="Maximum Rate"
-              value={`${Number(commissionInfo?.maximum_rate || 0)}%`}
-            />
-
-            <InfoCard
-              label="Designer Profiles"
-              value={Number(commissionInfo?.designer_profiles || 0)}
+              label="Policy Status"
+              value={policyConsistent ? "Healthy" : "Review"}
             />
           </div>
 
-          {commissionInfo?.consistent === false && (
+          {/* Policy integrity warning */}
+
+          {!policyConsistent && policyMismatches > 0 && (
             <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-3">
               <AlertTriangle
                 size={17}
@@ -749,78 +692,149 @@ const SystemSettings = () => {
 
               <div>
                 <p className="text-xs font-bold text-amber-800">
-                  Mixed Designer Commission Rates
+                  Tier Policy Mismatch Detected
                 </p>
 
                 <p className="text-xs text-amber-700 mt-1 leading-relaxed">
-                  Existing Designer profiles currently have different commission
-                  rates. Saving this setting will synchronize all existing
-                  Designer profiles to the selected rate.
+                  {policyMismatches} Designer profile
+                  {policyMismatches === 1 ? "" : "s"} currently do not match the
+                  expected commission rate for their stored tier. The booking
+                  release logic remains tier-based, but these records should be
+                  reviewed.
                 </p>
               </div>
             </div>
           )}
 
-          {commissionValid && (
-            <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5">
-              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-                Example on a $200 booking
-              </p>
+          {policyConsistent && (
+            <div className="p-4 bg-green-50 border border-green-100 rounded-2xl flex items-start gap-3">
+              <CheckCircle2
+                size={17}
+                className="text-green-600 mt-0.5 flex-shrink-0"
+                aria-hidden="true"
+              />
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                <ExampleValue label="Booking" value="$200.00" />
+              <div>
+                <p className="text-xs font-bold text-green-800">
+                  Tier Policy Synchronized
+                </p>
 
-                <ExampleValue
-                  label="Platform Commission"
-                  value={`$${(200 * (commissionNumber / 100)).toFixed(2)}`}
-                />
-
-                <ExampleValue
-                  label="Designer Net"
-                  value={`$${(200 - 200 * (commissionNumber / 100)).toFixed(
-                    2,
-                  )}`}
-                />
+                <p className="text-xs text-green-700 mt-1 leading-relaxed">
+                  Existing Designer profiles match the expected commission rate
+                  for their current tier.
+                </p>
               </div>
             </div>
           )}
 
-          <div className="pt-6 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <p className="text-xs text-gray-400 max-w-lg leading-relaxed">
-              Updating this setting changes the commission rate stored on
-              existing Designer profiles. It does not rewrite historical
-              transactions.
+          {/* Tier Table */}
+
+          <div className="overflow-hidden rounded-2xl border border-gray-100">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px]">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-5 py-4 text-left text-[9px] font-black uppercase tracking-widest text-gray-400">
+                      Tier
+                    </th>
+
+                    <th className="px-5 py-4 text-left text-[9px] font-black uppercase tracking-widest text-gray-400">
+                      Completed Bookings
+                    </th>
+
+                    <th className="px-5 py-4 text-left text-[9px] font-black uppercase tracking-widest text-gray-400">
+                      Designer Commission
+                    </th>
+
+                    <th className="px-5 py-4 text-left text-[9px] font-black uppercase tracking-widest text-gray-400">
+                      Designers
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-gray-100">
+                  {tierPolicy.length > 0 ? (
+                    tierPolicy.map((tier, index) => (
+                      <tr key={tier.tier || index} className="bg-white">
+                        <td className="px-5 py-5">
+                          <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-xl bg-[#D4AF37]/10 flex items-center justify-center">
+                              <ShieldCheck
+                                size={16}
+                                className="text-[#D4AF37]"
+                                aria-hidden="true"
+                              />
+                            </div>
+
+                            <div>
+                              <p className="text-sm font-bold text-gray-900">
+                                {formatTierLabel(tier.tier)}
+                              </p>
+
+                              <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">
+                                Tier {index + 1}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="px-5 py-5">
+                          <p className="text-sm font-mono font-bold text-gray-800">
+                            {formatBookingRange(tier)}
+                          </p>
+                        </td>
+
+                        <td className="px-5 py-5">
+                          <div className="inline-flex items-center px-3 py-1.5 rounded-xl bg-green-50 border border-green-100">
+                            <span className="text-sm font-mono font-bold text-green-700">
+                              {Number(tier.commission_rate || 0)}%
+                            </span>
+                          </div>
+                        </td>
+
+                        <td className="px-5 py-5">
+                          <p className="text-sm font-mono font-bold text-gray-800">
+                            {Number(tier.designer_count || 0)}
+                          </p>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={4}
+                        className="px-5 py-10 text-center text-sm text-gray-400"
+                      >
+                        No tier policy information was returned.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Business rule explanation */}
+
+          <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5">
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+              Automatic Tier Progression
             </p>
 
-            <button
-              type="submit"
-              disabled={
-                savingCommission || !commissionValid || !commissionHasChanges
-              }
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-black text-white text-[10px] font-black uppercase tracking-widest hover:bg-zinc-800 transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
-            >
-              {savingCommission ? (
-                <>
-                  <RefreshCw
-                    size={15}
-                    className="animate-spin"
-                    aria-hidden="true"
-                  />
-                  Updating...
-                </>
-              ) : (
-                <>
-                  <Save
-                    size={15}
-                    className="text-[#D4AF37]"
-                    aria-hidden="true"
-                  />
-                  Save Commission
-                </>
-              )}
-            </button>
+            <p className="text-xs text-gray-500 mt-3 leading-relaxed">
+              Tier progression is based on completed bookings. The booking that
+              reaches a threshold uses the new tier immediately. For example, a
+              Designer completing their 5th booking receives the Silver 15%
+              commission for that booking.
+            </p>
+
+            <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+              Super Admin cannot manually overwrite these rates from this
+              screen. This prevents a global setting from conflicting with the
+              tier-based booking payout rules.
+            </p>
           </div>
-        </form>
+        </div>
       </section>
 
       {/*===============================================
@@ -1129,6 +1143,7 @@ const SystemSettings = () => {
                       }));
 
                       setError("");
+
                       setSuccess("");
                     }}
                     className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 pr-20 py-3.5 text-sm font-bold text-gray-900 outline-none focus:bg-white focus:border-[#D4AF37] transition-all disabled:opacity-60"
@@ -1174,6 +1189,7 @@ const SystemSettings = () => {
                     }));
 
                     setError("");
+
                     setSuccess("");
                   }}
                   className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3.5 text-sm text-gray-900 outline-none focus:bg-white focus:border-[#D4AF37] transition-all disabled:opacity-60"
@@ -1207,6 +1223,7 @@ const SystemSettings = () => {
                     }));
 
                     setError("");
+
                     setSuccess("");
                   }}
                   className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3.5 text-sm text-gray-900 outline-none focus:bg-white focus:border-[#D4AF37] transition-all disabled:opacity-60"
@@ -1446,16 +1463,6 @@ const InfoCard = ({ label, value }) => (
     </p>
 
     <p className="text-xl font-serif text-gray-900 mt-2">{value}</p>
-  </div>
-);
-
-const ExampleValue = ({ label, value }) => (
-  <div>
-    <p className="text-[9px] uppercase tracking-widest font-black text-gray-400">
-      {label}
-    </p>
-
-    <p className="text-lg font-mono font-bold text-gray-900 mt-1">{value}</p>
   </div>
 );
 

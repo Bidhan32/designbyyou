@@ -385,6 +385,8 @@ const CREATOR_EDITOR_ENDPOINT = "/creators/editor-projects";
 
 const CREATOR_EDITOR_ROUTE = "/creator/fashion-editor";
 
+const CREATOR_SHOWCASE_ROUTE = "/creator/showcase";
+
 const SHOWCASE_CATEGORIES_ENDPOINT = "/creators/studio/categories";
 
 const SHOWCASE_DISCOVERY_ENDPOINT = "/creator-showcase/discovery";
@@ -2819,6 +2821,23 @@ function FashionEditor() {
       showToast("Project file could not be downloaded.", "error");
     }
   }, [getProjectData, showToast]);
+
+
+  const handleOpenCreatorShowcase = useCallback(() => {
+  setMobileMenuOpen(false);
+
+  if (persistence.dirty) {
+    const confirmed = window.confirm(
+      "This design has unsaved changes. Leave the Fashion Editor and open the Creator Showcase?",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+  }
+
+  navigate(CREATOR_SHOWCASE_ROUTE);
+}, [persistence.dirty, navigate]);
 
   /*=====================================================
     Cloud Project Loading
@@ -10341,6 +10360,13 @@ function FashionEditor() {
               {showcaseSharing ? "Sharing…" : "Share"}
             </HeaderButton>
 
+            <HeaderButton
+  onClick={handleOpenCreatorShowcase}
+  title="Open Creator Showcase"
+>
+  Showcase
+</HeaderButton>
+
             <HeaderButton onClick={handleExportPng} disabled={exporting}>
               {exporting ? "Exporting…" : "Export PNG"}
             </HeaderButton>
@@ -10461,6 +10487,13 @@ function FashionEditor() {
                 {showcaseSharing ? "Sharing to Showcase…" : "Share to Showcase"}
               </button>
 
+<button
+  type="button"
+  onClick={handleOpenCreatorShowcase}
+  className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm text-slate-200 hover:bg-slate-800"
+>
+  Open Creator Showcase
+</button>
               <button
                 type="button"
                 onClick={handleDownloadProject}

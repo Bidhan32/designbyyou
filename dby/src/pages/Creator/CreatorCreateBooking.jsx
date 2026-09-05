@@ -992,7 +992,7 @@ export default function CreatorCreateBooking() {
           setSelectedDesigner(null);
 
           setDesignerError(
-            "You cannot create a commission with your own account.",
+            "You cannot create a booking with your own account.",
           );
 
           return;
@@ -1314,7 +1314,7 @@ export default function CreatorCreateBooking() {
 
       if (code === "CLIENT_REQUEST_ID_REUSED") {
         setFormError(
-          "This booking request identity was already used with different contract details. Refresh the page before starting a different commission.",
+          "This booking request identity was already used with different contract details. Refresh the page before starting a different booking.",
         );
       } else if (code === "PAYMENT_INTENT_ALREADY_CANCELLED") {
         setFormError(
@@ -1324,7 +1324,7 @@ export default function CreatorCreateBooking() {
         setFormError(
           apiError(
             requestError,
-            "The commission contract could not be created.",
+            "The booking contract could not be created.",
           ),
         );
       }
@@ -1539,7 +1539,7 @@ export default function CreatorCreateBooking() {
               dark:text-white/45
             "
           >
-            Your payment has been reconciled with the booking. The commission
+            Your payment has been reconciled with the booking. The booking
             will now continue through the designer workflow.
           </p>
 
@@ -1881,7 +1881,7 @@ export default function CreatorCreateBooking() {
                   "
                 >
                   <Compass size={13} />
-                  Creator Commission Desk
+                  Creator Booking Desk
                 </div>
 
                 <h1
@@ -1907,7 +1907,7 @@ export default function CreatorCreateBooking() {
                       dark:text-[#D4AF37]
                     "
                   >
-                    commission.
+                    Booking.
                   </span>
                 </h1>
 
@@ -3039,8 +3039,8 @@ export default function CreatorCreateBooking() {
                                 "
                               >
                                 {designIdFromUrl
-                                  ? "Showcase commission"
-                                  : "Direct commission"}
+                                  ? "Showcase booking"
+                                  : "Direct booking"}
                               </p>
                             </div>
                           </div>
@@ -3181,7 +3181,7 @@ export default function CreatorCreateBooking() {
                               dark:text-white/25
                             "
                         >
-                          Pre-filled from the designer's indicative commission
+                          Pre-filled from the designer's indicative booking
                           starting budget. You may adjust it before creating the
                           contract.
                         </p>

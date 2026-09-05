@@ -3,36 +3,83 @@
 const db = require("../config/db");
 const bcrypt = require("bcryptjs");
 
+const { decryptBankDetails } = require("../utils/bankDetailsCrypto");
+
 /**
  * ============================================================
  * DesignByYou — Super Admin Controller
+ * Version 2.2
  * ============================================================
  *
- * Deployment-focused controller for:
+ * Current finance model:
  *
- * - User management
- * - Designer approvals
- * - Global commission management
- * - Platform financial monitoring
- * - Designer wallet / payout monitoring
- * - Booking/platform statistics
- * - Design moderation
- * - Showcase Hero management
+ * Customer / creator payments
+ * → DesignByYou Stripe platform account
  *
- * IMPORTANT:
+ * Designer earnings
+ * → internal designer wallet
+ *
+ * All designer withdrawals
+ * → verified manual bank payout
+ * → Super Admin bank transfer
+ *
+ * Stripe Connect is no longer used for NEW designer payouts.
+ *
+ * Designer booking commission policy:
+ *
+ * Bronze   (0-4 completed bookings)   -> 10%
+ * Silver   (5-19 completed bookings)  -> 15%
+ * Gold     (20-34 completed bookings) -> 20%
+ * Platinum (35-49 completed bookings) -> 25%
+ * Diamond  (50+ completed bookings)   -> 30%
+ *
+ * The commission is PAID TO the Designer. The remaining booking
+ * base amount is retained by the platform.
+ *
+ * Global commission editing is disabled. Tier is the source of
+ * truth and commission_rate is maintained as the stored mirror
+ * of the tier policy.
+ *
+ * Historical Stripe records remain preserved elsewhere for
+ * financial/audit history.
+ *
+ * ============================================================
+ * MANUAL PAYOUT DESTINATION SAFETY
+ * ============================================================
+ *
+ * designer_payout_requests.destination_summary is the
+ * authoritative historical masked payout destination.
+ *
+ * Example:
+ *
+ * Test Bank Nepal ••••3456
+ *
+ * Once a payout references a bank account, designer-side
+ * finance logic now creates a NEW bank-account row when bank
+ * details change rather than modifying that historical row.
+ *
+ * Legacy data may already contain an old payout referencing a
+ * bank-account row that was subsequently modified.
+ *
+ * Therefore this controller:
+ *
+ * 1. compares payout.destination_summary with the bank row;
+ * 2. does not present mismatched current bank data as though it
+ *    belonged to an old payout;
+ * 3. refuses to decrypt mismatched bank data;
+ * 4. refuses to move a payout to processing when its bank
+ *    snapshot does not match;
+ * 5. revalidates the destination again before completion.
+ *
+ * Sensitive bank details are decrypted ONLY for the dedicated
+ * Super Admin payout-detail endpoint and are never logged.
  *
  * Authentication/authorization belongs in superAdminRoutes.js.
  *
- * All Super Admin routes using this controller should be behind:
+ * All Super Admin routes should remain protected by:
  *
- *     protect
- *     authorize("superadmin")
- *
- * Public Showcase Hero reads are exposed separately through
- * a read-only public route.
- *
- * This controller does NOT create a separate platform wallet.
- * Existing transactions remain the financial ledger.
+ * protect
+ * authorize("superadmin")
  * ============================================================
  */
 
@@ -53,22 +100,6 @@ const normalizeApprovalStatus = (status) => {
 
   const value = status.trim().toLowerCase();
 
-  /**
-   * Frontend compatibility:
-   *
-   * Existing admin UI used:
-   *
-   * active
-   * banned
-   *
-   * Database/account policy uses:
-   *
-   * approved
-   * suspended
-   * pending
-   * rejected
-   */
-
   const aliases = {
     active: "approved",
     banned: "suspended",
@@ -82,18 +113,279 @@ const normalizeApprovalStatus = (status) => {
   return aliases[value] || null;
 };
 
-const parseCommissionRate = (value) => {
-  const parsed = Number(value);
+/* ============================================================
+   MANUAL PAYOUT HELPERS
+   ============================================================ */
 
-  if (!Number.isFinite(parsed)) {
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const isUuid = (value) =>
+  typeof value === "string" && UUID_PATTERN.test(value.trim());
+
+const cleanFinanceText = (value, maxLength = 500) => {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value.replace(/\s+/g, " ").trim().slice(0, maxLength);
+};
+
+const normalizePayoutStatus = (value) => {
+  const status = typeof value === "string" ? value.trim().toLowerCase() : "";
+
+  const allowed = [
+    "",
+    "pending",
+    "processing",
+    "completed",
+    "failed",
+    "cancelled",
+  ];
+
+  return allowed.includes(status) ? status : null;
+};
+
+/**
+ * Recreates the same SAFE masked destination format used
+ * when the designer payout request was originally created.
+ *
+ * This uses joined bank-account aliases from the Super Admin
+ * queries.
+ */
+const buildJoinedBankDestinationSummary = (row) => {
+  if (!row) {
     return null;
   }
 
-  if (parsed < 0 || parsed > 100) {
+  const bankName = cleanFinanceText(row.bank_name, 120);
+
+  const last4 = row.iban_last4 || row.account_number_last4 || null;
+
+  if (last4) {
+    return `${bankName} ••••${last4}`;
+  }
+
+  return bankName || "Bank transfer";
+};
+
+/**
+ * Historical destination integrity check.
+ *
+ * destination_summary on designer_payout_requests is treated
+ * as the authoritative immutable masked snapshot.
+ *
+ * The attached bank row is considered usable only when its
+ * current safe masked representation still matches that
+ * snapshot.
+ */
+const isManualPayoutBankSnapshotConsistent = (row) => {
+  if (!row || !row.bank_account_id) {
+    return false;
+  }
+
+  const payoutDestination = cleanFinanceText(row.destination_summary, 255);
+
+  const joinedBankDestination = cleanFinanceText(
+    buildJoinedBankDestinationSummary(row),
+    255,
+  );
+
+  if (!payoutDestination || !joinedBankDestination) {
+    return false;
+  }
+
+  return payoutDestination === joinedBankDestination;
+};
+
+const manualPayoutResponse = (row) => {
+  if (!row) {
     return null;
   }
 
-  return Number(parsed.toFixed(2));
+  const snapshotConsistent = isManualPayoutBankSnapshotConsistent(row);
+
+  return {
+    id: row.id,
+
+    designer_id: row.designer_id,
+
+    full_name: row.full_name || null,
+
+    email: row.email || null,
+
+    designer_country: row.designer_country || null,
+
+    amount: row.amount,
+
+    currency: row.currency,
+
+    payout_method: row.payout_method,
+
+    provider: row.provider,
+
+    bank_account_id: row.bank_account_id || null,
+
+    destination_summary: row.destination_summary || null,
+
+    bank_account_snapshot_consistent: snapshotConsistent,
+
+    bank_account_snapshot_warning:
+      row.bank_account_id && !snapshotConsistent
+        ? "The attached bank-account row no longer matches this payout's stored historical destination. The payout destination_summary remains authoritative."
+        : null,
+
+    status: row.status,
+
+    provider_status: row.provider_status || null,
+
+    provider_transaction_id: row.provider_transaction_id || null,
+
+    failure_reason: row.failure_reason || null,
+
+    requested_at: row.requested_at,
+
+    processing_at: row.processing_at,
+
+    completed_at: row.completed_at,
+
+    failed_at: row.failed_at,
+
+    cancelled_at: row.cancelled_at,
+
+    updated_at: row.updated_at,
+
+    bank_account:
+      row.bank_account_id && snapshotConsistent
+        ? {
+            id: row.bank_account_id,
+
+            country_code: row.bank_country_code || null,
+
+            account_holder_name: row.bank_account_holder_name || null,
+
+            bank_name: row.bank_name || null,
+
+            currency: row.bank_currency || null,
+
+            account_number_last4: row.account_number_last4 || null,
+
+            iban_last4: row.iban_last4 || null,
+
+            verification_status: row.bank_verification_status || null,
+
+            is_default: row.bank_is_default === true,
+
+            is_active: row.bank_is_active === true,
+
+            verified_at: row.bank_verified_at || null,
+          }
+        : null,
+  };
+};
+
+const getAttachedManualPayoutBankAccount = async (queryable, payout) => {
+  if (!payout?.bank_account_id || !payout?.designer_id) {
+    return null;
+  }
+
+  const result = await queryable.query(
+    `
+        SELECT
+            ba.id,
+
+            ba.country_code
+                AS bank_country_code,
+
+            ba.account_holder_name
+                AS bank_account_holder_name,
+
+            ba.bank_name,
+
+            ba.currency
+                AS bank_currency,
+
+            ba.account_number_last4,
+
+            ba.iban_last4,
+
+            ba.verification_status
+                AS bank_verification_status,
+
+            ba.is_default
+                AS bank_is_default,
+
+            ba.is_active
+                AS bank_is_active,
+
+            ba.verified_at
+                AS bank_verified_at
+
+        FROM designer_bank_accounts ba
+
+        WHERE
+            ba.id = $1
+
+            AND
+            ba.designer_id = $2
+
+        LIMIT 1
+      `,
+    [payout.bank_account_id, payout.designer_id],
+  );
+
+  return result.rows[0] || null;
+};
+
+const validateAttachedBankForManualPayout = async (queryable, payout) => {
+  const bankAccount = await getAttachedManualPayoutBankAccount(
+    queryable,
+    payout,
+  );
+
+  if (!bankAccount) {
+    return {
+      success: false,
+
+      code: "PAYOUT_BANK_ACCOUNT_MISSING",
+
+      message: "The payout does not reference a usable bank account.",
+    };
+  }
+
+  if (bankAccount.bank_verification_status !== "verified") {
+    return {
+      success: false,
+
+      code: "PAYOUT_BANK_ACCOUNT_NOT_VERIFIED",
+
+      message: "The payout does not reference a verified bank account.",
+    };
+  }
+
+  const comparisonRow = {
+    ...payout,
+    ...bankAccount,
+  };
+
+  if (!isManualPayoutBankSnapshotConsistent(comparisonRow)) {
+    return {
+      success: false,
+
+      code: "PAYOUT_BANK_SNAPSHOT_MISMATCH",
+
+      message:
+        "The bank account currently attached to this payout no longer matches the payout's stored destination snapshot. Do not use the current bank details for this payout; manual reconciliation is required.",
+    };
+  }
+
+  return {
+    success: true,
+
+    bankAccount,
+
+    comparisonRow,
+  };
 };
 
 /* ============================================================
@@ -131,15 +423,6 @@ const normalizeHeroUrl = (value) => {
   return cleaned || null;
 };
 
-/**
- * Hero media may use:
- *
- * - HTTPS absolute URLs
- * - application-relative URLs such as:
- *     /uploads/hero/example.jpg
- *
- * Local development may additionally use HTTP.
- */
 const isAllowedHeroMediaUrl = (value) => {
   if (!value) {
     return true;
@@ -208,8 +491,11 @@ const getShowcaseHeroRow = async () => {
             updated_by,
             created_at,
             updated_at
+
         FROM showcase_hero_settings
+
         WHERE id = 1
+
         LIMIT 1
       `,
   );
@@ -220,18 +506,6 @@ const getShowcaseHeroRow = async () => {
 /* ============================================================
    1. ADMIN ACCOUNT MANAGEMENT
    ============================================================ */
-
-/**
- * Create a normal Admin account.
- *
- * Only a Super Admin should ever be allowed to call this route.
- *
- * This intentionally creates:
- *
- * role = "admin"
- *
- * NOT another superadmin.
- */
 
 exports.createAdmin = async (req, res) => {
   const fullName =
@@ -263,8 +537,12 @@ exports.createAdmin = async (req, res) => {
     const existing = await db.query(
       `
           SELECT id
+
           FROM users
-          WHERE LOWER(email) = LOWER($1)
+
+          WHERE LOWER(email) =
+                LOWER($1)
+
           LIMIT 1
         `,
       [email],
@@ -290,6 +568,7 @@ exports.createAdmin = async (req, res) => {
               is_email_verified,
               approval_status
           )
+
           VALUES (
               $1,
               $2,
@@ -298,6 +577,7 @@ exports.createAdmin = async (req, res) => {
               TRUE,
               'approved'
           )
+
           RETURNING
               id,
               full_name,
@@ -327,17 +607,6 @@ exports.createAdmin = async (req, res) => {
 /* ============================================================
    2. USER MANAGEMENT
    ============================================================ */
-
-/**
- * Get all users.
- *
- * Optional:
- *
- * ?role=creator
- * ?role=designer
- * ?role=admin
- * ?role=superadmin
- */
 
 exports.getUsers = async (req, res) => {
   const requestedRole = normalizeRole(req.query.role);
@@ -374,9 +643,13 @@ exports.getUsers = async (req, res) => {
               approval_status AS status,
               is_email_verified,
               created_at
+
           FROM users
+
           ${roleFilter}
-          ORDER BY created_at DESC
+
+          ORDER BY
+              created_at DESC
         `,
       params,
     );
@@ -390,21 +663,6 @@ exports.getUsers = async (req, res) => {
     });
   }
 };
-
-/**
- * Change a user's normal platform role.
- *
- * SECURITY:
- *
- * - Cannot promote to superadmin.
- * - Cannot modify an existing superadmin.
- *
- * Allowed target roles:
- *
- * creator
- * designer
- * admin
- */
 
 exports.updateUserRole = async (req, res) => {
   const userId = req.params.userId || req.params.id;
@@ -428,13 +686,16 @@ exports.updateUserRole = async (req, res) => {
   try {
     const targetResult = await db.query(
       `
-            SELECT
-                id,
-                role
-            FROM users
-            WHERE id = $1
-            LIMIT 1
-          `,
+          SELECT
+              id,
+              role
+
+          FROM users
+
+          WHERE id = $1
+
+          LIMIT 1
+        `,
       [userId],
     );
 
@@ -454,17 +715,20 @@ exports.updateUserRole = async (req, res) => {
 
     const result = await db.query(
       `
-            UPDATE users
-            SET role = $1
-            WHERE id = $2
-            RETURNING
-                id,
-                full_name,
-                email,
-                role,
-                approval_status,
-                approval_status AS status
-          `,
+          UPDATE users
+
+          SET role = $1
+
+          WHERE id = $2
+
+          RETURNING
+              id,
+              full_name,
+              email,
+              role,
+              approval_status,
+              approval_status AS status
+        `,
       [newRole, userId],
     );
 
@@ -481,22 +745,6 @@ exports.updateUserRole = async (req, res) => {
     });
   }
 };
-
-/**
- * Approve / suspend / reject / restore users.
- *
- * Accepted values:
- *
- * approved
- * suspended
- * pending
- * rejected
- *
- * Frontend compatibility:
- *
- * active -> approved
- * banned -> suspended
- */
 
 exports.manageUserStatus = async (req, res) => {
   const userId = req.params.userId || req.params.id;
@@ -519,13 +767,16 @@ exports.manageUserStatus = async (req, res) => {
   try {
     const targetResult = await db.query(
       `
-            SELECT
-                id,
-                role
-            FROM users
-            WHERE id = $1
-            LIMIT 1
-          `,
+          SELECT
+              id,
+              role
+
+          FROM users
+
+          WHERE id = $1
+
+          LIMIT 1
+        `,
       [userId],
     );
 
@@ -543,17 +794,20 @@ exports.manageUserStatus = async (req, res) => {
 
     const result = await db.query(
       `
-            UPDATE users
-            SET approval_status = $1
-            WHERE id = $2
-            RETURNING
-                id,
-                full_name,
-                email,
-                role,
-                approval_status,
-                approval_status AS status
-          `,
+          UPDATE users
+
+          SET approval_status = $1
+
+          WHERE id = $2
+
+          RETURNING
+              id,
+              full_name,
+              email,
+              role,
+              approval_status,
+              approval_status AS status
+        `,
       [status, userId],
     );
 
@@ -575,39 +829,41 @@ exports.manageUserStatus = async (req, res) => {
    3. DESIGNER APPROVALS
    ============================================================ */
 
-/**
- * Get designers waiting for approval.
- */
-
 exports.getPendingDesigners = async (req, res) => {
   try {
     const result = await db.query(
       `
-            SELECT
-                u.id,
-                u.full_name,
-                u.email,
-                u.role,
-                u.approval_status,
-                u.approval_status AS status,
-                u.is_email_verified,
-                u.created_at,
+          SELECT
+              u.id,
+              u.full_name,
+              u.email,
+              u.role,
+              u.approval_status,
+              u.approval_status AS status,
+              u.is_email_verified,
+              u.created_at,
 
-                dp.portfolio_url,
-                dp.expertise_tags,
-                dp.commission_rate
+              dp.portfolio_url,
+              dp.expertise_tags,
+              dp.commission_rate
 
-            FROM users u
+          FROM users u
 
-            LEFT JOIN designer_profiles dp
-                ON dp.user_id = u.id
+          LEFT JOIN designer_profiles dp
+              ON dp.user_id =
+                 u.id
 
-            WHERE
-                u.role = 'designer'
-                AND u.approval_status = 'pending'
+          WHERE
+              u.role =
+                  'designer'
 
-            ORDER BY u.created_at ASC
-          `,
+              AND
+              u.approval_status =
+                  'pending'
+
+          ORDER BY
+              u.created_at ASC
+        `,
     );
 
     return res.status(200).json({
@@ -625,138 +881,236 @@ exports.getPendingDesigners = async (req, res) => {
 };
 
 /* ============================================================
-   4. COMMISSION CONTROL
+   4. DESIGNER TIER COMMISSION POLICY
    ============================================================ */
 
 /**
- * Return current commission configuration across
- * designer profiles.
+ * GET
+ * /api/v1/superadmin/commission
+ *
+ * Read-only policy monitoring.
+ *
+ * The Designer tier is the source of truth:
+ *
+ * Bronze   -> 10% -> 0-4 completed bookings
+ * Silver   -> 15% -> 5-19 completed bookings
+ * Gold     -> 20% -> 20-34 completed bookings
+ * Platinum -> 25% -> 35-49 completed bookings
+ * Diamond  -> 30% -> 50+ completed bookings
+ *
+ * A mixed set of commission rates is EXPECTED because Designers
+ * belong to different tiers.
+ *
+ * The endpoint also reports any profile whose stored tier and
+ * commission_rate no longer match the tier policy.
  */
-
 exports.getCommissionOverview = async (req, res) => {
   try {
     const result = await db.query(
       `
-            SELECT
-                COUNT(*)::int AS designer_profiles,
+          SELECT
+              COUNT(*)::int
+                  AS designer_profiles,
 
-                COALESCE(
-                    MIN(commission_rate),
-                    0
-                ) AS minimum_rate,
+              COUNT(*)
+              FILTER (
+                  WHERE
+                    tier::text =
+                    'bronze'
+              )::int
+                  AS bronze_designers,
 
-                COALESCE(
-                    MAX(commission_rate),
-                    0
-                ) AS maximum_rate,
+              COUNT(*)
+              FILTER (
+                  WHERE
+                    tier::text =
+                    'silver'
+              )::int
+                  AS silver_designers,
 
-                COALESCE(
-                    ROUND(
-                        AVG(commission_rate)::numeric,
-                        2
-                    ),
-                    0
-                ) AS average_rate
+              COUNT(*)
+              FILTER (
+                  WHERE
+                    tier::text =
+                    'gold'
+              )::int
+                  AS gold_designers,
 
-            FROM designer_profiles
-          `,
+              COUNT(*)
+              FILTER (
+                  WHERE
+                    tier::text =
+                    'platinum'
+              )::int
+                  AS platinum_designers,
+
+              COUNT(*)
+              FILTER (
+                  WHERE
+                    tier::text =
+                    'diamond'
+              )::int
+                  AS diamond_designers,
+
+              COUNT(*)
+              FILTER (
+                  WHERE
+                    tier IS NULL
+
+                    OR
+                    commission_rate IS NULL
+
+                    OR
+                    commission_rate <>
+                        CASE
+                          WHEN tier::text = 'bronze'
+                            THEN 10.00
+
+                          WHEN tier::text = 'silver'
+                            THEN 15.00
+
+                          WHEN tier::text = 'gold'
+                            THEN 20.00
+
+                          WHEN tier::text = 'platinum'
+                            THEN 25.00
+
+                          WHEN tier::text = 'diamond'
+                            THEN 30.00
+
+                          ELSE -1.00
+                        END
+              )::int
+                  AS policy_mismatches
+
+          FROM designer_profiles
+        `,
     );
 
-    const data = result.rows[0];
+    const counts = result.rows[0] || {};
 
-    const consistent = Number(data.minimum_rate) === Number(data.maximum_rate);
+    const policyMismatches = Number(counts.policy_mismatches || 0);
 
     return res.status(200).json({
       status: "success",
 
       data: {
-        ...data,
+        mode: "tier_based",
 
-        consistent,
+        editable: false,
 
-        commission_rate: consistent
-          ? Number(data.maximum_rate)
-          : Number(data.average_rate),
+        designer_profiles: Number(counts.designer_profiles || 0),
+
+        policy_mismatches: policyMismatches,
+
+        policy_consistent: policyMismatches === 0,
+
+        policy: [
+          {
+            tier: "bronze",
+
+            minimum_completed_bookings: 0,
+
+            maximum_completed_bookings: 4,
+
+            commission_rate: 10,
+
+            designer_count: Number(counts.bronze_designers || 0),
+          },
+
+          {
+            tier: "silver",
+
+            minimum_completed_bookings: 5,
+
+            maximum_completed_bookings: 19,
+
+            commission_rate: 15,
+
+            designer_count: Number(counts.silver_designers || 0),
+          },
+
+          {
+            tier: "gold",
+
+            minimum_completed_bookings: 20,
+
+            maximum_completed_bookings: 34,
+
+            commission_rate: 20,
+
+            designer_count: Number(counts.gold_designers || 0),
+          },
+
+          {
+            tier: "platinum",
+
+            minimum_completed_bookings: 35,
+
+            maximum_completed_bookings: 49,
+
+            commission_rate: 25,
+
+            designer_count: Number(counts.platinum_designers || 0),
+          },
+
+          {
+            tier: "diamond",
+
+            minimum_completed_bookings: 50,
+
+            maximum_completed_bookings: null,
+
+            commission_rate: 30,
+
+            designer_count: Number(counts.diamond_designers || 0),
+          },
+        ],
       },
     });
   } catch (error) {
     console.error("getCommissionOverview error:", error);
 
     return res.status(500).json({
-      message: "Failed to retrieve commission configuration.",
+      message: "Failed to retrieve Designer tier commission policy.",
     });
   }
 };
 
 /**
- * Change commission rate for all existing Designer profiles.
+ * Compatibility safety handler.
  *
- * Compatible bodies:
+ * Older Super Admin routes/frontends may still call:
  *
- * { "newRate": 15 }
+ * PATCH /api/v1/superadmin/update-commission
+ * PATCH /api/v1/superadmin/business/commission
  *
- * OR
+ * Global updates are intentionally disabled so a stale client
+ * can never overwrite tier-based Designer commission rates.
  *
- * { "rate": 15 }
+ * The routes should be removed in superAdminRoutes.js, but this
+ * handler remains harmless while the migration is in progress.
  */
-
 exports.updateGlobalCommission = async (req, res) => {
-  const requestedRate =
-    req.body.newRate !== undefined ? req.body.newRate : req.body.rate;
+  return res.status(410).json({
+    status: "fail",
 
-  const newRate = parseCommissionRate(requestedRate);
+    code: "GLOBAL_COMMISSION_DISABLED",
 
-  if (newRate === null) {
-    return res.status(400).json({
-      message: "Commission rate must be a valid number between 0 and 100.",
-    });
-  }
+    message:
+      "Global commission editing is disabled. Designer commission is determined automatically by tier: Bronze 10%, Silver 15%, Gold 20%, Platinum 25%, and Diamond 30%.",
 
-  try {
-    const result = await db.query(
-      `
-            UPDATE designer_profiles
-            SET commission_rate = $1
-            RETURNING user_id
-          `,
-      [newRate],
-    );
+    data: {
+      mode: "tier_based",
 
-    return res.status(200).json({
-      status: "success",
-
-      message: `Global commission rate updated to ${newRate}%`,
-
-      data: {
-        commission_rate: newRate,
-
-        designer_profiles_updated: result.rowCount,
-      },
-    });
-  } catch (error) {
-    console.error("updateGlobalCommission error:", error);
-
-    return res.status(500).json({
-      message: "Failed to update commission rates.",
-    });
-  }
+      editable: false,
+    },
+  });
 };
 
 /* ============================================================
    5. PLATFORM FINANCIAL OVERVIEW
    ============================================================ */
-
-/**
- * Platform finance summary.
- *
- * escrow_lock:
- *
- * creator/payment/platform fee collected at funding
- *
- * escrow_release:
- *
- * platform commission earned when Designer earnings are released
- */
 
 exports.getFinancialOverview = async (req, res) => {
   try {
@@ -764,189 +1118,258 @@ exports.getFinancialOverview = async (req, res) => {
       await Promise.all([
         db.query(
           `
-              SELECT
-                  COUNT(*)::int AS total_transactions,
+            SELECT
+                COUNT(*)::int
+                    AS total_transactions,
 
-                  COALESCE(
-                      SUM(gross_amount),
-                      0
-                  ) AS ledger_gross_volume,
+                COALESCE(
+                    SUM(gross_amount),
+                    0
+                ) AS ledger_gross_volume,
 
-                  COALESCE(
-                      SUM(platform_fee_deducted)
-                      FILTER (
-                          WHERE transaction_type::text = 'escrow_lock'
-                      ),
-                      0
-                  ) AS creator_platform_fees,
+                COALESCE(
+                    SUM(
+                        platform_fee_deducted
+                    )
+                    FILTER (
+                        WHERE
+                          transaction_type::text =
+                          'escrow_lock'
+                    ),
+                    0
+                ) AS creator_platform_fees,
 
-                  COALESCE(
-                      SUM(platform_fee_deducted)
-                      FILTER (
-                          WHERE transaction_type::text = 'escrow_release'
-                      ),
-                      0
-                  ) AS booking_commission_revenue,
+                COALESCE(
+                    SUM(
+                        platform_fee_deducted
+                    )
+                    FILTER (
+                        WHERE
+                          transaction_type::text =
+                          'escrow_release'
+                    ),
+                    0
+                ) AS booking_platform_retained,
 
-                  COALESCE(
-                      SUM(net_amount)
-                      FILTER (
-                          WHERE transaction_type::text = 'escrow_release'
-                      ),
-                      0
-                  ) AS designer_earnings_released,
+                COALESCE(
+                    SUM(net_amount)
+                    FILTER (
+                        WHERE
+                          transaction_type::text =
+                          'escrow_release'
+                    ),
+                    0
+                ) AS designer_earnings_released,
 
-                  COALESCE(
-                      SUM(gross_amount)
-                      FILTER (
-                          WHERE transaction_type::text = 'escrow_release'
-                      ),
-                      0
-                  ) AS completed_booking_release_volume,
+                COALESCE(
+                    SUM(gross_amount)
+                    FILTER (
+                        WHERE
+                          transaction_type::text =
+                          'escrow_release'
+                    ),
+                    0
+                ) AS completed_booking_release_volume,
 
-                  COALESCE(
-                      SUM(gross_amount)
-                      FILTER (
-                          WHERE transaction_type::text = 'refund'
-                      ),
-                      0
-                  ) AS refund_volume,
+                COALESCE(
+                    SUM(gross_amount)
+                    FILTER (
+                        WHERE
+                          transaction_type::text =
+                          'refund'
+                    ),
+                    0
+                ) AS refund_volume,
 
-                  COUNT(*)
-                  FILTER (
-                      WHERE transaction_type::text = 'escrow_lock'
-                  )::int AS escrow_lock_transactions,
+                COUNT(*)
+                FILTER (
+                    WHERE
+                      transaction_type::text =
+                      'escrow_lock'
+                )::int
+                    AS escrow_lock_transactions,
 
-                  COUNT(*)
-                  FILTER (
-                      WHERE transaction_type::text = 'escrow_release'
-                  )::int AS escrow_release_transactions,
+                COUNT(*)
+                FILTER (
+                    WHERE
+                      transaction_type::text =
+                      'escrow_release'
+                )::int
+                    AS escrow_release_transactions,
 
-                  COUNT(*)
-                  FILTER (
-                      WHERE transaction_type::text = 'refund'
-                  )::int AS refund_transactions
+                COUNT(*)
+                FILTER (
+                    WHERE
+                      transaction_type::text =
+                      'refund'
+                )::int
+                    AS refund_transactions
 
-              FROM transactions
-            `,
+            FROM transactions
+          `,
         ),
 
         db.query(
           `
-              SELECT
-                  COUNT(*)::int AS total_bookings,
+            SELECT
+                COUNT(*)::int
+                    AS total_bookings,
 
-                  COUNT(*)
-                  FILTER (
-                      WHERE status::text = 'funded'
-                  )::int AS funded_bookings,
+                COUNT(*)
+                FILTER (
+                    WHERE
+                      status::text =
+                      'funded'
+                )::int
+                    AS funded_bookings,
 
-                  COUNT(*)
-                  FILTER (
-                      WHERE status::text IN (
+                COUNT(*)
+                FILTER (
+                    WHERE
+                      status::text IN (
                           'progress',
                           'review_prototype',
                           'final_production',
                           'review_final'
                       )
-                  )::int AS active_projects,
+                )::int
+                    AS active_projects,
 
-                  COUNT(*)
-                  FILTER (
-                      WHERE status::text = 'completed'
-                  )::int AS completed_bookings,
+                COUNT(*)
+                FILTER (
+                    WHERE
+                      status::text =
+                      'completed'
+                )::int
+                    AS completed_bookings,
 
-                  COUNT(*)
-                  FILTER (
-                      WHERE status::text = 'cancelled'
-                  )::int AS cancelled_bookings,
+                COUNT(*)
+                FILTER (
+                    WHERE
+                      status::text =
+                      'cancelled'
+                )::int
+                    AS cancelled_bookings,
 
-                  COUNT(*)
-                  FILTER (
-                      WHERE status::text = 'cancellation_pending'
-                  )::int AS cancellation_pending,
+                COUNT(*)
+                FILTER (
+                    WHERE
+                      status::text =
+                      'cancellation_pending'
+                )::int
+                    AS cancellation_pending,
 
-                  COUNT(*)
-                  FILTER (
-                      WHERE status::text = 'refund_pending'
-                  )::int AS refund_pending,
+                COUNT(*)
+                FILTER (
+                    WHERE
+                      status::text =
+                      'refund_pending'
+                )::int
+                    AS refund_pending,
 
-                  COUNT(*)
-                  FILTER (
-                      WHERE status::text = 'refund_failed'
-                  )::int AS refund_failed,
+                COUNT(*)
+                FILTER (
+                    WHERE
+                      status::text =
+                      'refund_failed'
+                )::int
+                    AS refund_failed,
 
-                  COALESCE(
-                      SUM(agreed_price)
-                      FILTER (
-                          WHERE status::text = 'completed'
-                      ),
-                      0
-                  ) AS completed_booking_value
+                COALESCE(
+                    SUM(agreed_price)
+                    FILTER (
+                        WHERE
+                          status::text =
+                          'completed'
+                    ),
+                    0
+                ) AS completed_booking_value
 
-              FROM bookings
-            `,
+            FROM bookings
+          `,
         ),
 
         db.query(
           `
-              SELECT
-                  COUNT(*)::int AS designer_wallets,
+            SELECT
+                COUNT(*)::int
+                    AS designer_wallets,
 
-                  COALESCE(
-                      SUM(available_balance),
-                      0
-                  ) AS designer_available_balance,
+                COALESCE(
+                    SUM(
+                        available_balance
+                    ),
+                    0
+                ) AS designer_available_balance,
 
-                  COALESCE(
-                      SUM(pending_escrow_balance),
-                      0
-                  ) AS pending_escrow_balance,
+                COALESCE(
+                    SUM(
+                        pending_escrow_balance
+                    ),
+                    0
+                ) AS pending_escrow_balance,
 
-                  COALESCE(
-                      SUM(pending_payout_balance),
-                      0
-                  ) AS pending_payout_balance
+                COALESCE(
+                    SUM(
+                        pending_payout_balance
+                    ),
+                    0
+                ) AS pending_payout_balance
 
-              FROM designer_wallets
-            `,
+            FROM designer_wallets
+          `,
         ),
 
         db.query(
           `
-              SELECT
-                  COUNT(*)::int AS total_payout_requests,
+            SELECT
+                COUNT(*)::int
+                    AS total_payout_requests,
 
-                  COUNT(*)
-                  FILTER (
-                      WHERE status = 'pending'
-                  )::int AS pending_payout_requests,
+                COUNT(*)
+                FILTER (
+                    WHERE
+                      status =
+                      'pending'
+                )::int
+                    AS pending_payout_requests,
 
-                  COUNT(*)
-                  FILTER (
-                      WHERE status = 'processing'
-                  )::int AS processing_payout_requests,
+                COUNT(*)
+                FILTER (
+                    WHERE
+                      status =
+                      'processing'
+                )::int
+                    AS processing_payout_requests,
 
-                  COUNT(*)
-                  FILTER (
-                      WHERE status = 'completed'
-                  )::int AS completed_payout_requests,
+                COUNT(*)
+                FILTER (
+                    WHERE
+                      status =
+                      'completed'
+                )::int
+                    AS completed_payout_requests,
 
-                  COUNT(*)
-                  FILTER (
-                      WHERE status = 'failed'
-                  )::int AS failed_payout_requests,
+                COUNT(*)
+                FILTER (
+                    WHERE
+                      status =
+                      'failed'
+                )::int
+                    AS failed_payout_requests,
 
-                  COALESCE(
-                      SUM(amount)
-                      FILTER (
-                          WHERE status = 'pending'
-                      ),
-                      0
-                  ) AS pending_payout_request_value
+                COALESCE(
+                    SUM(amount)
+                    FILTER (
+                        WHERE
+                          status =
+                          'pending'
+                    ),
+                    0
+                ) AS pending_payout_request_value
 
-              FROM designer_payout_requests
-            `,
+            FROM designer_payout_requests
+          `,
         ),
       ]);
 
@@ -960,7 +1383,9 @@ exports.getFinancialOverview = async (req, res) => {
 
     const creatorPlatformFees = Number(ledger.creator_platform_fees || 0);
 
-    const bookingCommission = Number(ledger.booking_commission_revenue || 0);
+    const bookingPlatformRetained = Number(
+      ledger.booking_platform_retained || 0,
+    );
 
     return res.status(200).json({
       status: "success",
@@ -969,9 +1394,15 @@ exports.getFinancialOverview = async (req, res) => {
         revenue: {
           creator_platform_fees: creatorPlatformFees,
 
-          booking_commission_revenue: bookingCommission,
+          booking_platform_retained: bookingPlatformRetained,
 
-          total_platform_fees: creatorPlatformFees + bookingCommission,
+          /*
+           * Temporary compatibility alias.
+           * Remove after the frontend dashboard is migrated.
+           */
+          booking_commission_revenue: bookingPlatformRetained,
+
+          total_platform_fees: creatorPlatformFees + bookingPlatformRetained,
 
           designer_earnings_released: Number(
             ledger.designer_earnings_released || 0,
@@ -1080,29 +1511,30 @@ exports.getFinancialTransactions = async (req, res) => {
   try {
     const result = await db.query(
       `
-            SELECT
-                id,
-                sender_id,
-                receiver_id,
-                reference_id,
-                gross_amount,
-                platform_fee_deducted,
-                net_amount,
-                transaction_type,
-                stripe_payment_intent_id,
-                payment_provider,
-                provider_payment_id,
-                provider_transaction_id,
-                currency,
-                created_at
+          SELECT
+              id,
+              sender_id,
+              receiver_id,
+              reference_id,
+              gross_amount,
+              platform_fee_deducted,
+              net_amount,
+              transaction_type,
+              stripe_payment_intent_id,
+              payment_provider,
+              provider_payment_id,
+              provider_transaction_id,
+              currency,
+              created_at
 
-            FROM transactions
+          FROM transactions
 
-            ORDER BY
-                created_at DESC NULLS LAST
+          ORDER BY
+              created_at DESC
+              NULLS LAST
 
-            LIMIT $1
-          `,
+          LIMIT $1
+        `,
       [limit],
     );
 
@@ -1126,86 +1558,88 @@ exports.getFinancialTransactions = async (req, res) => {
    7. DESIGNER WALLET + PAYOUT DASHBOARD
    ============================================================ */
 
-/**
- * Wallet source of truth:
- *
- * user_id
- * available_balance
- * pending_escrow_balance
- * pending_payout_balance
- */
-
 exports.getPayoutDashboard = async (req, res) => {
   try {
     const [walletResult, payoutResult] = await Promise.all([
       db.query(
         `
-              SELECT
-                  u.id AS designer_id,
-                  u.full_name,
-                  u.email,
+            SELECT
+                u.id
+                    AS designer_id,
 
-                  dw.available_balance,
-                  dw.pending_escrow_balance,
-                  dw.pending_payout_balance
+                u.full_name,
+                u.email,
 
-              FROM designer_wallets dw
+                dw.available_balance,
+                dw.pending_escrow_balance,
+                dw.pending_payout_balance
 
-              JOIN users u
-                  ON u.id = dw.user_id
+            FROM designer_wallets dw
 
-              WHERE
-                  dw.available_balance > 0
-                  OR dw.pending_escrow_balance > 0
-                  OR dw.pending_payout_balance > 0
+            JOIN users u
+                ON u.id =
+                   dw.user_id
 
-              ORDER BY
-                  dw.available_balance DESC,
-                  dw.pending_payout_balance DESC,
-                  dw.pending_escrow_balance DESC
-            `,
+            WHERE
+                dw.available_balance > 0
+
+                OR
+                dw.pending_escrow_balance > 0
+
+                OR
+                dw.pending_payout_balance > 0
+
+            ORDER BY
+                dw.available_balance DESC,
+                dw.pending_payout_balance DESC,
+                dw.pending_escrow_balance DESC
+          `,
       ),
 
       db.query(
         `
-              SELECT
-                  pr.id,
-                  pr.designer_id,
-                  u.full_name,
-                  u.email,
+            SELECT
+                pr.id,
+                pr.designer_id,
 
-                  pr.amount,
-                  pr.currency,
-                  pr.payout_method,
-                  pr.provider,
-                  pr.destination_summary,
+                u.full_name,
+                u.email,
 
-                  pr.status,
-                  pr.provider_status,
+                pr.amount,
+                pr.currency,
 
-                  pr.provider_payout_id,
-                  pr.provider_batch_id,
-                  pr.provider_transaction_id,
+                pr.payout_method,
+                pr.provider,
 
-                  pr.failure_reason,
+                pr.destination_summary,
 
-                  pr.requested_at,
-                  pr.processing_at,
-                  pr.completed_at,
-                  pr.failed_at,
-                  pr.cancelled_at,
-                  pr.updated_at
+                pr.status,
+                pr.provider_status,
 
-              FROM designer_payout_requests pr
+                pr.provider_payout_id,
+                pr.provider_batch_id,
+                pr.provider_transaction_id,
 
-              JOIN users u
-                  ON u.id = pr.designer_id
+                pr.failure_reason,
 
-              ORDER BY
-                  pr.requested_at DESC
+                pr.requested_at,
+                pr.processing_at,
+                pr.completed_at,
+                pr.failed_at,
+                pr.cancelled_at,
+                pr.updated_at
 
-              LIMIT 100
-            `,
+            FROM designer_payout_requests pr
+
+            JOIN users u
+                ON u.id =
+                   pr.designer_id
+
+            ORDER BY
+                pr.requested_at DESC
+
+            LIMIT 100
+          `,
       ),
     ]);
 
@@ -1228,69 +1662,1433 @@ exports.getPayoutDashboard = async (req, res) => {
 };
 
 /* ============================================================
-   8. GLOBAL / DASHBOARD STATISTICS
+   8. MANUAL BANK PAYOUT ADMINISTRATION
+   ============================================================ */
+
+exports.getManualPayoutRequests = async (req, res) => {
+  const status = normalizePayoutStatus(req.query.status);
+
+  if (status === null) {
+    return res.status(400).json({
+      message: "Invalid payout status filter.",
+    });
+  }
+
+  let limit = Number.parseInt(req.query.limit, 10);
+
+  if (!Number.isInteger(limit) || limit <= 0) {
+    limit = 100;
+  }
+
+  limit = Math.min(limit, 250);
+
+  try {
+    const params = [];
+
+    let statusFilter = "";
+
+    if (status) {
+      params.push(status);
+
+      statusFilter = `
+        AND pr.status =
+            $${params.length}
+      `;
+    }
+
+    params.push(limit);
+
+    const result = await db.query(
+      `
+          SELECT
+              pr.id,
+              pr.designer_id,
+
+              u.full_name,
+              u.email,
+
+              dp.country
+                  AS designer_country,
+
+              pr.amount,
+              pr.currency,
+
+              pr.payout_method,
+              pr.provider,
+
+              pr.bank_account_id,
+
+              pr.destination_summary,
+
+              pr.status,
+              pr.provider_status,
+
+              pr.provider_transaction_id,
+
+              pr.failure_reason,
+
+              pr.requested_at,
+              pr.processing_at,
+              pr.completed_at,
+              pr.failed_at,
+              pr.cancelled_at,
+              pr.updated_at,
+
+              ba.country_code
+                  AS bank_country_code,
+
+              ba.account_holder_name
+                  AS bank_account_holder_name,
+
+              ba.bank_name,
+
+              ba.currency
+                  AS bank_currency,
+
+              ba.account_number_last4,
+
+              ba.iban_last4,
+
+              ba.verification_status
+                  AS bank_verification_status,
+
+              ba.is_default
+                  AS bank_is_default,
+
+              ba.is_active
+                  AS bank_is_active,
+
+              ba.verified_at
+                  AS bank_verified_at
+
+          FROM designer_payout_requests pr
+
+          JOIN users u
+              ON u.id =
+                 pr.designer_id
+
+          LEFT JOIN designer_profiles dp
+              ON dp.user_id =
+                 pr.designer_id
+
+          LEFT JOIN designer_bank_accounts ba
+              ON ba.id =
+                 pr.bank_account_id
+
+              AND ba.designer_id =
+                 pr.designer_id
+
+          WHERE
+              pr.payout_method =
+                  'manual'
+
+              AND
+              pr.provider
+                  IS NULL
+
+              ${statusFilter}
+
+          ORDER BY
+              pr.requested_at DESC
+
+          LIMIT
+              $${params.length}
+        `,
+      params,
+    );
+
+    return res.status(200).json({
+      status: "success",
+
+      count: result.rows.length,
+
+      data: result.rows.map(manualPayoutResponse),
+    });
+  } catch (error) {
+    console.error("getManualPayoutRequests error:", error);
+
+    return res.status(500).json({
+      message: "Failed to retrieve manual payout requests.",
+    });
+  }
+};
+
+exports.getManualPayoutRequest = async (req, res) => {
+  const payoutId = String(req.params.payoutId || "").trim();
+
+  if (!isUuid(payoutId)) {
+    return res.status(400).json({
+      message: "A valid payout request ID is required.",
+    });
+  }
+
+  try {
+    const result = await db.query(
+      `
+          SELECT
+              pr.id,
+              pr.designer_id,
+
+              u.full_name,
+              u.email,
+
+              dp.country
+                  AS designer_country,
+
+              pr.amount,
+              pr.currency,
+
+              pr.payout_method,
+              pr.provider,
+
+              pr.bank_account_id,
+
+              pr.destination_summary,
+
+              pr.status,
+              pr.provider_status,
+
+              pr.provider_transaction_id,
+
+              pr.failure_reason,
+
+              pr.requested_at,
+              pr.processing_at,
+              pr.completed_at,
+              pr.failed_at,
+              pr.cancelled_at,
+              pr.updated_at,
+
+              ba.country_code
+                  AS bank_country_code,
+
+              ba.account_holder_name
+                  AS bank_account_holder_name,
+
+              ba.bank_name,
+
+              ba.currency
+                  AS bank_currency,
+
+              ba.account_number_last4,
+
+              ba.iban_last4,
+
+              ba.verification_status
+                  AS bank_verification_status,
+
+              ba.is_default
+                  AS bank_is_default,
+
+              ba.is_active
+                  AS bank_is_active,
+
+              ba.verified_at
+                  AS bank_verified_at,
+
+              ba.details_ciphertext,
+              ba.details_iv,
+              ba.details_auth_tag,
+              ba.encryption_version
+
+          FROM designer_payout_requests pr
+
+          JOIN users u
+              ON u.id =
+                 pr.designer_id
+
+          LEFT JOIN designer_profiles dp
+              ON dp.user_id =
+                 pr.designer_id
+
+          LEFT JOIN designer_bank_accounts ba
+              ON ba.id =
+                 pr.bank_account_id
+
+              AND ba.designer_id =
+                 pr.designer_id
+
+          WHERE
+              pr.id = $1
+
+              AND
+              pr.payout_method =
+                  'manual'
+
+              AND
+              pr.provider
+                  IS NULL
+
+          LIMIT 1
+        `,
+      [payoutId],
+    );
+
+    const payout = result.rows[0];
+
+    if (!payout) {
+      return res.status(404).json({
+        message: "Manual payout request not found.",
+      });
+    }
+
+    if (!payout.bank_account_id) {
+      return res.status(409).json({
+        status: "fail",
+
+        code: "PAYOUT_BANK_ACCOUNT_MISSING",
+
+        message: "The payout request does not reference a bank account.",
+
+        data: manualPayoutResponse(payout),
+      });
+    }
+
+    if (!isManualPayoutBankSnapshotConsistent(payout)) {
+      res.set("Cache-Control", "no-store");
+
+      return res.status(409).json({
+        status: "fail",
+
+        code: "PAYOUT_BANK_SNAPSHOT_MISMATCH",
+
+        message:
+          "The bank account currently attached to this payout does not match the payout's stored historical destination. Current bank credentials will not be exposed for this payout.",
+
+        data: {
+          ...manualPayoutResponse(payout),
+
+          bank_details: null,
+        },
+      });
+    }
+
+    if (
+      !payout.details_ciphertext ||
+      !payout.details_iv ||
+      !payout.details_auth_tag
+    ) {
+      return res.status(409).json({
+        status: "fail",
+
+        code: "PAYOUT_BANK_DETAILS_UNAVAILABLE",
+
+        message:
+          "The payout request does not contain usable encrypted bank details.",
+      });
+    }
+
+    let bankDetails;
+
+    try {
+      bankDetails = decryptBankDetails(
+        {
+          ciphertext: payout.details_ciphertext,
+
+          iv: payout.details_iv,
+
+          authTag: payout.details_auth_tag,
+
+          version: Number(payout.encryption_version || 1),
+        },
+        {
+          designerId: payout.designer_id,
+
+          bankAccountId: payout.bank_account_id,
+        },
+      );
+    } catch (error) {
+      console.error(
+        "Manual payout bank-detail decryption failed:",
+        error?.code || error?.message,
+      );
+
+      return res.status(500).json({
+        message: "The bank details could not be securely decrypted.",
+      });
+    }
+
+    res.set("Cache-Control", "no-store");
+
+    return res.status(200).json({
+      status: "success",
+
+      data: {
+        ...manualPayoutResponse(payout),
+
+        bank_details: {
+          country_code: bankDetails.country_code || null,
+
+          currency: bankDetails.currency || null,
+
+          account_holder_name: bankDetails.account_holder_name || null,
+
+          bank_name: bankDetails.bank_name || null,
+
+          account_number: bankDetails.account_number || null,
+
+          iban: bankDetails.iban || null,
+
+          swift_bic: bankDetails.swift_bic || null,
+
+          routing_number: bankDetails.routing_number || null,
+
+          sort_code: bankDetails.sort_code || null,
+
+          branch_code: bankDetails.branch_code || null,
+
+          bank_address: bankDetails.bank_address || null,
+
+          intermediary_bank: bankDetails.intermediary_bank || null,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("getManualPayoutRequest error:", error);
+
+    return res.status(500).json({
+      message: "Failed to retrieve the manual payout request.",
+    });
+  }
+};
+
+exports.updateDesignerBankAccountVerification = async (req, res) => {
+  const bankAccountId = String(req.params.bankAccountId || "").trim();
+
+  const requestedStatus = String(req.body?.status || "")
+    .trim()
+    .toLowerCase();
+
+  if (!isUuid(bankAccountId)) {
+    return res.status(400).json({
+      message: "A valid bank account ID is required.",
+    });
+  }
+
+  if (!["verified", "rejected"].includes(requestedStatus)) {
+    return res.status(400).json({
+      message: "Bank verification status must be verified or rejected.",
+    });
+  }
+
+  const client = await db.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const accountResult = await client.query(
+      `
+          SELECT *
+
+          FROM designer_bank_accounts
+
+          WHERE id = $1
+
+          LIMIT 1
+
+          FOR UPDATE
+        `,
+      [bankAccountId],
+    );
+
+    const bankAccount = accountResult.rows[0];
+
+    if (!bankAccount) {
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        message: "Designer bank account not found.",
+      });
+    }
+
+    if (requestedStatus === "rejected") {
+      const activePayoutResult = await client.query(
+        `
+            SELECT id
+
+            FROM designer_payout_requests
+
+            WHERE
+                bank_account_id = $1
+
+                AND
+                payout_method =
+                    'manual'
+
+                AND
+                provider IS NULL
+
+                AND
+                status IN (
+                    'pending',
+                    'processing'
+                )
+
+            LIMIT 1
+          `,
+        [bankAccountId],
+      );
+
+      if (activePayoutResult.rows.length > 0) {
+        await client.query("ROLLBACK");
+
+        return res.status(409).json({
+          message:
+            "This bank account is attached to an active payout request. Resolve that payout before rejecting the bank account.",
+        });
+      }
+    }
+
+    let updatedResult;
+
+    if (requestedStatus === "verified") {
+      const designerAccountsResult = await client.query(
+        `
+            SELECT
+                id,
+                is_default,
+                is_active,
+                verification_status
+
+            FROM designer_bank_accounts
+
+            WHERE designer_id = $1
+
+            ORDER BY
+                created_at DESC
+
+            FOR UPDATE
+          `,
+        [bankAccount.designer_id],
+      );
+
+      const existingUsableDefault = designerAccountsResult.rows.find(
+        (row) =>
+          row.id !== bankAccountId &&
+          row.is_default === true &&
+          row.is_active === true &&
+          row.verification_status === "verified",
+      );
+
+      const shouldBecomeDefault = !existingUsableDefault;
+
+      updatedResult = await client.query(
+        `
+            UPDATE designer_bank_accounts
+
+            SET
+                verification_status =
+                    'verified',
+
+                is_active =
+                    TRUE,
+
+                is_default =
+                    $2,
+
+                verified_at =
+                    NOW(),
+
+                updated_at =
+                    NOW()
+
+            WHERE id = $1
+
+            RETURNING
+                id,
+                designer_id,
+                country_code,
+                account_holder_name,
+                bank_name,
+                currency,
+                account_number_last4,
+                iban_last4,
+                verification_status,
+                is_default,
+                is_active,
+                verified_at,
+                created_at,
+                updated_at
+          `,
+        [bankAccountId, shouldBecomeDefault],
+      );
+    } else {
+      updatedResult = await client.query(
+        `
+            UPDATE designer_bank_accounts
+
+            SET
+                verification_status =
+                    'rejected',
+
+                is_default =
+                    FALSE,
+
+                is_active =
+                    FALSE,
+
+                verified_at =
+                    NULL,
+
+                updated_at =
+                    NOW()
+
+            WHERE id = $1
+
+            RETURNING
+                id,
+                designer_id,
+                country_code,
+                account_holder_name,
+                bank_name,
+                currency,
+                account_number_last4,
+                iban_last4,
+                verification_status,
+                is_default,
+                is_active,
+                verified_at,
+                created_at,
+                updated_at
+          `,
+        [bankAccountId],
+      );
+    }
+
+    await client.query("COMMIT");
+
+    return res.status(200).json({
+      status: "success",
+
+      message:
+        requestedStatus === "verified"
+          ? "The designer bank account was verified."
+          : "The designer bank account was rejected.",
+
+      data: updatedResult.rows[0],
+    });
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      // Ignore rollback errors.
+    }
+
+    console.error("updateDesignerBankAccountVerification error:", error);
+
+    return res.status(500).json({
+      message: "The bank-account verification status could not be updated.",
+    });
+  } finally {
+    client.release();
+  }
+};
+
+exports.markManualPayoutProcessing = async (req, res) => {
+  const payoutId = String(req.params.payoutId || "").trim();
+
+  if (!isUuid(payoutId)) {
+    return res.status(400).json({
+      message: "A valid payout request ID is required.",
+    });
+  }
+
+  const client = await db.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const payoutResult = await client.query(
+      `
+          SELECT *
+
+          FROM designer_payout_requests
+
+          WHERE id = $1
+
+          LIMIT 1
+
+          FOR UPDATE
+        `,
+      [payoutId],
+    );
+
+    const payout = payoutResult.rows[0];
+
+    if (!payout) {
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        message: "Payout request not found.",
+      });
+    }
+
+    if (payout.payout_method !== "manual" || payout.provider !== null) {
+      await client.query("ROLLBACK");
+
+      return res.status(409).json({
+        message: "Only manual bank payout requests can use this action.",
+      });
+    }
+
+    if (payout.status === "processing") {
+      await client.query("COMMIT");
+
+      return res.status(200).json({
+        status: "success",
+
+        idempotent: true,
+
+        message: "This manual payout is already processing.",
+
+        data: payout,
+      });
+    }
+
+    if (payout.status !== "pending") {
+      await client.query("ROLLBACK");
+
+      return res.status(409).json({
+        message: `A ${payout.status} payout cannot be moved to processing.`,
+      });
+    }
+
+    const bankValidation = await validateAttachedBankForManualPayout(
+      client,
+      payout,
+    );
+
+    if (!bankValidation.success) {
+      await client.query("ROLLBACK");
+
+      return res.status(409).json({
+        status: "fail",
+
+        code: bankValidation.code,
+
+        message: bankValidation.message,
+
+        destination_summary: payout.destination_summary || null,
+      });
+    }
+
+    const updatedResult = await client.query(
+      `
+          UPDATE designer_payout_requests
+
+          SET
+              status =
+                  'processing',
+
+              provider_status =
+                  'admin_bank_transfer_processing',
+
+              processing_at =
+                  COALESCE(
+                      processing_at,
+                      NOW()
+                  ),
+
+              failure_reason =
+                  NULL,
+
+              updated_at =
+                  NOW()
+
+          WHERE id = $1
+
+          RETURNING *
+        `,
+      [payoutId],
+    );
+
+    await client.query("COMMIT");
+
+    return res.status(200).json({
+      status: "success",
+
+      idempotent: false,
+
+      message: "The manual payout is now processing.",
+
+      data: updatedResult.rows[0],
+    });
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      // Ignore rollback errors.
+    }
+
+    console.error("markManualPayoutProcessing error:", error);
+
+    return res.status(500).json({
+      message: "The manual payout could not be moved to processing.",
+    });
+  } finally {
+    client.release();
+  }
+};
+
+exports.completeManualPayout = async (req, res) => {
+  const payoutId = String(req.params.payoutId || "").trim();
+
+  const transferReference = cleanFinanceText(
+    req.body?.transfer_reference || req.body?.transaction_reference,
+
+    160,
+  );
+
+  if (!isUuid(payoutId)) {
+    return res.status(400).json({
+      message: "A valid payout request ID is required.",
+    });
+  }
+
+  if (transferReference.length < 3) {
+    return res.status(400).json({
+      message: "A valid external bank transfer reference is required.",
+    });
+  }
+
+  const client = await db.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    await client.query(
+      `
+        SELECT
+            pg_advisory_xact_lock(
+                hashtext($1),
+                hashtext($2)
+            )
+      `,
+      ["manual-bank-transfer-reference", transferReference],
+    );
+
+    const payoutResult = await client.query(
+      `
+          SELECT *
+
+          FROM designer_payout_requests
+
+          WHERE id = $1
+
+          LIMIT 1
+
+          FOR UPDATE
+        `,
+      [payoutId],
+    );
+
+    const payout = payoutResult.rows[0];
+
+    if (!payout) {
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        message: "Payout request not found.",
+      });
+    }
+
+    if (payout.payout_method !== "manual" || payout.provider !== null) {
+      await client.query("ROLLBACK");
+
+      return res.status(409).json({
+        message: "Only manual bank payouts can use this completion action.",
+      });
+    }
+
+    if (payout.status === "completed") {
+      if (payout.provider_transaction_id === transferReference) {
+        await client.query("COMMIT");
+
+        return res.status(200).json({
+          status: "success",
+
+          idempotent: true,
+
+          message: "This manual payout is already completed.",
+
+          data: payout,
+        });
+      }
+
+      await client.query("ROLLBACK");
+
+      return res.status(409).json({
+        message:
+          "This payout is already completed with a different bank transfer reference.",
+      });
+    }
+
+    if (payout.status !== "processing") {
+      await client.query("ROLLBACK");
+
+      return res.status(409).json({
+        message:
+          "The manual payout must be processing before it can be completed.",
+      });
+    }
+
+    if (payout.provider_transaction_id) {
+      await client.query("ROLLBACK");
+
+      return res.status(409).json({
+        message:
+          "This payout already contains an external transfer reference and requires reconciliation before another completion attempt.",
+      });
+    }
+
+    const bankValidation = await validateAttachedBankForManualPayout(
+      client,
+      payout,
+    );
+
+    if (!bankValidation.success) {
+      await client.query("ROLLBACK");
+
+      return res.status(409).json({
+        status: "fail",
+
+        code: bankValidation.code,
+
+        message: bankValidation.message,
+
+        destination_summary: payout.destination_summary || null,
+      });
+    }
+
+    const duplicateReferenceResult = await client.query(
+      `
+          SELECT
+              id,
+              reference_id
+
+          FROM transactions
+
+          WHERE
+              transaction_type =
+                  'payout'
+
+              AND
+              payment_provider
+                  IS NULL
+
+              AND
+              provider_transaction_id =
+                  $1
+
+          LIMIT 1
+        `,
+      [transferReference],
+    );
+
+    if (duplicateReferenceResult.rows.length > 0) {
+      await client.query("ROLLBACK");
+
+      return res.status(409).json({
+        message:
+          "This bank transfer reference has already been recorded for another payout.",
+      });
+    }
+
+    const existingPayoutTransaction = await client.query(
+      `
+          SELECT
+              id,
+              provider_transaction_id
+
+          FROM transactions
+
+          WHERE
+              reference_id = $1
+
+              AND
+              transaction_type =
+                  'payout'
+
+          LIMIT 1
+        `,
+      [payoutId],
+    );
+
+    if (existingPayoutTransaction.rows.length > 0) {
+      await client.query("ROLLBACK");
+
+      return res.status(409).json({
+        message:
+          "A payout transaction already exists for this request and requires reconciliation.",
+      });
+    }
+
+    const amount = Number(payout.amount || 0);
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error("The payout request contains an invalid amount.");
+    }
+
+    const currency = String(payout.currency || "usd")
+      .trim()
+      .toLowerCase();
+
+    if (!/^[a-z]{3}$/.test(currency)) {
+      throw new Error("The payout request contains an invalid currency.");
+    }
+
+    const walletResult = await client.query(
+      `
+          UPDATE designer_wallets
+
+          SET
+              pending_payout_balance =
+                  pending_payout_balance
+                  - $1
+
+          WHERE
+              user_id = $2
+
+              AND
+              pending_payout_balance
+                  >= $1
+
+          RETURNING
+              available_balance,
+              pending_escrow_balance,
+              pending_payout_balance
+        `,
+      [amount, payout.designer_id],
+    );
+
+    if (walletResult.rows.length === 0) {
+      throw new Error(
+        "The designer wallet does not contain the expected reserved payout balance.",
+      );
+    }
+
+    const transactionResult = await client.query(
+      `
+          INSERT INTO transactions (
+              id,
+              sender_id,
+              receiver_id,
+              reference_id,
+              gross_amount,
+              platform_fee_deducted,
+              net_amount,
+              transaction_type,
+              stripe_payment_intent_id,
+              payment_provider,
+              provider_payment_id,
+              provider_transaction_id,
+              currency,
+              created_at
+          )
+
+          VALUES (
+              gen_random_uuid(),
+              NULL,
+              $1,
+              $2,
+              $3,
+              0,
+              $3,
+              'payout',
+              NULL,
+              NULL,
+              NULL,
+              $4,
+              $5,
+              NOW()
+          )
+
+          RETURNING *
+        `,
+      [payout.designer_id, payout.id, amount, transferReference, currency],
+    );
+
+    const updatedResult = await client.query(
+      `
+          UPDATE designer_payout_requests
+
+          SET
+              status =
+                  'completed',
+
+              provider_status =
+                  'bank_transfer_completed',
+
+              provider_transaction_id =
+                  $1,
+
+              completed_at =
+                  COALESCE(
+                      completed_at,
+                      NOW()
+                  ),
+
+              failure_reason =
+                  NULL,
+
+              updated_at =
+                  NOW()
+
+          WHERE id = $2
+
+          RETURNING *
+        `,
+      [transferReference, payout.id],
+    );
+
+    await client.query("COMMIT");
+
+    return res.status(200).json({
+      status: "success",
+
+      idempotent: false,
+
+      message: "The manual bank payout was completed successfully.",
+
+      data: updatedResult.rows[0],
+
+      transaction: transactionResult.rows[0],
+
+      wallet: walletResult.rows[0],
+    });
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      // Ignore rollback errors.
+    }
+
+    console.error("completeManualPayout error:", error);
+
+    if (error.code === "23505") {
+      return res.status(409).json({
+        message: "This payout completion has already been recorded.",
+      });
+    }
+
+    return res.status(500).json({
+      message: "The manual payout could not be completed safely.",
+    });
+  } finally {
+    client.release();
+  }
+};
+
+exports.failManualPayout = async (req, res) => {
+  const payoutId = String(req.params.payoutId || "").trim();
+
+  const reason = cleanFinanceText(req.body?.reason, 1000);
+
+  const fundsSent = req.body?.funds_sent;
+
+  if (!isUuid(payoutId)) {
+    return res.status(400).json({
+      message: "A valid payout request ID is required.",
+    });
+  }
+
+  if (reason.length < 3) {
+    return res.status(400).json({
+      message: "A failure or rejection reason is required.",
+    });
+  }
+
+  if (fundsSent !== false) {
+    return res.status(400).json({
+      message:
+        "funds_sent must explicitly be false before reserved funds can be restored.",
+    });
+  }
+
+  const client = await db.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const payoutResult = await client.query(
+      `
+          SELECT *
+
+          FROM designer_payout_requests
+
+          WHERE id = $1
+
+          LIMIT 1
+
+          FOR UPDATE
+        `,
+      [payoutId],
+    );
+
+    const payout = payoutResult.rows[0];
+
+    if (!payout) {
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        message: "Payout request not found.",
+      });
+    }
+
+    if (payout.payout_method !== "manual" || payout.provider !== null) {
+      await client.query("ROLLBACK");
+
+      return res.status(409).json({
+        message: "Only manual bank payouts can use this failure action.",
+      });
+    }
+
+    if (payout.status === "failed") {
+      await client.query("COMMIT");
+
+      return res.status(200).json({
+        status: "success",
+
+        idempotent: true,
+
+        message: "This manual payout is already failed.",
+
+        data: payout,
+      });
+    }
+
+    if (!["pending", "processing"].includes(payout.status)) {
+      await client.query("ROLLBACK");
+
+      return res.status(409).json({
+        message: `A ${payout.status} payout cannot be failed with wallet restoration.`,
+      });
+    }
+
+    if (payout.provider_transaction_id) {
+      await client.query("ROLLBACK");
+
+      return res.status(409).json({
+        message:
+          "This payout already has an external bank transfer reference. Do not restore the wallet automatically; reconcile the external transfer first.",
+      });
+    }
+
+    const amount = Number(payout.amount || 0);
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error("The payout request contains an invalid amount.");
+    }
+
+    const walletResult = await client.query(
+      `
+          UPDATE designer_wallets
+
+          SET
+              pending_payout_balance =
+                  pending_payout_balance
+                  - $1,
+
+              available_balance =
+                  available_balance
+                  + $1
+
+          WHERE
+              user_id = $2
+
+              AND
+              pending_payout_balance
+                  >= $1
+
+          RETURNING
+              available_balance,
+              pending_escrow_balance,
+              pending_payout_balance
+        `,
+      [amount, payout.designer_id],
+    );
+
+    if (walletResult.rows.length === 0) {
+      throw new Error(
+        "The reserved payout balance could not be restored safely.",
+      );
+    }
+
+    const updatedResult = await client.query(
+      `
+          UPDATE designer_payout_requests
+
+          SET
+              status =
+                  'failed',
+
+              provider_status =
+                  'bank_transfer_failed_before_send',
+
+              failure_reason =
+                  $1,
+
+              failed_at =
+                  COALESCE(
+                      failed_at,
+                      NOW()
+                  ),
+
+              updated_at =
+                  NOW()
+
+          WHERE id = $2
+
+          RETURNING *
+        `,
+      [reason, payout.id],
+    );
+
+    await client.query("COMMIT");
+
+    return res.status(200).json({
+      status: "success",
+
+      idempotent: false,
+
+      message:
+        "The manual payout was failed and the reserved funds were restored.",
+
+      data: updatedResult.rows[0],
+
+      wallet: walletResult.rows[0],
+    });
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      // Ignore rollback errors.
+    }
+
+    console.error("failManualPayout error:", error);
+
+    return res.status(500).json({
+      message: "The manual payout could not be failed safely.",
+    });
+  } finally {
+    client.release();
+  }
+};
+
+/* ============================================================
+   9. GLOBAL / DASHBOARD STATISTICS
    ============================================================ */
 
 exports.getGlobalStats = async (req, res) => {
   try {
     const result = await db.query(
       `
-            SELECT
-                (
-                    SELECT COUNT(*)
-                    FROM users
-                    WHERE role = 'designer'
-                )::int AS designer_count,
+          SELECT
+              (
+                  SELECT
+                      COUNT(*)
 
-                (
-                    SELECT COUNT(*)
-                    FROM users
-                    WHERE role = 'creator'
-                )::int AS creator_count,
+                  FROM users
 
-                (
-                    SELECT COUNT(*)
-                    FROM users
-                    WHERE
-                        role = 'designer'
-                        AND approval_status = 'pending'
-                )::int AS pending_designers,
+                  WHERE
+                      role =
+                      'designer'
+              )::int
+                  AS designer_count,
 
-                (
-                    SELECT COUNT(*)
-                    FROM designs
-                    WHERE is_published = TRUE
-                )::int AS live_designs,
+              (
+                  SELECT
+                      COUNT(*)
 
-                (
-                    SELECT COUNT(*)
-                    FROM bookings
-                    WHERE status::text = 'funded'
-                )::int AS funded_projects,
+                  FROM users
 
-                (
-                    SELECT COUNT(*)
-                    FROM bookings
-                    WHERE status::text IN (
-                        'progress',
-                        'review_prototype',
-                        'final_production',
-                        'review_final'
-                    )
-                )::int AS ongoing_projects,
+                  WHERE
+                      role =
+                      'creator'
+              )::int
+                  AS creator_count,
 
-                (
-                    SELECT COUNT(*)
-                    FROM bookings
-                    WHERE status::text = 'completed'
-                )::int AS completed_projects,
+              (
+                  SELECT
+                      COUNT(*)
 
-                (
-                    SELECT COUNT(*)
-                    FROM bookings
-                    WHERE status::text = 'cancelled'
-                )::int AS cancelled_projects
-          `,
+                  FROM users
+
+                  WHERE
+                      role =
+                      'designer'
+
+                      AND
+                      approval_status =
+                      'pending'
+              )::int
+                  AS pending_designers,
+
+              (
+                  SELECT
+                      COUNT(*)
+
+                  FROM designs
+
+                  WHERE
+                      is_published =
+                      TRUE
+              )::int
+                  AS live_designs,
+
+              (
+                  SELECT
+                      COUNT(*)
+
+                  FROM bookings
+
+                  WHERE
+                      status::text =
+                      'funded'
+              )::int
+                  AS funded_projects,
+
+              (
+                  SELECT
+                      COUNT(*)
+
+                  FROM bookings
+
+                  WHERE
+                      status::text
+                      IN (
+                          'progress',
+                          'review_prototype',
+                          'final_production',
+                          'review_final'
+                      )
+              )::int
+                  AS ongoing_projects,
+
+              (
+                  SELECT
+                      COUNT(*)
+
+                  FROM bookings
+
+                  WHERE
+                      status::text =
+                      'completed'
+              )::int
+                  AS completed_projects,
+
+              (
+                  SELECT
+                      COUNT(*)
+
+                  FROM bookings
+
+                  WHERE
+                      status::text =
+                      'cancelled'
+              )::int
+                  AS cancelled_projects
+        `,
     );
 
     return res.status(200).json({
@@ -1307,63 +3105,77 @@ exports.getGlobalStats = async (req, res) => {
   }
 };
 
-/**
- * Dashboard-friendly statistics.
- *
- * We intentionally do NOT fake an "online now" count.
- */
-
 exports.getDashboardStats = async (req, res) => {
   try {
     const [distributionResult, pendingResult, bookingResult] =
       await Promise.all([
         db.query(
           `
-              SELECT
-                  role,
-                  COUNT(*)::int AS count
-              FROM users
-              GROUP BY role
-              ORDER BY role
-            `,
+            SELECT
+                role,
+
+                COUNT(*)::int
+                    AS count
+
+            FROM users
+
+            GROUP BY role
+
+            ORDER BY role
+          `,
         ),
 
         db.query(
           `
-              SELECT
-                  COUNT(*)::int AS count
-              FROM users
-              WHERE
-                  role = 'designer'
-                  AND approval_status = 'pending'
-            `,
+            SELECT
+                COUNT(*)::int
+                    AS count
+
+            FROM users
+
+            WHERE
+                role =
+                    'designer'
+
+                AND
+                approval_status =
+                    'pending'
+          `,
         ),
 
         db.query(
           `
-              SELECT
-                  COUNT(*)
-                  FILTER (
-                      WHERE status::text = 'funded'
-                  )::int AS funded_bookings,
+            SELECT
+                COUNT(*)
+                FILTER (
+                    WHERE
+                      status::text =
+                      'funded'
+                )::int
+                    AS funded_bookings,
 
-                  COUNT(*)
-                  FILTER (
-                      WHERE status::text IN (
+                COUNT(*)
+                FILTER (
+                    WHERE
+                      status::text IN (
                           'progress',
                           'review_prototype',
                           'final_production',
                           'review_final'
                       )
-                  )::int AS active_projects,
+                )::int
+                    AS active_projects,
 
-                  COUNT(*)
-                  FILTER (
-                      WHERE status::text = 'completed'
-                  )::int AS completed_bookings
+                COUNT(*)
+                FILTER (
+                    WHERE
+                      status::text =
+                      'completed'
+                )::int
+                    AS completed_bookings
 
-              FROM bookings
-            `,
+            FROM bookings
+          `,
         ),
       ]);
 
@@ -1396,15 +3208,8 @@ exports.getDashboardStats = async (req, res) => {
 };
 
 /* ============================================================
-   9. DESIGN MODERATION
+   10. DESIGN MODERATION
    ============================================================ */
-
-/**
- * Allowed actions:
- *
- * unpublish
- * delete
- */
 
 exports.moderateDesign = async (req, res) => {
   const designId = req.params.designId || req.params.id;
@@ -1432,22 +3237,29 @@ exports.moderateDesign = async (req, res) => {
     if (action === "unpublish") {
       result = await db.query(
         `
-              UPDATE designs
-              SET is_published = FALSE
-              WHERE id = $1
-              RETURNING
-                  id,
-                  is_published
-            `,
+            UPDATE designs
+
+            SET
+                is_published =
+                    FALSE
+
+            WHERE id = $1
+
+            RETURNING
+                id,
+                is_published
+          `,
         [designId],
       );
     } else {
       result = await db.query(
         `
-              DELETE FROM designs
-              WHERE id = $1
-              RETURNING id
-            `,
+            DELETE FROM designs
+
+            WHERE id = $1
+
+            RETURNING id
+          `,
         [designId],
       );
     }
@@ -1478,16 +3290,8 @@ exports.moderateDesign = async (req, res) => {
 };
 
 /* ============================================================
-   10. SHOWCASE HERO MANAGEMENT
+   11. SHOWCASE HERO MANAGEMENT
    ============================================================ */
-
-/**
- * Super Admin:
- *
- * GET /api/v1/superadmin/showcase-hero
- *
- * Returns the complete stored Hero configuration.
- */
 
 exports.getShowcaseHeroSettings = async (req, res) => {
   try {
@@ -1520,23 +3324,6 @@ exports.getShowcaseHeroSettings = async (req, res) => {
     });
   }
 };
-
-/**
- * Public:
- *
- * GET /api/v1/showcase-hero
- *
- * Read-only configuration consumed by:
- *
- * CreatorShowcase.jsx
- * DesignerMarketplace.jsx
- *
- * Only the ACTIVE media mode is exposed.
- *
- * If configuration cannot be loaded, a disabled response
- * is deliberately returned so the frontend can safely use
- * its existing Hero fallback.
- */
 
 exports.getPublicShowcaseHero = async (req, res) => {
   try {
@@ -1580,10 +3367,6 @@ exports.getPublicShowcaseHero = async (req, res) => {
 
         rotation_seconds: Number(settings.rotation_seconds || 6),
 
-        /**
-         * Only the selected mode is exposed publicly.
-         */
-
         slideshow_images: enabled && mode === "slideshow" ? savedImages : [],
 
         video_url:
@@ -1597,14 +3380,6 @@ exports.getPublicShowcaseHero = async (req, res) => {
     });
   } catch (error) {
     console.error("getPublicShowcaseHero error:", error);
-
-    /**
-     * Hero settings failure must NOT make either Showcase
-     * unavailable.
-     *
-     * Disabled configuration tells the frontend to fall
-     * back to its normal Hero.
-     */
 
     return res.status(200).json({
       status: "success",
@@ -1626,42 +3401,6 @@ exports.getPublicShowcaseHero = async (req, res) => {
   }
 };
 
-/**
- * Super Admin:
- *
- * PATCH /api/v1/superadmin/showcase-hero
- *
- * Supported body:
- *
- * {
- *   "mode": "slideshow" | "video",
- *   "slideshow_images": [],
- *   "video_url": "...",
- *   "video_poster_url": "...",
- *   "rotation_seconds": 6,
- *   "is_enabled": true
- * }
- *
- * RULES
- * ------------------------------------------------------------
- *
- * Enabled slideshow:
- *
- * 3–5 images required.
- *
- * Enabled video:
- *
- * video_url required.
- *
- * Only the selected mode is rendered publicly.
- *
- * Inactive media remains stored so a Super Admin can move:
- *
- * slideshow -> video -> slideshow
- *
- * without losing the previous configuration.
- */
-
 exports.updateShowcaseHeroSettings = async (req, res) => {
   const body = req.body || {};
 
@@ -1675,10 +3414,6 @@ exports.updateShowcaseHeroSettings = async (req, res) => {
       });
     }
 
-    /* --------------------------------------------------------
-         MODE
-         -------------------------------------------------------- */
-
     let mode = current.mode;
 
     if (hasOwn(body, "mode")) {
@@ -1691,10 +3426,6 @@ exports.updateShowcaseHeroSettings = async (req, res) => {
       }
     }
 
-    /* --------------------------------------------------------
-         ENABLED
-         -------------------------------------------------------- */
-
     let isEnabled = current.is_enabled === true;
 
     if (hasOwn(body, "is_enabled")) {
@@ -1706,10 +3437,6 @@ exports.updateShowcaseHeroSettings = async (req, res) => {
 
       isEnabled = body.is_enabled;
     }
-
-    /* --------------------------------------------------------
-         ROTATION SPEED
-         -------------------------------------------------------- */
 
     let rotationSeconds = Number(current.rotation_seconds || 6);
 
@@ -1729,10 +3456,6 @@ exports.updateShowcaseHeroSettings = async (req, res) => {
 
       rotationSeconds = parsedRotation;
     }
-
-    /* --------------------------------------------------------
-         SLIDESHOW IMAGES
-         -------------------------------------------------------- */
 
     let slideshowImages = Array.isArray(current.slideshow_images)
       ? current.slideshow_images
@@ -1767,10 +3490,6 @@ exports.updateShowcaseHeroSettings = async (req, res) => {
       slideshowImages = normalizedImages;
     }
 
-    /* --------------------------------------------------------
-         VIDEO
-         -------------------------------------------------------- */
-
     let videoUrl = current.video_url || null;
 
     if (hasOwn(body, "video_url")) {
@@ -1792,10 +3511,6 @@ exports.updateShowcaseHeroSettings = async (req, res) => {
         });
       }
     }
-
-    /* --------------------------------------------------------
-         VIDEO POSTER
-         -------------------------------------------------------- */
 
     let videoPosterUrl = current.video_poster_url || null;
 
@@ -1820,10 +3535,6 @@ exports.updateShowcaseHeroSettings = async (req, res) => {
       }
     }
 
-    /* --------------------------------------------------------
-         ACTIVE MODE VALIDATION
-         -------------------------------------------------------- */
-
     if (isEnabled && mode === "slideshow") {
       if (slideshowImages.length < 3 || slideshowImages.length > 5) {
         return res.status(400).json({
@@ -1840,41 +3551,50 @@ exports.updateShowcaseHeroSettings = async (req, res) => {
       }
     }
 
-    /* --------------------------------------------------------
-         UPDATED BY
-         -------------------------------------------------------- */
-
     const updatedBy = req.user?.id || req.user?.user_id || null;
-
-    /* --------------------------------------------------------
-         PERSIST
-         -------------------------------------------------------- */
 
     const result = await db.query(
       `
-            UPDATE showcase_hero_settings
-            SET
-                mode = $1,
-                slideshow_images = $2::jsonb,
-                video_url = $3,
-                video_poster_url = $4,
-                rotation_seconds = $5,
-                is_enabled = $6,
-                updated_by = $7,
-                updated_at = NOW()
-            WHERE id = 1
-            RETURNING
-                id,
-                mode,
-                slideshow_images,
-                video_url,
-                video_poster_url,
-                rotation_seconds,
-                is_enabled,
-                updated_by,
-                created_at,
-                updated_at
-          `,
+          UPDATE showcase_hero_settings
+
+          SET
+              mode = $1,
+
+              slideshow_images =
+                  $2::jsonb,
+
+              video_url =
+                  $3,
+
+              video_poster_url =
+                  $4,
+
+              rotation_seconds =
+                  $5,
+
+              is_enabled =
+                  $6,
+
+              updated_by =
+                  $7,
+
+              updated_at =
+                  NOW()
+
+          WHERE id = 1
+
+          RETURNING
+              id,
+              mode,
+              slideshow_images,
+              video_url,
+              video_poster_url,
+              rotation_seconds,
+              is_enabled,
+              updated_by,
+              created_at,
+              updated_at
+        `,
       [
         mode,
 

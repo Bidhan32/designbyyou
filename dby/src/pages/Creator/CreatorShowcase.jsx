@@ -2565,7 +2565,7 @@ export default function CreatorShowcase() {
                             disabled:opacity-40
                           "
                       >
-                        Commission
+                        Booking
                       </button>
                     </div>
                   </article>

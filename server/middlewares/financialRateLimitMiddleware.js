@@ -4,7 +4,7 @@
 =========================================================
 DesignByYou / FashionVision
 Financial Rate Limit Middleware
-Version 1.2
+Version 1.3
 =========================================================
 
 Purpose:
@@ -29,6 +29,45 @@ Stripe webhooks must remain governed by:
 - Stripe signature verification
 - webhook event idempotency
 - trusted provider reconciliation
+
+=========================================================
+
+CURRENT FINANCIAL MODEL
+---------------------------------------------------------
+
+CREATORS
+
+Creator wallet funding
+→ Stripe only
+→ creatorWalletDepositLimiter
+
+Creator unused-balance withdrawal/refund
+→ Stripe refund workflow
+→ creatorWalletWithdrawalLimiter
+
+Creator subscriptions
+→ Stripe Checkout / Billing Portal
+→ dedicated subscription limiters
+
+
+DESIGNERS
+
+Designer wallet funding
+→ DOES NOT EXIST
+
+Designer balance
+→ completed booking earnings
+→ internal wallet
+
+Designer withdrawal
+→ verified manual bank payout
+→ designerPayoutLimiter
+
+Stripe Connect is disabled for NEW designer payouts.
+
+Historical Stripe Connect compatibility endpoints may
+remain temporarily, but they do not initiate new designer
+financial movement.
 
 =========================================================
 */
@@ -57,6 +96,7 @@ If no authenticated user identity is available, fall back
 to the normalized client IP.
 
 ipKeyGenerator() safely normalizes IPv6 addresses.
+
 =========================================================*/
 
 function financialRateLimitKey(req) {
@@ -93,11 +133,21 @@ format while keeping separate quotas.
 
 Separate limiter instances are important because:
 
-- wallet deposits should not consume withdrawal quota
-- subscription Checkout should not consume wallet quota
+- Creator wallet deposits should not consume Creator
+  withdrawal/refund quota.
+
+- subscription Checkout should not consume Creator wallet
+  quota.
+
 - billing management should not consume subscription
-  purchase quota
-- designer payouts should remain isolated
+  purchase quota.
+
+- Designer withdrawals should remain isolated from Creator
+  financial actions.
+
+There is intentionally NO Designer wallet-deposit limiter
+because Designers cannot fund their own wallets.
+
 =========================================================*/
 
 function createFinancialLimiter({ windowMs, limit }) {
@@ -132,6 +182,9 @@ Allows reasonable room for:
 - legitimate payment retries
 - PaymentIntent recovery
 - idempotent request replay
+
+Creator wallet funding remains Stripe-only.
+
 =========================================================*/
 
 const creatorWalletDepositLimiter = createFinancialLimiter({
@@ -156,6 +209,7 @@ Allows reasonable room for:
 - new unused-balance return requests
 - idempotent retries
 - Stripe refund reconciliation
+
 =========================================================*/
 
 const creatorWalletWithdrawalLimiter = createFinancialLimiter({
@@ -175,24 +229,23 @@ Protects:
 POST
 /api/v1/subscription/create-checkout-session
 
-Why a separate limiter?
-
 Creating Stripe Checkout Sessions:
 
 - calls Stripe
 - creates short-lived external billing resources
 - may initiate a recurring financial commitment
 - must not consume Creator Wallet deposit quota
-- must not share designer financial quotas
+- must not share Designer financial quotas
 
 This limiter does NOT replace:
 
 - authentication
-- creator authorization
+- Creator authorization
 - verified-email enforcement
 - trusted server-side plan mapping
 - Stripe Customer reuse
 - duplicate-subscription detection
+
 =========================================================*/
 
 const creatorSubscriptionCheckoutLimiter = createFinancialLimiter({
@@ -227,8 +280,9 @@ Creators need enough room to:
 Email verification is deliberately NOT part of this
 limiter's responsibility.
 
-A creator with an existing recurring charge must retain
+A Creator with an existing recurring charge must retain
 access to billing management.
+
 =========================================================*/
 
 const creatorSubscriptionPortalLimiter = createFinancialLimiter({
@@ -238,27 +292,29 @@ const creatorSubscriptionPortalLimiter = createFinancialLimiter({
 });
 
 /*=========================================================
-5. Designer Wallet Deposit Limiter
+5. P2P Booking Creation Limiter
 =========================================================
 
-30 requests per 15 minutes.
+10 requests per 15 minutes.
 
-Protects:
+Protects creation/retrieval of Stripe PaymentIntents for
+new Creator-to-Designer bookings.
 
-POST
-/api/v1/designer-finance/wallet/deposit
+This limiter is separate from:
 
-Designer wallet deposits have their own quota so:
+- Creator wallet deposits
+- Creator wallet refunds
+- Creator subscription Checkout
+- Designer payouts
 
-- deposit retries do not consume payout quota
-- payout requests do not block deposits
-- Stripe PaymentIntent creation is protected from flooding
+Do NOT use on Stripe webhook routes.
+
 =========================================================*/
 
-const designerWalletDepositLimiter = createFinancialLimiter({
+const p2pBookingCreateLimiter = createFinancialLimiter({
   windowMs: 15 * 60 * 1000,
 
-  limit: 30,
+  limit: 10,
 });
 
 /*=========================================================
@@ -267,13 +323,33 @@ const designerWalletDepositLimiter = createFinancialLimiter({
 
 10 requests per 15 minutes.
 
-Protects user-triggered payout operations including:
+Protects:
 
 POST
 /api/v1/designer-finance/payouts
 
-POST
-/api/v1/designer-finance/payouts/:id/retry
+Current Designer withdrawal flow:
+
+Designer available balance
+      ↓
+verified manual bank account
+      ↓
+manual payout request
+      ↓
+available_balance decreases
+      ↓
+pending_payout_balance increases
+      ↓
+Super Admin verification
+      ↓
+external bank transfer
+      ↓
+completed
+
+This limiter protects creation of NEW withdrawal requests.
+
+There is intentionally NO Designer wallet-deposit limiter.
+
 =========================================================*/
 
 const designerPayoutLimiter = createFinancialLimiter({
@@ -284,18 +360,28 @@ const designerPayoutLimiter = createFinancialLimiter({
 
 /*=========================================================
 7. Stripe Connect Financial Action Limiter
+Legacy Compatibility Export
 =========================================================
 
 10 requests per 15 minutes.
 
-Protects authenticated user-triggered Stripe Connect
-actions such as onboarding/session generation.
+Stripe Connect is disabled for NEW Designer payouts.
 
-Never use this limiter on:
+This limiter is retained temporarily only for compatibility
+with any older code that may still import it.
+
+It must NEVER be applied to:
 
 /api/v1/webhooks/stripe
 
 /api/v1/webhooks/stripe/connect
+
+Current Designer payout routes should use the manual payout
+workflow instead of Stripe Connect.
+
+This limiter can be removed entirely later after a global
+code search confirms there are no remaining imports.
+
 =========================================================*/
 
 const stripeConnectFinancialLimiter = createFinancialLimiter({
@@ -304,35 +390,6 @@ const stripeConnectFinancialLimiter = createFinancialLimiter({
   limit: 10,
 });
 
-
-/*
-=========================================================
-P2P Booking Creation Limiter
-=========================================================
-
-10 requests per 15 minutes.
-
-Protects creation/retrieval of Stripe PaymentIntents for
-new Creator-to-Designer bookings.
-
-This limiter is separate from:
-
-- wallet deposits
-- wallet refunds
-- subscription Checkout
-- Designer payouts
-
-Do NOT use on Stripe webhook routes.
-=========================================================
-*/
-
-const p2pBookingCreateLimiter =
-  createFinancialLimiter({
-    windowMs:
-      15 * 60 * 1000,
-
-    limit: 10,
-  });
 /*=========================================================
 Exports
 =========================================================*/
@@ -344,13 +401,17 @@ module.exports = {
 
   creatorSubscriptionCheckoutLimiter,
 
-    p2pBookingCreateLimiter,
-
   creatorSubscriptionPortalLimiter,
 
-  designerWalletDepositLimiter,
+  p2pBookingCreateLimiter,
 
   designerPayoutLimiter,
 
+  /*
+   * Legacy compatibility export.
+   *
+   * Remove later after confirming there are no remaining
+   * imports anywhere in the backend.
+   */
   stripeConnectFinancialLimiter,
 };

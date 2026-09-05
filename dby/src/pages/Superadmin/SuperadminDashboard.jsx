@@ -34,13 +34,16 @@ import API from "../../api/axios";
  *   maintenance state exists.
  * - Financial values come from the existing transaction,
  *   booking, wallet and payout-request ledgers.
+ * - Designer commission is tier-based and read-only.
+ * - The booking remainder retained by the platform is not
+ *   described as Designer commission.
  * ============================================================
  */
 
 const SuperAdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [finance, setFinance] = useState(null);
-  const [commission, setCommission] = useState(null);
+  const [commissionPolicy, setCommissionPolicy] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -113,7 +116,7 @@ const SuperAdminDashboard = () => {
       }
 
       if (commissionResult.status === "fulfilled") {
-        setCommission(commissionResult.value.data?.data || null);
+        setCommissionPolicy(commissionResult.value.data?.data || null);
       } else {
         console.error("Commission request failed:", commissionResult.reason);
       }
@@ -163,23 +166,20 @@ const SuperAdminDashboard = () => {
     );
   }, [stats]);
 
-  const currentCommission = useMemo(() => {
-    if (!commission) {
-      return null;
-    }
+  const tierPolicy = useMemo(() => {
+    return Array.isArray(commissionPolicy?.policy)
+      ? commissionPolicy.policy
+      : [];
+  }, [commissionPolicy]);
 
-    if (commission.consistent === false) {
-      return "Mixed";
-    }
+  const policyMismatches = numberValue(commissionPolicy?.policy_mismatches);
 
-    const rate = Number(commission.commission_rate);
+  const policyConsistent = commissionPolicy?.policy_consistent === true;
 
-    if (!Number.isFinite(rate)) {
-      return null;
-    }
-
-    return `${rate}%`;
-  }, [commission]);
+  const bookingPlatformRetained =
+    finance?.revenue?.booking_platform_retained ??
+    finance?.revenue?.booking_commission_revenue ??
+    0;
 
   /* ========================================================
        LOADING
@@ -308,16 +308,16 @@ const SuperAdminDashboard = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
           <MoneyCard
-            label="Total Platform Fees"
+            label="Total Platform Retained"
             value={formatMoney(finance?.revenue?.total_platform_fees)}
-            note="All recorded platform fees"
+            note="Creator fees plus booking amount retained by platform"
             icon={<DollarSign size={20} className="text-green-600" />}
           />
 
           <MoneyCard
-            label="Booking Commission"
-            value={formatMoney(finance?.revenue?.booking_commission_revenue)}
-            note="Commission from released bookings"
+            label="Platform Retained from Bookings"
+            value={formatMoney(bookingPlatformRetained)}
+            note="Booking base amount retained after Designer commission"
             icon={<DollarSign size={20} className="text-[#D4AF37]" />}
           />
 
@@ -360,8 +360,8 @@ const SuperAdminDashboard = () => {
             />
 
             <DataRow
-              label="Booking Commission Revenue"
-              value={formatMoney(finance?.revenue?.booking_commission_revenue)}
+              label="Platform Retained from Bookings"
+              value={formatMoney(bookingPlatformRetained)}
             />
 
             <DataRow
@@ -495,37 +495,117 @@ const SuperAdminDashboard = () => {
       </section>
 
       {/* =================================================
-                COMMISSION CONFIGURATION
+                DESIGNER TIER COMMISSION POLICY
+                ================================================= */}
+
+      <section className="space-y-4">
+        <SectionHeading
+          title="Designer Tier Commission Policy"
+          subtitle="Read-only payout share based on completed bookings"
+        />
+
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={17} className="text-[#D4AF37]" />
+
+                <h3 className="font-bold text-gray-900">
+                  Automatic Designer Commission
+                </h3>
+              </div>
+
+              <p className="text-xs text-gray-400 mt-2 max-w-3xl leading-relaxed">
+                The percentage shown below is the share of the booking base
+                amount credited to the Designer when a completed booking is
+                released. Rates are controlled by tier and are not globally
+                editable.
+              </p>
+            </div>
+
+            <div
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl border ${
+                policyConsistent
+                  ? "bg-green-50 border-green-100 text-green-700"
+                  : "bg-amber-50 border-amber-100 text-amber-700"
+              }`}
+            >
+              {policyConsistent ? (
+                <CheckCircle2 size={15} />
+              ) : (
+                <AlertTriangle size={15} />
+              )}
+
+              <span className="text-[10px] font-black uppercase tracking-widest">
+                {policyConsistent
+                  ? "Policy Synchronized"
+                  : `${policyMismatches} Mismatch${
+                      policyMismatches === 1 ? "" : "es"
+                    }`}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 divide-x divide-y xl:divide-y-0 divide-gray-100">
+            {tierPolicy.length > 0 ? (
+              tierPolicy.map((tier) => (
+                <TierPolicyCard
+                  key={tier.tier}
+                  tier={tier.tier}
+                  minimum={tier.minimum_completed_bookings}
+                  maximum={tier.maximum_completed_bookings}
+                  rate={tier.commission_rate}
+                  designerCount={tier.designer_count}
+                />
+              ))
+            ) : (
+              <div className="xl:col-span-5 p-8 text-center text-sm text-gray-400">
+                Designer tier policy data is unavailable.
+              </div>
+            )}
+          </div>
+
+          {!policyConsistent && policyMismatches > 0 && (
+            <div className="m-6 mt-0 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-3">
+              <AlertTriangle
+                size={17}
+                className="text-amber-600 mt-0.5 flex-shrink-0"
+              />
+
+              <div>
+                <p className="text-xs font-bold text-amber-800">
+                  Stored Tier / Rate Mismatch
+                </p>
+
+                <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                  {policyMismatches} Designer profile
+                  {policyMismatches === 1 ? "" : "s"} do not currently match the
+                  expected commission rate for their stored tier. Review those
+                  profiles before production release.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* =================================================
+                FINANCE POSITION
                 ================================================= */}
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] uppercase tracking-widest font-black text-gray-400">
-                Current Commission
-              </p>
-
-              <p className="text-3xl font-serif mt-2 text-gray-900">
-                {currentCommission ?? "—"}
-              </p>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-[#D4AF37]/10">
-              <DollarSign size={20} className="text-[#D4AF37]" />
-            </div>
-          </div>
-
-          <p className="text-xs text-gray-400 mt-4">
-            Applied through Designer commission rates when booking earnings are
-            released.
+          <p className="text-[10px] uppercase tracking-widest font-black text-gray-400">
+            Designer Profiles
           </p>
 
-          {commission?.consistent === false && (
-            <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-700">
-              Designer commission rates are currently inconsistent.
-            </div>
-          )}
+          <p className="text-3xl font-serif mt-2 text-gray-900">
+            {numberValue(commissionPolicy?.designer_profiles)}
+          </p>
+
+          <p className="text-xs text-gray-400 mt-4">
+            Designer profiles currently covered by the tier commission policy.
+          </p>
         </div>
 
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
@@ -552,7 +632,7 @@ const SuperAdminDashboard = () => {
           </p>
 
           <p className="text-xs text-gray-400 mt-4">
-            Value of payout requests currently waiting for processing.
+            Value of manual payout requests currently waiting for processing.
           </p>
         </div>
       </section>
@@ -651,9 +731,9 @@ const SuperAdminDashboard = () => {
           </p>
 
           <p className="text-xs text-green-700 mt-1 leading-relaxed">
-            Revenue, commission, booking, escrow, wallet and payout values shown
-            here are loaded from the Super Admin backend rather than hard-coded
-            interface values.
+            Revenue, tier policy, booking, escrow, wallet and payout values
+            shown here are loaded from the Super Admin backend rather than
+            hard-coded interface values.
           </p>
         </div>
       </section>
@@ -736,5 +816,54 @@ const MiniMetric = ({ label, value, warning = false, danger = false }) => (
     </p>
   </div>
 );
+
+const TierPolicyCard = ({ tier, minimum, maximum, rate, designerCount }) => {
+  const tierLabel =
+    typeof tier === "string" && tier.length > 0
+      ? `${tier.charAt(0).toUpperCase()}${tier.slice(1)}`
+      : "Unknown";
+
+  const minimumValue = numberOrZero(minimum);
+
+  const bookingRange =
+    maximum === null || maximum === undefined
+      ? `${minimumValue}+`
+      : `${minimumValue}–${numberOrZero(maximum)}`;
+
+  return (
+    <div className="p-5 min-h-[160px]">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[9px] uppercase tracking-widest font-black text-gray-400">
+            {tierLabel}
+          </p>
+
+          <p className="text-3xl font-serif text-gray-900 mt-2">
+            {numberOrZero(rate)}%
+          </p>
+        </div>
+
+        <div className="p-2.5 rounded-xl bg-[#D4AF37]/10">
+          <DollarSign size={16} className="text-[#D4AF37]" />
+        </div>
+      </div>
+
+      <p className="text-[11px] text-gray-500 mt-4">
+        {bookingRange} completed bookings
+      </p>
+
+      <p className="text-[10px] text-gray-400 mt-1">
+        {numberOrZero(designerCount)} Designer
+        {numberOrZero(designerCount) === 1 ? "" : "s"}
+      </p>
+    </div>
+  );
+};
+
+const numberOrZero = (value) => {
+  const parsed = Number(value);
+
+  return Number.isFinite(parsed) ? parsed : 0;
+};
 
 export default SuperAdminDashboard;

@@ -1347,7 +1347,7 @@ export default function CreatorProfile() {
                 >
                   {companyName
                     ? `Building creative projects through ${companyName}.`
-                    : "Your personal Creator workspace for commissions, creative direction, and Fashion Persona identity."}
+                    : "Your personal Creator workspace for bookings, creative direction, and Fashion Persona identity."}
                 </p>
               </div>
             </div>
@@ -1496,7 +1496,7 @@ export default function CreatorProfile() {
 
               value: bookingsUnavailable ? "—" : bookingStats.total,
 
-              helper: "All P2P commissions",
+              helper: "All P2P bookings",
 
               icon: Briefcase,
 
@@ -1532,7 +1532,7 @@ export default function CreatorProfile() {
 
               value: bookingsUnavailable ? "—" : bookingStats.completed,
 
-              helper: "Finished commissions",
+              helper: "Finished bookings",
 
               icon: CheckCircle2,
 
@@ -2520,7 +2520,7 @@ export default function CreatorProfile() {
           <ProfileShortcut
             icon={Briefcase}
             title="Contracts"
-            description="Review active commissions and milestones."
+            description="Review active bookings and milestones."
             onClick={() => navigate("/creator/bookings")}
           />
 

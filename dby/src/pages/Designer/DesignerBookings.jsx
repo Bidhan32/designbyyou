@@ -964,7 +964,7 @@ function DesignerBookings() {
 
                                     const projectTitle =
                                         booking.reference_design_title ||
-                                        "Bespoke Design Commission";
+                                        "Bespoke Design Booking";
 
                                     const progress =
                                         STATUS_PROGRESS[status] ??
@@ -989,7 +989,9 @@ function DesignerBookings() {
                                                         </span>
 
                                                         <span className="rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/5 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.17em] text-[#8F7118] dark:text-[#D4AF37]">
-                                                            {booking.booking_type || "commission"}
+                                                           {booking.booking_type === "commission"
+  ? "booking"
+  : booking.booking_type || "booking"}
                                                         </span>
                                                     </div>
 

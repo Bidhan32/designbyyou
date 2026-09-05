@@ -337,7 +337,7 @@ export default function CreatorInitiateCommission() {
               dark:text-[#D4AF37]
             "
           >
-            Commission Setup
+            Booking Setup
           </p>
 
           <h1
@@ -365,7 +365,7 @@ export default function CreatorInitiateCommission() {
               dark:text-white/40
             "
           >
-            This commission link does not
+            This booking link does not
             contain a valid Designer.
             Return to the directory and
             choose a Designer before
@@ -528,7 +528,7 @@ export default function CreatorInitiateCommission() {
             dark:text-[#D4AF37]
           "
         >
-          Secure Commission
+          Secure Booking
         </p>
 
         <h1

@@ -1822,7 +1822,7 @@ export default function CreatorSettings() {
                 "
               >
                 These details help keep your Creator workspace and future
-                commissions consistent.
+                bookings consistent.
               </p>
             </div>
 

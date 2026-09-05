@@ -4,7 +4,7 @@
 =========================================================
 DesignByYou Stripe Connect Service
 Stripe Accounts v2 Marketplace Integration
-Version 1.1
+Version 1.2
 =========================================================
 
 Responsibilities:
@@ -21,6 +21,17 @@ Account-creation safety:
 - Retrying the same logical account-creation operation must
   use the SAME idempotency key and SAME request parameters.
 - Bank details remain collected directly by Stripe.
+- Live UAE connected-account creation is blocked unless
+  explicitly enabled after the platform's UAE Connect
+  configuration has been confirmed.
+
+IMPORTANT:
+
+The current Accounts v2 creation payload is intentionally
+preserved for now.
+
+Do NOT enable STRIPE_UAE_CONNECT_APPROVED until the exact
+supported UAE account configuration has been confirmed.
 =========================================================
 */
 
@@ -32,8 +43,12 @@ Stripe Client
 
 let stripeClient = null;
 
+function getConfiguredStripeSecretKey() {
+  return String(process.env.STRIPE_SECRET_KEY || "").trim();
+}
+
 function getStripeClient() {
-  const secretKey = String(process.env.STRIPE_SECRET_KEY || "").trim();
+  const secretKey = getConfiguredStripeSecretKey();
 
   if (!secretKey) {
     const error = new Error("STRIPE_SECRET_KEY is not configured.");
@@ -49,6 +64,24 @@ function getStripeClient() {
   }
 
   return stripeClient;
+}
+
+/*=========================================================
+Stripe Environment Helpers
+=========================================================*/
+
+function isLiveStripeKey() {
+  const secretKey = getConfiguredStripeSecretKey();
+
+  return secretKey.startsWith("sk_live_");
+}
+
+function isUaeConnectCreationApproved() {
+  return (
+    String(process.env.STRIPE_UAE_CONNECT_APPROVED || "")
+      .trim()
+      .toLowerCase() === "true"
+  );
 }
 
 /*=========================================================
@@ -193,20 +226,59 @@ function normalizeHttpUrl(value, fieldName) {
 }
 
 /*=========================================================
+Live UAE Account-Creation Safety
+=========================================================*/
+
+/**
+ * Prevent accidental creation of a real UAE connected
+ * account while the backend is using a live Stripe secret
+ * key.
+ *
+ * This deliberately checks the actual Stripe key mode
+ * rather than NODE_ENV.
+ *
+ * That matters because local development may still load
+ * an sk_live_ key.
+ */
+function assertLiveUaeConnectCreationAllowed(country) {
+  if (country !== "AE") {
+    return;
+  }
+
+  if (!isLiveStripeKey()) {
+    return;
+  }
+
+  if (isUaeConnectCreationApproved()) {
+    return;
+  }
+
+  const error = new Error(
+    "Live UAE Stripe Connect account creation is disabled until the platform's UAE Connect configuration has been approved.",
+  );
+
+  error.statusCode = 503;
+  error.code = "STRIPE_UAE_CONNECT_APPROVAL_REQUIRED";
+
+  throw error;
+}
+
+/*=========================================================
 1. Create Connected Account
 =========================================================*/
 
 /**
  * Creates a Stripe Accounts v2 connected account.
  *
- * The account is configured as a recipient because
- * DesignByYou:
+ * The account is configured as a recipient because:
  *
- * Creator
+ * Customer
  *    ↓
  * Platform receives payment
  *    ↓
- * Platform later transfers designer earnings
+ * Booking is fulfilled
+ *    ↓
+ * Platform transfers designer earnings
  *    ↓
  * Designer connected account
  *
@@ -234,6 +306,20 @@ async function createConnectedAccount(options = {}) {
 
   const country = normalizeCountry(options.country);
 
+  /*
+   * =======================================================
+   * CRITICAL LIVE UAE SAFETY GATE
+   * =======================================================
+   *
+   * This runs BEFORE any Stripe connected-account creation
+   * request is sent.
+   *
+   * NODE_ENV is intentionally not used as the protection
+   * boundary because development machines can still have a
+   * live Stripe secret key configured.
+   */
+  assertLiveUaeConnectCreationAllowed(country);
+
   const idempotencyKey = normalizeIdempotencyKey(options.idempotencyKey);
 
   const designerId = normalizeInternalId(options.designerId, "Designer ID");
@@ -243,6 +329,17 @@ async function createConnectedAccount(options = {}) {
     "Stripe Connect operation ID",
   );
 
+  /*
+   * IMPORTANT:
+   *
+   * This Accounts v2 configuration is deliberately
+   * preserved temporarily.
+   *
+   * The live UAE safety gate prevents this configuration
+   * from creating a real UAE account until the supported
+   * responsibility/dashboard configuration has been
+   * explicitly confirmed.
+   */
   const account = await stripe.v2.core.accounts.create(
     {
       contact_email: email,
@@ -250,8 +347,11 @@ async function createConnectedAccount(options = {}) {
       display_name: displayName,
 
       /*
-       * Express gives the designer access to Stripe's
-       * lightweight connected-account dashboard.
+       * Existing Accounts v2 dashboard configuration.
+       *
+       * Do not treat this configuration as approved for
+       * live UAE connected-account creation simply because
+       * the environment safety flag exists.
        */
       dashboard: "express",
 
@@ -260,22 +360,21 @@ async function createConnectedAccount(options = {}) {
       },
 
       /*
-       * Marketplace responsibility model.
+       * Existing marketplace responsibility model.
        *
-       * The platform handles Stripe fees and negative
-       * balance responsibility for marketplace activity.
+       * Preserved until the final UAE-supported Stripe
+       * Connect configuration is established.
        */
       defaults: {
         responsibilities: {
           fees_collector: "application",
-
           losses_collector: "application",
         },
       },
 
       /*
-       * Recipient allows the designer account to receive
-       * Transfers from the platform.
+       * Recipient configuration allows the connected
+       * account to receive Transfers from the platform.
        */
       configuration: {
         recipient: {
@@ -292,13 +391,12 @@ async function createConnectedAccount(options = {}) {
       /*
        * Stripe-side recovery breadcrumbs.
        *
-       * These allow an account to be traced back to the
-       * local designer and durable creation operation if
-       * local persistence fails after Stripe succeeds.
+       * These allow a Stripe account to be traced back to
+       * the local designer and durable creation operation
+       * if Stripe succeeds but local persistence fails.
        */
       metadata: {
         designbyyou_designer_id: designerId,
-
         designbyyou_connect_operation_id: operationId,
       },
 
@@ -308,8 +406,8 @@ async function createConnectedAccount(options = {}) {
     /*
      * API v2 request options.
      *
-     * The same logical account-creation operation must
-     * always reuse this persisted idempotency key.
+     * Retrying the same durable creation operation must
+     * always use exactly this persisted idempotency key.
      */
     {
       idempotencyKey,
@@ -324,7 +422,10 @@ async function createConnectedAccount(options = {}) {
 =========================================================*/
 
 /**
- * Creates a temporary single-use Stripe onboarding URL.
+ * Creates a temporary, single-use Stripe onboarding URL.
+ *
+ * Bank details and required connected-account information
+ * are collected directly by Stripe.
  *
  * @param {Object} options
  * @param {string} options.accountId
@@ -356,8 +457,9 @@ async function createOnboardingLink(options = {}) {
         configurations: ["recipient"],
 
         /*
-         * Collect currently required and eventually due
-         * information during onboarding where possible.
+         * Ask Stripe onboarding to collect both currently
+         * required and eventually due information where
+         * supported.
          */
         collection_options: {
           fields: "eventually_due",
@@ -378,11 +480,13 @@ async function createOnboardingLink(options = {}) {
 =========================================================*/
 
 /**
- * Retrieves current Stripe connected-account state.
+ * Retrieves the current Stripe connected-account state.
  *
- * We specifically request recipient configuration and
- * requirements because Accounts v2 can omit includable
- * values unless requested explicitly.
+ * Accounts v2 can omit includable values unless they are
+ * explicitly requested, so recipient configuration,
+ * identity and requirements are included.
+ *
+ * @param {string} accountId
  */
 async function getConnectedAccount(accountId) {
   const stripe = getStripeClient();

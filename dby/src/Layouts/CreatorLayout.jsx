@@ -220,7 +220,7 @@ const CREATOR_NAVIGATION = [
 
     icon: Briefcase,
 
-    description: "Track commissions and milestones.",
+    description: "Track bookings and milestones.",
   },
 
   {
@@ -298,7 +298,7 @@ Quick Actions
 
 const QUICK_ACTIONS = [
   {
-    name: "New Commission",
+    name: "New Booking",
 
     path: "/creator/bookings/new",
 
@@ -1126,7 +1126,7 @@ export default function CreatorLayout() {
                   xl:inline
                 "
               >
-                New Commission
+                New Booking
               </span>
             </Link>
 
@@ -2263,7 +2263,7 @@ export default function CreatorLayout() {
                 "
               >
                 <FilePlus2 size={14} />
-                Start New Commission
+                Start New Booking
               </Link>
             </div>
 

@@ -236,7 +236,7 @@ function getStatusDetails(status) {
       return {
         label: "New Request",
 
-        title: "Review this commission request",
+        title: "Review this booking request",
 
         description:
           "Read the creator's brief, confirm the scope and accept or reject the contract.",
@@ -1066,7 +1066,7 @@ function DesignerBookingDetail() {
     booking?.sender_avatar || booking?.creator_avatar || null;
 
   const projectTitle =
-    booking?.reference_design_title || "Bespoke Design Commission";
+    booking?.reference_design_title || "Bespoke Design Booking";
 
   /*=====================================================
     Loading

@@ -158,7 +158,7 @@ export default function DesignerDirectory() {
             <Crown size={12} /> Elite Visionary Network
           </div>
           <h1 className="text-5xl md:text-7xl font-serif font-light text-slate-900 dark:text-white tracking-tighter drop-shadow-2xl">
-            Commission{" "}
+            Booking{" "}
             <span className="italic text-[#D4AF37] font-bold">Designers</span>
           </h1>
           <p className="text-slate-500 dark:text-white/40 text-xs md:text-sm font-light uppercase tracking-widest max-w-xl mx-auto leading-relaxed">
@@ -386,7 +386,7 @@ export default function DesignerDirectory() {
                       to={`/creator/bookings/new?designer_id=${designer.id || designer._id}&budget=${startingRate}`}
                       className="w-full py-3.5 bg-[#D4AF37] hover:bg-[#ead28f] dark:hover:bg-white text-black text-[9px] uppercase tracking-[0.25em] font-black rounded-xl transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(212,175,55,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)]"
                     >
-                      <Zap size={14} /> Initiate Commission
+                      <Zap size={14} /> Initiate Booking
                     </Link>
 
                     <button

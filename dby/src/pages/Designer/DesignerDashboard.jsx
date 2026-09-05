@@ -75,7 +75,7 @@ export default function DesignerDashboard() {
                 // Format Ledger History for the UI Signals
                 const formattedSignals = ledger.slice(0, 5).map(tx => ({
                     id: tx.transaction_id || tx.id || Math.random().toString(),
-                    description: `Commission Payment: ${tx.sender_name || 'Client'}`,
+                    description: `Booking Earnings: ${tx.sender_name || 'Client'}`,
                     amount: tx.gross_amount,
                     date: tx.created_at,
                     type: 'credit'
@@ -197,7 +197,7 @@ export default function DesignerDashboard() {
                 <div className="bg-white dark:bg-[#0a0a0a] p-8 rounded-3xl border border-slate-200 dark:border-white/5 relative overflow-hidden shadow-lg dark:shadow-2xl group hover:border-indigo-400/50 dark:hover:border-indigo-500/30 transition-all duration-500 hover:-translate-y-1">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-[40px] group-hover:bg-indigo-500/10 transition-colors"></div>
                     <div className="flex justify-between items-start text-slate-400 dark:text-white/40 relative z-10 transition-colors">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em]">Active Commissions</p>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em]">Active Bookings</p>
                         <Briefcase size={16} className="text-indigo-400/50 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors" />
                     </div>
                     {loading ? (

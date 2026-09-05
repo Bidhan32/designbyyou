@@ -128,8 +128,6 @@ import OrderHistoryPage from "./pages/Designer/OrderHistoryPage";
 
 import DesignerOrders from "./pages/Designer/DesignerOrders";
 
-import DesignerCreateBooking from "./pages/Designer/DesignerCreateBooking";
-
 import DesignerBookingDetail from "./pages/Designer/DesignerBookingDetail";
 
 import DesignerShowcaseDetail from "./pages/Designer/DesignerShowcaseDetail";
@@ -189,7 +187,6 @@ import FashionEditor from "./pages/sketches/editor/FashionEditor";
 /*=========================================================
 Development-Only Pages
 =========================================================*/
-
 
 /*=========================================================
 Stripe
@@ -258,15 +255,15 @@ function HomeRedirect() {
     return <Navigate to="/creator/showcase" replace />;
   }
 
-if (role === "designer") {
-  return <Navigate to="/designer/explore" replace />;
-}
+  if (role === "designer") {
+    return <Navigate to="/designer/explore" replace />;
+  }
 
-if (role === "superadmin") {
-  return <Navigate to="/superadmin/dashboard" replace />;
-}
+  if (role === "superadmin") {
+    return <Navigate to="/superadmin/dashboard" replace />;
+  }
 
-return <Navigate to="/unauthorized" replace />;
+  return <Navigate to="/unauthorized" replace />;
 }
 
 /*=========================================================
@@ -301,10 +298,10 @@ function UnauthorizedPage() {
   }
 
   if (role === "superadmin") {
-  homePath = "/superadmin/dashboard";
+    homePath = "/superadmin/dashboard";
 
-  homeLabel = "Return to Super Admin";
-}
+    homeLabel = "Return to Super Admin";
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-white px-6 dark:bg-[#030303]">
@@ -408,10 +405,7 @@ function App() {
               Vite build.
               =========================================*/}
 
-
-
-
-{/*=========================================
+              {/*=========================================
 SUPER ADMIN
 
 Every route inside this block requires:
@@ -422,39 +416,32 @@ Every route inside this block requires:
 Normal admins, creators and designers cannot enter.
 =========================================*/}
 
-<Route element={<ProtectedRoute requiredRole="superadmin" />}>
-  <Route path="/superadmin" element={<AdminLayout />}>
-    <Route
-      index
-      element={<Navigate to="/superadmin/dashboard" replace />}
-    />
+              <Route element={<ProtectedRoute requiredRole="superadmin" />}>
+                <Route path="/superadmin" element={<AdminLayout />}>
+                  <Route
+                    index
+                    element={<Navigate to="/superadmin/dashboard" replace />}
+                  />
 
-    <Route
-      path="dashboard"
-      element={<SuperAdminDashboard />}
-    />
+                  <Route path="dashboard" element={<SuperAdminDashboard />} />
 
-    <Route
-      path="users"
-      element={<UserManagement />}
-    />
+                  <Route path="users" element={<UserManagement />} />
 
-    <Route
-      path="designer-approvals"
-      element={<DesignerApprovals />}
-    />
+                  <Route
+                    path="designer-approvals"
+                    element={<DesignerApprovals />}
+                  />
 
-    <Route
-      path="approvals"
-      element={<Navigate to="/superadmin/designer-approvals" replace />}
-    />
+                  <Route
+                    path="approvals"
+                    element={
+                      <Navigate to="/superadmin/designer-approvals" replace />
+                    }
+                  />
 
-    <Route
-      path="settings"
-      element={<SystemSettings />}
-    />
-  </Route>
-</Route>
+                  <Route path="settings" element={<SystemSettings />} />
+                </Route>
+              </Route>
               {/*=========================================
               DESIGNER
 
@@ -520,7 +507,7 @@ Normal admins, creators and designers cannot enter.
 
                   <Route
                     path="bookings/new"
-                    element={<DesignerCreateBooking />}
+                    element={<Navigate to="/designer/bookings" replace />}
                   />
 
                   <Route

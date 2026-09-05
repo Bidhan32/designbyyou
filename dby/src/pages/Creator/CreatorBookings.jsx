@@ -176,7 +176,7 @@ const TAB_DEFINITIONS = Object.freeze([
 
     label: "In Progress",
 
-    description: "Active commissions",
+    description: "Active bookings",
   },
 
   {
@@ -355,11 +355,11 @@ function formatBookingType(value) {
   */
 
   if (type === "marketplace") {
-    return "Showcase Commission";
+    return "Showcase Booking";
   }
 
   if (type === "commission") {
-    return "Direct Commission";
+    return "Direct Booking";
   }
 
   if (!type) {
@@ -561,7 +561,7 @@ function getStatusDetails(statusValue, designerName) {
       return {
         label: "Awaiting Designer",
 
-        description: `${shortName} is reviewing your commission request.`,
+        description: `${shortName} is reviewing your booking request.`,
 
         badgeClass:
           "border-amber-300/60 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300",
@@ -574,7 +574,7 @@ function getStatusDetails(statusValue, designerName) {
         label: "Payment Required",
 
         description:
-          "The commission is ready for funding. Complete payment to secure the agreed amount in escrow.",
+          "The booking is ready for funding. Complete payment to secure the agreed amount in escrow.",
 
         badgeClass:
           "border-orange-300/60 bg-orange-50 text-orange-700 dark:border-orange-400/20 dark:bg-orange-400/10 dark:text-orange-300",
@@ -586,7 +586,7 @@ function getStatusDetails(statusValue, designerName) {
       return {
         label: "Escrow Secured",
 
-        description: `Your payment is protected in escrow while ${shortName} moves the commission into production.`,
+        description: `Your payment is protected in escrow while ${shortName} moves the booking into production.`,
 
         badgeClass:
           "border-emerald-300/60 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300",
@@ -638,7 +638,7 @@ function getStatusDetails(statusValue, designerName) {
         label: "Final Review",
 
         description:
-          "Final work is ready for review. Approval completes the commission and releases the designer payment.",
+          "Final work is ready for review. Approval completes the booking and releases the designer payment.",
 
         badgeClass:
           "border-violet-300/60 bg-violet-50 text-violet-700 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300",
@@ -694,7 +694,7 @@ function getStatusDetails(statusValue, designerName) {
         label: "Completed",
 
         description:
-          "The final work was approved and the commission workflow is complete.",
+          "The final work was approved and the booking workflow is complete.",
 
         badgeClass:
           "border-emerald-300/60 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300",
@@ -706,7 +706,7 @@ function getStatusDetails(statusValue, designerName) {
       return {
         label: "Delivered",
 
-        description: "This legacy commission is recorded as delivered.",
+        description: "This legacy booking is recorded as delivered.",
 
         badgeClass:
           "border-emerald-300/60 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300",
@@ -786,7 +786,7 @@ function getNextAction(statusValue) {
       return {
         label: "Escrow Protected",
 
-        detail: "Funding is secured while the commission advances.",
+        detail: "Funding is secured while the booking progresses.",
 
         icon: ShieldCheck,
 
@@ -1361,7 +1361,7 @@ export default function CreatorBookings() {
                   lg:text-6xl
                 "
               >
-                Your Commission{" "}
+                Your Booking{" "}
                 <span
                   className="
                     italic
@@ -1499,7 +1499,7 @@ export default function CreatorBookings() {
 
               value: summary.total,
 
-              helper: "Your commission history",
+              helper: "Your booking history",
 
               icon: Inbox,
 
@@ -1544,7 +1544,7 @@ export default function CreatorBookings() {
 
               value: summary.completed,
 
-              helper: "Finished commissions",
+              helper: "Finished bookings",
 
               icon: CheckCircle2,
 
@@ -2292,7 +2292,7 @@ export default function CreatorBookings() {
                   booking?.receiver_avatar || booking?.designer_avatar || null;
 
                 const projectTitle =
-                  booking?.reference_design_title || "Custom Design Commission";
+                  booking?.reference_design_title || "Custom Design Booking";
 
                 const statusDetails = getStatusDetails(status, designerName);
 
@@ -2515,7 +2515,7 @@ export default function CreatorBookings() {
                                 "
                             >
                               {booking?.brief_text ||
-                                "No project brief was supplied for this commission."}
+                                "No project brief was supplied for this booking."}
                             </p>
 
                             <p

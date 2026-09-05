@@ -1,33 +1,11 @@
 "use strict";
 
-/*
-=========================================================
-DesignByYou / FashionVision
-Stripe Webhook Controller
-Version 5.7
-=========================================================
-
-Version 5.7:
-
-- Preserves P2P, wallet, refund and Connect payout handling.
-- Serializes Creator subscription webhook processing.
-- Retrieves CURRENT Stripe Subscription state instead of
-  trusting stale customer.subscription.* snapshots.
-- Protects against out-of-order subscription webhooks.
-- Checkout completion links identities AND synchronizes
-  current subscription state.
-- Stripe network reads happen before PostgreSQL BEGIN.
-=========================================================
-*/
-
 const express = require("express");
 const Stripe = require("stripe");
 
 const db = require("../config/db");
 
 const p2pController = require("../controllers/P2PBookingController");
-
-const designerFinanceController = require("../controllers/designerFinanceController");
 
 const creatorFinanceController = require("../controllers/creators/creatorFinanceController");
 
@@ -115,8 +93,6 @@ const WORKFLOW_TYPES = Object.freeze({
   P2P_ESCROW: "p2p_escrow",
 
   P2P_REFUND: "p2p_refund",
-
-  DESIGNER_WALLET_DEPOSIT: "designer_wallet_deposit",
 
   CREATOR_WALLET_DEPOSIT: "creator_wallet_deposit",
 
@@ -233,12 +209,6 @@ function getCreatorSubscriptionLockIdentity(event, workflowType) {
     return null;
   }
 
-  /*
-  Prefer cus_ for every workflow so Checkout,
-  Subscription and Invoice events for the same billing
-  relationship use the same lock.
-  */
-
   if (workflowType === WORKFLOW_TYPES.CREATOR_SUBSCRIPTION_CHECKOUT) {
     return (
       getStripeObjectId(eventObject.customer) ||
@@ -273,13 +243,13 @@ async function acquireCreatorSubscriptionLock(client, lockIdentity) {
 
   const result = await client.query(
     `
-        SELECT
-          pg_try_advisory_lock(
-            hashtext($1),
-            hashtext($2)
-          )
-            AS locked
-      `,
+      SELECT
+        pg_try_advisory_lock(
+          hashtext($1),
+          hashtext($2)
+        )
+          AS locked
+    `,
     ["creator-subscription-sync", lockIdentity],
   );
 
@@ -372,13 +342,23 @@ function getWorkflowType(event) {
       return WORKFLOW_TYPES.P2P_ESCROW;
     }
 
-    if (metadata.transaction_purpose === "wallet_deposit") {
-      return WORKFLOW_TYPES.DESIGNER_WALLET_DEPOSIT;
-    }
-
     if (metadata.transaction_purpose === "creator_wallet_deposit") {
       return WORKFLOW_TYPES.CREATOR_WALLET_DEPOSIT;
     }
+
+    /*
+    IMPORTANT:
+
+    transaction_purpose = wallet_deposit
+
+    used to represent a designer wallet deposit.
+
+    Designer wallets are no longer user-fundable.
+
+    Therefore old designer deposit PaymentIntents are
+    deliberately not assigned a workflow and will be
+    ignored safely by the webhook handler.
+    */
 
     return null;
   }
@@ -475,17 +455,6 @@ async function prepareSupportedEvent(event, workflowType) {
       subscriptionId: subscriptionId || null,
     };
   }
-
-  /*
-  IMPORTANT:
-
-  handleStripeWebhook() acquires the Creator subscription
-  advisory lock BEFORE reaching this provider request.
-
-  This means an old event cannot fetch/apply an older
-  snapshot after a newer event has already synchronized
-  the same Customer.
-  */
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
@@ -1927,21 +1896,13 @@ async function processSupportedEvent(
 ) {
   const eventObject = getEventObject(event);
 
-  /*=======================================================
-  PaymentIntents
-  =======================================================*/
+  /*
+  payment_intent.succeeded
+  */
 
   if (event.type === "payment_intent.succeeded") {
     if (workflowType === WORKFLOW_TYPES.P2P_ESCROW) {
       return p2pController.processEscrowLockInternal(
-        eventObject,
-
-        client,
-      );
-    }
-
-    if (workflowType === WORKFLOW_TYPES.DESIGNER_WALLET_DEPOSIT) {
-      return designerFinanceController.processWalletDepositInternal(
         eventObject,
 
         client,
@@ -1957,9 +1918,9 @@ async function processSupportedEvent(
     }
   }
 
-  /*=======================================================
-  P2P Refund
-  =======================================================*/
+  /*
+  P2P refund.
+  */
 
   if (workflowType === WORKFLOW_TYPES.P2P_REFUND) {
     if (event.type === "refund.created" || event.type === "refund.updated") {
@@ -1979,9 +1940,9 @@ async function processSupportedEvent(
     }
   }
 
-  /*=======================================================
-  Creator Wallet Refund
-  =======================================================*/
+  /*
+  Creator wallet refund.
+  */
 
   if (workflowType === WORKFLOW_TYPES.CREATOR_WALLET_REFUND) {
     if (event.type === "refund.created" || event.type === "refund.updated") {
@@ -2001,9 +1962,9 @@ async function processSupportedEvent(
     }
   }
 
-  /*=======================================================
-  Creator Subscription Checkout
-  =======================================================*/
+  /*
+  Creator subscription Checkout.
+  */
 
   if (workflowType === WORKFLOW_TYPES.CREATOR_SUBSCRIPTION_CHECKOUT) {
     const linked =
@@ -2075,9 +2036,9 @@ async function processSupportedEvent(
     };
   }
 
-  /*=======================================================
-  Creator Subscription Lifecycle
-  =======================================================*/
+  /*
+  Creator subscription lifecycle.
+  */
 
   if (workflowType === WORKFLOW_TYPES.CREATOR_SUBSCRIPTION) {
     const subscription = preparedContext?.subscription;
@@ -2092,16 +2053,6 @@ async function processSupportedEvent(
           "The current Stripe Subscription could not be prepared for lifecycle reconciliation.",
       };
     }
-
-    /*
-    Do NOT apply event.data.object.
-
-    The event may be older than another event already
-    processed by this endpoint.
-
-    The prepared object came from a fresh Stripe read
-    performed while holding the per-Customer ordering lock.
-    */
 
     if (subscription.id !== eventObject?.id) {
       return {
@@ -2142,9 +2093,9 @@ async function processSupportedEvent(
     };
   }
 
-  /*=======================================================
-  Creator Subscription Invoice
-  =======================================================*/
+  /*
+  Creator subscription invoice.
+  */
 
   if (workflowType === WORKFLOW_TYPES.CREATOR_SUBSCRIPTION_INVOICE) {
     const subscription = preparedContext?.subscription;
@@ -2192,9 +2143,9 @@ async function processSupportedEvent(
     };
   }
 
-  /*=======================================================
-  Stripe Connect Payout
-  =======================================================*/
+  /*
+  Historical Stripe Connect payout reconciliation.
+  */
 
   if (workflowType === WORKFLOW_TYPES.STRIPE_PAYOUT) {
     return processStripePayoutEvent(
@@ -2340,7 +2291,7 @@ async function handleStripeWebhook(
   if (!webhookSecret) {
     console.error(`${endpointName} webhook secret is not configured.`);
 
-   return res.status(503).json({
+    return res.status(503).json({
       status: "error",
 
       message: `${endpointName} webhook signing secret is not configured.`,
@@ -2358,7 +2309,7 @@ async function handleStripeWebhook(
   }
 
   /*
-  Signature verification requires the untouched raw body.
+  Stripe requires the untouched raw request body.
   */
 
   if (!Buffer.isBuffer(req.body)) {
@@ -2435,6 +2386,16 @@ async function handleStripeWebhook(
 
   const workflowType = getWorkflowType(event);
 
+  /*
+  This branch now also safely handles obsolete designer
+  wallet deposit PaymentIntents.
+
+  They still have event type payment_intent.succeeded,
+  but because transaction_purpose = wallet_deposit is no
+  longer a valid workflow, they are acknowledged with 200
+  and ignored without changing the designer wallet.
+  */
+
   if (!workflowType) {
     return res.status(200).json({
       received: true,
@@ -2466,23 +2427,8 @@ async function handleStripeWebhook(
 
   try {
     /*
-    SUBSCRIPTION ORDERING
-
-    For Creator subscriptions:
-
-    advisory lock
-        ↓
-    Stripe current-state read
-        ↓
-    PostgreSQL BEGIN
-        ↓
-    event claim + state apply
-        ↓
-    COMMIT
-        ↓
-    advisory unlock
-
-    The transaction is NOT held during Stripe network I/O.
+    Creator subscription processing is serialized before
+    reading CURRENT Stripe subscription state.
     */
 
     if (requiresOrderedCreatorSubscriptionProcessing(workflowType)) {
@@ -2522,15 +2468,6 @@ async function handleStripeWebhook(
       );
 
       if (!subscriptionLockAcquired) {
-        /*
-        Another request is currently processing the same
-        subscription/customer.
-
-        No event claim has been written yet.
-
-        Returning 500 lets Stripe retry this event.
-        */
-
         return res.status(500).json({
           status: "error",
 
@@ -2539,13 +2476,6 @@ async function handleStripeWebhook(
         });
       }
     }
-
-    /*
-    Retrieve CURRENT Stripe Subscription.
-
-    For subscription workflows this occurs only after
-    acquiring the ordering lock.
-    */
 
     try {
       preparedContext = await prepareSupportedEvent(
@@ -2629,17 +2559,6 @@ async function handleStripeWebhook(
       preparedContext,
     );
 
-    /*
-    Retryable failure.
-
-    ROLLBACK removes both:
-
-    - workflow changes
-    - event claim
-
-    Stripe can retry the same event later.
-    */
-
     if (!result?.success && isRetryableProcessingResult(result)) {
       const retryableError = new Error(getProcessingReason(result));
 
@@ -2647,10 +2566,6 @@ async function handleStripeWebhook(
 
       throw retryableError;
     }
-
-    /*
-    Permanent validation rejection.
-    */
 
     if (!result?.success) {
       const reason = getProcessingReason(result);
@@ -2705,10 +2620,6 @@ async function handleStripeWebhook(
         reason,
       });
     }
-
-    /*
-    Deliberately ignored valid event.
-    */
 
     if (result.ignored) {
       const reason = getProcessingReason(result);
@@ -2880,7 +2791,7 @@ router.post("/stripe", async (req, res) => {
 });
 
 /*=========================================================
-Stripe Connect Webhook
+Historical Stripe Connect Webhook
 =========================================================*/
 
 router.post("/stripe/connect", async (req, res) => {

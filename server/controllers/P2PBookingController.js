@@ -7,7 +7,6 @@ const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null;
 
-const DEFAULT_DESIGNER_COMMISSION_RATE = 0.1;
 const DEFAULT_CREATOR_CONNECTION_FEE_RATE = 0.1;
 const DEFAULT_BOOKING_TIMEZONE = "Asia/Kathmandu";
 
@@ -16,11 +15,6 @@ function readEnvironmentRate(name, fallback) {
 
   return Number.isFinite(value) && value >= 0 && value <= 1 ? value : fallback;
 }
-
-const DESIGNER_COMMISSION_RATE = readEnvironmentRate(
-  "PLATFORM_COMMISSION_RATE",
-  DEFAULT_DESIGNER_COMMISSION_RATE,
-);
 
 const CREATOR_CONNECTION_FEE_RATE = readEnvironmentRate(
   "P2P_CONNECTION_FEE_RATE",
@@ -161,13 +155,13 @@ CREATOR BOOKING REWARD POINTS
 
 Rewards are based on the booking's agreed base price:
 
-- $100.00+      -> 20 points
-- $50.00-99.99  -> 10 points
-- $40.00-49.99  -> 8 points
-- $30.00-39.99  -> 6 points
-- $20.00-29.99  -> 4 points
-- $10.00-19.99  -> 2 points
-- below $10.00  -> 0 points
+- $100.00+       -> 20 points
+- $50.00-99.99   -> 10 points
+- $40.00-49.99   -> 8 points
+- $30.00-39.99   -> 6 points
+- $20.00-29.99   -> 4 points
+- $10.00-19.99   -> 2 points
+- below $10.00   -> 0 points
 
 The booking row is the idempotency source of truth via:
 - creator_reward_points
@@ -289,21 +283,56 @@ async function awardCreatorRewardForCompletedBooking(client, booking) {
     };
   }
 
+  /*
+  Creator-profile self-healing.
+
+  Normal Creator registration creates creator_profiles inside
+  the registration transaction. This UPSERT protects legacy
+  Creator accounts that may predate that behavior.
+
+  Safety:
+  - only a real users row with role = creator may receive rewards
+  - existing profiles have XP incremented
+  - missing legacy profiles are created atomically
+  - the booking marker above remains the idempotency gate
+  - failures still roll back the complete payout transaction
+  */
   const creatorProfileResult = await client.query(
     `
-      UPDATE creator_profiles
+      INSERT INTO creator_profiles (
+        user_id,
+        xp_points,
+        created_at,
+        updated_at
+      )
 
-      SET
+      SELECT
+        u.id,
+        $1,
+        NOW(),
+        NOW()
+
+      FROM users u
+
+      WHERE
+        u.id = $2
+
+        AND u.role =
+          'creator'
+
+      ON CONFLICT (
+        user_id
+      )
+
+      DO UPDATE SET
         xp_points =
           COALESCE(
-            xp_points,
+            creator_profiles.xp_points,
             0
-          ) + $1,
+          ) + EXCLUDED.xp_points,
 
         updated_at =
           NOW()
-
-      WHERE user_id = $2
 
       RETURNING
         xp_points
@@ -313,7 +342,7 @@ async function awardCreatorRewardForCompletedBooking(client, booking) {
 
   if (creatorProfileResult.rows.length === 0) {
     throw new Error(
-      "The creator profile required for booking rewards was not found.",
+      "The creator account required for booking rewards was not found.",
     );
   }
 
@@ -370,22 +399,101 @@ function normalizeStatus(value) {
     .toLowerCase();
 }
 
-function normalizeRate(value, fallback) {
-  const number = Number(value);
+/*
+=========================================================
+DESIGNER TIER COMMISSION POLICY
+=========================================================
 
-  if (!Number.isFinite(number) || number < 0) {
-    return fallback;
+The platform pays the Designer a commission based on the
+Designer's completed-booking tier.
+
+Bronze:
+- 0-4 completed bookings
+- 10%
+
+Silver:
+- 5-19 completed bookings
+- 15%
+
+Gold:
+- 20-34 completed bookings
+- 20%
+
+Platinum:
+- 35-49 completed bookings
+- 25%
+
+Diamond:
+- 50+ completed bookings
+- 30%
+
+The booking currently being completed counts toward the tier
+used for that booking's payout. Therefore:
+- the 5th completed booking pays Silver commission
+- the 20th pays Gold commission
+- the 35th pays Platinum commission
+- the 50th pays Diamond commission
+=========================================================
+*/
+
+const DESIGNER_TIER_POLICY = Object.freeze({
+  bronze: Object.freeze({
+    minimumCompletedBookings: 0,
+    commissionRate: 0.1,
+    commissionPercent: 10,
+  }),
+
+  silver: Object.freeze({
+    minimumCompletedBookings: 5,
+    commissionRate: 0.15,
+    commissionPercent: 15,
+  }),
+
+  gold: Object.freeze({
+    minimumCompletedBookings: 20,
+    commissionRate: 0.2,
+    commissionPercent: 20,
+  }),
+
+  platinum: Object.freeze({
+    minimumCompletedBookings: 35,
+    commissionRate: 0.25,
+    commissionPercent: 25,
+  }),
+
+  diamond: Object.freeze({
+    minimumCompletedBookings: 50,
+    commissionRate: 0.3,
+    commissionPercent: 30,
+  }),
+});
+
+function getDesignerTierForCompletedBookings(value) {
+  const completedBookings = Math.max(0, Number.parseInt(value, 10) || 0);
+
+  if (completedBookings >= 50) {
+    return "diamond";
   }
 
-  if (number <= 1) {
-    return number;
+  if (completedBookings >= 35) {
+    return "platinum";
   }
 
-  if (number <= 100) {
-    return number / 100;
+  if (completedBookings >= 20) {
+    return "gold";
   }
 
-  return fallback;
+  if (completedBookings >= 5) {
+    return "silver";
+  }
+
+  return "bronze";
+}
+
+function getDesignerCommissionPolicy(tier) {
+  const normalizedTier = normalizeStatus(tier);
+
+  return DESIGNER_TIER_POLICY[normalizedTier] || DESIGNER_TIER_POLICY.bronze;
 }
 
 function isActiveSubscription(user) {
@@ -3698,10 +3806,11 @@ exports.releaseP2PPayout = async (req, res) => {
       );
     }
 
-    const rateResult = await client.query(
+    const designerProfileResult = await client.query(
       `
             SELECT
-              commission_rate
+              tier,
+              total_completed_bookings
 
             FROM designer_profiles
 
@@ -3712,10 +3821,34 @@ exports.releaseP2PPayout = async (req, res) => {
       [booking.designer_id],
     );
 
-    const commissionRate = normalizeRate(
-      rateResult.rows[0]?.commission_rate,
-      DESIGNER_COMMISSION_RATE,
+    if (designerProfileResult.rows.length === 0) {
+      throw new Error(
+        "The designer profile required for commission calculation was not found.",
+      );
+    }
+
+    const designerProfile = designerProfileResult.rows[0];
+
+    const currentCompletedBookings = Math.max(
+      0,
+      Number.parseInt(designerProfile.total_completed_bookings, 10) || 0,
     );
+
+    /*
+    This booking is becoming completed inside this transaction,
+    so it counts toward the tier used for THIS payout.
+    */
+    const nextCompletedBookings = currentCompletedBookings + 1;
+
+    const payoutTier = getDesignerTierForCompletedBookings(
+      nextCompletedBookings,
+    );
+
+    const commissionPolicy = getDesignerCommissionPolicy(payoutTier);
+
+    const commissionRate = commissionPolicy.commissionRate;
+
+    const commissionPercent = commissionPolicy.commissionPercent;
 
     const grossCents = moneyToCents(booking.agreed_price);
 
@@ -3723,15 +3856,42 @@ exports.releaseP2PPayout = async (req, res) => {
       throw new Error("The booking contains an invalid agreed price.");
     }
 
-    const platformFeeCents = Math.round(grossCents * commissionRate);
+    /*
+    The Designer receives the tier commission.
 
-    const netCents = grossCents - platformFeeCents;
+    Example:
+    $100 Silver booking
+    -> Designer receives $15
+    -> Platform retains $85
+    */
+    const designerCommissionCents = Math.round(grossCents * commissionRate);
+
+    const platformRetainedCents = grossCents - designerCommissionCents;
 
     const grossAmount = centsToMoney(grossCents);
 
-    const platformFee = centsToMoney(platformFeeCents);
+    const designerCommissionAmount = centsToMoney(designerCommissionCents);
 
-    const netAmount = centsToMoney(netCents);
+    const platformRetainedAmount = centsToMoney(platformRetainedCents);
+
+    /*
+    Preserve the existing transactions schema semantics:
+
+    gross_amount
+    =
+    booking base price
+
+    platform_fee_deducted
+    =
+    amount retained by the platform
+
+    net_amount
+    =
+    Designer commission credited to the internal wallet
+    */
+    const platformFee = platformRetainedAmount;
+
+    const netAmount = designerCommissionAmount;
 
     const walletResult = await client.query(
       `
@@ -3756,7 +3916,7 @@ exports.releaseP2PPayout = async (req, res) => {
 
             RETURNING *
           `,
-      [grossAmount, netAmount, booking.designer_id],
+      [grossAmount, designerCommissionAmount, booking.designer_id],
     );
 
     if (walletResult.rows.length === 0) {
@@ -3813,51 +3973,20 @@ exports.releaseP2PPayout = async (req, res) => {
           UPDATE designer_profiles
 
           SET
-            total_completed_bookings =
-              COALESCE(
-                total_completed_bookings,
-                0
-              ) + 1,
+            total_completed_bookings = $1,
 
-            tier = (
-              CASE
+            tier = $2::designer_tier,
 
-                WHEN
-                  COALESCE(
-                    total_completed_bookings,
-                    0
-                  ) + 1 >= 50
+            commission_rate = $3
 
-                  THEN
-                    'diamond'
-
-                WHEN
-                  COALESCE(
-                    total_completed_bookings,
-                    0
-                  ) + 1 >= 20
-
-                  THEN
-                    'gold'
-
-                WHEN
-                  COALESCE(
-                    total_completed_bookings,
-                    0
-                  ) + 1 >= 5
-
-                  THEN
-                    'silver'
-
-                ELSE
-                  'bronze'
-
-              END
-            )::designer_tier
-
-          WHERE user_id = $1
+          WHERE user_id = $4
         `,
-      [booking.designer_id],
+      [
+        nextCompletedBookings,
+        payoutTier,
+        commissionPercent,
+        booking.designer_id,
+      ],
     );
 
     await client.query(
@@ -3925,10 +4054,28 @@ exports.releaseP2PPayout = async (req, res) => {
 
       payout: {
         grossAmount,
-        platformFee,
-        netAmount,
+
+        designerCommission: designerCommissionAmount,
+
+        platformRetained: platformRetainedAmount,
+
+        /*
+        Backward-compatible accounting fields.
+        */
+        platformFee: platformRetainedAmount,
+
+        netAmount: designerCommissionAmount,
+
         commissionRate,
+
+        commissionPercent,
+
+        tier: payoutTier,
+
+        completedBookings: nextCompletedBookings,
+
         currency: "usd",
+
         destination: "internal_wallet",
       },
 

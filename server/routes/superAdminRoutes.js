@@ -3,6 +3,7 @@
 /**
  * ============================================================
  * DesignByYou — Super Admin Routes
+ * Version 2.1
  * ============================================================
  *
  * All routes in this file require:
@@ -15,15 +16,27 @@
  * - Admin account creation
  * - User management
  * - Designer approval management
- * - Platform commission controls
+ * - Designer tier commission policy monitoring
  * - Showcase Hero management
  * - Platform finance monitoring
  * - Transaction monitoring
  * - Designer wallet / payout monitoring
+ * - Manual bank payout administration
+ * - Designer bank-account verification
  * - Dashboard statistics
  * - Design moderation
  *
  * IMPORTANT:
+ *
+ * Designer commission is tier-based and READ-ONLY here:
+ *
+ * Bronze   0-4 completed bookings   -> 10%
+ * Silver   5-19 completed bookings  -> 15%
+ * Gold     20-34 completed bookings -> 20%
+ * Platinum 35-49 completed bookings -> 25%
+ * Diamond  50+ completed bookings   -> 30%
+ *
+ * Global commission editing is intentionally NOT exposed.
  *
  * Maintenance mode is intentionally NOT wired here yet because
  * there is currently no persistent backend maintenance setting.
@@ -169,36 +182,61 @@ router.post("/admins", superCtrl.createAdmin);
 router.get("/pending-designers", superCtrl.getPendingDesigners);
 
 /* ============================================================
-   5. PLATFORM COMMISSION SETTINGS
+   5. DESIGNER TIER COMMISSION POLICY
    ============================================================ */
 
 /**
- * Read current Designer commission configuration.
+ * Read the current Designer tier commission policy.
+ *
+ * This endpoint is READ-ONLY.
+ *
+ * Tier policy:
+ *
+ * Bronze:
+ * - 0-4 completed bookings
+ * - 10% Designer commission
+ *
+ * Silver:
+ * - 5-19 completed bookings
+ * - 15% Designer commission
+ *
+ * Gold:
+ * - 20-34 completed bookings
+ * - 20% Designer commission
+ *
+ * Platinum:
+ * - 35-49 completed bookings
+ * - 25% Designer commission
+ *
+ * Diamond:
+ * - 50+ completed bookings
+ * - 30% Designer commission
+ *
+ * The endpoint also reports:
+ *
+ * - number of Designer profiles
+ * - Designer count per tier
+ * - tier/commission policy mismatches
  *
  * GET /api/v1/superadmin/commission
  */
 
 router.get("/commission", superCtrl.getCommissionOverview);
 
-/**
- * Update global commission rate.
+/*
+ * IMPORTANT:
  *
- * Accepted body:
- *
- * {
- *   "rate": 15
- * }
- *
- * OR:
- *
- * {
- *   "newRate": 15
- * }
+ * There is intentionally NO:
  *
  * PATCH /api/v1/superadmin/update-commission
+ *
+ * and NO:
+ *
+ * PATCH /api/v1/superadmin/business/commission
+ *
+ * Global commission editing conflicts with the tier-based
+ * Designer commission policy and has therefore been removed.
  */
-
-router.patch("/update-commission", superCtrl.updateGlobalCommission);
 
 /* ============================================================
    6. SHOWCASE HERO MANAGEMENT
@@ -276,11 +314,11 @@ router.patch("/showcase-hero", superCtrl.updateShowcaseHeroSettings);
  *
  * Provides:
  *
- * - Booking commission revenue
  * - Creator/platform fees
- * - Total platform fees
+ * - Platform retained from completed bookings
+ * - Total platform retained/fees
  * - Designer earnings released
- * - Completed booking volume
+ * - Completed booking release volume
  * - Refund volume
  * - Locked/pending balances
  * - Booking status counts
@@ -324,7 +362,145 @@ router.get("/finance/transactions", superCtrl.getFinancialTransactions);
 router.get("/finance/designer-balances", superCtrl.getPayoutDashboard);
 
 /* ============================================================
-   8. DESIGN MODERATION
+   8. MANUAL DESIGNER BANK PAYOUT ADMINISTRATION
+   ============================================================ */
+
+/**
+ * Retrieve manual bank payout requests.
+ *
+ * This endpoint returns MASKED bank-account information only.
+ *
+ * Optional:
+ *
+ * ?status=pending
+ * ?status=processing
+ * ?status=completed
+ * ?status=failed
+ * ?status=cancelled
+ * ?limit=100
+ *
+ * GET /api/v1/superadmin/finance/manual-payouts
+ */
+
+router.get("/finance/manual-payouts", superCtrl.getManualPayoutRequests);
+
+/**
+ * Retrieve one manual payout with sensitive bank details.
+ *
+ * IMPORTANT:
+ *
+ * This endpoint decrypts the stored bank-transfer details.
+ *
+ * It must remain Super Admin only.
+ *
+ * GET
+ * /api/v1/superadmin/finance/manual-payouts/:payoutId
+ */
+
+router.get(
+  "/finance/manual-payouts/:payoutId",
+  superCtrl.getManualPayoutRequest,
+);
+
+/**
+ * Verify or reject a Designer bank account.
+ *
+ * Body:
+ *
+ * {
+ *   "status": "verified"
+ * }
+ *
+ * OR:
+ *
+ * {
+ *   "status": "rejected"
+ * }
+ *
+ * PATCH
+ * /api/v1/superadmin/finance/bank-accounts/:bankAccountId/verification
+ */
+
+router.patch(
+  "/finance/bank-accounts/:bankAccountId/verification",
+  superCtrl.updateDesignerBankAccountVerification,
+);
+
+/**
+ * Move a manual payout from:
+ *
+ * pending -> processing
+ *
+ * No money leaves the internal payout reservation here.
+ *
+ * POST
+ * /api/v1/superadmin/finance/manual-payouts/:payoutId/processing
+ */
+
+router.post(
+  "/finance/manual-payouts/:payoutId/processing",
+  superCtrl.markManualPayoutProcessing,
+);
+
+/**
+ * Complete a manual bank payout.
+ *
+ * Only call this AFTER the Super Admin has actually sent the
+ * external bank transfer.
+ *
+ * Required body:
+ *
+ * {
+ *   "transfer_reference": "BANK-TRANSFER-123"
+ * }
+ *
+ * Effects:
+ *
+ * - processing -> completed
+ * - pending_payout_balance decreases
+ * - payout transaction is recorded
+ * - external bank reference is stored
+ *
+ * POST
+ * /api/v1/superadmin/finance/manual-payouts/:payoutId/complete
+ */
+
+router.post(
+  "/finance/manual-payouts/:payoutId/complete",
+  superCtrl.completeManualPayout,
+);
+
+/**
+ * Fail/reject a manual payout before money has been sent.
+ *
+ * Required body:
+ *
+ * {
+ *   "reason": "Bank rejected the transfer",
+ *   "funds_sent": false
+ * }
+ *
+ * SAFETY:
+ *
+ * funds_sent must explicitly be false.
+ *
+ * The controller restores:
+ *
+ * pending_payout_balance -> available_balance
+ *
+ * only when the external transfer has NOT been sent.
+ *
+ * POST
+ * /api/v1/superadmin/finance/manual-payouts/:payoutId/fail
+ */
+
+router.post(
+  "/finance/manual-payouts/:payoutId/fail",
+  superCtrl.failManualPayout,
+);
+
+/* ============================================================
+   9. DESIGN MODERATION
    ============================================================ */
 
 /**
@@ -348,14 +524,21 @@ router.get("/finance/designer-balances", superCtrl.getPayoutDashboard);
 router.patch("/designs/:designId/moderate", superCtrl.moderateDesign);
 
 /* ============================================================
-   9. LEGACY / COMPATIBILITY ROUTES
+   10. LEGACY / COMPATIBILITY ROUTES
    ============================================================
  *
  * These routes preserve compatibility with the previous
- * Super Admin backend while the frontend uses the clearer
- * endpoint structure above.
+ * Super Admin backend where keeping them does not conflict
+ * with the current business rules.
  *
- * They use exactly the same protected controller methods.
+ * All routes remain protected by:
+ *
+ * protect
+ * authorize("superadmin")
+ *
+ * IMPORTANT:
+ *
+ * Legacy global commission mutation was intentionally removed.
  * ============================================================
  */
 
@@ -370,14 +553,33 @@ router.patch("/manage/users/:userId/status", superCtrl.manageUserStatus);
 router.get("/manage/pending-designers", superCtrl.getPendingDesigners);
 
 /* ------------------------------------------------------------
-   Old finance/business routes
+   Old finance/business read routes
    ------------------------------------------------------------ */
 
-router.patch("/business/commission", superCtrl.updateGlobalCommission);
+/**
+ * Legacy financial overview.
+ *
+ * GET /api/v1/superadmin/business/ledger
+ */
 
 router.get("/business/ledger", superCtrl.getFinancialOverview);
 
+/**
+ * Legacy payout dashboard.
+ *
+ * GET /api/v1/superadmin/business/payouts
+ */
+
 router.get("/business/payouts", superCtrl.getPayoutDashboard);
+
+/*
+ * REMOVED:
+ *
+ * PATCH /api/v1/superadmin/business/commission
+ *
+ * Global commission editing is incompatible with the tier-based
+ * Designer commission policy.
+ */
 
 /* ------------------------------------------------------------
    Old moderation route

@@ -1629,7 +1629,7 @@ export default function CreatorShowcaseDetail() {
                     "
                   >
                     Use this Showcase design as creative context when starting a
-                    custom commission with the Designer.
+                    custom booking with the Designer.
                   </p>
                 </div>
 
@@ -1664,7 +1664,7 @@ export default function CreatorShowcaseDetail() {
                       "
                     >
                       <Zap size={14} />
-                      Start Commission
+                      Start Booking
                       <ArrowRight size={13} />
                     </Link>
                   )}
