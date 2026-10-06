@@ -4,7 +4,7 @@
 =========================================================
 DesignByYou
 Creator Profile
-Version 3.1
+Version 3.3
 =========================================================
 
 PURPOSE
@@ -18,10 +18,14 @@ GET /auth/me
     → Creator account/profile data
 
 GET /avatar/me
-    → Creator Fashion Persona
+    → Creator Fashion Persona (only while SHOW_FASHION_PERSONA = true)
 
 GET /p2p-bookings/pipeline
     → Creator contract statistics
+
+GET /creators/studio/assets
+    → Creator-owned Studio / Fashion Editor assets
+      including both Public and Private saved creations
 
 =========================================================
 IMPORTANT
@@ -39,14 +43,17 @@ Public Creator profiles, if added later, should use a
 separate dedicated public-safe backend endpoint.
 
 =========================================================
-VERSION 3.1
+VERSION 3.3
 ---------------------------------------------------------
 
-- Fixes repeated /auth/me, /avatar/me and pipeline requests.
-- Keeps fetchProfile stable while AuthContext user changes.
-- Uses ProfileIdentity for the main Creator profile picture.
-- Reuses the avatar already loaded by this page.
-- Does not overwrite profile_image_url.
+- Keeps all Fashion Persona / avatar code in this file.
+- Adds SHOW_FASHION_PERSONA as a temporary UI feature flag.
+- When false, the page does not request /avatar/me.
+- When false, Persona UI, Persona Configuration and Featured Design are hidden.
+- When false, ProfileIdentity falls back to the normal Creator profile image / initials.
+- Creator Identity expands to the full profile width while Persona is hidden.
+- Keeps owner-only My Creations with All / Public / Private controls.
+- Private creations never navigate through the public Showcase route.
 =========================================================
 */
 
@@ -60,21 +67,25 @@ import React, {
 
 import {
   AlertTriangle,
+  ArrowLeft,
   ArrowRight,
   Briefcase,
   CheckCircle2,
   Clock3,
   Eye,
   FileText,
+  Globe2,
   Image as ImageIcon,
   Layers3,
   Loader2,
+  LockKeyhole,
   Palette,
   RefreshCw,
   Settings,
   ShieldCheck,
   Sparkles,
   Tag,
+  UploadCloud,
   User,
   WalletCards,
 } from "lucide-react";
@@ -100,6 +111,45 @@ const PROFILE_ENDPOINT = "/auth/me";
 const AVATAR_ENDPOINT = "/avatar/me";
 
 const BOOKINGS_ENDPOINT = "/p2p-bookings/pipeline";
+
+const CREATOR_ASSETS_ENDPOINT = "/creators/studio/assets";
+
+/*=========================================================
+Temporary Feature Flags
+=========================================================*/
+
+/*
+ * Keep every Fashion Persona / avatar implementation in this file,
+ * but hide the feature from the Creator Profile for now.
+ *
+ * false:
+ * - no /avatar/me request
+ * - no Persona UI
+ * - no Persona Configuration UI
+ * - no Persona Featured Design UI
+ * - normal profile image / initials are used
+ *
+ * true:
+ * - restores the existing Persona behavior without re-adding code
+ */
+const SHOW_FASHION_PERSONA = false;
+
+const CREATIONS_PAGE_SIZE = 12;
+
+const CREATION_VISIBILITY_TABS = [
+  {
+    value: "all",
+    label: "All",
+  },
+  {
+    value: "public",
+    label: "Public",
+  },
+  {
+    value: "private",
+    label: "Private",
+  },
+];
 
 /*=========================================================
 Booking Status
@@ -299,6 +349,143 @@ function extractBookings(response) {
 }
 
 /*=========================================================
+Creator Studio Assets
+=========================================================*/
+
+function normalizeCreatorAsset(asset) {
+  if (!asset || typeof asset !== "object") {
+    return null;
+  }
+
+  const id = cleanText(asset.id);
+
+  if (!id) {
+    return null;
+  }
+
+  const explicitVisibility = normalizeStatus(asset.visibility);
+
+  const isPublic =
+    explicitVisibility === "public"
+      ? true
+      : explicitVisibility === "private"
+        ? false
+        : toBoolean(asset.is_public, false);
+
+  const category =
+    asset.category &&
+    typeof asset.category === "object" &&
+    !Array.isArray(asset.category)
+      ? {
+          id: cleanText(asset.category.id),
+          name: cleanText(asset.category.name),
+          slug: cleanText(asset.category.slug),
+          description: cleanText(asset.category.description),
+        }
+      : null;
+
+  const tags = Array.isArray(asset.tags)
+    ? asset.tags.map((tag) => cleanText(tag)).filter(Boolean)
+    : [];
+
+  return {
+    id,
+
+    ownerId: cleanText(asset.owner_id),
+
+    title: cleanText(asset.title, "Untitled Creation"),
+
+    slug: cleanText(asset.slug),
+
+    description: cleanText(asset.description),
+
+    previewUrl: resolveImageSrc(
+      asset.preview_url ||
+        asset.watermarked_preview_url ||
+        asset.image_url ||
+        asset.image,
+    ),
+
+    styleCategory: cleanText(asset.style_category),
+
+    format: normalizeStatus(asset.format),
+
+    category,
+
+    tags,
+
+    visibility: isPublic ? "public" : "private",
+
+    isPublic,
+
+    isPublished: toBoolean(asset.is_published, true),
+
+    sourceType: normalizeStatus(asset.source_type || "upload"),
+
+    editorProjectId: cleanText(asset.editor_project_id),
+
+    isEditable: toBoolean(asset.is_editable, false),
+
+    allowRemix: toBoolean(asset.allow_remix, false),
+
+    originalDesignId: cleanText(asset.original_design_id),
+
+    createdAt: asset.created_at || null,
+
+    updatedAt: asset.updated_at || null,
+  };
+}
+
+function extractCreatorAssets(response) {
+  const body = response?.data || {};
+
+  const rawAssets = Array.isArray(body?.data) ? body.data : [];
+
+  const assets = rawAssets.map(normalizeCreatorAsset).filter(Boolean);
+
+  const counts = {
+    all: Math.max(0, Number(body?.counts?.all || 0) || 0),
+
+    public: Math.max(0, Number(body?.counts?.public || 0) || 0),
+
+    private: Math.max(0, Number(body?.counts?.private || 0) || 0),
+  };
+
+  const currentPage = Math.max(1, Number(body?.pagination?.page || 1) || 1);
+
+  const limit = Math.max(
+    1,
+    Number(body?.pagination?.limit || CREATIONS_PAGE_SIZE) ||
+      CREATIONS_PAGE_SIZE,
+  );
+
+  const total = Math.max(0, Number(body?.pagination?.total || 0) || 0);
+
+  const totalPages = Math.max(
+    0,
+    Number(body?.pagination?.total_pages || 0) || 0,
+  );
+
+  return {
+    assets,
+
+    counts,
+
+    pagination: {
+      page: currentPage,
+
+      limit,
+
+      total,
+
+      totalPages,
+
+      hasMore: toBoolean(body?.pagination?.has_more, false),
+    },
+  };
+}
+
+/*=========================================================
 Featured Design
 =========================================================*/
 
@@ -479,6 +666,8 @@ export default function CreatorProfile() {
 
   const requestControllerRef = useRef(null);
 
+  const creationsRequestControllerRef = useRef(null);
+
   /*
   =======================================================
   AUTH CONTEXT REFS
@@ -519,6 +708,34 @@ export default function CreatorProfile() {
   const [bookings, setBookings] = useState([]);
 
   const [bookingsUnavailable, setBookingsUnavailable] = useState(false);
+
+  const [creations, setCreations] = useState([]);
+
+  const [creationCounts, setCreationCounts] = useState({
+    all: 0,
+    public: 0,
+    private: 0,
+  });
+
+  const [creationVisibility, setCreationVisibility] = useState("all");
+
+  const [creationsPage, setCreationsPage] = useState(1);
+
+  const [creationsPagination, setCreationsPagination] = useState({
+    page: 1,
+    limit: CREATIONS_PAGE_SIZE,
+    total: 0,
+    totalPages: 0,
+    hasMore: false,
+  });
+
+  const [creationsLoading, setCreationsLoading] = useState(true);
+
+  const [creationsRefreshing, setCreationsRefreshing] = useState(false);
+
+  const [creationsError, setCreationsError] = useState("");
+
+  const [visibilityUpdatingId, setVisibilityUpdatingId] = useState("");
 
   const [loading, setLoading] = useState(true);
 
@@ -573,15 +790,25 @@ export default function CreatorProfile() {
     setBookingsUnavailable(false);
 
     try {
+      /*
+       * Fashion Persona is temporarily hidden.
+       *
+       * Keep the request path and all avatar handling code available,
+       * but do not call /avatar/me while the feature flag is disabled.
+       */
+      const avatarRequest = SHOW_FASHION_PERSONA
+        ? API.get(AVATAR_ENDPOINT, {
+            signal: controller.signal,
+          })
+        : Promise.resolve(null);
+
       const [profileResult, avatarResult, bookingsResult] =
         await Promise.allSettled([
           API.get(PROFILE_ENDPOINT, {
             signal: controller.signal,
           }),
 
-          API.get(AVATAR_ENDPOINT, {
-            signal: controller.signal,
-          }),
+          avatarRequest,
 
           API.get(BOOKINGS_ENDPOINT, {
             signal: controller.signal,
@@ -644,7 +871,15 @@ export default function CreatorProfile() {
           Avatar - Non-fatal
           ===============================================*/
 
-      if (avatarResult.status === "fulfilled") {
+      if (!SHOW_FASHION_PERSONA) {
+        /*
+         * Feature is intentionally dormant.
+         * Keep avatar state empty so ProfileIdentity uses the normal
+         * Creator profile image / initials.
+         */
+        setAvatar(null);
+        setAvatarUnavailable(false);
+      } else if (avatarResult.status === "fulfilled") {
         const avatarObject = extractAvatarObject(avatarResult.value);
 
         setAvatar(normalizeAvatar(avatarObject));
@@ -710,6 +945,100 @@ export default function CreatorProfile() {
   }, []);
 
   /*=======================================================
+  Load Creator-Owned Creations
+
+  This request is separate from /auth/me because the
+  creation list is paginated and can change independently
+  through the All / Public / Private tabs.
+  =======================================================*/
+
+  const fetchCreatorAssets = useCallback(
+    async ({ page = 1, visibility = "all", silent = false } = {}) => {
+      creationsRequestControllerRef.current?.abort();
+
+      const controller = new AbortController();
+
+      creationsRequestControllerRef.current = controller;
+
+      if (silent) {
+        setCreationsRefreshing(true);
+      } else {
+        setCreationsLoading(true);
+      }
+
+      setCreationsError("");
+
+      try {
+        const response = await API.get(CREATOR_ASSETS_ENDPOINT, {
+          params: {
+            page,
+            limit: CREATIONS_PAGE_SIZE,
+            visibility,
+          },
+
+          signal: controller.signal,
+        });
+
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        const normalized = extractCreatorAssets(response);
+
+        setCreations(normalized.assets);
+
+        setCreationCounts(normalized.counts);
+
+        setCreationsPagination(normalized.pagination);
+
+        /*
+         * If the current page becomes empty after changing
+         * visibility, move back to the nearest valid page.
+         *
+         * The state change will trigger one clean reload.
+         */
+        if (
+          normalized.pagination.totalPages > 0 &&
+          page > normalized.pagination.totalPages
+        ) {
+          setCreationsPage(normalized.pagination.totalPages);
+        } else if (normalized.pagination.totalPages === 0 && page !== 1) {
+          setCreationsPage(1);
+        }
+      } catch (requestError) {
+        if (controller.signal.aborted || isCancelledRequest(requestError)) {
+          return;
+        }
+
+        if (import.meta.env.DEV) {
+          console.error(
+            "Creator Studio assets could not be loaded:",
+            requestError,
+          );
+        }
+
+        setCreations([]);
+
+        setCreationsError(
+          getErrorMessage(
+            requestError,
+            "Your Creator creations could not be loaded.",
+          ),
+        );
+      } finally {
+        if (creationsRequestControllerRef.current === controller) {
+          creationsRequestControllerRef.current = null;
+
+          setCreationsLoading(false);
+
+          setCreationsRefreshing(false);
+        }
+      }
+    },
+    [],
+  );
+
+  /*=======================================================
   Initial Profile Load
 
   fetchProfile is now stable, so this runs once for the
@@ -723,6 +1052,24 @@ export default function CreatorProfile() {
       requestControllerRef.current?.abort();
     };
   }, [fetchProfile]);
+
+  /*=======================================================
+  Creator Assets Load
+
+  Changing the selected visibility tab or page triggers
+  exactly one owner-only asset request.
+  =======================================================*/
+
+  useEffect(() => {
+    void fetchCreatorAssets({
+      page: creationsPage,
+      visibility: creationVisibility,
+    });
+
+    return () => {
+      creationsRequestControllerRef.current?.abort();
+    };
+  }, [creationVisibility, creationsPage, fetchCreatorAssets]);
 
   /*=======================================================
   Profile Data
@@ -849,6 +1196,129 @@ export default function CreatorProfile() {
 
     navigate(`/creator/showcase/${encodeURIComponent(identifier)}`);
   }, [featuredDesign, navigate]);
+
+  /*=======================================================
+  My Creations Controls
+  =======================================================*/
+
+  const handleCreationVisibilityTab = useCallback((nextVisibility) => {
+    const normalized = normalizeStatus(nextVisibility);
+
+    if (!["all", "public", "private"].includes(normalized)) {
+      return;
+    }
+
+    setCreationVisibility(normalized);
+
+    setCreationsPage(1);
+  }, []);
+
+  const handlePreviousCreationsPage = useCallback(() => {
+    setCreationsPage((currentPage) => Math.max(1, currentPage - 1));
+  }, []);
+
+  const handleNextCreationsPage = useCallback(() => {
+    setCreationsPage((currentPage) => {
+      if (
+        creationsPagination.totalPages > 0 &&
+        currentPage >= creationsPagination.totalPages
+      ) {
+        return currentPage;
+      }
+
+      return currentPage + 1;
+    });
+  }, [creationsPagination.totalPages]);
+
+  const handleViewCreation = useCallback(
+    (creation) => {
+      if (!creation?.isPublic) {
+        return;
+      }
+
+      const identifier = creation.slug || creation.id;
+
+      if (!identifier) {
+        return;
+      }
+
+      navigate(`/creator/showcase/${encodeURIComponent(identifier)}`);
+    },
+    [navigate],
+  );
+
+  const handleCreationVisibilityChange = useCallback(
+    async (creation) => {
+      const creationId = cleanText(creation?.id);
+
+      if (!creationId || visibilityUpdatingId) {
+        return;
+      }
+
+      const nextVisibility = creation?.isPublic ? "private" : "public";
+
+      setVisibilityUpdatingId(creationId);
+
+      setCreationsError("");
+
+      try {
+        await API.patch(
+          `${CREATOR_ASSETS_ENDPOINT}/${encodeURIComponent(
+            creationId,
+          )}/visibility`,
+          {
+            visibility: nextVisibility,
+          },
+        );
+
+        await fetchCreatorAssets({
+          page: creationsPage,
+          visibility: creationVisibility,
+          silent: true,
+        });
+      } catch (requestError) {
+        if (isCancelledRequest(requestError)) {
+          return;
+        }
+
+        if (import.meta.env.DEV) {
+          console.error(
+            "Creator asset visibility update failed:",
+            requestError,
+          );
+        }
+
+        setCreationsError(
+          getErrorMessage(
+            requestError,
+            "The creation visibility could not be updated.",
+          ),
+        );
+      } finally {
+        setVisibilityUpdatingId("");
+      }
+    },
+    [
+      creationVisibility,
+      creationsPage,
+      fetchCreatorAssets,
+      visibilityUpdatingId,
+    ],
+  );
+
+  const handleRefreshAll = useCallback(async () => {
+    await Promise.allSettled([
+      fetchProfile({
+        silent: true,
+      }),
+
+      fetchCreatorAssets({
+        page: creationsPage,
+        visibility: creationVisibility,
+        silent: true,
+      }),
+    ]);
+  }, [creationVisibility, creationsPage, fetchCreatorAssets, fetchProfile]);
 
   /*=======================================================
   Loading
@@ -1175,7 +1645,7 @@ export default function CreatorProfile() {
                 >
                   <ProfileIdentity
                     user={profile}
-                    avatar={avatar}
+                    avatar={SHOW_FASHION_PERSONA ? avatar : null}
                     isOwnProfile
                     autoLoadAvatar={false}
                     size="2xl"
@@ -1347,7 +1817,9 @@ export default function CreatorProfile() {
                 >
                   {companyName
                     ? `Building creative projects through ${companyName}.`
-                    : "Your personal Creator workspace for bookings, creative direction, and Fashion Persona identity."}
+                    : SHOW_FASHION_PERSONA
+                      ? "Your personal Creator workspace for bookings, creative direction, and Fashion Persona identity."
+                      : "Your personal Creator workspace for bookings, creative direction, and your creative library."}
                 </p>
               </div>
             </div>
@@ -1365,12 +1837,8 @@ export default function CreatorProfile() {
             >
               <button
                 type="button"
-                onClick={() =>
-                  void fetchProfile({
-                    silent: true,
-                  })
-                }
-                disabled={refreshing}
+                onClick={() => void handleRefreshAll()}
+                disabled={refreshing || creationsRefreshing}
                 className="
                   inline-flex
                   h-12
@@ -1402,7 +1870,9 @@ export default function CreatorProfile() {
               >
                 <RefreshCw
                   size={14}
-                  className={refreshing ? "animate-spin" : ""}
+                  className={
+                    refreshing || creationsRefreshing ? "animate-spin" : ""
+                  }
                 />
                 Refresh
               </button>
@@ -1637,19 +2107,24 @@ export default function CreatorProfile() {
         =================================================*/}
 
         <section
-          className="
+          className={`
             grid
             gap-7
 
-            xl:grid-cols-[minmax(0,1.05fr)_minmax(380px,0.95fr)]
-          "
+            ${
+              SHOW_FASHION_PERSONA
+                ? "xl:grid-cols-[minmax(0,1.05fr)_minmax(380px,0.95fr)]"
+                : "grid-cols-1"
+            }
+          `}
         >
           {/*===============================================
           Fashion Persona
           ===============================================*/}
 
-          <div
-            className="
+          {SHOW_FASHION_PERSONA && (
+            <div
+              className="
               overflow-hidden
               rounded-[2rem]
               border
@@ -1660,9 +2135,9 @@ export default function CreatorProfile() {
               dark:border-white/[0.06]
               dark:bg-[#090909]
             "
-          >
-            <div
-              className="
+            >
+              <div
+                className="
                 flex
                 items-start
                 justify-between
@@ -1673,10 +2148,10 @@ export default function CreatorProfile() {
 
                 dark:border-white/[0.06]
               "
-            >
-              <div>
-                <p
-                  className="
+              >
+                <div>
+                  <p
+                    className="
                     inline-flex
                     items-center
                     gap-2
@@ -1688,23 +2163,23 @@ export default function CreatorProfile() {
 
                     dark:text-violet-300
                   "
-                >
-                  <Sparkles size={12} />
-                  Fashion Persona
-                </p>
+                  >
+                    <Sparkles size={12} />
+                    Fashion Persona
+                  </p>
 
-                <h2
-                  className="
+                  <h2
+                    className="
                     mt-2
                     font-serif
                     text-3xl
                   "
-                >
-                  Visual identity
-                </h2>
+                  >
+                    Visual identity
+                  </h2>
 
-                <p
-                  className="
+                  <p
+                    className="
                     mt-2
                     text-xs
                     leading-5
@@ -1712,14 +2187,14 @@ export default function CreatorProfile() {
 
                     dark:text-white/35
                   "
-                >
-                  Your shared visual identity across DesignByYou.
-                </p>
-              </div>
+                  >
+                    Your shared visual identity across DesignByYou.
+                  </p>
+                </div>
 
-              {avatar && (
-                <span
-                  className="
+                {SHOW_FASHION_PERSONA && avatar && (
+                  <span
+                    className="
                     rounded-full
                     border
                     border-slate-200
@@ -1736,22 +2211,22 @@ export default function CreatorProfile() {
                     dark:bg-white/[0.035]
                     dark:text-white/30
                   "
-                >
-                  V{avatar.version}
-                </span>
-              )}
-            </div>
+                  >
+                    V{avatar.version}
+                  </span>
+                )}
+              </div>
 
-            <div
-              className="
+              <div
+                className="
                 p-4
 
                 sm:p-6
               "
-            >
-              {avatar ? (
-                <div
-                  className="
+              >
+                {avatar ? (
+                  <div
+                    className="
                     overflow-hidden
                     rounded-[1.75rem]
                     border
@@ -1761,22 +2236,22 @@ export default function CreatorProfile() {
 
                     dark:border-white/10
                   "
-                >
-                  <FashionPersonaAvatar
-                    config={avatar.config}
-                    pose={avatar.pose}
-                    backgroundTheme={avatar.backgroundTheme}
-                    displayMode={avatar.displayMode}
-                    featuredDesign={featuredDesign}
-                    interactive={Boolean(featuredDesign)}
-                    onFeaturedDesignClick={handleFeaturedDesign}
-                    avatarLabel="Your Fashion Persona"
-                    ariaLabel={`${profileName} Fashion Persona`}
-                  />
-                </div>
-              ) : (
-                <div
-                  className="
+                  >
+                    <FashionPersonaAvatar
+                      config={avatar.config}
+                      pose={avatar.pose}
+                      backgroundTheme={avatar.backgroundTheme}
+                      displayMode={avatar.displayMode}
+                      featuredDesign={featuredDesign}
+                      interactive={Boolean(featuredDesign)}
+                      onFeaturedDesignClick={handleFeaturedDesign}
+                      avatarLabel="Your Fashion Persona"
+                      ariaLabel={`${profileName} Fashion Persona`}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    className="
                     flex
                     min-h-[480px]
                     flex-col
@@ -1793,28 +2268,28 @@ export default function CreatorProfile() {
                     dark:border-white/10
                     dark:bg-white/[0.02]
                   "
-                >
-                  <Sparkles
-                    size={30}
-                    className="
+                  >
+                    <Sparkles
+                      size={30}
+                      className="
                       text-slate-300
 
                       dark:text-white/15
                     "
-                  />
+                    />
 
-                  <h3
-                    className="
+                    <h3
+                      className="
                       mt-5
                       font-serif
                       text-2xl
                     "
-                  >
-                    Fashion Persona unavailable
-                  </h3>
+                    >
+                      Fashion Persona unavailable
+                    </h3>
 
-                  <p
-                    className="
+                    <p
+                      className="
                       mt-3
                       max-w-sm
                       text-xs
@@ -1823,18 +2298,18 @@ export default function CreatorProfile() {
 
                       dark:text-white/35
                     "
-                  >
-                    {avatarUnavailable
-                      ? "The avatar service could not be reached. Your main Creator profile remains available."
-                      : "Create a Fashion Persona to give your Creator identity a visual signature."}
-                  </p>
-                </div>
-              )}
+                    >
+                      {avatarUnavailable
+                        ? "The avatar service could not be reached. Your main Creator profile remains available."
+                        : "Create a Fashion Persona to give your Creator identity a visual signature."}
+                    </p>
+                  </div>
+                )}
 
-              <button
-                type="button"
-                onClick={() => navigate("/creator/avatar-studio")}
-                className="
+                <button
+                  type="button"
+                  onClick={() => navigate("/creator/avatar-studio")}
+                  className="
                   mt-4
                   inline-flex
                   h-12
@@ -1862,15 +2337,16 @@ export default function CreatorProfile() {
                   dark:hover:bg-violet-500
                   dark:hover:text-white
                 "
-              >
-                <Sparkles size={14} />
+                >
+                  <Sparkles size={14} />
 
-                {hasConfiguredPersona
-                  ? "Customize Persona"
-                  : "Create Fashion Persona"}
-              </button>
+                  {hasConfiguredPersona
+                    ? "Customize Persona"
+                    : "Create Fashion Persona"}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/*===============================================
           Creator Identity
@@ -2194,6 +2670,573 @@ export default function CreatorProfile() {
         </section>
 
         {/*=================================================
+        My Creations
+        =================================================*/}
+
+        <section
+          className="
+            mt-7
+            overflow-hidden
+            rounded-[2rem]
+            border
+            border-slate-200/80
+            bg-white/90
+            shadow-sm
+
+            dark:border-white/[0.06]
+            dark:bg-[#090909]
+          "
+        >
+          <div
+            className="
+              flex
+              flex-col
+              gap-5
+              border-b
+              border-slate-200
+              p-6
+
+              lg:flex-row
+              lg:items-center
+              lg:justify-between
+
+              dark:border-white/[0.06]
+            "
+          >
+            <div>
+              <p
+                className="
+                  inline-flex
+                  items-center
+                  gap-2
+                  text-[8px]
+                  font-black
+                  uppercase
+                  tracking-[0.2em]
+                  text-[#98751A]
+
+                  dark:text-[#D4AF37]
+                "
+              >
+                <Layers3 size={12} />
+                My Creations
+              </p>
+
+              <h2
+                className="
+                  mt-2
+                  font-serif
+                  text-3xl
+                "
+              >
+                Creator Studio library
+              </h2>
+
+              <p
+                className="
+                  mt-2
+                  max-w-2xl
+                  text-xs
+                  leading-6
+                  text-slate-500
+
+                  dark:text-white/35
+                "
+              >
+                Manage your saved Creator Studio and Fashion Editor work.
+                Private creations stay in your account and do not appear in the
+                public Showcase.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                void fetchCreatorAssets({
+                  page: creationsPage,
+                  visibility: creationVisibility,
+                  silent: true,
+                })
+              }
+              disabled={creationsRefreshing}
+              className="
+                inline-flex
+                h-10
+                shrink-0
+                items-center
+                justify-center
+                gap-2
+                rounded-xl
+                border
+                border-slate-200
+                px-4
+                text-[8px]
+                font-black
+                uppercase
+                tracking-[0.15em]
+                text-slate-500
+                transition
+
+                hover:border-[#D4AF37]/35
+                hover:text-[#98751A]
+
+                disabled:cursor-not-allowed
+                disabled:opacity-50
+
+                dark:border-white/10
+                dark:text-white/40
+                dark:hover:text-[#D4AF37]
+              "
+            >
+              <RefreshCw
+                size={12}
+                className={creationsRefreshing ? "animate-spin" : ""}
+              />
+              Refresh Creations
+            </button>
+          </div>
+
+          {/* Visibility Tabs */}
+
+          <div
+            className="
+              flex
+              flex-col
+              gap-4
+              border-b
+              border-slate-200
+              p-5
+
+              sm:flex-row
+              sm:items-center
+              sm:justify-between
+
+              dark:border-white/[0.06]
+            "
+          >
+            <div
+              className="
+                inline-flex
+                w-full
+                rounded-2xl
+                border
+                border-slate-200
+                bg-slate-50
+                p-1
+
+                sm:w-auto
+
+                dark:border-white/[0.06]
+                dark:bg-white/[0.025]
+              "
+            >
+              {CREATION_VISIBILITY_TABS.map((tab) => {
+                const active = creationVisibility === tab.value;
+
+                return (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    onClick={() => handleCreationVisibilityTab(tab.value)}
+                    className={`
+                      flex-1
+                      rounded-xl
+                      px-4
+                      py-2.5
+                      text-[8px]
+                      font-black
+                      uppercase
+                      tracking-[0.14em]
+                      transition
+
+                      sm:flex-none
+
+                      ${
+                        active
+                          ? "bg-white text-[#98751A] shadow-sm dark:bg-white/[0.08] dark:text-[#D4AF37]"
+                          : "text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white/60"
+                      }
+                    `}
+                  >
+                    {tab.label}
+
+                    <span
+                      className={`
+                        ml-2
+                        rounded-full
+                        px-2
+                        py-0.5
+                        text-[7px]
+
+                        ${
+                          active
+                            ? "bg-[#D4AF37]/12 text-[#98751A] dark:text-[#D4AF37]"
+                            : "bg-slate-200/70 text-slate-500 dark:bg-white/[0.06] dark:text-white/35"
+                        }
+                      `}
+                    >
+                      {creationCounts[tab.value] ?? 0}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div
+              className="
+                text-[8px]
+                font-black
+                uppercase
+                tracking-[0.15em]
+                text-slate-400
+
+                dark:text-white/25
+              "
+            >
+              {creationsPagination.total} result
+              {creationsPagination.total === 1 ? "" : "s"}
+            </div>
+          </div>
+
+          {/* Non-fatal Asset Error */}
+
+          {creationsError && (
+            <div
+              role="alert"
+              className="
+                mx-5
+                mt-5
+                flex
+                items-start
+                gap-3
+                rounded-2xl
+                border
+                border-amber-200
+                bg-amber-50
+                p-4
+                text-xs
+                text-amber-700
+
+                dark:border-amber-400/20
+                dark:bg-amber-400/10
+                dark:text-amber-200
+              "
+            >
+              <AlertTriangle
+                size={15}
+                className="
+                  mt-0.5
+                  shrink-0
+                "
+              />
+
+              <div
+                className="
+                  min-w-0
+                  flex-1
+                "
+              >
+                <p>{creationsError}</p>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    void fetchCreatorAssets({
+                      page: creationsPage,
+                      visibility: creationVisibility,
+                    })
+                  }
+                  className="
+                    mt-3
+                    text-[8px]
+                    font-black
+                    uppercase
+                    tracking-[0.14em]
+                    underline
+                    underline-offset-4
+                  "
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Asset Grid */}
+
+          <div className="p-5 sm:p-6">
+            {creationsLoading ? (
+              <div
+                className="
+                  grid
+                  min-h-64
+                  place-items-center
+                  rounded-[1.5rem]
+                  border
+                  border-dashed
+                  border-slate-200
+                  bg-slate-50
+
+                  dark:border-white/10
+                  dark:bg-white/[0.02]
+                "
+              >
+                <div className="text-center">
+                  <Loader2
+                    size={24}
+                    className="
+                      mx-auto
+                      animate-spin
+                      text-[#98751A]
+
+                      dark:text-[#D4AF37]
+                    "
+                  />
+
+                  <p
+                    className="
+                      mt-4
+                      text-[8px]
+                      font-black
+                      uppercase
+                      tracking-[0.17em]
+                      text-slate-400
+
+                      dark:text-white/30
+                    "
+                  >
+                    Loading Creations
+                  </p>
+                </div>
+              </div>
+            ) : creations.length > 0 ? (
+              <div
+                className="
+                  grid
+                  gap-5
+
+                  sm:grid-cols-2
+
+                  xl:grid-cols-3
+                "
+              >
+                {creations.map((creation) => (
+                  <CreationCard
+                    key={creation.id}
+                    creation={creation}
+                    updating={visibilityUpdatingId === creation.id}
+                    onToggleVisibility={() =>
+                      void handleCreationVisibilityChange(creation)
+                    }
+                    onView={() => handleViewCreation(creation)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div
+                className="
+                  flex
+                  min-h-64
+                  flex-col
+                  items-center
+                  justify-center
+                  rounded-[1.5rem]
+                  border
+                  border-dashed
+                  border-slate-200
+                  bg-slate-50
+                  px-6
+                  text-center
+
+                  dark:border-white/10
+                  dark:bg-white/[0.02]
+                "
+              >
+                {creationVisibility === "private" ? (
+                  <LockKeyhole
+                    size={27}
+                    className="
+                      text-slate-300
+
+                      dark:text-white/15
+                    "
+                  />
+                ) : creationVisibility === "public" ? (
+                  <Globe2
+                    size={27}
+                    className="
+                      text-slate-300
+
+                      dark:text-white/15
+                    "
+                  />
+                ) : (
+                  <ImageIcon
+                    size={27}
+                    className="
+                      text-slate-300
+
+                      dark:text-white/15
+                    "
+                  />
+                )}
+
+                <h3
+                  className="
+                    mt-4
+                    font-serif
+                    text-2xl
+                  "
+                >
+                  {creationVisibility === "private"
+                    ? "No private creations"
+                    : creationVisibility === "public"
+                      ? "No public creations"
+                      : "No creations yet"}
+                </h3>
+
+                <p
+                  className="
+                    mt-2
+                    max-w-md
+                    text-xs
+                    leading-6
+                    text-slate-500
+
+                    dark:text-white/35
+                  "
+                >
+                  {creationVisibility === "private"
+                    ? "Creations you switch to Private will remain visible here but stay hidden from the public Showcase."
+                    : creationVisibility === "public"
+                      ? "Creations you make Public will appear here and may be available through the public Showcase."
+                      : "Save work from Creator Studio or share a Fashion Editor project to build your creative library."}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Pagination */}
+
+          {!creationsLoading && creationsPagination.totalPages > 1 && (
+            <div
+              className="
+                flex
+                flex-col
+                gap-4
+                border-t
+                border-slate-200
+                px-5
+                py-4
+
+                sm:flex-row
+                sm:items-center
+                sm:justify-between
+
+                dark:border-white/[0.06]
+              "
+            >
+              <p
+                className="
+                  text-[8px]
+                  font-black
+                  uppercase
+                  tracking-[0.15em]
+                  text-slate-400
+
+                  dark:text-white/25
+                "
+              >
+                Page {creationsPagination.page} of{" "}
+                {creationsPagination.totalPages}
+              </p>
+
+              <div
+                className="
+                  flex
+                  items-center
+                  gap-2
+                "
+              >
+                <button
+                  type="button"
+                  onClick={handlePreviousCreationsPage}
+                  disabled={
+                    creationsLoading ||
+                    creationsRefreshing ||
+                    creationsPagination.page <= 1
+                  }
+                  className="
+                    inline-flex
+                    h-10
+                    items-center
+                    justify-center
+                    gap-2
+                    rounded-xl
+                    border
+                    border-slate-200
+                    px-4
+                    text-[8px]
+                    font-black
+                    uppercase
+                    tracking-[0.14em]
+                    text-slate-500
+                    transition
+
+                    hover:border-[#D4AF37]/35
+                    hover:text-[#98751A]
+
+                    disabled:cursor-not-allowed
+                    disabled:opacity-40
+
+                    dark:border-white/10
+                    dark:text-white/40
+                    dark:hover:text-[#D4AF37]
+                  "
+                >
+                  <ArrowLeft size={12} />
+                  Previous
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleNextCreationsPage}
+                  disabled={
+                    creationsLoading ||
+                    creationsRefreshing ||
+                    creationsPagination.page >= creationsPagination.totalPages
+                  }
+                  className="
+                    inline-flex
+                    h-10
+                    items-center
+                    justify-center
+                    gap-2
+                    rounded-xl
+                    bg-[#D4AF37]
+                    px-4
+                    text-[8px]
+                    font-black
+                    uppercase
+                    tracking-[0.14em]
+                    text-black
+                    transition
+
+                    hover:bg-[#E4C65D]
+
+                    disabled:cursor-not-allowed
+                    disabled:opacity-40
+                  "
+                >
+                  Next
+                  <ArrowRight size={12} />
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/*=================================================
         Persona Configuration
         =================================================*/}
 
@@ -2349,7 +3392,7 @@ export default function CreatorProfile() {
         Featured Design
         =================================================*/}
 
-        {featuredDesign && (
+        {SHOW_FASHION_PERSONA && featuredDesign && (
           <section
             className="
               mt-7
@@ -2527,7 +3570,7 @@ export default function CreatorProfile() {
           <ProfileShortcut
             icon={Palette}
             title="Showcase"
-            description="Discover published designer work."
+            description="Explore public creative work."
             onClick={() => navigate("/creator/showcase")}
           />
 
@@ -2540,6 +3583,359 @@ export default function CreatorProfile() {
         </section>
       </div>
     </div>
+  );
+}
+
+/*=========================================================
+Creation Card
+=========================================================*/
+
+function CreationCard({
+  creation,
+  updating = false,
+  onToggleVisibility,
+  onView,
+}) {
+  const isPublic = Boolean(creation?.isPublic);
+
+  const isFashionEditor =
+    normalizeStatus(creation?.sourceType) === "fashion_editor";
+
+  const sourceLabel = isFashionEditor ? "Fashion Editor" : "Studio Upload";
+
+  const metadata = [
+    creation?.format ? humanize(creation.format) : "",
+    creation?.category?.name || "",
+    creation?.styleCategory || "",
+  ].filter(Boolean);
+
+  return (
+    <article
+      className="
+        group
+        overflow-hidden
+        rounded-[1.5rem]
+        border
+        border-slate-200
+        bg-white
+        shadow-sm
+        transition
+
+        hover:-translate-y-0.5
+        hover:border-[#D4AF37]/30
+        hover:shadow-lg
+
+        dark:border-white/[0.07]
+        dark:bg-[#0D0D0D]
+      "
+    >
+      <div
+        className="
+          relative
+          aspect-[4/3]
+          overflow-hidden
+          bg-slate-100
+
+          dark:bg-black
+        "
+      >
+        {creation?.previewUrl ? (
+          <img
+            src={creation.previewUrl}
+            alt={creation.title}
+            loading="lazy"
+            className="
+              h-full
+              w-full
+              object-cover
+              transition
+              duration-500
+
+              group-hover:scale-[1.02]
+            "
+          />
+        ) : (
+          <div
+            className="
+              flex
+              h-full
+              w-full
+              items-center
+              justify-center
+            "
+          >
+            <ImageIcon
+              size={28}
+              className="
+                text-slate-300
+
+                dark:text-white/15
+              "
+            />
+          </div>
+        )}
+
+        <div
+          className="
+            absolute
+            left-3
+            top-3
+            flex
+            flex-wrap
+            gap-2
+          "
+        >
+          <span
+            className={`
+              inline-flex
+              items-center
+              gap-1.5
+              rounded-full
+              border
+              px-2.5
+              py-1.5
+              text-[7px]
+              font-black
+              uppercase
+              tracking-[0.13em]
+              backdrop-blur-md
+
+              ${
+                isPublic
+                  ? "border-emerald-200/70 bg-emerald-50/90 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/15 dark:text-emerald-200"
+                  : "border-slate-200/80 bg-white/90 text-slate-600 dark:border-white/10 dark:bg-black/60 dark:text-white/60"
+              }
+            `}
+          >
+            {isPublic ? <Globe2 size={10} /> : <LockKeyhole size={10} />}
+
+            {isPublic ? "Public" : "Private"}
+          </span>
+
+          <span
+            className="
+              inline-flex
+              items-center
+              gap-1.5
+              rounded-full
+              border
+              border-violet-200/70
+              bg-violet-50/90
+              px-2.5
+              py-1.5
+              text-[7px]
+              font-black
+              uppercase
+              tracking-[0.13em]
+              text-violet-700
+              backdrop-blur-md
+
+              dark:border-violet-400/20
+              dark:bg-violet-500/15
+              dark:text-violet-200
+            "
+          >
+            {isFashionEditor ? (
+              <Palette size={10} />
+            ) : (
+              <UploadCloud size={10} />
+            )}
+
+            {sourceLabel}
+          </span>
+        </div>
+      </div>
+
+      <div className="p-5">
+        <h3
+          className="
+            truncate
+            font-serif
+            text-xl
+          "
+          title={creation?.title}
+        >
+          {creation?.title || "Untitled Creation"}
+        </h3>
+
+        {creation?.description ? (
+          <p
+            className="
+              mt-2
+              line-clamp-2
+              min-h-10
+              text-[11px]
+              leading-5
+              text-slate-500
+
+              dark:text-white/35
+            "
+          >
+            {creation.description}
+          </p>
+        ) : (
+          <p
+            className="
+              mt-2
+              min-h-10
+              text-[11px]
+              leading-5
+              text-slate-400
+
+              dark:text-white/25
+            "
+          >
+            No description added.
+          </p>
+        )}
+
+        {metadata.length > 0 && (
+          <div
+            className="
+              mt-4
+              flex
+              flex-wrap
+              gap-2
+            "
+          >
+            {metadata.slice(0, 3).map((item) => (
+              <span
+                key={item}
+                className="
+                  rounded-full
+                  border
+                  border-slate-200
+                  bg-slate-50
+                  px-2.5
+                  py-1
+                  text-[7px]
+                  font-black
+                  uppercase
+                  tracking-[0.11em]
+                  text-slate-400
+
+                  dark:border-white/[0.06]
+                  dark:bg-white/[0.025]
+                  dark:text-white/30
+                "
+              >
+                {item}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {Array.isArray(creation?.tags) && creation.tags.length > 0 && (
+          <div
+            className="
+              mt-4
+              flex
+              flex-wrap
+              gap-1.5
+            "
+          >
+            {creation.tags.slice(0, 4).map((tag) => (
+              <span
+                key={tag}
+                className="
+                  text-[9px]
+                  text-slate-400
+
+                  dark:text-white/30
+                "
+              >
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div
+          className="
+            mt-5
+            flex
+            flex-col
+            gap-2
+
+            sm:flex-row
+          "
+        >
+          <button
+            type="button"
+            onClick={onToggleVisibility}
+            disabled={updating}
+            className={`
+              inline-flex
+              h-10
+              flex-1
+              items-center
+              justify-center
+              gap-2
+              rounded-xl
+              text-[8px]
+              font-black
+              uppercase
+              tracking-[0.14em]
+              transition
+
+              disabled:cursor-not-allowed
+              disabled:opacity-50
+
+              ${
+                isPublic
+                  ? "border border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 dark:border-white/10 dark:bg-white/[0.03] dark:text-white/50"
+                  : "bg-[#D4AF37] text-black hover:bg-[#E4C65D]"
+              }
+            `}
+          >
+            {updating ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : isPublic ? (
+              <LockKeyhole size={12} />
+            ) : (
+              <Globe2 size={12} />
+            )}
+
+            {updating ? "Updating" : isPublic ? "Make Private" : "Make Public"}
+          </button>
+
+          {isPublic && (
+            <button
+              type="button"
+              onClick={onView}
+              className="
+                inline-flex
+                h-10
+                items-center
+                justify-center
+                gap-2
+                rounded-xl
+                border
+                border-slate-200
+                px-4
+                text-[8px]
+                font-black
+                uppercase
+                tracking-[0.14em]
+                text-slate-500
+                transition
+
+                hover:border-violet-300
+                hover:text-violet-600
+
+                dark:border-white/10
+                dark:text-white/40
+                dark:hover:border-violet-400/30
+                dark:hover:text-violet-200
+              "
+            >
+              <Eye size={12} />
+              View
+            </button>
+          )}
+        </div>
+      </div>
+    </article>
   );
 }
 

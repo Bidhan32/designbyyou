@@ -4,23 +4,35 @@
  * =========================================================
  * DesignByYou / FashionVision
  * Creator Routes
- * Version 5.2
+ * Version 5.5
  * =========================================================
  *
- * Creator routes are NOT ecommerce/marketplace routes.
+ * Creator routes are showcase / creative-work routes.
+ *
+ * They are NOT:
+ * - ecommerce
+ * - checkout
+ * - direct product sales
+ * - licensing sales
  *
  * =========================================================
- * CREATOR STUDIO ENDPOINTS
+ * CREATOR STUDIO
  * =========================================================
  *
  * GET
  * /api/v1/creators/studio/categories
  *
+ * GET
+ * /api/v1/creators/studio/assets
+ *
  * POST
  * /api/v1/creators/studio/upload
  *
+ * PATCH
+ * /api/v1/creators/studio/assets/:designId/visibility
+ *
  * =========================================================
- * CREATOR FASHION EDITOR ENDPOINTS
+ * FASHION EDITOR
  * =========================================================
  *
  * GET
@@ -42,300 +54,49 @@
  * /api/v1/creators/showcase/:designId/remix
  *
  * =========================================================
- * FASHION EDITOR / SHOWCASE FLOW
+ * VISIBILITY MODEL
  * =========================================================
  *
- * PRIVATE EDITOR PROJECT
+ * PRIVATE
+ * is_public    = FALSE
+ * is_published = TRUE
  *
- * FashionEditor
- *      ↓
- * editor_projects
+ * PUBLIC
+ * is_public    = TRUE
+ * is_published = TRUE
  *
- * Saving an editor project does NOT automatically publish
- * it to the Creator Showcase.
+ * Manual Creator Studio upload:
+ * - omitted visibility => private
  *
- * ---------------------------------------------------------
- * SHARE TO SHOWCASE
- * ---------------------------------------------------------
+ * New Fashion Editor share:
+ * - omitted visibility => public
  *
- * POST
- * /editor-projects/:projectId/share
+ * Existing Fashion Editor publication:
+ * - omitted visibility => preserve existing visibility
  *
- * The authenticated Creator may publish an editor project
- * that they own.
+ * The browser may submit only the high-level intent:
+ * visibility = "private" | "public"
  *
- * The controller validates:
- *
- * editor_projects.owner_id
- * =
- * authenticated Creator ID
- *
- * A successful Fashion Editor publication uses:
- *
- * source_type        = fashion_editor
- * editor_project_id  = project ID
- * is_editable        = TRUE
- * allow_remix        = Creator choice
- *
- * The full editable project state remains stored in:
- *
- * editor_projects.project_data
- *
- * The Showcase design stores the corresponding editable
- * canvas state for presentation/compatibility.
- *
- * ---------------------------------------------------------
- * REMIX / REDESIGN
- * ---------------------------------------------------------
- *
- * POST
- * /showcase/:designId/remix
- *
- * A remix:
- *
- * - requires a published/public Creator Showcase design
- * - requires source_type = fashion_editor
- * - requires is_editable = TRUE
- * - requires allow_remix = TRUE
- * - NEVER modifies the original project
- * - NEVER changes ownership of the original
- *
- * Instead, the controller creates a completely new private:
- *
- * editor_projects
- *
- * row owned by the authenticated Creator.
- *
- * The new project records:
- *
- * source_project_id = source editor project ID
- *
- * The Creator can then open that new project in the
- * Fashion Editor, redesign it, save it independently, and
- * optionally publish their remix later.
+ * The browser must not directly control:
+ * - is_public
+ * - is_published
  *
  * =========================================================
  * SECURITY MODEL
  * =========================================================
  *
  * Every route in this file requires:
- *
- * 1. valid authenticated session
+ * 1. valid authentication
  * 2. Creator role
  *
- * Creator accounts do NOT require admin approval.
- *
- * Creator Studio uploads, Fashion Editor project CRUD,
- * Showcase sharing, and remix creation are not sensitive
- * financial actions.
- *
- * Therefore these routes do NOT use:
- *
- * - requireApprovedAccount
- * - payout middleware
- * - withdrawal middleware
- * - deposit middleware
- *
- * =========================================================
- * CATEGORY MODEL
- * =========================================================
- *
- * GET
- * /studio/categories
- *
- * returns active rows from:
- *
- * design_categories
- *
- * Creator Studio publishing sends:
- *
- * category_id
- *
- * which is validated and stored as:
- *
- * designs.category_id
- *
- * =========================================================
- * SHOWCASE DISCOVERY MODEL
- * =========================================================
- *
- * The frontend obtains discovery options from:
- *
- * GET
- * /api/v1/creator-showcase/discovery
- *
- * Creator Studio publishing submits:
- *
- * showcase_term_ids
- *
- * containing database UUIDs representing:
- *
- * - exactly one Style
- * - exactly one Garment
- * - zero or more Occasions
- *
- * The Creator Controller validates those values and stores
- * relationships in:
- *
- * design_showcase_terms
- *
- * =========================================================
- * NORMAL CREATOR STUDIO UPLOAD
- * =========================================================
- *
- * POST
- * /api/v1/creators/studio/upload
- *
- * Multipart field:
- *
- * preview
- *
- * Creative metadata:
- *
- * title
- * description
- * style_category
- * format
- * category_id
- * showcase_term_ids
- * tags
- * canvas_state
- *
- * Normal Creator Studio uploads are not automatically
- * editable/remixable Fashion Editor projects.
- *
- * They are stored conceptually as:
- *
- * source_type        = upload
- * editor_project_id  = NULL
- * is_editable        = FALSE
- * allow_remix        = FALSE
- *
- * IMPORTANT:
- *
- * style_category is retained for frontend/database
- * compatibility, but the controller derives the
- * authoritative stored style from the validated Showcase
- * Style term.
- *
- * =========================================================
- * FASHION EDITOR SHARE MODEL
- * =========================================================
- *
- * POST
- * /api/v1/creators/editor-projects/:projectId/share
- *
- * Multipart:
- *
- * preview
- * title
- * description
- * format
- * category_id
- * showcase_term_ids
- * tags
- * allow_remix
- *
- * The controller loads project_data from the authenticated
- * Creator's editor_projects row.
- *
- * Browser supplied canvas data is therefore not trusted as
- * the source of the editable Fashion Editor project.
- *
- * Sharing the same project again updates its existing
- * Fashion Editor-backed Showcase design instead of creating
- * duplicate published records.
- *
- * =========================================================
- * FASHION EDITOR PROJECT MODEL
- * =========================================================
- *
- * Fashion Editor projects are editable Creator-owned cloud
- * documents stored in:
- *
- * editor_projects
- *
- * Creating or saving an editor project does NOT:
- *
- * - publish it
- * - create a Marketplace listing
- * - create a sale
- * - create a booking
- * - expose pricing
- *
- * Supported operations:
- *
- * - list projects
- * - create project
- * - load project
- * - update project
- * - share project to Creator Showcase
- * - remix an eligible Showcase design into a new project
- *
- * =========================================================
- * VISIBILITY
- * =========================================================
- *
- * Creator Studio Showcase assets are published as:
- *
- * is_public    = TRUE
- * is_published = TRUE
- *
- * These values mean Showcase visibility/readiness only.
- *
- * They do NOT mean:
- *
- * - sale
- * - ecommerce listing
- * - purchasable product
- * - licensing offer
- *
- * Fashion Editor projects themselves remain private until
- * explicitly shared to the Showcase.
- *
- * =========================================================
- * UPLOAD MIDDLEWARE
- * =========================================================
- *
- * Creator Studio image field:
- *
- * preview
- *
- * Middleware:
- *
- * uploadPreview.single("preview")
- *
- * Used by:
- *
- * POST /studio/upload
- *
- * and:
- *
- * POST /editor-projects/:projectId/share
- *
- * Expected protections include:
- *
- * - image-only
- * - JPG / PNG / WEBP
- * - max configured upload size
- * - Cloudinary-backed storage
- *
- * Fashion Editor CRUD and remix creation use JSON requests
- * and do not require upload middleware.
- *
- * =========================================================
- * IMPORTANT
- * =========================================================
- *
- * There is intentionally NO:
- *
- * /marketplace/upload
- *
- * route.
- *
- * Creator Showcase remains a creative discovery/showcase
- * system, not an ecommerce system.
- *
+ * Authentication / authorization runs before upload
+ * processing so unauthenticated callers cannot reach
+ * Cloudinary/file handling.
+ *
+ * Creator accounts do not require admin approval.
+ * These are not financial routes, so they do not use
+ * designer approval, payout, withdrawal, or deposit
+ * middleware.
  * =========================================================
  */
 
@@ -350,7 +111,7 @@ const { uploadPreview } = require("../middlewares/upload");
 const router = express.Router();
 
 /*=========================================================
-Route Handler Validation
+  Route Handler Validation
 =========================================================*/
 
 function requireHandler(name, handler) {
@@ -364,24 +125,163 @@ function requireHandler(name, handler) {
 }
 
 /*=========================================================
-Global Creator Authentication
+  Upload Middleware Validation
 =========================================================*/
+
+if (!uploadPreview || typeof uploadPreview.single !== "function") {
+  throw new TypeError(
+    'Creator upload middleware "uploadPreview" is missing or invalid.',
+  );
+}
+
+/*
+ * Multer .single("preview") allows zero or one preview file.
+ * Unexpected/multiple files are rejected.
+ */
+const singlePreviewUpload = uploadPreview.single("preview");
+
+/*=========================================================
+  Safe Preview Upload Wrapper
+=========================================================*/
+
+function safePreviewUpload(req, res, next) {
+  singlePreviewUpload(req, res, (error) => {
+    if (!error) {
+      return next();
+    }
+
+    /*-------------------------------------------------
+        File Too Large
+      -------------------------------------------------*/
+
+    if (error.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({
+        status: "error",
+
+        code: "PREVIEW_TOO_LARGE",
+
+        message: "The preview image must be 5 MB or smaller.",
+      });
+    }
+
+    /*-------------------------------------------------
+        Unexpected File / Multiple Files
+      -------------------------------------------------*/
+
+    if (error.code === "LIMIT_UNEXPECTED_FILE") {
+      return res.status(400).json({
+        status: "error",
+
+        code: "UNEXPECTED_UPLOAD_FIELD",
+
+        message: 'Only one optional image field named "preview" is accepted.',
+      });
+    }
+
+    /*-------------------------------------------------
+        File / Multipart Part Limits
+      -------------------------------------------------*/
+
+    if (
+      error.code === "LIMIT_FILE_COUNT" ||
+      error.code === "LIMIT_PART_COUNT"
+    ) {
+      return res.status(400).json({
+        status: "error",
+
+        code: "UPLOAD_LIMIT_EXCEEDED",
+
+        message: "The upload contains too many files or multipart parts.",
+      });
+    }
+
+    /*-------------------------------------------------
+        Multipart Field Limits
+      -------------------------------------------------*/
+
+    if (
+      error.code === "LIMIT_FIELD_COUNT" ||
+      error.code === "LIMIT_FIELD_KEY" ||
+      error.code === "LIMIT_FIELD_VALUE"
+    ) {
+      return res.status(400).json({
+        status: "error",
+
+        code: "INVALID_MULTIPART_REQUEST",
+
+        message:
+          "One or more multipart fields exceed the allowed upload limits.",
+      });
+    }
+
+    /*-------------------------------------------------
+        Known Custom Image Validation Errors
+      -------------------------------------------------*/
+
+    if (
+      error.code === "INVALID_IMAGE_TYPE" ||
+      error.code === "INVALID_IMAGE_FILE" ||
+      error.code === "INVALID_FILE_NAME"
+    ) {
+      return res.status(400).json({
+        status: "error",
+
+        code: error.code,
+
+        message: error.message || "The preview image is invalid.",
+      });
+    }
+
+    /*-------------------------------------------------
+        Other Upload / Cloud Storage Errors
+
+        Do not expose Cloudinary/storage internals.
+      -------------------------------------------------*/
+
+    console.error("Creator preview upload middleware failed:", error);
+
+    return res.status(400).json({
+      status: "error",
+
+      code: "PREVIEW_UPLOAD_FAILED",
+
+      message:
+        "The preview image could not be processed. Use JPG, PNG, or WEBP and try again.",
+    });
+  });
+}
+
+/*=========================================================
+  Global Creator Authentication
+=========================================================*/
+
+/*
+ * IMPORTANT:
+ *
+ * These run before:
+ *
+ * - safePreviewUpload
+ * - Creator Studio controllers
+ * - visibility controller
+ * - Fashion Editor controllers
+ *
+ * Therefore unauthenticated / non-Creator accounts cannot
+ * reach the underlying operations.
+ */
 
 router.use(requireHandler("protect", protect));
 
 router.use(requireHandler("authorize('creator')", authorize("creator")));
 
 /*=========================================================
-Creator Studio Categories
+  Creator Studio Categories
 
-GET
-/api/v1/creators/studio/categories
+  GET
+  /api/v1/creators/studio/categories
 
-Returns active database-managed general creative
-categories.
+  Returns active database-managed creative categories.
 
-Keep static Studio routes before future dynamic Studio
-routes.
+  Category selection is optional when saving an asset.
 =========================================================*/
 
 router.get(
@@ -389,81 +289,289 @@ router.get(
 
   requireHandler(
     "creatorController.getCreatorStudioCategories",
+
     creatorController.getCreatorStudioCategories,
   ),
 );
 
 /*=========================================================
-Creator Studio Asset Upload
+  My Creator Studio Assets
 
-POST
-/api/v1/creators/studio/upload
+  GET
+  /api/v1/creators/studio/assets
 
-Normal Creator Studio upload.
+  ---------------------------------------------------------
 
-Multipart:
+  OWNER-ONLY ASSET LIST
 
-preview
-title
-description
-style_category
-format
-category_id
-showcase_term_ids
-tags
-canvas_state
+  Returns saved Creator assets belonging only to the
+  authenticated Creator.
 
-showcase_term_ids example:
+  This includes:
 
-[
-  "<style UUID>",
-  "<garment UUID>",
-  "<occasion UUID>",
-  "<occasion UUID>"
-]
+  - Public assets
+  - Private assets
+  - Manual Creator Studio uploads
+  - Fashion Editor Showcase publications
 
-The controller validates all IDs against active rows in:
+  ---------------------------------------------------------
 
-showcase_discovery_terms
+  SUPPORTED QUERY PARAMETERS
 
-and stores the relationships in:
+  ?page=1
 
-design_showcase_terms
+  &limit=12
 
-Normal Studio uploads are NOT Fashion Editor-backed
-remixable designs.
+  &visibility=all
+
+  &visibility=public
+
+  &visibility=private
+
+  &source=all
+
+  &source=upload
+
+  &source=fashion_editor
+
+  ---------------------------------------------------------
+
+  SECURITY
+
+  The controller query must require:
+
+  designs.owner_id =
+  authenticated Creator ID
+
+  ---------------------------------------------------------
+
+  IMPORTANT
+
+  This is deliberately different from the public Showcase.
+
+  The owner endpoint must NOT require:
+
+  is_public = TRUE
+
+  because the authenticated Creator needs to see both:
+
+  Private
+  Public
+
+  ---------------------------------------------------------
+
+  This route does NOT use:
+
+  safePreviewUpload
+
+  because it is a normal GET request and no file is
+  uploaded.
+=========================================================*/
+
+router.get(
+  "/studio/assets",
+
+  requireHandler(
+    "creatorController.getMyCreatorStudioAssets",
+
+    creatorController.getMyCreatorStudioAssets,
+  ),
+);
+
+/*=========================================================
+  Creator Studio Asset Upload
+
+  POST
+  /api/v1/creators/studio/upload
+
+  ---------------------------------------------------------
+
+  OPTIONAL FILE
+
+  preview
+
+  ---------------------------------------------------------
+
+  OPTIONAL CREATIVE METADATA
+
+  title
+  description
+  format
+  category_id
+  showcase_term_ids
+  tags
+  canvas_state
+
+  ---------------------------------------------------------
+
+  COMPATIBILITY FIELDS
+
+  style_category
+  product_type
+
+  The controller does not trust style_category directly.
+
+  The authoritative style is derived from validated
+  Showcase discovery terms.
+
+  ---------------------------------------------------------
+
+  VISIBILITY
+
+  visibility = "private" | "public"
+
+  Manual Creator Studio upload default:
+
+  private
+
+  ---------------------------------------------------------
+
+  SHOWCASE DISCOVERY
+
+  0 or 1 Style
+  0 or 1 Garment
+  0+ Occasions
+
+  All supplied discovery IDs are validated against active
+  database rows.
+
+  ---------------------------------------------------------
+
+  NORMAL MANUAL CREATOR STUDIO UPLOAD
+
+  source_type       = upload
+  editor_project_id = NULL
+  is_editable       = FALSE
+  allow_remix       = FALSE
+
+  Private:
+
+  is_public         = FALSE
+  is_published      = TRUE
+
+  Public:
+
+  is_public         = TRUE
+  is_published      = TRUE
+
+  ---------------------------------------------------------
+
+  Creator-facing creative fields are optional.
+
+  Optional does NOT mean unvalidated.
 =========================================================*/
 
 router.post(
   "/studio/upload",
 
-  uploadPreview.single("preview"),
+  safePreviewUpload,
 
   requireHandler(
     "creatorController.uploadCreatorStudioAsset",
+
     creatorController.uploadCreatorStudioAsset,
   ),
 );
 
 /*=========================================================
-Creator Fashion Editor Projects
+  Creator Studio Asset Visibility
 
-GET
-/api/v1/creators/editor-projects
+  PATCH
+  /api/v1/creators/studio/assets/:designId/visibility
 
-Lists the authenticated Creator's private Fashion Editor
-projects.
+  JSON BODY
 
+  {
+    "visibility": "public"
+  }
 
-POST
-/api/v1/creators/editor-projects
+  OR
 
-Creates a new Creator-owned editable Fashion Editor
-project.
+  {
+    "visibility": "private"
+  }
 
-The project remains private editor state.
+  ---------------------------------------------------------
 
-It is NOT automatically published to the Showcase.
+  NO FILE IS ACCEPTED OR REQUIRED.
+
+  Therefore this endpoint deliberately does NOT use:
+
+  safePreviewUpload
+
+  ---------------------------------------------------------
+
+  SECURITY
+
+  The controller updates only when:
+
+  designs.id = :designId
+
+  AND
+
+  designs.owner_id =
+  authenticated Creator ID
+
+  Therefore a Creator cannot alter another Creator's asset
+  simply by knowing or guessing the UUID.
+
+  ---------------------------------------------------------
+
+  The controller accepts only:
+
+  visibility
+
+  It must reject direct attempts to submit:
+
+  is_public
+  is_published
+  owner_id
+  source_type
+  editor_project_id
+  allow_remix
+
+  ---------------------------------------------------------
+
+  Changing visibility must NOT:
+
+  - delete the design
+  - delete the preview
+  - delete metadata
+  - delete discovery classifications
+  - change ownership
+  - change editable state
+  - alter remix lineage
+=========================================================*/
+
+router.patch(
+  "/studio/assets/:designId/visibility",
+
+  requireHandler(
+    "creatorController.updateCreatorStudioAssetVisibility",
+
+    creatorController.updateCreatorStudioAssetVisibility,
+  ),
+);
+
+/*=========================================================
+  Creator Fashion Editor Projects
+
+  GET
+  /api/v1/creators/editor-projects
+
+  Returns private Fashion Editor projects belonging to the
+  authenticated Creator.
+
+  ---------------------------------------------------------
+
+  POST
+  /api/v1/creators/editor-projects
+
+  Creates a new private Creator-owned Fashion Editor
+  project.
+
+  Creating or saving an editor project does NOT
+  automatically make it a public Showcase design.
 =========================================================*/
 
 router
@@ -472,6 +580,7 @@ router
   .get(
     requireHandler(
       "creatorController.getMyEditorProjects",
+
       creatorController.getMyEditorProjects,
     ),
   )
@@ -479,97 +588,160 @@ router
   .post(
     requireHandler(
       "creatorController.createEditorProject",
+
       creatorController.createEditorProject,
     ),
   );
 
 /*=========================================================
-Creator Fashion Editor Showcase Sharing
+  Creator Fashion Editor -> Showcase Share
 
-POST
-/api/v1/creators/editor-projects/:projectId/share
+  POST
+  /api/v1/creators/editor-projects/:projectId/share
 
-Publishes an authenticated Creator-owned Fashion Editor
-project to the Creator Showcase.
+  ---------------------------------------------------------
 
-Multipart:
+  OPTIONAL FILE
 
-preview
-title
-description
-format
-category_id
-showcase_term_ids
-tags
-allow_remix
+  preview
 
-The controller verifies:
+  ---------------------------------------------------------
 
-editor_projects.id = :projectId
+  OPTIONAL METADATA
 
-AND
+  title
+  description
+  format
+  category_id
+  showcase_term_ids
+  tags
+  allow_remix
+  visibility
 
-editor_projects.owner_id
-=
-authenticated Creator ID
+  ---------------------------------------------------------
 
-The editable state is loaded from:
+  VISIBILITY BEHAVIOR
 
-editor_projects.project_data
+  NEW Fashion Editor publication:
 
-rather than trusting arbitrary browser project state.
+  visibility omitted
+  → Public
 
-Published Fashion Editor designs use:
+  EXISTING Fashion Editor publication:
 
-source_type        = fashion_editor
-editor_project_id  = :projectId
-is_editable        = TRUE
-allow_remix        = submitted Creator preference
+  visibility omitted
+  → Preserve its existing visibility
 
-Re-sharing the same editor project updates its existing
-Showcase item instead of creating a duplicate.
+  Explicit:
+
+  visibility = public
+  → Public
+
+  visibility = private
+  → Private
+
+  ---------------------------------------------------------
+
+  RE-SHARE METADATA PRESERVATION
+
+  For an existing Fashion Editor publication:
+
+  Optional metadata omitted from the re-share request
+  should preserve its existing stored value.
+
+  Explicitly supplied values may update or clear the
+  corresponding value according to controller rules.
+
+  In particular:
+
+  showcase_term_ids omitted
+  → preserve existing discovery relationships
+
+  showcase_term_ids explicitly []
+  → clear discovery relationships
+
+  ---------------------------------------------------------
+
+  OWNERSHIP SECURITY
+
+  The controller verifies:
+
+  editor_projects.id = :projectId
+
+  AND
+
+  editor_projects.owner_id =
+  authenticated Creator ID
+
+  ---------------------------------------------------------
+
+  AUTHORITATIVE EDITABLE STATE
+
+  Browser-submitted project/canvas state is not trusted as
+  the authoritative Fashion Editor state.
+
+  The controller loads:
+
+  editor_projects.project_data
+
+  from the authenticated Creator-owned DB row.
+
+  ---------------------------------------------------------
+
+  FASHION EDITOR DESIGN MODEL
+
+  source_type       = fashion_editor
+  editor_project_id = :projectId
+  is_editable       = TRUE
+  allow_remix       = Creator choice
+
+  ---------------------------------------------------------
+
+  Re-sharing the same editor project updates the existing
+  corresponding design rather than creating duplicates.
 =========================================================*/
 
 router.post(
   "/editor-projects/:projectId/share",
 
-  uploadPreview.single("preview"),
+  safePreviewUpload,
 
   requireHandler(
     "creatorController.uploadCreatorStudioAsset",
+
     creatorController.uploadCreatorStudioAsset,
   ),
 );
 
 /*=========================================================
-Creator Fashion Editor Project
+  Creator Fashion Editor Project
 
-GET
-/api/v1/creators/editor-projects/:projectId
+  GET
+  /api/v1/creators/editor-projects/:projectId
 
-Loads a project only when:
+  Loads a project only when:
 
-editor_projects.owner_id
-=
-authenticated Creator ID
+  editor_projects.owner_id =
+  authenticated Creator ID
 
+  ---------------------------------------------------------
 
-PUT
-/api/v1/creators/editor-projects/:projectId
+  PUT
+  /api/v1/creators/editor-projects/:projectId
 
-Updates a project only when:
+  Updates a project only when:
 
-editor_projects.owner_id
-=
-authenticated Creator ID
+  editor_projects.owner_id =
+  authenticated Creator ID
 
-The update handler also supports optimistic version
-checking through:
+  ---------------------------------------------------------
 
-expected_version
+  The update controller may support:
 
-This prevents an older editor session from silently
-overwriting a newer saved version.
+  expected_version
+
+  for optimistic concurrency protection so an older editor
+  session cannot silently overwrite a newer version.
 =========================================================*/
 
 router
@@ -578,6 +750,7 @@ router
   .get(
     requireHandler(
       "creatorController.getEditorProject",
+
       creatorController.getEditorProject,
     ),
   )
@@ -585,52 +758,65 @@ router
   .put(
     requireHandler(
       "creatorController.updateEditorProject",
+
       creatorController.updateEditorProject,
     ),
   );
 
 /*=========================================================
-Creator Showcase Fashion Editor Remix / Redesign
+  Creator Showcase Remix / Redesign
 
-POST
-/api/v1/creators/showcase/:designId/remix
+  POST
+  /api/v1/creators/showcase/:designId/remix
 
-Creates a NEW private Fashion Editor project from an
-eligible Creator Showcase design.
+  ---------------------------------------------------------
 
-The source Showcase item must be:
+  SOURCE DESIGN REQUIREMENTS
 
-is_public    = TRUE
-is_published = TRUE
-source_type  = fashion_editor
-is_editable  = TRUE
-allow_remix  = TRUE
+  The controller must require:
 
-The source Creator's:
+  is_public    = TRUE
+  is_published = TRUE
+  source_type  = fashion_editor
+  is_editable  = TRUE
+  allow_remix  = TRUE
 
-designs row
-editor_projects row
-project_data
+  ---------------------------------------------------------
 
-are NEVER modified.
+  A private design must never become remixable merely
+  because:
 
-Instead a new editor_projects row is created with:
+  allow_remix = TRUE
 
-owner_id = authenticated Creator
+  Public visibility must also be TRUE.
 
-source_project_id = source project's editor project ID
+  ---------------------------------------------------------
 
-The returned project can then be opened by the authenticated
-Creator in FashionEditor.jsx and edited independently.
+  The source Creator's:
 
-Optional JSON body:
+  designs row
+  editor_projects row
+  project_data
 
-{
-  "title": "My Remix"
-}
+  must NEVER be modified.
 
-If title is omitted, the controller derives a Remix title
-from the source Showcase design.
+  ---------------------------------------------------------
+
+  Instead, a NEW private editor_projects record is created
+  for the authenticated Creator.
+
+  source_project_id records the lineage.
+
+  ---------------------------------------------------------
+
+  OPTIONAL JSON BODY
+
+  {
+    "title": "My Remix"
+  }
+
+  If title is omitted, the controller may derive a remix
+  title from the source design.
 =========================================================*/
 
 router.post(
@@ -638,12 +824,13 @@ router.post(
 
   requireHandler(
     "creatorController.remixCreatorShowcaseDesign",
+
     creatorController.remixCreatorShowcaseDesign,
   ),
 );
 
 /*=========================================================
-Export
+  Export
 =========================================================*/
 
 module.exports = router;

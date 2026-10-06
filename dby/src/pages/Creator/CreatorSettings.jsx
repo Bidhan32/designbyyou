@@ -4,7 +4,7 @@
 =========================================================
 DesignByYou
 Creator Settings
-Version 4.1
+Version 4.3
 =========================================================
 
 Responsibilities:
@@ -12,8 +12,9 @@ Responsibilities:
 1. Creator identity / brand preferences
 2. Standard Creator profile image
 3. Creator project defaults
-4. Shared Fashion Persona preview
-5. Password / account security
+4. Private WhatsApp booking-contact preferences
+5. Fashion Persona code retained behind a temporary feature flag
+6. Password / account security
 
 =========================================================
 DATA OWNERSHIP
@@ -25,6 +26,11 @@ Authenticated account state:
 
 Creator profile updates:
     PUT /users/profile
+
+Private WhatsApp preference:
+    users.whatsapp_number
+    users.whatsapp_contact_enabled
+    saved through PUT /users/profile
 
 Password updates:
     PUT /users/security
@@ -47,6 +53,33 @@ Fashion Persona
     → customizable visual identity
 
 This page does NOT write Fashion Persona configuration.
+
+=========================================================
+WHATSAPP PRIVACY
+=========================================================
+
+WhatsApp is optional. The number remains private account data.
+Enabling sharing only records consent for a later authorized
+booking-participant contact endpoint. This page never exposes
+the number publicly.
+
+=========================================================
+TEMPORARY FASHION PERSONA FEATURE FLAG
+=========================================================
+
+Fashion Persona / Avatar code remains in this file so it can
+be restored later without rebuilding the feature.
+
+SHOW_FASHION_PERSONA = false
+
+While disabled:
+- /avatar/me is not requested by this page
+- Avatar Studio entry points are hidden
+- Fashion Persona status is hidden
+- Fashion Persona preview is hidden
+- Standard Creator profile image remains available
+
+Changing the flag to true restores the existing settings UI.
 
 =========================================================
 PASSWORD / SESSION RULE
@@ -94,6 +127,7 @@ import {
   Loader2,
   Lock,
   Mail,
+  MessageCircle,
   Palette,
   RefreshCw,
   Ruler,
@@ -126,6 +160,25 @@ const SECURITY_ENDPOINT = "/users/security";
 const AVATAR_ENDPOINT = "/avatar/me";
 
 /*=========================================================
+Temporary Feature Flags
+=========================================================*/
+
+/*
+ * Keep all Fashion Persona / Avatar implementation in this
+ * file, but hide it from Creator Settings for now.
+ *
+ * false:
+ * - do not request /avatar/me
+ * - hide Avatar Studio buttons
+ * - hide Persona status
+ * - hide Persona preview / configuration
+ *
+ * true:
+ * - restore the existing Persona settings UI
+ */
+const SHOW_FASHION_PERSONA = false;
+
+/*=========================================================
 Limits
 =========================================================*/
 
@@ -140,6 +193,10 @@ const ALLOWED_PROFILE_IMAGE_TYPES = new Set([
 const PASSWORD_MIN_LENGTH = 8;
 
 const PASSWORD_MAX_LENGTH = 128;
+
+const MAX_WHATSAPP_NUMBER_LENGTH = 16;
+
+const WHATSAPP_E164_REGEX = /^\+[1-9][0-9]{7,14}$/;
 
 /*=========================================================
 Shared Input Style
@@ -774,7 +831,7 @@ export default function CreatorSettings() {
 
   const [avatar, setAvatar] = useState(null);
 
-  const [avatarLoading, setAvatarLoading] = useState(true);
+  const [avatarLoading, setAvatarLoading] = useState(SHOW_FASHION_PERSONA);
 
   const [avatarError, setAvatarError] = useState("");
 
@@ -792,6 +849,10 @@ export default function CreatorSettings() {
     default_dimensions: "",
 
     brand_guidelines_summary: "",
+
+    whatsapp_number: "",
+
+    whatsapp_contact_enabled: false,
   });
 
   /*=======================================================
@@ -841,6 +902,10 @@ export default function CreatorSettings() {
       default_dimensions: user.default_dimensions || "",
 
       brand_guidelines_summary: user.brand_guidelines_summary || "",
+
+      whatsapp_number: user.whatsapp_number || "",
+
+      whatsapp_contact_enabled: toBoolean(user.whatsapp_contact_enabled, false),
     });
 
     setProfileImagePreview(
@@ -853,6 +918,27 @@ export default function CreatorSettings() {
   =======================================================*/
 
   const loadAvatar = useCallback(async () => {
+    /*
+     * Fashion Persona is intentionally dormant while the
+     * temporary feature flag is disabled.
+     *
+     * Keep the loader intact so changing the flag back to
+     * true restores the existing behavior.
+     */
+    if (!SHOW_FASHION_PERSONA) {
+      avatarRequestRef.current?.abort();
+
+      avatarRequestRef.current = null;
+
+      setAvatar(null);
+
+      setAvatarLoading(false);
+
+      setAvatarError("");
+
+      return;
+    }
+
     avatarRequestRef.current?.abort();
 
     const controller = new AbortController();
@@ -905,6 +991,16 @@ export default function CreatorSettings() {
   }, []);
 
   useEffect(() => {
+    if (!SHOW_FASHION_PERSONA) {
+      setAvatar(null);
+
+      setAvatarLoading(false);
+
+      setAvatarError("");
+
+      return undefined;
+    }
+
     void loadAvatar();
 
     return () => {
@@ -919,11 +1015,48 @@ export default function CreatorSettings() {
   const handleInputChange = useCallback((event) => {
     const { name, value } = event.target;
 
-    setForm((current) => ({
-      ...current,
+    setForm((current) => {
+      const next = {
+        ...current,
 
-      [name]: value,
-    }));
+        [name]: value,
+      };
+
+      /*
+       * A WhatsApp sharing preference cannot remain enabled
+       * when the number has been cleared. Keep the client-side
+       * state aligned with the backend invariant.
+       */
+      if (name === "whatsapp_number" && !String(value || "").trim()) {
+        next.whatsapp_contact_enabled = false;
+      }
+
+      return next;
+    });
+
+    setProfileError("");
+
+    setProfileSuccess("");
+  }, []);
+
+  const handleWhatsappToggle = useCallback(() => {
+    setForm((current) => {
+      const hasNumber = Boolean(cleanText(current.whatsapp_number));
+
+      if (!hasNumber) {
+        return {
+          ...current,
+
+          whatsapp_contact_enabled: false,
+        };
+      }
+
+      return {
+        ...current,
+
+        whatsapp_contact_enabled: !current.whatsapp_contact_enabled,
+      };
+    });
 
     setProfileError("");
 
@@ -985,7 +1118,10 @@ export default function CreatorSettings() {
       cleanText(form.default_dimensions) !==
         cleanText(user?.default_dimensions) ||
       cleanText(form.brand_guidelines_summary) !==
-        cleanText(user?.brand_guidelines_summary)
+        cleanText(user?.brand_guidelines_summary) ||
+      cleanText(form.whatsapp_number) !== cleanText(user?.whatsapp_number) ||
+      Boolean(form.whatsapp_contact_enabled) !==
+        toBoolean(user?.whatsapp_contact_enabled, false)
     );
   }, [form, profileImageFile, user]);
 
@@ -1107,8 +1243,28 @@ export default function CreatorSettings() {
 
       const guidelines = cleanText(form.brand_guidelines_summary);
 
+      const whatsappNumber = String(form.whatsapp_number || "").trim();
+
+      const whatsappEnabled = Boolean(form.whatsapp_contact_enabled);
+
       if (fullName.length < 2) {
         setProfileError("Creator name must contain at least 2 characters.");
+
+        return;
+      }
+
+      if (whatsappNumber && !WHATSAPP_E164_REGEX.test(whatsappNumber)) {
+        setProfileError(
+          "WhatsApp number must use international format, for example +9779812345678.",
+        );
+
+        return;
+      }
+
+      if (whatsappEnabled && !whatsappNumber) {
+        setProfileError(
+          "Add a WhatsApp number before enabling booking contact sharing.",
+        );
 
         return;
       }
@@ -1127,6 +1283,10 @@ export default function CreatorSettings() {
         formData.append("default_dimensions", dimensions);
 
         formData.append("brand_guidelines_summary", guidelines);
+
+        formData.append("whatsapp_number", whatsappNumber);
+
+        formData.append("whatsapp_contact_enabled", String(whatsappEnabled));
 
         if (profileImageFile) {
           formData.append("profile_image", profileImageFile);
@@ -1170,6 +1330,10 @@ export default function CreatorSettings() {
             default_dimensions: dimensions,
 
             brand_guidelines_summary: guidelines,
+
+            whatsapp_number: whatsappNumber || null,
+
+            whatsapp_contact_enabled: whatsappEnabled,
           };
 
         setForm({
@@ -1182,6 +1346,13 @@ export default function CreatorSettings() {
           default_dimensions: finalUser?.default_dimensions || "",
 
           brand_guidelines_summary: finalUser?.brand_guidelines_summary || "",
+
+          whatsapp_number: finalUser?.whatsapp_number || "",
+
+          whatsapp_contact_enabled: toBoolean(
+            finalUser?.whatsapp_contact_enabled,
+            false,
+          ),
         });
 
         const savedImage = resolveImageSrc(
@@ -1620,7 +1791,9 @@ export default function CreatorSettings() {
                 "
               >
                 Manage your Creator identity, project preferences, standard
-                profile image, Fashion Persona and account security.
+                profile image, private WhatsApp booking contact
+                {SHOW_FASHION_PERSONA ? ", Fashion Persona" : ""} and account
+                security.
               </p>
             </div>
 
@@ -1667,32 +1840,34 @@ export default function CreatorSettings() {
                 View Profile
               </button>
 
-              <button
-                type="button"
-                onClick={() => navigate("/creator/avatar-studio")}
-                className="
-                  inline-flex
-                  h-12
-                  items-center
-                  justify-center
-                  gap-2
-                  rounded-xl
-                  bg-violet-600
-                  px-5
-                  text-[9px]
-                  font-black
-                  uppercase
-                  tracking-[0.17em]
-                  text-white
-                  transition
+              {SHOW_FASHION_PERSONA && (
+                <button
+                  type="button"
+                  onClick={() => navigate("/creator/avatar-studio")}
+                  className="
+                    inline-flex
+                    h-12
+                    items-center
+                    justify-center
+                    gap-2
+                    rounded-xl
+                    bg-violet-600
+                    px-5
+                    text-[9px]
+                    font-black
+                    uppercase
+                    tracking-[0.17em]
+                    text-white
+                    transition
 
-                  hover:-translate-y-0.5
-                  hover:bg-violet-700
-                "
-              >
-                <Sparkles size={14} />
-                Avatar Studio
-              </button>
+                    hover:-translate-y-0.5
+                    hover:bg-violet-700
+                  "
+                >
+                  <Sparkles size={14} />
+                  Avatar Studio
+                </button>
+              )}
             </div>
           </div>
         </section>
@@ -1702,13 +1877,13 @@ export default function CreatorSettings() {
         =================================================*/}
 
         <section
-          className="
+          className={`
             mb-7
             grid
             gap-4
 
-            sm:grid-cols-3
-          "
+            ${SHOW_FASHION_PERSONA ? "sm:grid-cols-3" : "sm:grid-cols-2"}
+          `}
         >
           <StatusCard
             icon={Mail}
@@ -1730,21 +1905,27 @@ export default function CreatorSettings() {
             accent="gold"
           />
 
-          <StatusCard
-            icon={Sparkles}
-            label="Fashion Persona"
-            value={
-              avatarLoading ? "Loading" : avatar ? "Configured" : "Not created"
-            }
-            helper={
-              avatar
-                ? `${humanize(avatar.pose, "Standing")} · ${
-                    avatar.isPublic ? "Public" : "Private"
-                  }`
-                : "Optional visual identity"
-            }
-            accent="violet"
-          />
+          {SHOW_FASHION_PERSONA && (
+            <StatusCard
+              icon={Sparkles}
+              label="Fashion Persona"
+              value={
+                avatarLoading
+                  ? "Loading"
+                  : avatar
+                    ? "Configured"
+                    : "Not created"
+              }
+              helper={
+                avatar
+                  ? `${humanize(avatar.pose, "Standing")} · ${
+                      avatar.isPublic ? "Public" : "Private"
+                    }`
+                  : "Optional visual identity"
+              }
+              accent="violet"
+            />
+          )}
         </section>
 
         {/*=================================================
@@ -1821,8 +2002,8 @@ export default function CreatorSettings() {
                   dark:text-white/35
                 "
               >
-                These details help keep your Creator workspace and future
-                bookings consistent.
+                These details help keep your Creator workspace, communication
+                preferences and future bookings consistent.
               </p>
             </div>
 
@@ -2077,8 +2258,10 @@ export default function CreatorSettings() {
                   dark:text-white/25
                 "
               >
-                JPG, PNG or WEBP. Maximum 5 MB. This is separate from your
-                Fashion Persona.
+                JPG, PNG or WEBP. Maximum 5 MB.
+                {SHOW_FASHION_PERSONA
+                  ? " This is separate from your Fashion Persona."
+                  : " This is your standard Creator profile image."}
               </p>
             </div>
 
@@ -2240,6 +2423,227 @@ export default function CreatorSettings() {
                   /5000
                 </div>
               </label>
+
+              {/*===========================================
+              WhatsApp Booking Contact
+              ===========================================*/}
+
+              <section
+                className="
+                  overflow-hidden
+                  rounded-2xl
+                  border
+                  border-emerald-200/80
+                  bg-emerald-50/60
+
+                  dark:border-emerald-400/15
+                  dark:bg-emerald-400/[0.045]
+                "
+              >
+                <div
+                  className="
+                    flex
+                    items-start
+                    gap-4
+                    border-b
+                    border-emerald-200/70
+                    p-5
+
+                    dark:border-emerald-400/10
+                  "
+                >
+                  <div
+                    className="
+                      grid
+                      h-10
+                      w-10
+                      shrink-0
+                      place-items-center
+                      rounded-xl
+                      border
+                      border-emerald-200
+                      bg-white
+                      text-emerald-600
+
+                      dark:border-emerald-400/20
+                      dark:bg-emerald-400/10
+                      dark:text-emerald-300
+                    "
+                  >
+                    <MessageCircle size={17} />
+                  </div>
+
+                  <div className="min-w-0">
+                    <p
+                      className="
+                        text-[8px]
+                        font-black
+                        uppercase
+                        tracking-[0.18em]
+                        text-emerald-700
+
+                        dark:text-emerald-300
+                      "
+                    >
+                      WhatsApp Booking Contact
+                    </p>
+
+                    <p
+                      className="
+                        mt-2
+                        max-w-2xl
+                        text-[10px]
+                        leading-5
+                        text-slate-500
+
+                        dark:text-white/35
+                      "
+                    >
+                      Optional. Your WhatsApp number remains private account
+                      data. Sharing only gives your active booking partner
+                      permission to access it through the protected booking
+                      contact flow.
+                    </p>
+                  </div>
+                </div>
+
+                <div
+                  className="
+                    grid
+                    gap-5
+                    p-5
+
+                    md:grid-cols-[minmax(0,1fr)_minmax(280px,0.9fr)]
+                  "
+                >
+                  <label className="block">
+                    <FieldLabel icon={MessageCircle}>
+                      WhatsApp Number
+                    </FieldLabel>
+
+                    <input
+                      type="tel"
+                      name="whatsapp_number"
+                      value={form.whatsapp_number}
+                      onChange={handleInputChange}
+                      autoComplete="tel"
+                      inputMode="tel"
+                      maxLength={MAX_WHATSAPP_NUMBER_LENGTH}
+                      placeholder="e.g. +9779812345678"
+                      aria-describedby="creator-whatsapp-help"
+                      className={INPUT_CLASS}
+                    />
+
+                    <p
+                      id="creator-whatsapp-help"
+                      className="
+                        mt-2
+                        text-[9px]
+                        leading-5
+                        text-slate-400
+
+                        dark:text-white/25
+                      "
+                    >
+                      Use international E.164 format with the country code and
+                      no spaces or dashes. Example: +9779812345678.
+                    </p>
+                  </label>
+
+                  <div
+                    className="
+                      flex
+                      items-center
+                      justify-between
+                      gap-4
+                      rounded-xl
+                      border
+                      border-emerald-200
+                      bg-white
+                      p-4
+
+                      dark:border-emerald-400/15
+                      dark:bg-white/[0.025]
+                    "
+                  >
+                    <div className="min-w-0">
+                      <p
+                        className="
+                          text-[9px]
+                          font-black
+                          uppercase
+                          tracking-[0.14em]
+                          text-slate-700
+
+                          dark:text-white/70
+                        "
+                      >
+                        Share with booking partners
+                      </p>
+
+                      <p
+                        className="
+                          mt-2
+                          text-[9px]
+                          leading-5
+                          text-slate-400
+
+                          dark:text-white/28
+                        "
+                      >
+                        Your number stays hidden until an eligible booking has
+                        been accepted. You can turn this off at any time.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={Boolean(form.whatsapp_contact_enabled)}
+                      aria-label="Share WhatsApp with active booking partners"
+                      onClick={handleWhatsappToggle}
+                      disabled={!cleanText(form.whatsapp_number)}
+                      className={`
+                        relative
+                        h-7
+                        w-12
+                        shrink-0
+                        rounded-full
+                        border
+                        transition
+
+                        ${
+                          form.whatsapp_contact_enabled
+                            ? "border-emerald-500 bg-emerald-500"
+                            : "border-slate-300 bg-slate-200 dark:border-white/15 dark:bg-white/10"
+                        }
+
+                        disabled:cursor-not-allowed
+                        disabled:opacity-40
+                      `}
+                    >
+                      <span
+                        className={`
+                          absolute
+                          top-0.5
+                          h-5
+                          w-5
+                          rounded-full
+                          bg-white
+                          shadow-sm
+                          transition-transform
+
+                          ${
+                            form.whatsapp_contact_enabled
+                              ? "translate-x-6"
+                              : "translate-x-0.5"
+                          }
+                        `}
+                      />
+                    </button>
+                  </div>
+                </div>
+              </section>
             </div>
           </div>
 
@@ -2377,22 +2781,23 @@ export default function CreatorSettings() {
         Fashion Persona
         =================================================*/}
 
-        <section
-          className="
-            mb-7
-            overflow-hidden
-            rounded-[2rem]
-            border
-            border-violet-200/80
-            bg-white/90
-            shadow-sm
-
-            dark:border-violet-400/15
-            dark:bg-[#090909]
-          "
-        >
-          <div
+        {SHOW_FASHION_PERSONA && (
+          <section
             className="
+              mb-7
+              overflow-hidden
+              rounded-[2rem]
+              border
+              border-violet-200/80
+              bg-white/90
+              shadow-sm
+
+              dark:border-violet-400/15
+              dark:bg-[#090909]
+            "
+          >
+            <div
+              className="
               flex
               flex-col
               gap-5
@@ -2408,10 +2813,10 @@ export default function CreatorSettings() {
 
               dark:border-white/[0.06]
             "
-          >
-            <div>
-              <p
-                className="
+            >
+              <div>
+                <p
+                  className="
                   inline-flex
                   items-center
                   gap-2
@@ -2423,23 +2828,23 @@ export default function CreatorSettings() {
 
                   dark:text-violet-300
                 "
-              >
-                <Sparkles size={12} />
-                Fashion Persona
-              </p>
+                >
+                  <Sparkles size={12} />
+                  Fashion Persona
+                </p>
 
-              <h2
-                className="
+                <h2
+                  className="
                   mt-2
                   font-serif
                   text-3xl
                 "
-              >
-                Visual identity
-              </h2>
+                >
+                  Visual identity
+                </h2>
 
-              <p
-                className="
+                <p
+                  className="
                   mt-2
                   max-w-xl
                   text-xs
@@ -2448,24 +2853,24 @@ export default function CreatorSettings() {
 
                   dark:text-white/35
                 "
-              >
-                Preview your shared Fashion Persona here. Customization remains
-                in Avatar Studio.
-              </p>
-            </div>
+                >
+                  Preview your shared Fashion Persona here. Customization
+                  remains in Avatar Studio.
+                </p>
+              </div>
 
-            <div
-              className="
+              <div
+                className="
                 flex
                 gap-2
               "
-            >
-              <button
-                type="button"
-                onClick={() => void loadAvatar()}
-                disabled={avatarLoading}
-                aria-label="Refresh Fashion Persona"
-                className="
+              >
+                <button
+                  type="button"
+                  onClick={() => void loadAvatar()}
+                  disabled={avatarLoading}
+                  aria-label="Refresh Fashion Persona"
+                  className="
                   grid
                   h-11
                   w-11
@@ -2487,17 +2892,17 @@ export default function CreatorSettings() {
                   dark:text-white/30
                   dark:hover:text-violet-300
                 "
-              >
-                <RefreshCw
-                  size={14}
-                  className={avatarLoading ? "animate-spin" : ""}
-                />
-              </button>
+                >
+                  <RefreshCw
+                    size={14}
+                    className={avatarLoading ? "animate-spin" : ""}
+                  />
+                </button>
 
-              <button
-                type="button"
-                onClick={() => navigate("/creator/avatar-studio")}
-                className="
+                <button
+                  type="button"
+                  onClick={() => navigate("/creator/avatar-studio")}
+                  className="
                   inline-flex
                   h-11
                   items-center
@@ -2515,15 +2920,15 @@ export default function CreatorSettings() {
 
                   hover:bg-violet-700
                 "
-              >
-                <Palette size={13} />
-                Customize
-              </button>
+                >
+                  <Palette size={13} />
+                  Customize
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div
-            className="
+            <div
+              className="
               grid
               gap-7
               p-6
@@ -2531,11 +2936,11 @@ export default function CreatorSettings() {
               lg:grid-cols-[minmax(280px,0.9fr)_minmax(0,1.1fr)]
               lg:p-8
             "
-          >
-            <div>
-              {avatarLoading ? (
-                <div
-                  className="
+            >
+              <div>
+                {avatarLoading ? (
+                  <div
+                    className="
                     flex
                     min-h-[360px]
                     items-center
@@ -2548,20 +2953,20 @@ export default function CreatorSettings() {
                     dark:border-white/[0.06]
                     dark:bg-white/[0.02]
                   "
-                >
-                  <Loader2
-                    size={26}
-                    className="
+                  >
+                    <Loader2
+                      size={26}
+                      className="
                       animate-spin
                       text-violet-500
 
                       dark:text-violet-300
                     "
-                  />
-                </div>
-              ) : avatar ? (
-                <div
-                  className="
+                    />
+                  </div>
+                ) : avatar ? (
+                  <div
+                    className="
                     overflow-hidden
                     rounded-[1.5rem]
                     border
@@ -2570,23 +2975,23 @@ export default function CreatorSettings() {
 
                     dark:border-white/10
                   "
-                >
-                  <FashionPersonaAvatar
-                    config={avatar.config}
-                    pose={avatar.pose}
-                    backgroundTheme={avatar.backgroundTheme}
-                    displayMode={avatar.displayMode}
-                    featuredDesign={avatar.featuredDesign}
-                    compact
-                    minHeight="360px"
-                    avatarLabel="Creator Fashion Persona"
-                    showFeaturedCard
-                    ariaLabel={`${profileName} Fashion Persona preview`}
-                  />
-                </div>
-              ) : (
-                <div
-                  className="
+                  >
+                    <FashionPersonaAvatar
+                      config={avatar.config}
+                      pose={avatar.pose}
+                      backgroundTheme={avatar.backgroundTheme}
+                      displayMode={avatar.displayMode}
+                      featuredDesign={avatar.featuredDesign}
+                      compact
+                      minHeight="360px"
+                      avatarLabel="Creator Fashion Persona"
+                      showFeaturedCard
+                      ariaLabel={`${profileName} Fashion Persona preview`}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    className="
                     flex
                     min-h-[360px]
                     flex-col
@@ -2603,28 +3008,28 @@ export default function CreatorSettings() {
                     dark:border-white/10
                     dark:bg-white/[0.02]
                   "
-                >
-                  <Sparkles
-                    size={29}
-                    className="
+                  >
+                    <Sparkles
+                      size={29}
+                      className="
                       text-slate-300
 
                       dark:text-white/15
                     "
-                  />
+                    />
 
-                  <h3
-                    className="
+                    <h3
+                      className="
                       mt-5
                       font-serif
                       text-2xl
                     "
-                  >
-                    Create your Persona
-                  </h3>
+                    >
+                      Create your Persona
+                    </h3>
 
-                  <p
-                    className="
+                    <p
+                      className="
                       mt-3
                       max-w-sm
                       text-xs
@@ -2633,32 +3038,32 @@ export default function CreatorSettings() {
 
                       dark:text-white/35
                     "
-                  >
-                    {avatarError ||
-                      "You have not created a Fashion Persona yet. Open Avatar Studio when you are ready."}
-                  </p>
-                </div>
-              )}
-            </div>
+                    >
+                      {avatarError ||
+                        "You have not created a Fashion Persona yet. Open Avatar Studio when you are ready."}
+                    </p>
+                  </div>
+                )}
+              </div>
 
-            <div
-              className="
+              <div
+                className="
                 flex
                 flex-col
                 justify-center
               "
-            >
-              <div
-                className="
+              >
+                <div
+                  className="
                   flex
                   flex-wrap
                   gap-2
                 "
-              >
-                {avatar && (
-                  <>
-                    <span
-                      className={`
+                >
+                  {avatar && (
+                    <>
+                      <span
+                        className={`
                         rounded-full
                         border
                         px-3
@@ -2674,12 +3079,12 @@ export default function CreatorSettings() {
                             : "border-slate-200 bg-slate-50 text-slate-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-white/35"
                         }
                       `}
-                    >
-                      {avatar.isPublic ? "Public Persona" : "Private Persona"}
-                    </span>
+                      >
+                        {avatar.isPublic ? "Public Persona" : "Private Persona"}
+                      </span>
 
-                    <span
-                      className="
+                      <span
+                        className="
                         rounded-full
                         border
                         border-slate-200
@@ -2696,25 +3101,25 @@ export default function CreatorSettings() {
                         dark:bg-white/[0.03]
                         dark:text-white/30
                       "
-                    >
-                      Version {avatar.version}
-                    </span>
-                  </>
-                )}
-              </div>
+                      >
+                        Version {avatar.version}
+                      </span>
+                    </>
+                  )}
+                </div>
 
-              <h3
-                className="
+                <h3
+                  className="
                   mt-5
                   font-serif
                   text-3xl
                 "
-              >
-                A separate visual identity
-              </h3>
+                >
+                  A separate visual identity
+                </h3>
 
-              <p
-                className="
+                <p
+                  className="
                   mt-3
                   max-w-xl
                   text-sm
@@ -2723,25 +3128,25 @@ export default function CreatorSettings() {
 
                   dark:text-white/40
                 "
-              >
-                Your Persona can carry appearance, pose, scene and a featured
-                design. Changing your normal profile photo does not overwrite
-                it.
-              </p>
+                >
+                  Your Persona can carry appearance, pose, scene and a featured
+                  design. Changing your normal profile photo does not overwrite
+                  it.
+                </p>
 
-              {avatar && (
-                <div
-                  className="
+                {avatar && (
+                  <div
+                    className="
                     mt-6
                     grid
                     grid-cols-2
                     gap-3
                   "
-                >
-                  {personaDetails.map((item) => (
-                    <div
-                      key={item.label}
-                      className="
+                  >
+                    {personaDetails.map((item) => (
+                      <div
+                        key={item.label}
+                        className="
                           rounded-xl
                           border
                           border-slate-200
@@ -2751,9 +3156,9 @@ export default function CreatorSettings() {
                           dark:border-white/[0.06]
                           dark:bg-white/[0.025]
                         "
-                    >
-                      <p
-                        className="
+                      >
+                        <p
+                          className="
                             text-[7px]
                             font-black
                             uppercase
@@ -2762,28 +3167,28 @@ export default function CreatorSettings() {
 
                             dark:text-white/22
                           "
-                      >
-                        {item.label}
-                      </p>
+                        >
+                          {item.label}
+                        </p>
 
-                      <p
-                        className="
+                        <p
+                          className="
                             mt-2
                             text-xs
                             font-semibold
                           "
-                      >
-                        {item.value}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
+                        >
+                          {item.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-              <button
-                type="button"
-                onClick={() => navigate("/creator/avatar-studio")}
-                className="
+                <button
+                  type="button"
+                  onClick={() => navigate("/creator/avatar-studio")}
+                  className="
                   mt-6
                   inline-flex
                   h-11
@@ -2811,13 +3216,14 @@ export default function CreatorSettings() {
                   dark:hover:bg-violet-500
                   dark:hover:text-white
                 "
-              >
-                Open Avatar Studio
-                <ArrowRight size={12} />
-              </button>
+                >
+                  Open Avatar Studio
+                  <ArrowRight size={12} />
+                </button>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/*=================================================
         Security

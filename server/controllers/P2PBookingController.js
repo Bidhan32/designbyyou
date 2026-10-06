@@ -42,6 +42,47 @@ const BOOKING_STATUS = Object.freeze({
   CANCELLED: "cancelled",
 });
 
+/*
+=========================================================
+WHATSAPP BOOKING CONTACT POLICY
+=========================================================
+
+WhatsApp contact is private account data.
+
+It is available only:
+- to one of the two booking participants
+- after Designer acceptance is represented by the booking state
+- when the OTHER participant explicitly opted in
+- when the stored number is a valid E.164-style number
+
+Intentionally blocked:
+- pending
+- funded
+- cancellation_pending
+- refund_pending
+- refund_failed
+- cancelled
+- legacy "accepted" until its exact historical semantics are retired
+
+"funded" is blocked because Creator payment can happen before
+Designer acceptance in this workflow.
+=========================================================
+*/
+
+const WHATSAPP_CONTACT_ALLOWED_STATUSES = new Set([
+  BOOKING_STATUS.AWAITING_PAYMENT,
+  BOOKING_STATUS.PROGRESS,
+  BOOKING_STATUS.REVIEW_PROTOTYPE,
+  BOOKING_STATUS.FINAL_PRODUCTION,
+  BOOKING_STATUS.REVIEW_FINAL,
+  BOOKING_STATUS.COMPLETED,
+]);
+
+const WHATSAPP_E164_REGEX = /^\+[1-9][0-9]{7,14}$/;
+
+const WHATSAPP_BOOKING_MESSAGE =
+  "Hi, I'm contacting you about our DesignByYou booking.";
+
 const ACTIVE_SCHEDULE_STATUSES = Object.freeze([
   BOOKING_STATUS.PENDING,
   BOOKING_STATUS.AWAITING_PAYMENT,
@@ -2999,6 +3040,207 @@ exports.getUnifiedPeerPipeline = async (req, res) => {
     console.error("Unable to load the P2P pipeline:", error);
 
     return sendError(res, 500, "The booking pipeline could not be loaded.");
+  }
+};
+
+/*
+=========================================================
+PRIVATE WHATSAPP BOOKING CONTACT
+
+GET /api/v1/p2p-bookings/:id/whatsapp-contact
+
+Security:
+- authenticated user only
+- requester must be the booking Creator OR assigned Designer
+- no administrator bypass
+- booking must be in an allowed post-acceptance state
+- only the OTHER participant's opted-in contact is returned
+- WhatsApp data remains absent from /pipeline and public endpoints
+- response is explicitly non-cacheable
+=========================================================
+*/
+
+exports.getWhatsAppContact = async (req, res) => {
+  const userId = getAuthenticatedUserId(req);
+
+  const bookingId = String(req.params?.id || "").trim();
+
+  if (!userId || !isUuid(userId)) {
+    return sendError(res, 401, "Authentication is required.");
+  }
+
+  if (!isUuid(bookingId)) {
+    return sendError(res, 400, "A valid booking ID is required.");
+  }
+
+  /*
+  This response can contain a private phone number.
+  Prevent browsers/proxies from retaining it as cacheable API data.
+  */
+  res.set("Cache-Control", "private, no-store, max-age=0");
+  res.set("Pragma", "no-cache");
+
+  try {
+    const bookingResult = await db.query(
+      `
+        SELECT
+          id,
+          creator_id,
+          designer_id,
+          status
+
+        FROM bookings
+
+        WHERE id = $1
+
+        LIMIT 1
+      `,
+      [bookingId],
+    );
+
+    const booking = bookingResult.rows[0];
+
+    if (!booking) {
+      return sendError(res, 404, "The booking was not found.");
+    }
+
+    /*
+    Do not allow administrators or unrelated authenticated users
+    to retrieve private booking-participant contact information.
+    */
+    if (!bookingParticipantAllowed(booking, userId)) {
+      return sendError(
+        res,
+        403,
+        "Only the participants in this booking can access booking contact information.",
+        "BOOKING_CONTACT_FORBIDDEN",
+      );
+    }
+
+    const currentStatus = normalizeStatus(booking.status);
+
+    /*
+    Important:
+    funded is intentionally NOT sufficient because payment may
+    complete before the Designer accepts the booking.
+    */
+    if (!WHATSAPP_CONTACT_ALLOWED_STATUSES.has(currentStatus)) {
+      return sendError(
+        res,
+        409,
+        "WhatsApp contact is not available at this stage of the booking.",
+        "WHATSAPP_CONTACT_UNAVAILABLE",
+      );
+    }
+
+    const requesterIsCreator = booking.creator_id === userId;
+
+    const partnerId = requesterIsCreator
+      ? booking.designer_id
+      : booking.creator_id;
+
+    const expectedPartnerRole = requesterIsCreator ? "designer" : "creator";
+
+    const partnerResult = await db.query(
+      `
+        SELECT
+          id,
+          full_name,
+          role,
+          whatsapp_number,
+          whatsapp_contact_enabled
+
+        FROM users
+
+        WHERE id = $1
+
+        LIMIT 1
+      `,
+      [partnerId],
+    );
+
+    const partner = partnerResult.rows[0];
+
+    /*
+    A missing/mismatched participant is a booking-account integrity
+    problem. Do not return partial/private contact information.
+    */
+    if (!partner || normalizeStatus(partner.role) !== expectedPartnerRole) {
+      return sendError(
+        res,
+        409,
+        "The booking contact could not be resolved.",
+        "BOOKING_CONTACT_UNAVAILABLE",
+      );
+    }
+
+    const whatsappNumber = String(partner.whatsapp_number || "").trim();
+
+    const sharingEnabled = partner.whatsapp_contact_enabled === true;
+
+    /*
+    Use the same generic unavailable response for:
+    - user has not opted in
+    - no number is stored
+    - legacy/invalid number somehow bypassed the DB constraint
+
+    This avoids exposing unnecessary details about the partner's
+    private settings.
+    */
+    if (!sharingEnabled || !WHATSAPP_E164_REGEX.test(whatsappNumber)) {
+      return res.status(200).json({
+        status: "success",
+
+        data: {
+          available: false,
+
+          message: "WhatsApp contact is not available for this booking.",
+        },
+      });
+    }
+
+    const whatsappDigits = whatsappNumber.replace(/\D/g, "");
+
+    const encodedMessage = encodeURIComponent(WHATSAPP_BOOKING_MESSAGE);
+
+    const whatsappUrl = `https://wa.me/${whatsappDigits}?text=${encodedMessage}`;
+
+    const partnerRole = normalizeStatus(partner.role);
+
+    return res.status(200).json({
+      status: "success",
+
+      data: {
+        available: true,
+
+        participant: {
+          display_name:
+            cleanText(partner.full_name, 120) ||
+            (partnerRole === "designer" ? "Designer" : "Creator"),
+
+          role: partnerRole,
+        },
+
+        whatsapp_number: whatsappNumber,
+
+        message_url: whatsappUrl,
+
+        /*
+        Ordinary wa.me links open a WhatsApp chat; they do not
+        directly initiate a one-to-one video call. The frontend may
+        use this same URL for its "Open WhatsApp for Video Call"
+        action and show the instruction below.
+        */
+        video_call_url: whatsappUrl,
+
+        video_call_instruction:
+          "Open the chat, then tap the video icon in WhatsApp to start a video call.",
+      },
+    });
+  } catch (error) {
+    console.error("Unable to load private WhatsApp booking contact:", error);
+
+    return sendError(res, 500, "The booking contact could not be loaded.");
   }
 };
 

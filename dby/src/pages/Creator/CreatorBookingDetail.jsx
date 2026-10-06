@@ -16,12 +16,14 @@ import {
   Info,
   Loader2,
   LockKeyhole,
+  MessageCircle,
   MessageSquareText,
   RefreshCw,
   RotateCcw,
   ShieldCheck,
   Sparkles,
   UserRound,
+  Video,
   WalletCards,
   X,
 } from "lucide-react";
@@ -55,6 +57,29 @@ const TERMINAL_STATUSES = new Set([
   BOOKING_STATUS.COMPLETED,
   BOOKING_STATUS.DELIVERED,
   BOOKING_STATUS.CANCELLED,
+]);
+
+/*
+=========================================================
+WHATSAPP CONTACT STATES
+
+These exactly match the protected backend contact policy.
+
+IMPORTANT:
+- funded is intentionally NOT included
+- pending is intentionally NOT included
+- legacy accepted is intentionally NOT included
+- cancelled is intentionally NOT included
+=========================================================
+*/
+
+const WHATSAPP_CONTACT_STATUSES = new Set([
+  BOOKING_STATUS.AWAITING_PAYMENT,
+  BOOKING_STATUS.PROGRESS,
+  BOOKING_STATUS.REVIEW_PROTOTYPE,
+  BOOKING_STATUS.FINAL_PRODUCTION,
+  BOOKING_STATUS.REVIEW_FINAL,
+  BOOKING_STATUS.COMPLETED,
 ]);
 
 function safeJsonParse(value) {
@@ -175,6 +200,35 @@ function isHttpUrl(value) {
   }
 }
 
+/*
+=========================================================
+WHATSAPP LINK VALIDATION
+
+Even though the backend creates the URL, the browser still
+validates that it points to an expected WhatsApp host before
+opening a new tab.
+=========================================================
+*/
+
+function isSafeWhatsAppUrl(value) {
+  if (!value) {
+    return false;
+  }
+
+  try {
+    const url = new URL(value);
+
+    return (
+      url.protocol === "https:" &&
+      ["wa.me", "www.wa.me", "api.whatsapp.com"].includes(
+        url.hostname.toLowerCase(),
+      )
+    );
+  } catch {
+    return false;
+  }
+}
+
 function getStatusDetails(status, designerName) {
   const normalized = normalizeStatus(status);
 
@@ -187,16 +241,11 @@ function getStatusDetails(status, designerName) {
     case BOOKING_STATUS.PENDING:
       return {
         label: "Awaiting Designer",
-
         title: "Request sent",
-
         description: `${firstName} is reviewing your project request.`,
-
         icon: Hourglass,
-
         badgeClass:
           "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300",
-
         panelClass:
           "border-amber-200 bg-amber-50/80 dark:border-amber-400/15 dark:bg-amber-400/5",
       };
@@ -204,17 +253,12 @@ function getStatusDetails(status, designerName) {
     case BOOKING_STATUS.AWAITING_PAYMENT:
       return {
         label: "Payment Required",
-
         title: "Designer accepted",
-
         description:
           "The designer accepted your request, but escrow has not yet been confirmed.",
-
         icon: WalletCards,
-
         badgeClass:
           "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-400/20 dark:bg-orange-400/10 dark:text-orange-300",
-
         panelClass:
           "border-orange-200 bg-orange-50/80 dark:border-orange-400/15 dark:bg-orange-400/5",
       };
@@ -222,17 +266,12 @@ function getStatusDetails(status, designerName) {
     case BOOKING_STATUS.FUNDED:
       return {
         label: "Escrow Secured",
-
         title: "Payment protected",
-
         description:
           "Your payment is secured while the designer reviews or accepts the project.",
-
         icon: ShieldCheck,
-
         badgeClass:
           "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300",
-
         panelClass:
           "border-emerald-200 bg-emerald-50/80 dark:border-emerald-400/15 dark:bg-emerald-400/5",
       };
@@ -241,32 +280,23 @@ function getStatusDetails(status, designerName) {
     case BOOKING_STATUS.PROGRESS:
       return {
         label: "Prototype Production",
-
         title: "Work in progress",
-
         description: `${firstName} is preparing your first prototype.`,
-
         icon: Clock3,
-
         badgeClass:
           "border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#8F7118] dark:text-[#E4C760]",
-
         panelClass: "border-[#D4AF37]/25 bg-[#D4AF37]/5",
       };
 
     case BOOKING_STATUS.REVIEW_PROTOTYPE:
       return {
         label: "Review Prototype",
-
         title: "Your decision is needed",
-
-        description: "Review the prototype, approve it or request a revision.",
-
+        description:
+          "Review the prototype, approve it or request a revision.",
         icon: FileCheck2,
-
         badgeClass:
           "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-400/20 dark:bg-indigo-400/10 dark:text-indigo-300",
-
         panelClass:
           "border-indigo-200 bg-indigo-50/80 dark:border-indigo-400/15 dark:bg-indigo-400/5",
       };
@@ -274,16 +304,11 @@ function getStatusDetails(status, designerName) {
     case BOOKING_STATUS.FINAL_PRODUCTION:
       return {
         label: "Final Production",
-
         title: "Prototype approved",
-
         description: `${firstName} is preparing the final deliverables.`,
-
         icon: Clock3,
-
         badgeClass:
           "border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-300",
-
         panelClass:
           "border-cyan-200 bg-cyan-50/80 dark:border-cyan-400/15 dark:bg-cyan-400/5",
       };
@@ -292,17 +317,12 @@ function getStatusDetails(status, designerName) {
     case BOOKING_STATUS.REVIEW:
       return {
         label: "Review Final Delivery",
-
         title: "Final approval required",
-
         description:
           "Review the final 2D and optional 3D deliverables before releasing the designer payout.",
-
         icon: FileCheck2,
-
         badgeClass:
           "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300",
-
         panelClass:
           "border-violet-200 bg-violet-50/80 dark:border-violet-400/15 dark:bg-violet-400/5",
       };
@@ -310,19 +330,13 @@ function getStatusDetails(status, designerName) {
     case BOOKING_STATUS.CANCELLATION_PENDING:
       return {
         label: "Cancellation Processing",
-
         title: "Reconciliation underway",
-
         description:
           "Cancellation and any required Stripe refund reconciliation are being processed.",
-
         icon: Loader2,
-
         spinning: true,
-
         badgeClass:
           "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-300",
-
         panelClass:
           "border-rose-200 bg-rose-50/80 dark:border-rose-400/15 dark:bg-rose-400/5",
       };
@@ -331,17 +345,12 @@ function getStatusDetails(status, designerName) {
     case BOOKING_STATUS.DELIVERED:
       return {
         label: "Completed & Paid",
-
         title: "Contract completed",
-
         description:
           "The final work was approved and the designer payout was released.",
-
         icon: CheckCircle2,
-
         badgeClass:
           "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300",
-
         panelClass:
           "border-emerald-200 bg-emerald-50/80 dark:border-emerald-400/15 dark:bg-emerald-400/5",
       };
@@ -349,17 +358,12 @@ function getStatusDetails(status, designerName) {
     case BOOKING_STATUS.CANCELLED:
       return {
         label: "Cancelled",
-
         title: "Contract closed",
-
         description:
           "No further work or creator action is required for this contract.",
-
         icon: Ban,
-
         badgeClass:
           "border-slate-200 bg-slate-100 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/45",
-
         panelClass:
           "border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.03]",
       };
@@ -367,16 +371,12 @@ function getStatusDetails(status, designerName) {
     default:
       return {
         label: normalized || "Unknown",
-
         title: "Contract status",
-
-        description: "Refresh this page to retrieve the latest contract state.",
-
+        description:
+          "Refresh this page to retrieve the latest contract state.",
         icon: Info,
-
         badgeClass:
           "border-slate-200 bg-slate-100 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/50",
-
         panelClass:
           "border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.03]",
       };
@@ -444,57 +444,37 @@ function getTimeline(status, escrowLocked) {
   return [
     {
       label: "Contract created",
-
       description: "The project request was recorded.",
-
       complete: true,
     },
-
     {
       label: "Designer accepted",
-
       description: "The designer agreed to the contract.",
-
       complete: designerAccepted,
     },
-
     {
       label: "Escrow secured",
-
       description: "Stripe payment was verified and protected.",
-
       complete: paymentComplete,
     },
-
     {
       label: "Prototype submitted",
-
       description: "The first milestone was delivered for review.",
-
       complete: prototypeSubmitted,
     },
-
     {
       label: "Prototype approved",
-
       description: "Final production was authorized.",
-
       complete: prototypeApproved,
     },
-
     {
       label: "Final files submitted",
-
       description: "The final milestone was delivered.",
-
       complete: finalSubmitted,
     },
-
     {
       label: "Completed and paid",
-
       description: "The final payout was released.",
-
       complete: completed,
     },
   ];
@@ -538,6 +518,18 @@ export default function CreatorBookingDetail() {
   const [tryOnLoading, setTryOnLoading] = useState(false);
 
   const [tryOnError, setTryOnError] = useState("");
+
+  /*
+  =========================================================
+  Private WhatsApp Booking Contact
+  =========================================================
+  */
+
+  const [whatsappContact, setWhatsappContact] = useState(null);
+
+  const [whatsappLoading, setWhatsappLoading] = useState(false);
+
+  const [whatsappError, setWhatsappError] = useState("");
 
   const fetchBooking = useCallback(
     async ({ silent = false } = {}) => {
@@ -605,9 +597,94 @@ export default function CreatorBookingDetail() {
     [bookingId, currentUserId],
   );
 
+  /*
+  =========================================================
+  Load protected WhatsApp contact
+
+  This API is called only after the booking has reached one
+  of the backend-approved post-acceptance states.
+
+  The normal /pipeline response never receives the number.
+  =========================================================
+  */
+
+  const fetchWhatsAppContact = useCallback(async () => {
+    if (!bookingId) {
+      return;
+    }
+
+    setWhatsappLoading(true);
+
+    setWhatsappError("");
+
+    try {
+      const response = await API.get(
+        `/p2p-bookings/${bookingId}/whatsapp-contact`,
+      );
+
+      const contact = response?.data?.data;
+
+      if (!contact || typeof contact !== "object" || Array.isArray(contact)) {
+        throw new Error("The WhatsApp contact response was invalid.");
+      }
+
+      setWhatsappContact(contact);
+    } catch (error) {
+      const responseCode = error?.response?.data?.code;
+
+      /*
+      A booking can change state between loading /pipeline
+      and loading the private contact endpoint.
+
+      A 409 caused by that state race should simply remove
+      contact access from the page.
+      */
+      if (
+        error?.response?.status === 409 &&
+        responseCode === "WHATSAPP_CONTACT_UNAVAILABLE"
+      ) {
+        setWhatsappContact(null);
+
+        setWhatsappError("");
+
+        return;
+      }
+
+      setWhatsappContact(null);
+
+      setWhatsappError(
+        getApiErrorMessage(
+          error,
+          "WhatsApp contact could not be loaded for this booking.",
+        ),
+      );
+    } finally {
+      setWhatsappLoading(false);
+    }
+  }, [bookingId]);
+
   useEffect(() => {
     fetchBooking();
   }, [fetchBooking]);
+
+  /*
+  Load WhatsApp only when the current workflow state allows it.
+  */
+  useEffect(() => {
+    const currentStatus = normalizeStatus(booking?.status);
+
+    if (!booking?.id || !WHATSAPP_CONTACT_STATUSES.has(currentStatus)) {
+      setWhatsappContact(null);
+
+      setWhatsappError("");
+
+      setWhatsappLoading(false);
+
+      return;
+    }
+
+    void fetchWhatsAppContact();
+  }, [booking?.id, booking?.status, fetchWhatsAppContact]);
 
   useEffect(() => {
     if (!tryOnFile) {
@@ -626,51 +703,46 @@ export default function CreatorBookingDetail() {
   }, [tryOnFile]);
 
   const runAction = async ({
-  name,
-  request,
-  successMessage,
-  afterSuccess,
-}) => {
-  if (actionName) {
-    return;
-  }
-
-  setActionName(name);
-
-  try {
-    const response = await request();
-
-    const customMessage =
-      typeof successMessage === "function"
-        ? successMessage(response)
-        : successMessage;
-
-    const message =
-      customMessage ||
-      response?.data?.message ||
-      "Action completed.";
-
-    showToast(message, "success");
-
-    if (afterSuccess) {
-      await afterSuccess(response);
+    name,
+    request,
+    successMessage,
+    afterSuccess,
+  }) => {
+    if (actionName) {
+      return;
     }
 
-    await fetchBooking({
-      silent: true,
-    });
-  } catch (error) {
-    showToast(
-      getApiErrorMessage(
-        error,
-        "The action could not be completed.",
-      ),
-      "error",
-    );
-  } finally {
-    setActionName("");
-  }
-};
+    setActionName(name);
+
+    try {
+      const response = await request();
+
+      const customMessage =
+        typeof successMessage === "function"
+          ? successMessage(response)
+          : successMessage;
+
+      const message =
+        customMessage || response?.data?.message || "Action completed.";
+
+      showToast(message, "success");
+
+      if (afterSuccess) {
+        await afterSuccess(response);
+      }
+
+      await fetchBooking({
+        silent: true,
+      });
+    } catch (error) {
+      showToast(
+        getApiErrorMessage(error, "The action could not be completed."),
+        "error",
+      );
+    } finally {
+      setActionName("");
+    }
+  };
 
   const handleVerifyEscrow = () =>
     runAction({
@@ -688,7 +760,8 @@ export default function CreatorBookingDetail() {
     runAction({
       name: "approve-prototype",
 
-      request: () => API.post(`/p2p-bookings/${bookingId}/approve-prototype`),
+      request: () =>
+        API.post(`/p2p-bookings/${bookingId}/approve-prototype`),
 
       successMessage: "Prototype approved. Final production can begin.",
 
@@ -699,93 +772,69 @@ export default function CreatorBookingDetail() {
       },
     });
 
-const handleReleasePayout = () =>
-  runAction({
-    name: "release",
+  const handleReleasePayout = () =>
+    runAction({
+      name: "release",
 
-    request: () =>
-      API.post(
-        `/p2p-bookings/${bookingId}/release`,
-      ),
+      request: () => API.post(`/p2p-bookings/${bookingId}/release`),
 
-    successMessage: (response) => {
-      const reward =
-        response?.data?.creatorReward;
+      successMessage: (response) => {
+        const reward = response?.data?.creatorReward;
 
-      const rewardPoints = Number(
-        reward?.points ?? 0,
-      );
+        const rewardPoints = Number(reward?.points ?? 0);
 
-      const totalPoints = Number(
-        reward?.totalPoints,
-      );
+        const totalPoints = Number(reward?.totalPoints);
 
-      if (
-        reward?.awarded === true &&
-        rewardPoints > 0
-      ) {
-        return Number.isFinite(totalPoints)
-          ? `Final delivery approved and payout released. +${rewardPoints} reward points earned. Total points: ${totalPoints}.`
-          : `Final delivery approved and payout released. +${rewardPoints} reward points earned.`;
-      }
+        if (reward?.awarded === true && rewardPoints > 0) {
+          return Number.isFinite(totalPoints)
+            ? `Final delivery approved and payout released. +${rewardPoints} reward points earned. Total points: ${totalPoints}.`
+            : `Final delivery approved and payout released. +${rewardPoints} reward points earned.`;
+        }
 
-      if (
-        reward?.awarded === true &&
-        rewardPoints === 0
-      ) {
-        return "Final delivery approved and payout released. This booking does not qualify for reward points.";
-      }
+        if (reward?.awarded === true && rewardPoints === 0) {
+          return "Final delivery approved and payout released. This booking does not qualify for reward points.";
+        }
 
-      if (response?.data?.idempotent === true) {
-        return "This booking was already completed and its reward was already processed.";
-      }
+        if (response?.data?.idempotent === true) {
+          return "This booking was already completed and its reward was already processed.";
+        }
 
-      return "Final delivery approved and payout released.";
-    },
+        return "Final delivery approved and payout released.";
+      },
 
-    afterSuccess: (response) => {
-      setRevisionOpen(false);
+      afterSuccess: (response) => {
+        setRevisionOpen(false);
 
-      setRevisionNotes("");
+        setRevisionNotes("");
 
-      const reward =
-        response?.data?.creatorReward;
+        const reward = response?.data?.creatorReward;
 
-      const totalPoints = Number(
-        reward?.totalPoints,
-      );
+        const totalPoints = Number(reward?.totalPoints);
 
-      /*
-      Tell CreatorLayout that the reward total changed.
+        /*
+        Tell CreatorLayout that the reward total changed.
 
-      CreatorLayout listens for this event and updates the
-      navbar immediately.
-      */
-      if (Number.isFinite(totalPoints)) {
-        window.dispatchEvent(
-          new CustomEvent(
-            "creator-reward-updated",
-            {
+        CreatorLayout listens for this event and updates the
+        navbar immediately.
+        */
+        if (Number.isFinite(totalPoints)) {
+          window.dispatchEvent(
+            new CustomEvent("creator-reward-updated", {
               detail: {
                 totalPoints,
               },
-            },
-          ),
-        );
-      } else if (reward?.awarded === true) {
-        /*
-        For a zero-point reward or a response without a total,
-        ask CreatorLayout to reload the authoritative total
-        from /auth/me.
-        */
-        window.dispatchEvent(
-          new CustomEvent(
-            "creator-reward-updated",
-          ),
-        );
-      }
-    },
-  });
+            }),
+          );
+        } else if (reward?.awarded === true) {
+          /*
+          For a zero-point reward or a response without a total,
+          ask CreatorLayout to reload the authoritative total
+          from /auth/me.
+          */
+          window.dispatchEvent(new CustomEvent("creator-reward-updated"));
+        }
+      },
+    });
 
   const handleRevisionSubmit = async (event) => {
     event.preventDefault();
@@ -843,6 +892,42 @@ const handleReleasePayout = () =>
         setCancellationReason("");
       },
     });
+  };
+
+  /*
+  =========================================================
+  Open WhatsApp
+
+  The raw phone number is deliberately not rendered anywhere
+  on this page. Only the server-generated safe wa.me URL is
+  used for navigation.
+  =========================================================
+  */
+
+  const handleOpenWhatsApp = (url, mode) => {
+    if (!isSafeWhatsAppUrl(url)) {
+      showToast(
+        "The WhatsApp link is unavailable or invalid. Refresh the booking and try again.",
+        "error",
+      );
+
+      return;
+    }
+
+    const openedWindow = window.open(url, "_blank");
+
+    if (!openedWindow) {
+      showToast(
+        mode === "video"
+          ? "Your browser blocked WhatsApp. Allow pop-ups and try opening the video-call chat again."
+          : "Your browser blocked WhatsApp. Allow pop-ups and try opening the chat again.",
+        "error",
+      );
+
+      return;
+    }
+
+    openedWindow.opener = null;
   };
 
   const resetTryOn = () => {
@@ -969,7 +1054,8 @@ const handleReleasePayout = () =>
       setTryOnResultImage(image);
 
       showToast(
-        response?.data?.message || "Virtual Try-On generated successfully.",
+        response?.data?.message ||
+          "Virtual Try-On generated successfully.",
         "success",
       );
     } catch (error) {
@@ -1060,7 +1146,8 @@ const handleReleasePayout = () =>
   const prototypeReview = status === BOOKING_STATUS.REVIEW_PROTOTYPE;
 
   const finalReview =
-    status === BOOKING_STATUS.REVIEW_FINAL || status === BOOKING_STATUS.REVIEW;
+    status === BOOKING_STATUS.REVIEW_FINAL ||
+    status === BOOKING_STATUS.REVIEW;
 
   const currentReviewUrl = prototypeReview
     ? booking.prototype_file_url
@@ -1086,6 +1173,16 @@ const handleReleasePayout = () =>
   const cancellationAllowed =
     !TERMINAL_STATUSES.has(status) &&
     status !== BOOKING_STATUS.CANCELLATION_PENDING;
+
+  const whatsappContactEligible = WHATSAPP_CONTACT_STATUSES.has(status);
+
+  const whatsappAvailable =
+    whatsappContactEligible &&
+    whatsappContact?.available === true &&
+    isSafeWhatsAppUrl(whatsappContact?.message_url);
+
+  const whatsappPartnerName =
+    whatsappContact?.participant?.display_name || designerName;
 
   const escrowLabel = booking.escrow_locked
     ? "Secured"
@@ -1360,8 +1457,6 @@ const handleReleasePayout = () =>
                       </div>
                     </div>
 
-                    {/* Interactive current milestone 3D review */}
-
                     {isHttpUrl(currentReviewModelUrl) && (
                       <div className="mt-5">
                         <BookingModelViewer
@@ -1405,7 +1500,9 @@ const handleReleasePayout = () =>
                           <button
                             type="button"
                             onClick={() =>
-                              openTryOn(prototypeReview ? "prototype" : "final")
+                              openTryOn(
+                                prototypeReview ? "prototype" : "final",
+                              )
                             }
                             disabled={Boolean(actionName) || tryOnLoading}
                             className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-violet-700 px-5 text-[9px] font-black uppercase tracking-[0.18em] text-white transition hover:bg-violet-800 disabled:opacity-50 dark:bg-violet-500 dark:hover:bg-violet-400"
@@ -1422,8 +1519,6 @@ const handleReleasePayout = () =>
                       </div>
                     </div>
                   </div>
-
-                  {/* Revision */}
 
                   {revisionOpen ? (
                     <form
@@ -1575,9 +1670,7 @@ const handleReleasePayout = () =>
               )}
             </section>
 
-            {/* =====================================================
-                Delivery Archive
-                ===================================================== */}
+            {/* Delivery Archive */}
 
             <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-[#0B0B0B] dark:shadow-2xl sm:p-7">
               <div className="border-b border-slate-200 pb-5 dark:border-white/5">
@@ -1786,9 +1879,7 @@ const handleReleasePayout = () =>
             </section>
           </div>
 
-          {/* =====================================================
-              Right Sidebar
-              ===================================================== */}
+          {/* Right Sidebar */}
 
           <aside className="space-y-6 xl:sticky xl:top-28 xl:self-start">
             {/* Escrow Ledger */}
@@ -1912,6 +2003,181 @@ const handleReleasePayout = () =>
               </div>
             </section>
 
+            {/* =====================================================
+                Private WhatsApp Booking Contact
+                ===================================================== */}
+
+            {whatsappContactEligible && (
+              <section className="overflow-hidden rounded-3xl border border-emerald-200 bg-white shadow-sm dark:border-emerald-400/15 dark:bg-[#0B0B0B] dark:shadow-2xl">
+                <div className="border-b border-emerald-100 bg-emerald-50/70 p-6 dark:border-emerald-400/10 dark:bg-emerald-400/[0.06]">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-emerald-200 bg-white text-emerald-700 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300">
+                        <MessageCircle size={20} />
+                      </div>
+
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
+                          Booking communication
+                        </p>
+
+                        <h2 className="mt-1 font-serif text-xl font-light text-slate-950 dark:text-white">
+                          WhatsApp Contact
+                        </h2>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => void fetchWhatsAppContact()}
+                      disabled={whatsappLoading}
+                      title="Refresh WhatsApp availability"
+                      aria-label="Refresh WhatsApp contact availability"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-200 bg-white text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-400/20 dark:bg-white/5 dark:text-emerald-300 dark:hover:bg-emerald-400/10"
+                    >
+                      <RefreshCw
+                        size={14}
+                        className={whatsappLoading ? "animate-spin" : ""}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-6">
+                  {whatsappLoading ? (
+                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500 dark:border-white/5 dark:bg-white/[0.025] dark:text-white/40">
+                      <Loader2
+                        size={17}
+                        className="shrink-0 animate-spin text-emerald-600 dark:text-emerald-300"
+                      />
+
+                      <p>Checking private booking contact availability...</p>
+                    </div>
+                  ) : whatsappError ? (
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-400/20 dark:bg-rose-400/10">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle
+                          size={17}
+                          className="mt-0.5 shrink-0 text-rose-700 dark:text-rose-300"
+                        />
+
+                        <div>
+                          <p className="text-sm font-semibold text-rose-900 dark:text-rose-100">
+                            Contact could not be loaded
+                          </p>
+
+                          <p className="mt-1 text-xs leading-5 text-rose-700/80 dark:text-rose-200/70">
+                            {whatsappError}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : whatsappAvailable ? (
+                    <div className="space-y-4">
+                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-400/15 dark:bg-emerald-400/[0.06]">
+                        <div className="flex items-start gap-3">
+                          <CheckCircle2
+                            size={18}
+                            className="mt-0.5 shrink-0 text-emerald-700 dark:text-emerald-300"
+                          />
+
+                          <div>
+                            <p className="text-sm font-semibold text-emerald-950 dark:text-emerald-100">
+                              {whatsappPartnerName} is available on WhatsApp
+                            </p>
+
+                            <p className="mt-1 text-xs leading-5 text-emerald-800/70 dark:text-emerald-200/60">
+                              Their contact is available to you through this
+                              active booking. The phone number is intentionally
+                              not displayed on this page.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleOpenWhatsApp(
+                              whatsappContact?.message_url,
+                              "message",
+                            )
+                          }
+                          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-[9px] font-black uppercase tracking-[0.17em] text-white shadow-[0_12px_28px_rgba(5,150,105,0.16)] transition hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-500/15 dark:bg-emerald-500 dark:hover:bg-emerald-400"
+                        >
+                          <MessageCircle size={16} />
+                          Message on WhatsApp
+                          <ArrowUpRight size={14} />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleOpenWhatsApp(
+                              whatsappContact?.video_call_url,
+                              "video",
+                            )
+                          }
+                          disabled={
+                            !isSafeWhatsAppUrl(
+                              whatsappContact?.video_call_url,
+                            )
+                          }
+                          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 text-[9px] font-black uppercase tracking-[0.17em] text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200 dark:hover:bg-emerald-400/15"
+                        >
+                          <Video size={16} />
+                          Open WhatsApp for Video Call
+                          <ArrowUpRight size={14} />
+                        </button>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/5 dark:bg-white/[0.025]">
+                        <p className="text-xs leading-5 text-slate-500 dark:text-white/40">
+                          {whatsappContact?.video_call_instruction ||
+                            "Open the WhatsApp chat, then use WhatsApp's video icon to start a video call."}
+                        </p>
+                      </div>
+
+                      <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-400/15 dark:bg-amber-400/[0.06]">
+                        <ShieldCheck
+                          size={17}
+                          className="mt-0.5 shrink-0 text-amber-700 dark:text-amber-300"
+                        />
+
+                        <p className="text-xs leading-5 text-amber-800/80 dark:text-amber-100/60">
+                          Use WhatsApp for communication or call coordination
+                          only. Keep acceptance, revisions, milestone approvals,
+                          cancellations, payment and payout release inside
+                          DesignByYou.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/5 dark:bg-white/[0.025]">
+                      <div className="flex items-start gap-3">
+                        <LockKeyhole
+                          size={17}
+                          className="mt-0.5 shrink-0 text-slate-500 dark:text-white/35"
+                        />
+
+                        <div>
+                          <p className="text-sm font-semibold text-slate-800 dark:text-white/70">
+                            WhatsApp contact unavailable
+                          </p>
+
+                          <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-white/40">
+                            {whatsappContact?.message ||
+                              "WhatsApp contact is not available for this booking."}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
             {/* Completed */}
 
             {status === BOOKING_STATUS.COMPLETED ||
@@ -1963,7 +2229,8 @@ const handleReleasePayout = () =>
                   action.
                 </p>
               </section>
-            ) : status !== BOOKING_STATUS.CANCELLED && cancellationAllowed ? (
+            ) : status !== BOOKING_STATUS.CANCELLED &&
+              cancellationAllowed ? (
               <section className="rounded-3xl border border-rose-200 bg-white p-6 shadow-sm dark:border-rose-400/15 dark:bg-[#0B0B0B] dark:shadow-2xl">
                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-rose-600 dark:text-rose-300">
                   Contract management
@@ -2048,6 +2315,10 @@ const handleReleasePayout = () =>
         </div>
       </div>
 
+      {/* =========================================================
+          Virtual Try-On Modal
+          ========================================================= */}
+
       {tryOnOpen && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
@@ -2064,7 +2335,9 @@ const handleReleasePayout = () =>
 
                 <h2 className="mt-1 font-serif text-2xl font-light text-slate-950 dark:text-white">
                   Preview the{" "}
-                  {tryOnPhase === "prototype" ? "prototype" : "final garment"}
+                  {tryOnPhase === "prototype"
+                    ? "prototype"
+                    : "final garment"}
                 </h2>
 
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-white/45">
@@ -2126,7 +2399,10 @@ const handleReleasePayout = () =>
 
                   {tryOnError && (
                     <div className="mt-4 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">
-                      <AlertCircle size={17} className="mt-0.5 shrink-0" />
+                      <AlertCircle
+                        size={17}
+                        className="mt-0.5 shrink-0"
+                      />
 
                       <p>{tryOnError}</p>
                     </div>
@@ -2144,7 +2420,9 @@ const handleReleasePayout = () =>
                       <Sparkles size={16} />
                     )}
 
-                    {tryOnLoading ? "Generating..." : "Generate Virtual Try-On"}
+                    {tryOnLoading
+                      ? "Generating..."
+                      : "Generate Virtual Try-On"}
                   </button>
 
                   <p className="mt-3 text-center text-xs leading-5 text-slate-400 dark:text-white/30">
@@ -2170,7 +2448,10 @@ const handleReleasePayout = () =>
                     </div>
 
                     <div className="mt-4 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200">
-                      <CheckCircle2 size={17} className="mt-0.5 shrink-0" />
+                      <CheckCircle2
+                        size={17}
+                        className="mt-0.5 shrink-0"
+                      />
 
                       <p>
                         Virtual Try-On completed. This preview is temporary and

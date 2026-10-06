@@ -10284,22 +10284,33 @@ function FashionEditor() {
       {/* Header */}
 
       <header className="relative z-[70] flex h-14 shrink-0 items-center justify-between gap-2 border-b border-slate-800 bg-slate-950 px-2 sm:px-4">
-        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500 text-xs font-black text-white shadow-lg shadow-violet-950/40">
-            FV
-          </div>
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500 text-xs font-black text-white shadow-lg shadow-violet-950/40">
+    FV
+  </div>
 
-          <div className="hidden shrink-0 lg:block">
-            <p className="text-xs font-bold tracking-wide text-white">
-              FashionVision
-            </p>
+  <div className="hidden shrink-0 lg:block">
+    <p className="text-xs font-bold tracking-wide text-white">
+      FashionVision
+    </p>
 
-            <p className="text-[9px] uppercase tracking-[0.2em] text-slate-500">
-              2D Studio
-            </p>
-          </div>
+    <p className="text-[9px] uppercase tracking-[0.2em] text-slate-500">
+      2D Studio
+    </p>
+  </div>
 
-          <div className="hidden h-6 w-px bg-slate-800 lg:block" />
+  {/* Creator Showcase — permanently visible beside FashionVision */}
+  <button
+    type="button"
+    onClick={handleOpenCreatorShowcase}
+    title="Open Creator Showcase"
+    className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-violet-500/40 bg-violet-500/10 px-2.5 text-[10px] font-bold text-violet-200 transition hover:border-violet-400 hover:bg-violet-500/20 hover:text-white sm:px-3"
+  >
+    <span className="hidden sm:inline">Creator Showcase</span>
+    <span className="sm:hidden">Showcase</span>
+  </button>
+
+  <div className="hidden h-6 w-px bg-slate-800 lg:block" />
 
           <div className="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
             <DocumentNameField
@@ -10360,12 +10371,6 @@ function FashionEditor() {
               {showcaseSharing ? "Sharing…" : "Share"}
             </HeaderButton>
 
-            <HeaderButton
-  onClick={handleOpenCreatorShowcase}
-  title="Open Creator Showcase"
->
-  Showcase
-</HeaderButton>
 
             <HeaderButton onClick={handleExportPng} disabled={exporting}>
               {exporting ? "Exporting…" : "Export PNG"}
@@ -10487,13 +10492,7 @@ function FashionEditor() {
                 {showcaseSharing ? "Sharing to Showcase…" : "Share to Showcase"}
               </button>
 
-<button
-  type="button"
-  onClick={handleOpenCreatorShowcase}
-  className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm text-slate-200 hover:bg-slate-800"
->
-  Open Creator Showcase
-</button>
+
               <button
                 type="button"
                 onClick={handleDownloadProject}

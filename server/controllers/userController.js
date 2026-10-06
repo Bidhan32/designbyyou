@@ -1,65 +1,84 @@
 "use strict";
 
-/*
-=========================================================
-DesignByYou / FashionVision
-User Controller
-Profile, Public Identity and Account Security
-Version 4.0
-=========================================================
-
-Responsibilities:
-
-1. Safe public user/network data
-2. Safe public Creator/Designer profiles
-3. Authenticated account profile updates
-4. Creator profile preferences
-5. Designer profile preferences
-6. Standard profile-image updates
-7. Password updates
-8. Session revocation after password changes
-
-=========================================================
-IMPORTANT SECURITY RULES
-=========================================================
-
-PUBLIC RESPONSES
-
-Never expose:
-
-- email
-- password_hash
-- token_version
-- Stripe IDs
-- payout information
-- private finance data
-- authentication secrets
-
-
-PROFILE IMAGE
-
-The standard profile image is independent from the shared
-Fashion Persona system.
-
-Fashion Persona data belongs under:
-
-/avatar/*
-
-This controller therefore does NOT accept an arbitrary
-remote_avatar_url from the browser.
-
-
-PASSWORD CHANGE
-
-A successful password change increments token_version.
-
-That deliberately invalidates all JWTs issued with the
-previous token version, including the current session.
-
-The frontend should redirect the user to sign in again
-after a successful password change.
-=========================================================
-*/
+/**
+ * =========================================================
+ * DesignByYou / FashionVision
+ * User Controller
+ * Profile, Public Identity and Account Security
+ * Version 4.1
+ * =========================================================
+ *
+ * Responsibilities:
+ *
+ * 1. Safe public user/network data
+ * 2. Safe public Creator/Designer profiles
+ * 3. Authenticated account profile updates
+ * 4. Creator profile preferences
+ * 5. Designer profile preferences
+ * 6. Standard profile-image updates
+ * 7. Private WhatsApp contact preferences
+ * 8. Password updates
+ * 9. Session revocation after password changes
+ *
+ * =========================================================
+ * IMPORTANT SECURITY RULES
+ * =========================================================
+ *
+ * PUBLIC RESPONSES
+ *
+ * Never expose:
+ *
+ * - email
+ * - password_hash
+ * - token_version
+ * - Stripe IDs
+ * - payout information
+ * - private finance data
+ * - authentication secrets
+ * - WhatsApp number
+ * - WhatsApp sharing preference
+ *
+ * WhatsApp contact information is PRIVATE account data.
+ *
+ * It may be returned only through authenticated owner
+ * responses such as:
+ *
+ * PUT /api/v1/users/profile
+ * GET /api/v1/auth/me
+ *
+ * A separate booking-participant endpoint may later expose
+ * an opted-in WhatsApp contact after booking authorization.
+ *
+ * PUBLIC DIRECTORY / PROFILE endpoints must NEVER expose it.
+ *
+ * =========================================================
+ * PROFILE IMAGE
+ * =========================================================
+ *
+ * The standard profile image is independent from the shared
+ * Fashion Persona system.
+ *
+ * Fashion Persona data belongs under:
+ *
+ * /avatar/*
+ *
+ * This controller therefore does NOT accept an arbitrary
+ * remote_avatar_url from the browser.
+ *
+ * =========================================================
+ * PASSWORD CHANGE
+ * =========================================================
+ *
+ * A successful password change increments token_version.
+ *
+ * That deliberately invalidates all JWTs issued with the
+ * previous token version, including the current session.
+ *
+ * The frontend should redirect the user to sign in again
+ * after a successful password change.
+ *
+ * =========================================================
+ */
 
 const db = require("../config/db");
 
@@ -89,6 +108,22 @@ const MAX_LOCATION_LENGTH = 160;
 
 const MAX_GUIDELINES_LENGTH = 5000;
 
+/*
+ * E.164 supports at most 15 digits.
+ *
+ * The leading "+" means the stored string can contain
+ * at most 16 characters.
+ *
+ * Examples:
+ *
+ * +9779812345678
+ * +971501234567
+ * +447911123456
+ */
+const MAX_WHATSAPP_NUMBER_LENGTH = 16;
+
+const WHATSAPP_E164_REGEX = /^\+[1-9][0-9]{7,14}$/;
+
 /*=========================================================
 General Helpers
 =========================================================*/
@@ -111,27 +146,25 @@ function hasOwn(object, key) {
 
 /*=========================================================
 Body Text Parser
-=========================================================
-
-Distinguishes between:
-
-field omitted
-    → preserve existing DB value
-
-field sent as ""
-    → clear nullable DB value
-
-field sent with text
-    → replace existing DB value
 =========================================================*/
 
+/**
+ * Distinguishes between:
+ *
+ * field omitted
+ *     → preserve existing DB value
+ *
+ * field sent as ""
+ *     → clear nullable DB value
+ *
+ * field sent with text
+ *     → replace existing DB value
+ */
 function parseBodyText(body, key, { maxLength, multiline = false }) {
   if (!hasOwn(body, key)) {
     return {
       provided: false,
-
       value: null,
-
       error: null,
     };
   }
@@ -141,9 +174,7 @@ function parseBodyText(body, key, { maxLength, multiline = false }) {
   if (raw === null || raw === undefined) {
     return {
       provided: true,
-
       value: null,
-
       error: null,
     };
   }
@@ -151,9 +182,7 @@ function parseBodyText(body, key, { maxLength, multiline = false }) {
   if (typeof raw !== "string") {
     return {
       provided: true,
-
       value: null,
-
       error: `${key} must be text.`,
     };
   }
@@ -169,19 +198,79 @@ function parseBodyText(body, key, { maxLength, multiline = false }) {
   if (value.length > maxLength) {
     return {
       provided: true,
-
       value: null,
-
       error: `${key} must not exceed ${maxLength} characters.`,
     };
   }
 
   return {
     provided: true,
-
     value: value || null,
-
     error: null,
+  };
+}
+
+/*=========================================================
+Boolean Body Parser
+=========================================================*/
+
+/**
+ * Supports:
+ *
+ * JSON:
+ *
+ * whatsapp_contact_enabled: true
+ *
+ * Multipart/FormData:
+ *
+ * whatsapp_contact_enabled: "true"
+ *
+ * Also accepts common HTML boolean representations because
+ * multipart fields arrive as strings.
+ */
+function parseBodyBoolean(body, key) {
+  if (!hasOwn(body, key)) {
+    return {
+      provided: false,
+      value: null,
+      error: null,
+    };
+  }
+
+  const raw = body[key];
+
+  if (typeof raw === "boolean") {
+    return {
+      provided: true,
+      value: raw,
+      error: null,
+    };
+  }
+
+  if (typeof raw === "string") {
+    const normalized = raw.trim().toLowerCase();
+
+    if (["true", "1", "yes", "on"].includes(normalized)) {
+      return {
+        provided: true,
+        value: true,
+        error: null,
+      };
+    }
+
+    if (["false", "0", "no", "off"].includes(normalized)) {
+      return {
+        provided: true,
+        value: false,
+        error: null,
+      };
+    }
+  }
+
+  return {
+    provided: true,
+    value: null,
+    error: `${key} must be a boolean.`,
   };
 }
 
@@ -216,8 +305,8 @@ async function rollbackQuietly(client) {
     await client.query("ROLLBACK");
   } catch {
     /*
-    Preserve original failure.
-    */
+     * Preserve original failure.
+     */
   }
 }
 
@@ -245,44 +334,63 @@ function getUploadedProfileImage(req) {
 Private Authenticated Profile Loader
 =========================================================*/
 
+/**
+ * IMPORTANT:
+ *
+ * This function loads the authenticated account's PRIVATE
+ * profile representation.
+ *
+ * It may therefore include:
+ *
+ * - email
+ * - approval status
+ * - WhatsApp number
+ * - WhatsApp sharing preference
+ *
+ * None of those WhatsApp fields are exposed by the public
+ * directory/profile handlers below.
+ */
 async function loadAuthenticatedProfile(client, userId) {
   const result = await client.query(
     `
-        SELECT
-          u.id,
-          u.full_name,
-          u.email,
-          u.role,
-          u.profile_image_url,
-          u.approval_status,
+      SELECT
+        u.id,
+        u.full_name,
+        u.email,
+        u.role,
+        u.profile_image_url,
+        u.approval_status,
 
-          cp.company_name,
-          cp.preferred_category,
-          cp.default_dimensions,
-          cp.brand_guidelines_summary,
+        u.whatsapp_number,
+        u.whatsapp_contact_enabled,
 
-          dp.bio,
-          dp.city,
-          dp.portfolio_url,
-          dp.tier,
-          dp.total_completed_bookings,
-          dp.avg_rating
+        cp.company_name,
+        cp.preferred_category,
+        cp.default_dimensions,
+        cp.brand_guidelines_summary,
 
-        FROM users u
+        dp.bio,
+        dp.city,
+        dp.portfolio_url,
+        dp.tier,
+        dp.total_completed_bookings,
+        dp.avg_rating
 
-        LEFT JOIN creator_profiles cp
-          ON cp.user_id =
-            u.id
+      FROM users u
 
-        LEFT JOIN designer_profiles dp
-          ON dp.user_id =
-            u.id
+      LEFT JOIN creator_profiles cp
+        ON cp.user_id =
+          u.id
 
-        WHERE u.id =
-          $1
+      LEFT JOIN designer_profiles dp
+        ON dp.user_id =
+          u.id
 
-        LIMIT 1
-      `,
+      WHERE u.id =
+        $1
+
+      LIMIT 1
+    `,
     [userId],
   );
 
@@ -305,6 +413,10 @@ async function loadAuthenticatedProfile(client, userId) {
       profile_image_url: row.profile_image_url,
 
       approval_status: row.approval_status,
+
+      whatsapp_number: row.whatsapp_number || null,
+
+      whatsapp_contact_enabled: row.whatsapp_contact_enabled === true,
 
       company_name: row.company_name,
 
@@ -330,6 +442,10 @@ async function loadAuthenticatedProfile(client, userId) {
 
       approval_status: row.approval_status,
 
+      whatsapp_number: row.whatsapp_number || null,
+
+      whatsapp_contact_enabled: row.whatsapp_contact_enabled === true,
+
       bio: row.bio,
 
       city: row.city,
@@ -349,11 +465,11 @@ async function loadAuthenticatedProfile(client, userId) {
   }
 
   /*
-  Admin-style accounts can still update their basic
-  name/photo through the shared profile endpoint without
-  receiving Creator/Designer profile data.
-  */
-
+   * Admin-style accounts can still update their basic
+   * name/photo/contact preference through the shared
+   * profile endpoint without receiving Creator/Designer
+   * role-profile data.
+   */
   return {
     id: row.id,
 
@@ -366,6 +482,10 @@ async function loadAuthenticatedProfile(client, userId) {
     profile_image_url: row.profile_image_url,
 
     approval_status: row.approval_status,
+
+    whatsapp_number: row.whatsapp_number || null,
+
+    whatsapp_contact_enabled: row.whatsapp_contact_enabled === true,
   };
 }
 
@@ -374,106 +494,107 @@ async function loadAuthenticatedProfile(client, userId) {
 
 GET
 /api/v1/users
-=========================================================
-
-Backward-compatible array response.
-
-IMPORTANT:
-
-This used to expose every user's email address.
-
-It now returns only safe directory fields.
-
-Unapproved Designer accounts are excluded server-side.
-
-Creator accounts remain discoverable without requiring the
-Creator admin-approval concept.
 =========================================================*/
 
+/**
+ * Backward-compatible array response.
+ *
+ * IMPORTANT:
+ *
+ * This used to expose every user's email address.
+ *
+ * It now returns only safe directory fields.
+ *
+ * WhatsApp information is intentionally NOT selected.
+ *
+ * Unapproved Designer accounts are excluded server-side.
+ *
+ * Creator accounts remain discoverable without requiring
+ * the Creator admin-approval concept.
+ */
 exports.getAllUsers = async (req, res) => {
   try {
     const result = await db.query(
       `
-            SELECT
-              u.id,
-              u.role,
-              u.full_name,
-              u.profile_image_url,
-              u.created_at,
+        SELECT
+          u.id,
+          u.role,
+          u.full_name,
+          u.profile_image_url,
+          u.created_at,
 
-              dp.bio
-                AS designer_bio,
+          dp.bio
+            AS designer_bio,
 
-              dp.portfolio_url,
+          dp.portfolio_url,
 
-              dp.tier
-                AS designer_tier,
+          dp.tier
+            AS designer_tier,
 
-              COALESCE(
-                dp.avg_rating,
-                0
-              )
-                AS avg_rating,
+          COALESCE(
+            dp.avg_rating,
+            0
+          )
+            AS avg_rating,
 
-              COALESCE(
-                dp.total_completed_bookings,
-                0
-              )
-                AS total_completed_bookings,
+          COALESCE(
+            dp.total_completed_bookings,
+            0
+          )
+            AS total_completed_bookings,
 
-              cp.company_name,
+          cp.company_name,
 
-              cp.preferred_category
+          cp.preferred_category
 
-            FROM users u
+        FROM users u
 
-            LEFT JOIN designer_profiles dp
-              ON dp.user_id =
-                u.id
+        LEFT JOIN designer_profiles dp
+          ON dp.user_id =
+            u.id
 
-            LEFT JOIN creator_profiles cp
-              ON cp.user_id =
-                u.id
+        LEFT JOIN creator_profiles cp
+          ON cp.user_id =
+            u.id
 
-            WHERE
-              u.role IN (
-                'creator',
-                'designer'
-              )
+        WHERE
+          u.role IN (
+            'creator',
+            'designer'
+          )
 
-              AND (
-                u.role <>
-                  'designer'
+          AND (
+            u.role <>
+              'designer'
 
-                OR
+            OR
 
-                u.approval_status =
-                  'approved'
-              )
+            u.approval_status =
+              'approved'
+          )
 
-            ORDER BY
-              CASE
-                WHEN u.role =
-                  'designer'
-                  THEN
-                    COALESCE(
-                      dp.total_completed_bookings,
-                      0
-                    )
+        ORDER BY
+          CASE
+            WHEN u.role =
+              'designer'
+              THEN
+                COALESCE(
+                  dp.total_completed_bookings,
+                  0
+                )
 
-                ELSE 0
-              END DESC,
+            ELSE 0
+          END DESC,
 
-              u.created_at DESC
-          `,
+          u.created_at DESC
+      `,
     );
 
     /*
-      Keep this endpoint's historical ARRAY response shape
-      for older frontend consumers while removing private
-      information.
-      */
-
+     * Keep this endpoint's historical ARRAY response shape
+     * for older frontend consumers while removing private
+     * information.
+     */
     const users = result.rows.map((user) => {
       const role = normalizeRole(user.role);
 
@@ -543,21 +664,23 @@ exports.getAllUsers = async (req, res) => {
 
 GET
 /api/v1/users/:id
-=========================================================
-
-Public-safe response.
-
-Never returns:
-
-- email
-- approval status
-- password/authentication state
-- Stripe information
-- private Creator brand guidelines
-
-Unapproved Designer profiles are not publicly exposed.
 =========================================================*/
 
+/**
+ * Public-safe response.
+ *
+ * Never returns:
+ *
+ * - email
+ * - approval status
+ * - password/authentication state
+ * - Stripe information
+ * - private Creator brand guidelines
+ * - whatsapp_number
+ * - whatsapp_contact_enabled
+ *
+ * Unapproved Designer profiles are not publicly exposed.
+ */
 exports.getUserProfileById = async (req, res) => {
   const id = String(req.params?.id || "").trim();
 
@@ -568,54 +691,54 @@ exports.getUserProfileById = async (req, res) => {
   try {
     const result = await db.query(
       `
-            SELECT
-              u.id,
-              u.full_name,
-              u.role,
-              u.profile_image_url,
-              u.created_at,
+        SELECT
+          u.id,
+          u.full_name,
+          u.role,
+          u.profile_image_url,
+          u.created_at,
 
-              dp.bio,
-              dp.city,
-              dp.portfolio_url,
-              dp.tier,
-              dp.total_completed_bookings,
-              dp.avg_rating,
+          dp.bio,
+          dp.city,
+          dp.portfolio_url,
+          dp.tier,
+          dp.total_completed_bookings,
+          dp.avg_rating,
 
-              cp.company_name,
-              cp.preferred_category
+          cp.company_name,
+          cp.preferred_category
 
-            FROM users u
+        FROM users u
 
-            LEFT JOIN designer_profiles dp
-              ON dp.user_id =
-                u.id
+        LEFT JOIN designer_profiles dp
+          ON dp.user_id =
+            u.id
 
-            LEFT JOIN creator_profiles cp
-              ON cp.user_id =
-                u.id
+        LEFT JOIN creator_profiles cp
+          ON cp.user_id =
+            u.id
 
-            WHERE
-              u.id = $1
+        WHERE
+          u.id = $1
 
-              AND
-              u.role IN (
-                'creator',
-                'designer'
-              )
+          AND
+          u.role IN (
+            'creator',
+            'designer'
+          )
 
-              AND (
-                u.role <>
-                  'designer'
+          AND (
+            u.role <>
+              'designer'
 
-                OR
+            OR
 
-                u.approval_status =
-                  'approved'
-              )
+            u.approval_status =
+              'approved'
+          )
 
-            LIMIT 1
-          `,
+        LIMIT 1
+      `,
       [id],
     );
 
@@ -647,10 +770,9 @@ exports.getUserProfileById = async (req, res) => {
           city: profile.city,
 
           /*
-              Compatibility alias for existing Designer
-              public-profile UI.
-              */
-
+           * Compatibility alias for existing Designer
+           * public-profile UI.
+           */
           location: profile.city,
 
           portfolio_url: profile.portfolio_url,
@@ -699,45 +821,72 @@ exports.getUserProfileById = async (req, res) => {
 
 PUT
 /api/v1/users/profile
-=========================================================
-
-Supports:
-
-ALL ACCOUNT TYPES
----------------------------------------------------------
-
-- full_name
-- profile_image
-
-
-CREATOR
----------------------------------------------------------
-
-- company_name
-- preferred_category
-- default_dimensions
-- brand_guidelines_summary
-
-
-DESIGNER
----------------------------------------------------------
-
-- bio
-- location
-
-=========================================================
-TRANSACTION SAFETY
-=========================================================
-
-All related writes use one pg client:
-
-BEGIN
-→ users
-→ role profile
-→ final profile SELECT
-→ COMMIT
 =========================================================*/
 
+/**
+ * Supports:
+ *
+ * ALL ACCOUNT TYPES
+ * ---------------------------------------------------------
+ *
+ * - full_name
+ * - profile_image
+ * - whatsapp_number
+ * - whatsapp_contact_enabled
+ *
+ * CREATOR
+ * ---------------------------------------------------------
+ *
+ * - company_name
+ * - preferred_category
+ * - default_dimensions
+ * - brand_guidelines_summary
+ *
+ * DESIGNER
+ * ---------------------------------------------------------
+ *
+ * - bio
+ * - location
+ *
+ * =========================================================
+ * WHATSAPP PRIVACY
+ * =========================================================
+ *
+ * whatsapp_number:
+ *
+ * - optional
+ * - stored on users
+ * - must use E.164 international format when supplied
+ * - "" clears the number
+ *
+ * whatsapp_contact_enabled:
+ *
+ * - optional boolean
+ * - controls whether the account may later share the number
+ *   through an authorized active-booking contact endpoint
+ *
+ * A user cannot have:
+ *
+ * whatsapp_contact_enabled = TRUE
+ *
+ * while:
+ *
+ * whatsapp_number IS NULL
+ *
+ * =========================================================
+ * TRANSACTION SAFETY
+ * =========================================================
+ *
+ * All related writes use one pg client:
+ *
+ * BEGIN
+ * → lock users row
+ * → validate effective WhatsApp state
+ * → users
+ * → role profile
+ * → final private profile SELECT
+ * → COMMIT
+ */
 exports.updateProfile = async (req, res) => {
   const userId = req?.user?.id;
 
@@ -747,9 +896,9 @@ exports.updateProfile = async (req, res) => {
 
   const body = req.body || {};
 
-  /*=====================================================
-    Parse Basic User Field
-    =====================================================*/
+  /*=======================================================
+  Parse Basic User Field
+  =======================================================*/
 
   const fullName = parseBodyText(body, "full_name", {
     maxLength: MAX_NAME_LENGTH,
@@ -767,9 +916,56 @@ exports.updateProfile = async (req, res) => {
     return sendError(res, 400, "full_name must contain at least 2 characters.");
   }
 
-  /*=====================================================
-    Parse Creator Fields
-    =====================================================*/
+  /*=======================================================
+  Parse WhatsApp Fields
+  =======================================================*/
+
+  const whatsappNumber = parseBodyText(body, "whatsapp_number", {
+    maxLength: MAX_WHATSAPP_NUMBER_LENGTH,
+  });
+
+  if (whatsappNumber.error) {
+    return sendError(res, 400, whatsappNumber.error, "INVALID_WHATSAPP_NUMBER");
+  }
+
+  const whatsappContactEnabled = parseBodyBoolean(
+    body,
+    "whatsapp_contact_enabled",
+  );
+
+  if (whatsappContactEnabled.error) {
+    return sendError(
+      res,
+      400,
+      whatsappContactEnabled.error,
+      "INVALID_WHATSAPP_SETTING",
+    );
+  }
+
+  /*
+   * Only validate format when a non-empty number was
+   * actually supplied.
+   *
+   * An empty string is converted to null and means:
+   *
+   * clear my WhatsApp number.
+   */
+  if (
+    whatsappNumber.provided &&
+    whatsappNumber.value &&
+    !WHATSAPP_E164_REGEX.test(whatsappNumber.value)
+  ) {
+    return sendError(
+      res,
+      400,
+      "WhatsApp number must use international format, for example +9779812345678.",
+      "INVALID_WHATSAPP_NUMBER",
+    );
+  }
+
+  /*=======================================================
+  Parse Creator Fields
+  =======================================================*/
 
   const companyName = parseBodyText(body, "company_name", {
     maxLength: MAX_COMPANY_LENGTH,
@@ -789,9 +985,9 @@ exports.updateProfile = async (req, res) => {
     multiline: true,
   });
 
-  /*=====================================================
-    Parse Designer Fields
-    =====================================================*/
+  /*=======================================================
+  Parse Designer Fields
+  =======================================================*/
 
   const bio = parseBodyText(body, "bio", {
     maxLength: MAX_BIO_LENGTH,
@@ -823,11 +1019,11 @@ exports.updateProfile = async (req, res) => {
     return sendError(res, 400, invalidField.error);
   }
 
-  /*=====================================================
-    Standard Uploaded Profile Image
+  /*=======================================================
+  Standard Uploaded Profile Image
 
-    remote_avatar_url is intentionally NOT accepted.
-    =====================================================*/
+  remote_avatar_url is intentionally NOT accepted.
+  =======================================================*/
 
   const profileImageUrl = getUploadedProfileImage(req);
 
@@ -840,23 +1036,26 @@ exports.updateProfile = async (req, res) => {
 
     await client.query("BEGIN");
 
-    /*===================================================
-      Lock Current User / Obtain Authoritative Role
-      ===================================================*/
+    /*=====================================================
+    Lock Current User / Obtain Authoritative Role +
+    Current WhatsApp State
+    =====================================================*/
 
     const accountResult = await client.query(
       `
-            SELECT
-              id,
-              role
+          SELECT
+            id,
+            role,
+            whatsapp_number,
+            whatsapp_contact_enabled
 
-            FROM users
+          FROM users
 
-            WHERE id =
-              $1
+          WHERE id =
+            $1
 
-            FOR UPDATE
-          `,
+          FOR UPDATE
+        `,
       [userId],
     );
 
@@ -870,35 +1069,99 @@ exports.updateProfile = async (req, res) => {
 
     const userRole = normalizeRole(account.role);
 
-    /*===================================================
-      Update Shared User Record
-      ===================================================*/
+    /*=====================================================
+    Resolve Effective WhatsApp State
+    =====================================================*/
+
+    const effectiveWhatsappNumber = whatsappNumber.provided
+      ? whatsappNumber.value
+      : account.whatsapp_number || null;
+
+    const effectiveWhatsappEnabled = whatsappContactEnabled.provided
+      ? whatsappContactEnabled.value
+      : account.whatsapp_contact_enabled === true;
+
+    /*
+     * Prevent an impossible privacy state:
+     *
+     * sharing enabled
+     * but no number exists.
+     */
+    if (effectiveWhatsappEnabled && !effectiveWhatsappNumber) {
+      await rollbackQuietly(client);
+
+      return sendError(
+        res,
+        400,
+        "Add a WhatsApp number before enabling booking contact sharing.",
+        "WHATSAPP_NUMBER_REQUIRED",
+      );
+    }
+
+    /*
+     * Defense-in-depth.
+     *
+     * The DB constraint should already prevent an invalid
+     * stored number, but validate the final effective value
+     * before committing a profile change.
+     */
+    if (
+      effectiveWhatsappNumber &&
+      !WHATSAPP_E164_REGEX.test(effectiveWhatsappNumber)
+    ) {
+      await rollbackQuietly(client);
+
+      return sendError(
+        res,
+        400,
+        "WhatsApp number must use international format, for example +9779812345678.",
+        "INVALID_WHATSAPP_NUMBER",
+      );
+    }
+
+    /*=====================================================
+    Update Shared User Record
+    =====================================================*/
 
     await client.query(
       `
-          UPDATE users
+        UPDATE users
 
-          SET
-            full_name =
-              CASE
-                WHEN $1::boolean
-                  THEN $2
-                ELSE full_name
-              END,
+        SET
+          full_name =
+            CASE
+              WHEN $1::boolean
+                THEN $2
+              ELSE full_name
+            END,
 
-            profile_image_url =
-              CASE
-                WHEN $3::boolean
-                  THEN $4
-                ELSE profile_image_url
-              END,
+          profile_image_url =
+            CASE
+              WHEN $3::boolean
+                THEN $4
+              ELSE profile_image_url
+            END,
 
-            updated_at =
-              NOW()
+          whatsapp_number =
+            CASE
+              WHEN $5::boolean
+                THEN $6
+              ELSE whatsapp_number
+            END,
 
-          WHERE id =
-            $5
-        `,
+          whatsapp_contact_enabled =
+            CASE
+              WHEN $7::boolean
+                THEN $8
+              ELSE whatsapp_contact_enabled
+            END,
+
+          updated_at =
+            NOW()
+
+        WHERE id =
+          $9
+      `,
       [
         fullName.provided,
 
@@ -908,13 +1171,21 @@ exports.updateProfile = async (req, res) => {
 
         profileImageUrl,
 
+        whatsappNumber.provided,
+
+        whatsappNumber.value,
+
+        whatsappContactEnabled.provided,
+
+        whatsappContactEnabled.value,
+
         userId,
       ],
     );
 
-    /*===================================================
-      Creator Profile
-      ===================================================*/
+    /*=====================================================
+    Creator Profile
+    =====================================================*/
 
     if (userRole === "creator") {
       const creatorFieldProvided =
@@ -924,76 +1195,75 @@ exports.updateProfile = async (req, res) => {
         brandGuidelines.provided;
 
       if (creatorFieldProvided) {
-        /*
-          UPSERT protects against an unexpectedly missing
-          creator_profiles record while still preserving
-          fields omitted by the request.
-          */
-
+        /**
+         * UPSERT protects against an unexpectedly missing
+         * creator_profiles record while still preserving
+         * fields omitted by the request.
+         */
         await client.query(
           `
-              INSERT INTO creator_profiles (
-                user_id,
-                company_name,
-                preferred_category,
-                default_dimensions,
-                brand_guidelines_summary,
-                updated_at
-              )
+            INSERT INTO creator_profiles (
+              user_id,
+              company_name,
+              preferred_category,
+              default_dimensions,
+              brand_guidelines_summary,
+              updated_at
+            )
 
-              VALUES (
-                $1,
-                $2,
-                $3,
-                $4,
-                $5,
+            VALUES (
+              $1,
+              $2,
+              $3,
+              $4,
+              $5,
+              NOW()
+            )
+
+            ON CONFLICT (
+              user_id
+            )
+
+            DO UPDATE SET
+              company_name =
+                CASE
+                  WHEN $6::boolean
+                    THEN
+                      EXCLUDED.company_name
+                  ELSE
+                    creator_profiles.company_name
+                END,
+
+              preferred_category =
+                CASE
+                  WHEN $7::boolean
+                    THEN
+                      EXCLUDED.preferred_category
+                  ELSE
+                    creator_profiles.preferred_category
+                END,
+
+              default_dimensions =
+                CASE
+                  WHEN $8::boolean
+                    THEN
+                      EXCLUDED.default_dimensions
+                  ELSE
+                    creator_profiles.default_dimensions
+                END,
+
+              brand_guidelines_summary =
+                CASE
+                  WHEN $9::boolean
+                    THEN
+                      EXCLUDED.brand_guidelines_summary
+                  ELSE
+                    creator_profiles.brand_guidelines_summary
+                END,
+
+              updated_at =
                 NOW()
-              )
-
-              ON CONFLICT (
-                user_id
-              )
-
-              DO UPDATE SET
-                company_name =
-                  CASE
-                    WHEN $6::boolean
-                      THEN
-                        EXCLUDED.company_name
-                    ELSE
-                      creator_profiles.company_name
-                  END,
-
-                preferred_category =
-                  CASE
-                    WHEN $7::boolean
-                      THEN
-                        EXCLUDED.preferred_category
-                    ELSE
-                      creator_profiles.preferred_category
-                  END,
-
-                default_dimensions =
-                  CASE
-                    WHEN $8::boolean
-                      THEN
-                        EXCLUDED.default_dimensions
-                    ELSE
-                      creator_profiles.default_dimensions
-                  END,
-
-                brand_guidelines_summary =
-                  CASE
-                    WHEN $9::boolean
-                      THEN
-                        EXCLUDED.brand_guidelines_summary
-                    ELSE
-                      creator_profiles.brand_guidelines_summary
-                  END,
-
-                updated_at =
-                  NOW()
-            `,
+          `,
           [
             userId,
 
@@ -1017,9 +1287,9 @@ exports.updateProfile = async (req, res) => {
       }
     }
 
-    /*===================================================
-      Designer Profile
-      ===================================================*/
+    /*=====================================================
+    Designer Profile
+    =====================================================*/
 
     if (userRole === "designer") {
       const designerFieldProvided = bio.provided || location.provided;
@@ -1027,32 +1297,32 @@ exports.updateProfile = async (req, res) => {
       if (designerFieldProvided) {
         const designerUpdate = await client.query(
           `
-                UPDATE designer_profiles
+              UPDATE designer_profiles
 
-                SET
-                  bio =
-                    CASE
-                      WHEN $1::boolean
-                        THEN $2
-                      ELSE bio
-                    END,
+              SET
+                bio =
+                  CASE
+                    WHEN $1::boolean
+                      THEN $2
+                    ELSE bio
+                  END,
 
-                  city =
-                    CASE
-                      WHEN $3::boolean
-                        THEN $4
-                      ELSE city
-                    END,
+                city =
+                  CASE
+                    WHEN $3::boolean
+                      THEN $4
+                    ELSE city
+                  END,
 
-                  updated_at =
-                    NOW()
+                updated_at =
+                  NOW()
 
-                WHERE user_id =
-                  $5
+              WHERE user_id =
+                $5
 
-                RETURNING
-                  user_id
-              `,
+              RETURNING
+                user_id
+            `,
           [bio.provided, bio.value, location.provided, location.value, userId],
         );
 
@@ -1062,9 +1332,9 @@ exports.updateProfile = async (req, res) => {
       }
     }
 
-    /*===================================================
-      Return Fresh Private Profile
-      ===================================================*/
+    /*=====================================================
+    Return Fresh Private Profile
+    =====================================================*/
 
     const updatedProfile = await loadAuthenticatedProfile(client, userId);
 
@@ -1086,6 +1356,22 @@ exports.updateProfile = async (req, res) => {
 
     console.error("Profile update failed:", error);
 
+    /*
+     * PostgreSQL check constraint violation.
+     *
+     * This should normally be prevented by application
+     * validation, but return a clean response if the DB
+     * rejects an invalid WhatsApp number.
+     */
+    if (error?.code === "23514") {
+      return sendError(
+        res,
+        400,
+        "WhatsApp number must use valid international format.",
+        "INVALID_WHATSAPP_NUMBER",
+      );
+    }
+
     return sendError(res, 500, "The profile could not be updated.");
   } finally {
     client?.release();
@@ -1097,40 +1383,40 @@ exports.updateProfile = async (req, res) => {
 
 PUT
 /api/v1/users/security
-=========================================================
-
-Body:
-
-{
-  "currentPassword": "...",
-  "newPassword": "..."
-}
-
-SERVER RULES
-
-- authenticated account required
-- current password required
-- new password required
-- new password 8–128 characters
-- new password must differ from current password
-- current password must match stored hash
-- bcrypt cost 12
-- token_version increments after success
-
-=========================================================
-SESSION REVOCATION
-=========================================================
-
-After successful change:
-
-token_version = token_version + 1
-
-Any JWT issued with the previous version becomes invalid.
-
-The frontend should clear local authentication and require
-a new login.
 =========================================================*/
 
+/**
+ * Body:
+ *
+ * {
+ *   "currentPassword": "...",
+ *   "newPassword": "..."
+ * }
+ *
+ * SERVER RULES
+ *
+ * - authenticated account required
+ * - current password required
+ * - new password required
+ * - new password 8–128 characters
+ * - new password must differ from current password
+ * - current password must match stored hash
+ * - bcrypt cost 12
+ * - token_version increments after success
+ *
+ * =========================================================
+ * SESSION REVOCATION
+ * =========================================================
+ *
+ * After successful change:
+ *
+ * token_version = token_version + 1
+ *
+ * Any JWT issued with the previous version becomes invalid.
+ *
+ * The frontend should clear local authentication and require
+ * a new login.
+ */
 exports.updateSecurity = async (req, res) => {
   const userId = req?.user?.id;
 
@@ -1142,12 +1428,11 @@ exports.updateSecurity = async (req, res) => {
 
   const newPassword = req.body?.newPassword;
 
-  /*
-    Passwords are deliberately NOT trimmed.
-
-    Spaces can legitimately be part of a password.
-    */
-
+  /**
+   * Passwords are deliberately NOT trimmed.
+   *
+   * Spaces can legitimately be part of a password.
+   */
   if (typeof currentPassword !== "string" || currentPassword.length === 0) {
     return sendError(res, 400, "Current password is required.");
   }
@@ -1167,11 +1452,10 @@ exports.updateSecurity = async (req, res) => {
     );
   }
 
-  /*
-    Reasonable upper bound against pathological request
-    bodies for the current-password comparison.
-    */
-
+  /**
+   * Reasonable upper bound against pathological request
+   * bodies for the current-password comparison.
+   */
   if (currentPassword.length > 512) {
     return sendError(res, 400, "Current password is invalid.");
   }
@@ -1183,25 +1467,24 @@ exports.updateSecurity = async (req, res) => {
 
     await client.query("BEGIN");
 
-    /*
-      Row lock prevents concurrent password changes from
-      both validating against the same old password hash.
-      */
-
+    /**
+     * Row lock prevents concurrent password changes from
+     * both validating against the same old password hash.
+     */
     const userResult = await client.query(
       `
-            SELECT
-              id,
-              password_hash,
-              token_version
+          SELECT
+            id,
+            password_hash,
+            token_version
 
-            FROM users
+          FROM users
 
-            WHERE id =
-              $1
+          WHERE id =
+            $1
 
-            FOR UPDATE
-          `,
+          FOR UPDATE
+        `,
       [userId],
     );
 
@@ -1224,9 +1507,9 @@ exports.updateSecurity = async (req, res) => {
       );
     }
 
-    /*===================================================
-      Verify Current Password
-      ===================================================*/
+    /*=====================================================
+    Verify Current Password
+    =====================================================*/
 
     const currentMatches = await bcrypt.compare(
       currentPassword,
@@ -1239,9 +1522,9 @@ exports.updateSecurity = async (req, res) => {
       return sendError(res, 401, "Current password is incorrect.");
     }
 
-    /*===================================================
-      Reject Same Password
-      ===================================================*/
+    /*=====================================================
+    Reject Same Password
+    =====================================================*/
 
     const sameAsExisting = await bcrypt.compare(
       newPassword,
@@ -1258,39 +1541,39 @@ exports.updateSecurity = async (req, res) => {
       );
     }
 
-    /*===================================================
-      Hash New Password
-      ===================================================*/
+    /*=====================================================
+    Hash New Password
+    =====================================================*/
 
     const newHashedPassword = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
 
-    /*===================================================
-      Update Password + Revoke Existing JWTs
-      ===================================================*/
+    /*=====================================================
+    Update Password + Revoke Existing JWTs
+    =====================================================*/
 
     const updateResult = await client.query(
       `
-            UPDATE users
+          UPDATE users
 
-            SET
-              password_hash =
-                $1,
+          SET
+            password_hash =
+              $1,
 
-              token_version =
-                COALESCE(
-                  token_version,
-                  0
-                ) + 1,
+            token_version =
+              COALESCE(
+                token_version,
+                0
+              ) + 1,
 
-              updated_at =
-                NOW()
+            updated_at =
+              NOW()
 
-            WHERE id =
-              $2
+          WHERE id =
+            $2
 
-            RETURNING
-              token_version
-          `,
+          RETURNING
+            token_version
+        `,
       [newHashedPassword, userId],
     );
 

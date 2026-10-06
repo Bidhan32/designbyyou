@@ -4,158 +4,49 @@
 =========================================================
 DesignByYou
 Creator Studio
-Version 6.0
+Version 6.2
 =========================================================
 
 PURPOSE
 ---------------------------------------------------------
 
 Creator Studio lets a Creator save creative/reference work
-and publish it into the DesignByYou Showcase.
+with optional metadata and choose whether the saved asset
+is Private or Public.
 
-This page is NOT:
+Private:
+- saved to the Creator account
+- hidden from the public Showcase
 
-- ecommerce
-- a marketplace
-- a store
-- checkout
-- design purchasing
-- licensing
+Public:
+- saved to the Creator account
+- may appear in the DesignByYou Showcase
 
-=========================================================
-CREATIVE ASSET
-=========================================================
+This page is NOT ecommerce, checkout, purchasing, or
+licensing.
 
-A Creator Studio asset may contain:
+UPLOAD
+---------------------------------------------------------
 
-- preview image
+POST /api/v1/creators/studio/upload
+
+Optional multipart fields:
+- preview
 - title
 - description
-- creative format
-- database category
-- Showcase style
-- Showcase garment
-- Showcase occasions
+- style_category
+- format
+- category_id
+- showcase_term_ids
 - tags
-- editable/vector canvas state
+- canvas_state
 
-=========================================================
-DATABASE CATEGORY
-=========================================================
+Visibility:
+- visibility = "private" | "public"
 
-GET
-/api/v1/creators/studio/categories
-
-Returns:
-
-design_categories
-
-The selected UUID is submitted as:
-
-category_id
-
-and stored in:
-
-designs.category_id
-
-=========================================================
-SHOWCASE DISCOVERY
-=========================================================
-
-GET
-/api/v1/creator-showcase/discovery
-
-Returns:
-
-styles
-garments
-occasions
-trending
-
-The Creator selects:
-
-1 Style
-1 Garment
-0+ Occasions
-
-Selected term UUIDs are submitted as:
-
-showcase_term_ids
-
-The backend will validate and store them through:
-
-design_showcase_terms
-
-=========================================================
-LEGACY STYLE COMPATIBILITY
-=========================================================
-
-designs still contains:
-
-style_category
-
-For compatibility, this frontend also sends the selected
-database Style name as:
-
-style_category
-
-Example:
-
-Style UUID:
-51842132-...
-
-Style name:
-Minimalist
-
-style_category:
-Minimalist
-
-=========================================================
-UPLOAD
-=========================================================
-
-POST
-/api/v1/creators/studio/upload
-
-Multipart fields:
-
-preview
-title
-description
-style_category
-format
-category_id
-showcase_term_ids
-tags
-canvas_state
-
-=========================================================
-IMPORTANT
-=========================================================
-
-This frontend deliberately does NOT send:
-
-price
-base_price
-license_type
-sku
-checkout data
-commercial rights
-marketplace sale data
-
-=========================================================
-STUDIO BRIDGE
-=========================================================
-
-Store:
-
-useSketchStore
-
-Fields:
-
-pendingStudioImage
-setPendingStudioImage
-strokes
+The frontend deliberately does NOT send database flags such
+as is_public directly. The backend translates visibility
+into authoritative database state.
 =========================================================
 */
 
@@ -174,13 +65,14 @@ import {
   CheckCircle2,
   ChevronDown,
   FileImage,
+  Globe2,
   Image as ImageIcon,
   Layers3,
   Loader2,
+  Lock,
   Palette,
   Plus,
   RefreshCw,
-  Save,
   Sparkles,
   Tag,
   UploadCloud,
@@ -215,7 +107,12 @@ const MAX_TAG_LENGTH = 30;
 
 const MAX_TAGS = 12;
 
+const MAX_CANVAS_STATE_BYTES = 2 * 1024 * 1024;
+
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /*=========================================================
 Creative Formats
@@ -238,6 +135,36 @@ const FORMAT_OPTIONS = [
   },
 ];
 
+const ALLOWED_FORMAT_VALUES = new Set(
+  FORMAT_OPTIONS.map((option) => option.value),
+);
+
+/*=========================================================
+Visibility
+=========================================================*/
+
+const VISIBILITY_OPTIONS = [
+  {
+    value: "private",
+
+    label: "Private",
+
+    description: "Only you can see this asset in your Creator area.",
+  },
+
+  {
+    value: "public",
+
+    label: "Public",
+
+    description: "Visible to others through the DesignByYou Showcase.",
+  },
+];
+
+const ALLOWED_VISIBILITY_VALUES = new Set(
+  VISIBILITY_OPTIONS.map((option) => option.value),
+);
+
 /*=========================================================
 Initial Form
 =========================================================*/
@@ -247,7 +174,7 @@ const INITIAL_FORM_STATE = {
 
   description: "",
 
-  format: "sketch",
+  format: "",
 
   category_id: "",
 
@@ -256,18 +183,46 @@ const INITIAL_FORM_STATE = {
   garment_term_id: "",
 
   occasion_term_ids: [],
+
+  /*
+   * Privacy-first default.
+   */
+  visibility: "private",
 };
 
 /*=========================================================
 Helpers
 =========================================================*/
 
+function removeUnsafeControlCharacters(
+  value,
+  { preserveLineBreaks = false } = {},
+) {
+  const source = String(value ?? "");
+
+  if (preserveLineBreaks) {
+    return source
+      .replace(/\r\n?/g, "\n")
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "");
+  }
+
+  return source.replace(/[\u0000-\u001F\u007F]/g, " ");
+}
+
 function cleanText(value, fallback = "") {
-  const text = String(value ?? "")
-    .replace(/\s+/g, " ")
-    .trim();
+  const text = removeUnsafeControlCharacters(value).replace(/\s+/g, " ").trim();
 
   return text || fallback;
+}
+
+function cleanMultilineText(value) {
+  return removeUnsafeControlCharacters(value, {
+    preserveLineBreaks: true,
+  }).trim();
+}
+
+function isValidUuid(value) {
+  return UUID_PATTERN.test(String(value || "").trim());
 }
 
 function isCancelledRequest(error) {
@@ -289,6 +244,42 @@ function getErrorMessage(error, fallback) {
     error?.message ||
     fallback
   );
+}
+
+function isAllowedStudioImageUrl(value) {
+  const source = String(value || "").trim();
+
+  if (!source) {
+    return false;
+  }
+
+  if (/^data:image\/(?:jpeg|png|webp);base64,/i.test(source)) {
+    return true;
+  }
+
+  if (source.startsWith("blob:")) {
+    return true;
+  }
+
+  try {
+    const parsed = new URL(source, window.location.href);
+
+    if (parsed.protocol === "https:") {
+      return true;
+    }
+
+    if (parsed.protocol === "http:") {
+      return (
+        parsed.origin === window.location.origin ||
+        parsed.hostname === "localhost" ||
+        parsed.hostname === "127.0.0.1"
+      );
+    }
+  } catch {
+    return false;
+  }
+
+  return false;
 }
 
 /*=========================================================
@@ -475,6 +466,55 @@ function validateImageFile(file) {
   return true;
 }
 
+async function validateImageSignature(file) {
+  validateImageFile(file);
+
+  const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+
+  const mimeType = String(file.type || "").toLowerCase();
+
+  const isJpeg =
+    bytes.length >= 3 &&
+    bytes[0] === 0xff &&
+    bytes[1] === 0xd8 &&
+    bytes[2] === 0xff;
+
+  const isPng =
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a;
+
+  const isWebp =
+    bytes.length >= 12 &&
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50;
+
+  const signatureMatches =
+    (mimeType === "image/jpeg" && isJpeg) ||
+    (mimeType === "image/png" && isPng) ||
+    (mimeType === "image/webp" && isWebp);
+
+  if (!signatureMatches) {
+    throw new Error(
+      "The selected file does not match its declared image type.",
+    );
+  }
+
+  return true;
+}
+
 /*=========================================================
 Studio Image Conversion
 =========================================================*/
@@ -484,19 +524,11 @@ async function convertStudioImageToFile(source) {
     throw new Error("The Studio did not provide an image.");
   }
 
-  /*-------------------------------------------------------
-  File
-  -------------------------------------------------------*/
-
   if (source instanceof File) {
-    validateImageFile(source);
+    await validateImageSignature(source);
 
     return source;
   }
-
-  /*-------------------------------------------------------
-  Blob
-  -------------------------------------------------------*/
 
   if (source instanceof Blob) {
     const mimeType = source.type || "image/png";
@@ -518,14 +550,10 @@ async function convertStudioImageToFile(source) {
       },
     );
 
-    validateImageFile(file);
+    await validateImageSignature(file);
 
     return file;
   }
-
-  /*-------------------------------------------------------
-  Wrapper
-  -------------------------------------------------------*/
 
   if (typeof source === "object") {
     const nestedSource =
@@ -543,10 +571,6 @@ async function convertStudioImageToFile(source) {
     }
   }
 
-  /*-------------------------------------------------------
-  URL / Data URL
-  -------------------------------------------------------*/
-
   if (typeof source === "string") {
     const url = source.trim();
 
@@ -554,7 +578,23 @@ async function convertStudioImageToFile(source) {
       throw new Error("The Studio image is empty.");
     }
 
-    const response = await fetch(url);
+    if (!isAllowedStudioImageUrl(url)) {
+      throw new Error("The Studio image URL uses an unsupported source.");
+    }
+
+    const parsed =
+      url.startsWith("data:") || url.startsWith("blob:")
+        ? null
+        : new URL(url, window.location.href);
+
+    const response = await fetch(url, {
+      credentials:
+        parsed && parsed.origin === window.location.origin
+          ? "same-origin"
+          : "omit",
+
+      referrerPolicy: "no-referrer",
+    });
 
     if (!response.ok) {
       throw new Error("The Studio image could not be loaded.");
@@ -714,7 +754,7 @@ export default function CreatorUpload() {
   const [categoriesError, setCategoriesError] = useState("");
 
   /*=======================================================
-  Showcase Discovery
+  Discovery
   =======================================================*/
 
   const [discovery, setDiscovery] = useState({
@@ -770,7 +810,7 @@ export default function CreatorUpload() {
   const navigationTimerRef = useRef(null);
 
   /*=======================================================
-  Selected Database Category
+  Selected Category
   =======================================================*/
 
   const selectedCategory = useMemo(() => {
@@ -784,7 +824,7 @@ export default function CreatorUpload() {
   }, [categories, form.category_id]);
 
   /*=======================================================
-  Selected Showcase Style
+  Selected Style
   =======================================================*/
 
   const selectedStyle = useMemo(() => {
@@ -828,7 +868,7 @@ export default function CreatorUpload() {
   }, [discovery.occasions, form.occasion_term_ids]);
 
   /*=======================================================
-  Selected Showcase Term IDs
+  Showcase IDs
   =======================================================*/
 
   const selectedShowcaseTermIds = useMemo(() => {
@@ -871,16 +911,14 @@ export default function CreatorUpload() {
         signal: controller.signal,
       });
 
-      const loadedCategories = normalizeCategoriesResponse(response);
+      const loaded = normalizeCategoriesResponse(response);
 
-      setCategories(loadedCategories);
+      setCategories(loaded);
 
       setForm((current) => {
         if (
           current.category_id &&
-          loadedCategories.some(
-            (category) => category.id === current.category_id,
-          )
+          loaded.some((category) => category.id === current.category_id)
         ) {
           return current;
         }
@@ -892,7 +930,7 @@ export default function CreatorUpload() {
         };
       });
 
-      if (loadedCategories.length === 0) {
+      if (loaded.length === 0) {
         setCategoriesError(
           "No active creative categories are currently available.",
         );
@@ -915,7 +953,11 @@ export default function CreatorUpload() {
       }));
 
       setCategoriesError(
-        getErrorMessage(error, "Creative categories could not be loaded."),
+        getErrorMessage(
+          error,
+
+          "Creative categories could not be loaded.",
+        ),
       );
     } finally {
       if (categoriesControllerRef.current === controller) {
@@ -927,7 +969,7 @@ export default function CreatorUpload() {
   }, []);
 
   /*=======================================================
-  Load Showcase Discovery
+  Load Discovery
   =======================================================*/
 
   const loadDiscovery = useCallback(async () => {
@@ -949,11 +991,6 @@ export default function CreatorUpload() {
       const loaded = normalizeDiscoveryResponse(response);
 
       setDiscovery(loaded);
-
-      /*
-        Clear selections that have disappeared or been
-        disabled by Admin.
-        */
 
       setForm((current) => {
         const styleStillExists = loaded.styles.some(
@@ -1014,6 +1051,7 @@ export default function CreatorUpload() {
       setDiscoveryError(
         getErrorMessage(
           error,
+
           "Showcase discovery options could not be loaded.",
         ),
       );
@@ -1027,7 +1065,7 @@ export default function CreatorUpload() {
   }, []);
 
   /*=======================================================
-  Initial Metadata Load
+  Initial Metadata
   =======================================================*/
 
   useEffect(() => {
@@ -1043,7 +1081,7 @@ export default function CreatorUpload() {
   }, [loadCategories, loadDiscovery]);
 
   /*=======================================================
-  General Cleanup
+  Cleanup
   =======================================================*/
 
   useEffect(() => {
@@ -1057,7 +1095,7 @@ export default function CreatorUpload() {
   }, []);
 
   /*=======================================================
-  Studio Artwork Bridge
+  Studio Image Bridge
   =======================================================*/
 
   useEffect(() => {
@@ -1229,8 +1267,8 @@ export default function CreatorUpload() {
   Artwork
   =======================================================*/
 
-  const applySelectedImage = useCallback((file, source = "upload") => {
-    validateImageFile(file);
+  const applySelectedImage = useCallback(async (file, source = "upload") => {
+    await validateImageSignature(file);
 
     setDisplayImage(file);
 
@@ -1244,7 +1282,7 @@ export default function CreatorUpload() {
   }, []);
 
   const handleFileChange = useCallback(
-    (event) => {
+    async (event) => {
       const file = event.target.files?.[0];
 
       if (!file) {
@@ -1252,7 +1290,7 @@ export default function CreatorUpload() {
       }
 
       try {
-        applySelectedImage(file, "upload");
+        await applySelectedImage(file, "upload");
       } catch (error) {
         setErrorMsg(error?.message || "The selected image could not be used.");
 
@@ -1318,7 +1356,7 @@ export default function CreatorUpload() {
   }, []);
 
   const handleDrop = useCallback(
-    (event) => {
+    async (event) => {
       event.preventDefault();
 
       event.stopPropagation();
@@ -1344,7 +1382,7 @@ export default function CreatorUpload() {
       }
 
       try {
-        applySelectedImage(files[0], "upload");
+        await applySelectedImage(files[0], "upload");
       } catch (error) {
         setErrorMsg(error?.message || "The dropped image could not be used.");
       }
@@ -1377,7 +1415,7 @@ export default function CreatorUpload() {
   }, [loading, success]);
 
   /*=======================================================
-  Dimensions
+  Preview Dimensions
   =======================================================*/
 
   const handlePreviewLoad = useCallback((event) => {
@@ -1405,17 +1443,6 @@ export default function CreatorUpload() {
   const strokeCount = Array.isArray(strokes) ? strokes.length : 0;
 
   /*=======================================================
-  Metadata Ready
-  =======================================================*/
-
-  const metadataLoading = categoriesLoading || discoveryLoading;
-
-  const metadataUnavailable =
-    categories.length === 0 ||
-    discovery.styles.length === 0 ||
-    discovery.garments.length === 0;
-
-  /*=======================================================
   Submit
   =======================================================*/
 
@@ -1429,35 +1456,25 @@ export default function CreatorUpload() {
 
       setErrorMsg("");
 
-      /*-------------------------------------------------
-        Artwork
-        -------------------------------------------------*/
+      /*-----------------------------------------------
+          Optional artwork
+        -----------------------------------------------*/
 
-      if (!displayImage) {
-        setErrorMsg("Add artwork before saving this Studio asset.");
+      if (displayImage) {
+        try {
+          await validateImageSignature(displayImage);
+        } catch (error) {
+          setErrorMsg(error.message);
 
-        return;
+          return;
+        }
       }
 
-      try {
-        validateImageFile(displayImage);
-      } catch (error) {
-        setErrorMsg(error.message);
-
-        return;
-      }
-
-      /*-------------------------------------------------
-        Title
-        -------------------------------------------------*/
+      /*-----------------------------------------------
+          Optional text
+        -----------------------------------------------*/
 
       const title = cleanText(form.title);
-
-      if (title.length < 2) {
-        setErrorMsg("Title must contain at least 2 characters.");
-
-        return;
-      }
 
       if (title.length > MAX_TITLE_LENGTH) {
         setErrorMsg(`Title must not exceed ${MAX_TITLE_LENGTH} characters.`);
@@ -1465,17 +1482,7 @@ export default function CreatorUpload() {
         return;
       }
 
-      /*-------------------------------------------------
-        Description
-        -------------------------------------------------*/
-
-      const description = String(form.description || "").trim();
-
-      if (description.length < 10) {
-        setErrorMsg("Description must contain at least 10 characters.");
-
-        return;
-      }
+      const description = cleanMultilineText(form.description);
 
       if (description.length > MAX_DESCRIPTION_LENGTH) {
         setErrorMsg(
@@ -1485,130 +1492,150 @@ export default function CreatorUpload() {
         return;
       }
 
-      /*-------------------------------------------------
-        Categories
-        -------------------------------------------------*/
+      /*-----------------------------------------------
+          Visibility
+        -----------------------------------------------*/
 
-      if (categoriesLoading) {
-        setErrorMsg("Creative categories are still loading.");
+      const visibility = cleanText(form.visibility).toLowerCase();
 
-        return;
-      }
-
-      if (categoriesError || categories.length === 0) {
-        setErrorMsg("Creative categories are currently unavailable.");
+      if (!ALLOWED_VISIBILITY_VALUES.has(visibility)) {
+        setErrorMsg("Choose either Private or Public visibility.");
 
         return;
       }
+
+      /*-----------------------------------------------
+          Optional classification
+        -----------------------------------------------*/
+
+      const format = cleanText(form.format);
 
       const categoryId = cleanText(form.category_id);
 
-      if (!categoryId) {
-        setErrorMsg("Select a creative category.");
+      if (format && !ALLOWED_FORMAT_VALUES.has(format)) {
+        setErrorMsg("The selected creative format is invalid.");
 
         return;
       }
 
-      if (!categories.some((category) => category.id === categoryId)) {
-        setErrorMsg("The selected creative category is no longer available.");
+      if (categoryId) {
+        if (!isValidUuid(categoryId)) {
+          setErrorMsg("The selected creative category is invalid.");
+
+          return;
+        }
+
+        if (!categories.some((category) => category.id === categoryId)) {
+          setErrorMsg("The selected creative category is no longer available.");
+
+          return;
+        }
+      }
+
+      if (selectedShowcaseTermIds.some((id) => !isValidUuid(id))) {
+        setErrorMsg("One or more Showcase selections are invalid.");
 
         return;
       }
 
-      /*-------------------------------------------------
-        Discovery
-        -------------------------------------------------*/
-
-      if (discoveryLoading) {
-        setErrorMsg("Showcase discovery options are still loading.");
-
-        return;
-      }
-
-      if (
-        discoveryError ||
-        discovery.styles.length === 0 ||
-        discovery.garments.length === 0
-      ) {
-        setErrorMsg("Showcase discovery options are currently unavailable.");
-
-        return;
-      }
-
-      if (!selectedStyle) {
-        setErrorMsg("Select a Showcase style.");
-
-        return;
-      }
-
-      if (!selectedGarment) {
-        setErrorMsg("Select a garment type.");
-
-        return;
-      }
-
-      /*
-        Occasion is optional because some concepts are not
-        tied to a specific event or use case.
-        */
-
-      if (selectedShowcaseTermIds.length < 2) {
-        setErrorMsg("Select a Showcase style and garment type.");
-
-        return;
-      }
-
-      /*-------------------------------------------------
-        Tags
-        -------------------------------------------------*/
+      /*-----------------------------------------------
+          Tags / canvas
+        -----------------------------------------------*/
 
       const finalTags = uniqueTags([...tags, tagInput]);
 
-      /*-------------------------------------------------
-        Multipart
-        -------------------------------------------------*/
+      const canvasStateBytes = new Blob([serializedCanvasState]).size;
+
+      if (canvasStateBytes > MAX_CANVAS_STATE_BYTES) {
+        setErrorMsg("The editable Studio data is too large to save safely.");
+
+        return;
+      }
+
+      /*-----------------------------------------------
+          Multipart
+        -----------------------------------------------*/
 
       const formData = new FormData();
 
-      formData.append("title", title);
+      if (title) {
+        formData.append("title", title);
+      }
 
-      formData.append("description", description);
-
-      /*
-        Existing designs.style_category compatibility.
-
-        The value now comes from the database-managed
-        Showcase Style.
-        */
-
-      formData.append("style_category", selectedStyle.name);
-
-      formData.append("format", form.format);
-
-      formData.append("category_id", categoryId);
+      if (description) {
+        formData.append("description", description);
+      }
 
       /*
-        NEW:
+       * Legacy compatibility only.
+       *
+       * Backend does NOT trust this value.
+       * It derives style_category from validated
+       * Showcase terms.
+       */
 
-        Backend validates these UUIDs and inserts them into:
+      if (selectedStyle?.name) {
+        formData.append("style_category", selectedStyle.name);
+      }
 
-        design_showcase_terms
-        */
+      if (format) {
+        formData.append("format", format);
+      }
 
-      formData.append(
-        "showcase_term_ids",
-        JSON.stringify(selectedShowcaseTermIds),
-      );
+      if (categoryId) {
+        formData.append("category_id", categoryId);
+      }
 
-      formData.append("tags", JSON.stringify(finalTags));
+      if (selectedShowcaseTermIds.length > 0) {
+        formData.append(
+          "showcase_term_ids",
 
-      formData.append("canvas_state", serializedCanvasState);
+          JSON.stringify(selectedShowcaseTermIds),
+        );
+      }
 
-      formData.append("preview", displayImage);
+      if (finalTags.length > 0) {
+        formData.append(
+          "tags",
 
-      /*-------------------------------------------------
-        Request
-        -------------------------------------------------*/
+          JSON.stringify(finalTags),
+        );
+      }
+
+      if (serializedCanvasState && serializedCanvasState !== "[]") {
+        formData.append(
+          "canvas_state",
+
+          serializedCanvasState,
+        );
+      }
+
+      if (displayImage) {
+        formData.append(
+          "preview",
+
+          displayImage,
+        );
+      }
+
+      /*
+       * Security:
+       *
+       * Never send:
+       *
+       * is_public
+       * is_published
+       *
+       * Send only the user intent.
+       *
+       * Backend will map this to authoritative DB state.
+       */
+
+      formData.append("visibility", visibility);
+
+      /*-----------------------------------------------
+          Request
+        -----------------------------------------------*/
 
       const controller = new AbortController();
 
@@ -1618,11 +1645,9 @@ export default function CreatorUpload() {
 
       setUploadProgress(0);
 
-      const requestEndpoint = UPLOAD_ENDPOINT;
-
       try {
         await API.post(
-          requestEndpoint,
+          UPLOAD_ENDPOINT,
 
           formData,
 
@@ -1684,6 +1709,7 @@ export default function CreatorUpload() {
         setErrorMsg(
           getErrorMessage(
             error,
+
             "The Studio asset could not be saved. Please try again.",
           ),
         );
@@ -1697,17 +1723,10 @@ export default function CreatorUpload() {
     },
     [
       categories,
-      categoriesError,
-      categoriesLoading,
-      discovery.styles.length,
-      discovery.garments.length,
-      discoveryError,
-      discoveryLoading,
       displayImage,
       form,
       loading,
       navigate,
-      selectedGarment,
       selectedShowcaseTermIds,
       selectedStyle,
       serializedCanvasState,
@@ -1735,9 +1754,7 @@ export default function CreatorUpload() {
         dark:text-white
       "
     >
-      {/*===================================================
-      Ambient Background
-      ===================================================*/}
+      {/* Ambient background */}
 
       <div
         aria-hidden="true"
@@ -1793,9 +1810,7 @@ export default function CreatorUpload() {
           lg:pt-12
         "
       >
-        {/*=================================================
-        Header
-        =================================================*/}
+        {/* Header */}
 
         <section
           className="
@@ -1900,8 +1915,8 @@ export default function CreatorUpload() {
                   dark:text-white/40
                 "
               >
-                Add the creative context that helps people discover your work by
-                style, garment, and occasion.
+                Add as much or as little creative context as you want. Save it
+                privately for yourself or make it public in the Showcase.
               </p>
             </div>
 
@@ -1942,9 +1957,7 @@ export default function CreatorUpload() {
           </div>
         </section>
 
-        {/*=================================================
-        Information
-        =================================================*/}
+        {/* Information */}
 
         <section
           className="
@@ -1983,7 +1996,7 @@ export default function CreatorUpload() {
                 dark:text-violet-200
               "
             >
-              Showcase classification
+              Optional creative details
             </p>
 
             <p
@@ -1996,15 +2009,13 @@ export default function CreatorUpload() {
                 dark:text-violet-200/55
               "
             >
-              Style, garment and occasion selections help your design appear in
-              the correct Showcase discovery sections.
+              Categories and Showcase discovery terms are optional. If you
+              choose Public, these details help people discover your work.
             </p>
           </div>
         </section>
 
-        {/*=================================================
-        Success
-        =================================================*/}
+        {/* Success */}
 
         {success && (
           <div
@@ -2036,7 +2047,11 @@ export default function CreatorUpload() {
             />
 
             <div>
-              <p className="font-semibold">Studio asset saved successfully.</p>
+              <p className="font-semibold">
+                {form.visibility === "public"
+                  ? "Studio asset published successfully."
+                  : "Private Studio asset saved successfully."}
+              </p>
 
               <p
                 className="
@@ -2045,15 +2060,15 @@ export default function CreatorUpload() {
                   opacity-70
                 "
               >
-                Returning you to the Showcase…
+                {form.visibility === "public"
+                  ? "Your asset can appear in the public Showcase. Returning to Creator Hub…"
+                  : "Only you can see this asset for now. Returning to Creator Hub…"}
               </p>
             </div>
           </div>
         )}
 
-        {/*=================================================
-        Error
-        =================================================*/}
+        {/* Error */}
 
         {errorMsg && (
           <div
@@ -2088,9 +2103,7 @@ export default function CreatorUpload() {
           </div>
         )}
 
-        {/*=================================================
-        Form
-        =================================================*/}
+        {/* Form */}
 
         <form
           onSubmit={handleUploadSubmit}
@@ -2106,9 +2119,7 @@ export default function CreatorUpload() {
             dark:bg-[#090909]
           "
         >
-          {/*===============================================
-          Artwork
-          ===============================================*/}
+          {/* Artwork */}
 
           <section
             className="
@@ -2406,7 +2417,7 @@ export default function CreatorUpload() {
                     text-2xl
                   "
                 >
-                  {dragActive ? "Drop your artwork" : "Add artwork"}
+                  {dragActive ? "Drop your artwork" : "Add artwork (optional)"}
                 </h3>
 
                 <p
@@ -2420,8 +2431,9 @@ export default function CreatorUpload() {
                     dark:text-white/35
                   "
                 >
-                  Choose an image or drag one here. Artwork exported from the
-                  Studio is loaded automatically when available.
+                  Choose an image or drag one here if you want a preview.
+                  Artwork exported from the Studio is loaded automatically when
+                  available.
                 </p>
 
                 <div
@@ -2454,9 +2466,7 @@ export default function CreatorUpload() {
             )}
           </section>
 
-          {/*===============================================
-          Details
-          ===============================================*/}
+          {/* Details */}
 
           <section
             className="
@@ -2504,12 +2514,10 @@ export default function CreatorUpload() {
               {/* Title */}
 
               <label className="block">
-                <FieldLabel>Design Title</FieldLabel>
+                <FieldLabel optional>Design Title</FieldLabel>
 
                 <input
                   type="text"
-                  required
-                  minLength={2}
                   maxLength={MAX_TITLE_LENGTH}
                   value={form.title}
                   disabled={loading || success}
@@ -2546,10 +2554,10 @@ export default function CreatorUpload() {
                 />
               </label>
 
-              {/* Creative Format */}
+              {/* Format */}
 
               <label className="block">
-                <FieldLabel>Creative Format</FieldLabel>
+                <FieldLabel optional>Creative Format</FieldLabel>
 
                 <SelectField
                   value={form.format}
@@ -2558,6 +2566,8 @@ export default function CreatorUpload() {
                     handleInputChange("format", event.target.value)
                   }
                 >
+                  <option value="">Select a format (optional)</option>
+
                   {FORMAT_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -2566,12 +2576,10 @@ export default function CreatorUpload() {
                 </SelectField>
               </label>
 
-              {/*===========================================
-              General Category
-              ===========================================*/}
+              {/* Category */}
 
               <div>
-                <FieldLabel>Creative Category</FieldLabel>
+                <FieldLabel optional>Creative Category</FieldLabel>
 
                 <SelectField
                   value={form.category_id}
@@ -2590,7 +2598,7 @@ export default function CreatorUpload() {
                       ? "Loading categories…"
                       : categories.length === 0
                         ? "No categories available"
-                        : "Select a category"}
+                        : "Select a category (optional)"}
                   </option>
 
                   {categories.map((category) => (
@@ -2681,9 +2689,7 @@ export default function CreatorUpload() {
                 )}
               </div>
 
-              {/*===========================================
-              Showcase Discovery
-              ===========================================*/}
+              {/* Showcase Discovery */}
 
               <div
                 className="
@@ -2735,8 +2741,8 @@ export default function CreatorUpload() {
                         dark:text-white/35
                       "
                     >
-                      These selections determine where this design can be
-                      discovered in the Showcase.
+                      Optional selections can help Public work appear in more
+                      relevant Showcase sections.
                     </p>
                   </div>
                 </div>
@@ -2821,7 +2827,7 @@ export default function CreatorUpload() {
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {/* Style + Garment */}
+                    {/* Style + garment */}
 
                     <div
                       className="
@@ -2832,7 +2838,7 @@ export default function CreatorUpload() {
                       "
                     >
                       <label className="block">
-                        <FieldLabel>Style</FieldLabel>
+                        <FieldLabel optional>Style</FieldLabel>
 
                         <SelectField
                           value={form.style_term_id}
@@ -2844,7 +2850,7 @@ export default function CreatorUpload() {
                             )
                           }
                         >
-                          <option value="">Select a style</option>
+                          <option value="">Select a style (optional)</option>
 
                           {discovery.styles.map((style) => (
                             <option key={style.id} value={style.id}>
@@ -2855,7 +2861,7 @@ export default function CreatorUpload() {
                       </label>
 
                       <label className="block">
-                        <FieldLabel>Garment</FieldLabel>
+                        <FieldLabel optional>Garment</FieldLabel>
 
                         <SelectField
                           value={form.garment_term_id}
@@ -2867,11 +2873,12 @@ export default function CreatorUpload() {
                             )
                           }
                         >
-                          <option value="">Select a garment</option>
+                          <option value="">Select a garment (optional)</option>
 
                           {discovery.garments.map((garment) => (
                             <option key={garment.id} value={garment.id}>
                               {garment.emoji ? `${garment.emoji} ` : ""}
+
                               {garment.name}
                             </option>
                           ))}
@@ -2946,11 +2953,7 @@ export default function CreatorUpload() {
                                     gap-2
                                   "
                               >
-                                <span
-                                  className="
-                                      text-xl
-                                    "
-                                >
+                                <span className="text-xl">
                                   {occasion.emoji || "✦"}
                                 </span>
 
@@ -2988,7 +2991,7 @@ export default function CreatorUpload() {
                       </div>
                     </div>
 
-                    {/* Selected Summary */}
+                    {/* Summary */}
 
                     {(selectedStyle ||
                       selectedGarment ||
@@ -3070,9 +3073,7 @@ export default function CreatorUpload() {
                 )}
               </div>
 
-              {/*===========================================
-              Tags
-              ===========================================*/}
+              {/* Tags */}
 
               <div>
                 <FieldLabel optional>Tags</FieldLabel>
@@ -3141,6 +3142,7 @@ export default function CreatorUpload() {
                       loading ||
                       success
                     }
+                    aria-label="Add tag"
                     className="
                       grid
                       h-8
@@ -3214,6 +3216,7 @@ export default function CreatorUpload() {
                           type="button"
                           onClick={() => removeTag(tag)}
                           disabled={loading || success}
+                          aria-label={`Remove ${tag} tag`}
                           className="
                               grid
                               h-6
@@ -3230,16 +3233,12 @@ export default function CreatorUpload() {
                 )}
               </div>
 
-              {/*===========================================
-              Description
-              ===========================================*/}
+              {/* Description */}
 
               <label className="block">
-                <FieldLabel>Description</FieldLabel>
+                <FieldLabel optional>Description</FieldLabel>
 
                 <textarea
-                  required
-                  minLength={10}
                   maxLength={MAX_DESCRIPTION_LENGTH}
                   rows={7}
                   value={form.description}
@@ -3285,12 +3284,191 @@ export default function CreatorUpload() {
                   {form.description.length}/{MAX_DESCRIPTION_LENGTH}
                 </div>
               </label>
+
+              {/* Visibility */}
+
+              <div>
+                <FieldLabel>Visibility</FieldLabel>
+
+                <p
+                  className="
+                    mb-3
+                    text-[10px]
+                    leading-5
+                    text-slate-500
+
+                    dark:text-white/35
+                  "
+                >
+                  Choose who can see this asset. Private is the default. You
+                  will be able to change it later from your Creator profile.
+                </p>
+
+                <div
+                  className="
+                    grid
+                    gap-3
+
+                    sm:grid-cols-2
+                  "
+                >
+                  {VISIBILITY_OPTIONS.map((option) => {
+                    const selected = form.visibility === option.value;
+
+                    const Icon = option.value === "private" ? Lock : Globe2;
+
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        disabled={loading || success}
+                        aria-pressed={selected}
+                        onClick={() =>
+                          handleInputChange("visibility", option.value)
+                        }
+                        className={`
+                            relative
+                            overflow-hidden
+                            rounded-2xl
+                            border
+                            p-5
+                            text-left
+                            transition
+
+                            ${
+                              selected
+                                ? "border-[#D4AF37]/60 bg-[#D4AF37]/10 shadow-[0_12px_30px_rgba(212,175,55,0.08)]"
+                                : "border-slate-200 bg-slate-50 hover:border-[#D4AF37]/35 hover:bg-[#D4AF37]/[0.025] dark:border-white/10 dark:bg-white/[0.025]"
+                            }
+
+                            disabled:cursor-not-allowed
+                            disabled:opacity-60
+                          `}
+                      >
+                        <div
+                          className="
+                              flex
+                              items-start
+                              justify-between
+                              gap-4
+                            "
+                        >
+                          <span
+                            className={`
+                                grid
+                                h-11
+                                w-11
+                                shrink-0
+                                place-items-center
+                                rounded-xl
+                                border
+
+                                ${
+                                  selected
+                                    ? "border-[#D4AF37]/30 bg-[#D4AF37]/15 text-[#8A6814] dark:text-[#E4C65D]"
+                                    : "border-slate-200 bg-white text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/40"
+                                }
+                              `}
+                          >
+                            <Icon size={18} />
+                          </span>
+
+                          {selected && (
+                            <span
+                              className="
+                                  grid
+                                  h-6
+                                  w-6
+                                  shrink-0
+                                  place-items-center
+                                  rounded-full
+                                  bg-[#D4AF37]
+                                  text-black
+                                "
+                            >
+                              <Check size={13} />
+                            </span>
+                          )}
+                        </div>
+
+                        <p
+                          className="
+                              mt-4
+                              text-sm
+                              font-bold
+                              text-slate-900
+
+                              dark:text-white
+                            "
+                        >
+                          {option.label}
+                        </p>
+
+                        <p
+                          className="
+                              mt-1.5
+                              text-[10px]
+                              leading-5
+                              text-slate-500
+
+                              dark:text-white/35
+                            "
+                        >
+                          {option.description}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div
+                  className={`
+                    mt-3
+                    flex
+                    items-start
+                    gap-2.5
+                    rounded-xl
+                    border
+                    p-3.5
+                    text-[10px]
+                    leading-5
+
+                    ${
+                      form.visibility === "public"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/15 dark:bg-emerald-400/[0.06] dark:text-emerald-200"
+                        : "border-slate-200 bg-slate-50 text-slate-500 dark:border-white/10 dark:bg-white/[0.025] dark:text-white/40"
+                    }
+                  `}
+                >
+                  {form.visibility === "public" ? (
+                    <Globe2
+                      size={14}
+                      className="
+                        mt-0.5
+                        shrink-0
+                      "
+                    />
+                  ) : (
+                    <Lock
+                      size={14}
+                      className="
+                        mt-0.5
+                        shrink-0
+                      "
+                    />
+                  )}
+
+                  <span>
+                    {form.visibility === "public"
+                      ? "Public assets can be viewed by other users and can appear in Showcase discovery."
+                      : "Private assets stay saved to your account and are hidden from the public Showcase."}
+                  </span>
+                </div>
+              </div>
             </div>
           </section>
 
-          {/*===============================================
-          Footer
-          ===============================================*/}
+          {/* Footer */}
 
           <footer
             className="
@@ -3386,16 +3564,16 @@ export default function CreatorUpload() {
 
                 <span>
                   {strokeCount > 0
-                    ? `${strokeCount} editable Studio stroke${strokeCount === 1 ? "" : "s"} will be stored with this asset.`
-                    : "No editable Studio vector state is attached to this image."}
+                    ? `${strokeCount} editable Studio stroke${
+                        strokeCount === 1 ? "" : "s"
+                      } will be stored with this asset.`
+                    : "No editable Studio vector state is attached to this asset."}
                 </span>
               </div>
 
               <button
                 type="submit"
-                disabled={
-                  loading || success || metadataLoading || metadataUnavailable
-                }
+                disabled={loading || success}
                 className="
                   inline-flex
                   h-12
@@ -3436,15 +3614,15 @@ export default function CreatorUpload() {
                     <CheckCircle2 size={14} />
                     Saved
                   </>
-                ) : metadataLoading ? (
+                ) : form.visibility === "public" ? (
                   <>
-                    <Loader2 size={14} className="animate-spin" />
-                    Loading
+                    <Globe2 size={14} />
+                    Publish to Showcase
                   </>
                 ) : (
                   <>
-                    <Save size={14} />
-                    Save Studio Asset
+                    <Lock size={14} />
+                    Save Private Asset
                   </>
                 )}
               </button>

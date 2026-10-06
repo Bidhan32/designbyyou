@@ -4,7 +4,7 @@
 =========================================================
 DesignByYou
 Creator Layout
-Version 3.4
+Version 3.5
 =========================================================
 
 Architecture:
@@ -29,7 +29,7 @@ CreatorLayout owns:
 - account menu
 - quick "New Commission" access
 - Wallet & Billing access
-- Fashion Persona / Avatar Studio access
+- Fashion Persona / Avatar Studio access (temporarily feature-flagged)
 - Creator Studio access
 - Creator Sketch Studio access
 - shared Creator profile identity
@@ -81,18 +81,21 @@ immediately without requiring logout or page reload.
 PROFILE IDENTITY
 =========================================================
 
-ProfileIdentity decides between:
+Fashion Persona is temporarily hidden through:
 
-1. Fashion Persona
-   when:
-       avatar_config.useAsProfilePicture === true
+    SHOW_FASHION_PERSONA = false
 
-2. Standard profile image
+While disabled:
 
-3. Initials
+1. ProfileIdentity does NOT auto-load /avatar/me
+2. Standard profile image is used when available
+3. Initials remain the final fallback
+4. Avatar Studio is hidden from desktop/mobile account menus
+5. Direct /creator/avatar-studio navigation redirects to profile
 
-CreatorLayout therefore does NOT render its own account
-avatar implementation.
+The existing Avatar Studio navigation object and ProfileIdentity
+support remain in this file so the feature can be restored later
+by changing one feature flag.
 
 =========================================================
 CANONICAL CREATOR ROUTES
@@ -147,13 +150,14 @@ Wallet & Billing
 
 Fashion Persona
     /creator/avatar-studio
+    → temporarily hidden while SHOW_FASHION_PERSONA = false
 
 =========================================================
 */
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Navigate, Outlet, useLocation } from "react-router-dom";
 
 import {
   AlertCircle,
@@ -187,6 +191,24 @@ import API from "../api/axios";
 import ThemeToggle from "../components/ThemeToggle";
 
 import ProfileIdentity from "../pages/avatar/ProfileIdentity";
+
+/*=========================================================
+Temporary Feature Flags
+=========================================================*/
+
+/*
+ * Keep the Fashion Persona / Avatar Studio implementation in
+ * CreatorLayout, but hide the feature for now.
+ *
+ * false:
+ * - Avatar Studio is hidden from account navigation
+ * - ProfileIdentity does not auto-load avatar data
+ * - direct /creator/avatar-studio navigation redirects to profile
+ *
+ * true:
+ * - restores the existing layout integration without re-adding code
+ */
+const SHOW_FASHION_PERSONA = false;
 
 /*=========================================================
 Primary Navigation
@@ -291,6 +313,14 @@ const ACCOUNT_NAVIGATION = [
     description: "Customize your Fashion Persona.",
   },
 ];
+
+/*
+ * Keep Avatar Studio in the canonical navigation definition so
+ * the code is preserved. Only the rendered navigation is filtered.
+ */
+const VISIBLE_ACCOUNT_NAVIGATION = SHOW_FASHION_PERSONA
+  ? ACCOUNT_NAVIGATION
+  : ACCOUNT_NAVIGATION.filter((item) => item.path !== "/creator/avatar-studio");
 
 /*=========================================================
 Quick Actions
@@ -706,9 +736,12 @@ export default function CreatorLayout() {
   /*=======================================================
   Shared Creator Identity
 
-  key includes pathname so leaving Avatar Studio after a
-  successful save forces ProfileIdentity to read the current
-  canonical avatar preference again.
+  When Fashion Persona is hidden, ProfileIdentity receives
+  autoLoadAvatar=false so CreatorLayout does not request
+  /avatar/me and the standard profile image / initials are used.
+
+  When the feature is enabled again, the existing avatar-aware
+  ProfileIdentity behavior resumes automatically.
   =======================================================*/
 
   const renderCreatorIdentity = (
@@ -718,14 +751,30 @@ export default function CreatorLayout() {
     <ProfileIdentity
       key={`creator-${identityKey}-${identitySize}-${pathname}`}
       user={user}
+      avatar={SHOW_FASHION_PERSONA ? undefined : null}
       isOwnProfile
-      autoLoadAvatar
+      autoLoadAvatar={SHOW_FASHION_PERSONA}
       size={identitySize}
       shape="circle"
       showLoading={false}
       ariaLabel={`${creatorName} profile identity`}
     />
   );
+
+  /*=======================================================
+  Temporarily Hide Avatar Studio Route
+
+  The route remains registered elsewhere in the application,
+  but direct navigation is blocked here while the feature flag
+  is disabled. This keeps the implementation intact.
+  =======================================================*/
+
+  if (
+    !SHOW_FASHION_PERSONA &&
+    isPathActive(pathname, "/creator/avatar-studio")
+  ) {
+    return <Navigate to="/creator/profile" replace />;
+  }
 
   /*=======================================================
   Render
@@ -1661,7 +1710,7 @@ export default function CreatorLayout() {
                 {/* Account Links */}
 
                 <div className="p-2">
-                  {ACCOUNT_NAVIGATION.map((item) => {
+                  {VISIBLE_ACCOUNT_NAVIGATION.map((item) => {
                     const Icon = item.icon;
 
                     const active = isPathActive(pathname, item.path);
@@ -2310,7 +2359,7 @@ export default function CreatorLayout() {
               {/* Account */}
 
               <NavigationSection label="Account" bordered>
-                {ACCOUNT_NAVIGATION.map((item) => (
+                {VISIBLE_ACCOUNT_NAVIGATION.map((item) => (
                   <MobileNavigationItem
                     key={item.path}
                     item={item}

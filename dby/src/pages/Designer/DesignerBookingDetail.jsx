@@ -2,7 +2,7 @@
 =========================================================
 FashionVision Designer Booking Detail
 Designer Contract Workspace
-Version 2.3 - 2D + 3D + Virtual Try-On Garment Support
+Version 2.4 - 2D + 3D + Virtual Try-On + Private WhatsApp Contact
 =========================================================
 */
 
@@ -25,6 +25,7 @@ import {
   Hourglass,
   Loader2,
   LockKeyhole,
+  MessageCircle,
   MessageSquareText,
   PackageCheck,
   PlayCircle,
@@ -32,6 +33,7 @@ import {
   ShieldCheck,
   Sparkles,
   UploadCloud,
+  Video,
   X,
   XCircle,
 } from "lucide-react";
@@ -61,6 +63,28 @@ const BOOKING_STATUS = Object.freeze({
   DELIVERED: "delivered",
   CANCELLED: "cancelled",
 });
+
+/*=========================================================
+Private WhatsApp Booking Contact
+
+These states intentionally mirror the backend contact policy.
+
+Not included:
+- pending
+- funded
+- cancellation_pending
+- cancelled
+- legacy accepted/review/delivered
+=========================================================*/
+
+const WHATSAPP_CONTACT_STATUSES = new Set([
+  BOOKING_STATUS.AWAITING_PAYMENT,
+  BOOKING_STATUS.PROGRESS,
+  BOOKING_STATUS.REVIEW_PROTOTYPE,
+  BOOKING_STATUS.FINAL_PRODUCTION,
+  BOOKING_STATUS.REVIEW_FINAL,
+  BOOKING_STATUS.COMPLETED,
+]);
 
 const WORKFLOW_STEPS = Object.freeze([
   {
@@ -228,6 +252,29 @@ function getApiErrorMessage(error) {
     error?.message ||
     "The requested action could not be completed."
   );
+}
+
+/*=========================================================
+Safe WhatsApp URL Validation
+=========================================================*/
+
+function isSafeWhatsAppUrl(value) {
+  if (!value) {
+    return false;
+  }
+
+  try {
+    const url = new URL(value);
+
+    return (
+      url.protocol === "https:" &&
+      ["wa.me", "www.wa.me", "api.whatsapp.com"].includes(
+        url.hostname.toLowerCase(),
+      )
+    );
+  } catch {
+    return false;
+  }
 }
 
 function getStatusDetails(status) {
@@ -810,6 +857,20 @@ function DesignerBookingDetail() {
 
   const [copied, setCopied] = useState(false);
 
+  /*=======================================================
+  Private WhatsApp Contact State
+  =======================================================*/
+
+  const [whatsappContact, setWhatsappContact] = useState(null);
+
+  const [whatsappLoading, setWhatsappLoading] = useState(false);
+
+  const [whatsappError, setWhatsappError] = useState("");
+
+  /*=======================================================
+  Load Booking
+  =======================================================*/
+
   const fetchBooking = useCallback(
     async ({ silent = false } = {}) => {
       if (!currentUserId) {
@@ -881,9 +942,91 @@ function DesignerBookingDetail() {
     [currentUserId, id],
   );
 
+  /*=======================================================
+  Load Private WhatsApp Contact
+  =======================================================*/
+
+  const fetchWhatsAppContact = useCallback(async () => {
+    if (!id) {
+      return;
+    }
+
+    setWhatsappLoading(true);
+
+    setWhatsappError("");
+
+    try {
+      const response = await API.get(`/p2p-bookings/${id}/whatsapp-contact`);
+
+      const contact = response?.data?.data;
+
+      if (!contact || typeof contact !== "object" || Array.isArray(contact)) {
+        throw new Error("The WhatsApp contact response was invalid.");
+      }
+
+      setWhatsappContact(contact);
+    } catch (requestError) {
+      const responseCode = requestError?.response?.data?.code;
+
+      /*
+      A booking may change state after /pipeline was loaded.
+
+      If the backend says WhatsApp is unavailable because the
+      booking state changed, simply remove contact access.
+      */
+      if (
+        requestError?.response?.status === 409 &&
+        responseCode === "WHATSAPP_CONTACT_UNAVAILABLE"
+      ) {
+        setWhatsappContact(null);
+
+        setWhatsappError("");
+
+        return;
+      }
+
+      console.error(
+        "Unable to load private WhatsApp booking contact:",
+        requestError,
+      );
+
+      setWhatsappContact(null);
+
+      setWhatsappError(
+        requestError?.response?.data?.message ||
+          requestError?.message ||
+          "WhatsApp contact could not be loaded for this booking.",
+      );
+    } finally {
+      setWhatsappLoading(false);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchBooking();
   }, [fetchBooking]);
+
+  /*
+  Request private contact only after the booking reaches an
+  approved post-acceptance state.
+
+  WhatsApp information remains outside /pipeline.
+  */
+  useEffect(() => {
+    const currentStatus = normalizeStatus(booking?.status);
+
+    if (!booking?.id || !WHATSAPP_CONTACT_STATUSES.has(currentStatus)) {
+      setWhatsappContact(null);
+
+      setWhatsappError("");
+
+      setWhatsappLoading(false);
+
+      return;
+    }
+
+    void fetchWhatsAppContact();
+  }, [booking?.id, booking?.status, fetchWhatsAppContact]);
 
   useEffect(() => {
     if (!successMessage) {
@@ -894,6 +1037,10 @@ function DesignerBookingDetail() {
 
     return () => clearTimeout(timer);
   }, [successMessage]);
+
+  /*=======================================================
+  Generic Booking Action
+  =======================================================*/
 
   const runAction = useCallback(
     async ({ endpoint, payload, success }) => {
@@ -922,6 +1069,10 @@ function DesignerBookingDetail() {
     [fetchBooking],
   );
 
+  /*=======================================================
+  Accept
+  =======================================================*/
+
   const handleAccept = async () => {
     if (!booking || submitting) {
       return;
@@ -937,6 +1088,10 @@ function DesignerBookingDetail() {
         : "Contract accepted. Waiting for creator escrow funding.",
     });
   };
+
+  /*=======================================================
+  Modal Actions
+  =======================================================*/
 
   const handleModalSubmit = async ({
     reason,
@@ -1016,6 +1171,10 @@ function DesignerBookingDetail() {
     }
   };
 
+  /*=======================================================
+  Copy Booking ID
+  =======================================================*/
+
   const copyBookingId = async () => {
     if (!booking?.id) {
       return;
@@ -1031,6 +1190,29 @@ function DesignerBookingDetail() {
       setError("The booking ID could not be copied.");
     }
   };
+
+  /*=======================================================
+  Open WhatsApp
+
+  The raw phone number is intentionally not rendered.
+  The URL must also pass local WhatsApp host validation.
+  =======================================================*/
+
+  const handleOpenWhatsApp = (url) => {
+    if (!isSafeWhatsAppUrl(url)) {
+      setWhatsappError(
+        "The WhatsApp link is unavailable or invalid. Refresh the contact and try again.",
+      );
+
+      return;
+    }
+
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  /*=======================================================
+  Derived State
+  =======================================================*/
 
   const status = normalizeStatus(booking?.status);
 
@@ -1068,9 +1250,19 @@ function DesignerBookingDetail() {
   const projectTitle =
     booking?.reference_design_title || "Bespoke Design Booking";
 
+  const whatsappContactEligible = WHATSAPP_CONTACT_STATUSES.has(status);
+
+  const whatsappAvailable =
+    whatsappContactEligible &&
+    whatsappContact?.available === true &&
+    isSafeWhatsAppUrl(whatsappContact?.message_url);
+
+  const whatsappPartnerName =
+    whatsappContact?.participant?.display_name || creatorName;
+
   /*=====================================================
-    Loading
-    =====================================================*/
+  Loading
+  =====================================================*/
 
   if (loading) {
     return (
@@ -1089,8 +1281,8 @@ function DesignerBookingDetail() {
   }
 
   /*=====================================================
-    Booking unavailable
-    =====================================================*/
+  Booking unavailable
+  =====================================================*/
 
   if (!booking) {
     return (
@@ -1134,8 +1326,8 @@ function DesignerBookingDetail() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-slate-50 pb-20 text-slate-950 antialiased dark:bg-[#030303] dark:text-white">
       {/*=====================================================
-            Background
-            =====================================================*/}
+      Background
+      =====================================================*/}
 
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <div className="absolute -right-[12rem] -top-[14rem] h-[36rem] w-[36rem] rounded-full bg-[#D4AF37]/10 blur-[160px] dark:bg-[#D4AF37]/15" />
@@ -1146,8 +1338,8 @@ function DesignerBookingDetail() {
       </div>
 
       {/*=====================================================
-            Header
-            =====================================================*/}
+      Header
+      =====================================================*/}
 
       <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/80 backdrop-blur-2xl dark:border-white/5 dark:bg-[#070707]/80">
         <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-4 px-5 py-4 sm:px-8 lg:px-10">
@@ -1177,8 +1369,8 @@ function DesignerBookingDetail() {
 
       <div className="relative z-10 mx-auto max-w-[1280px] space-y-7 px-5 pt-8 sm:px-8 lg:px-10">
         {/*=================================================
-                Success message
-                =================================================*/}
+        Success message
+        =================================================*/}
 
         {successMessage && (
           <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200">
@@ -1199,8 +1391,8 @@ function DesignerBookingDetail() {
         )}
 
         {/*=================================================
-                Error message
-                =================================================*/}
+        Error message
+        =================================================*/}
 
         {error && (
           <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-800 shadow-sm dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">
@@ -1221,8 +1413,8 @@ function DesignerBookingDetail() {
         )}
 
         {/*=================================================
-                Contract hero
-                =================================================*/}
+        Contract hero
+        =================================================*/}
 
         <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-sm backdrop-blur dark:border-white/5 dark:bg-[#0A0A0A]/90 dark:shadow-2xl">
           <div className="grid gap-0 xl:grid-cols-[1fr_350px]">
@@ -1302,8 +1494,8 @@ function DesignerBookingDetail() {
             </div>
 
             {/*=========================================
-                        Current phase
-                        =========================================*/}
+            Current phase
+            =========================================*/}
 
             <aside className="border-t border-slate-200 bg-slate-50/80 p-6 dark:border-white/5 dark:bg-white/[0.025] sm:p-8 xl:border-l xl:border-t-0">
               <div
@@ -1386,8 +1578,8 @@ function DesignerBookingDetail() {
         </section>
 
         {/*=================================================
-                Workflow
-                =================================================*/}
+        Workflow
+        =================================================*/}
 
         <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur dark:border-white/5 dark:bg-[#0A0A0A]/90 sm:p-8">
           <div className="flex items-center justify-between gap-5">
@@ -1475,14 +1667,14 @@ function DesignerBookingDetail() {
         </section>
 
         {/*=================================================
-                Main details grid
-                =================================================*/}
+        Main details grid
+        =================================================*/}
 
         <div className="grid gap-7 xl:grid-cols-[1fr_360px]">
           <div className="space-y-7">
             {/*=========================================
-                        Project scope
-                        =========================================*/}
+            Project scope
+            =========================================*/}
 
             <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur dark:border-white/5 dark:bg-[#0A0A0A]/90 sm:p-8">
               <div className="flex items-center gap-3">
@@ -1526,8 +1718,8 @@ function DesignerBookingDetail() {
             </section>
 
             {/*=========================================
-                        Submitted Deliverables
-                        =========================================*/}
+            Submitted Deliverables
+            =========================================*/}
 
             <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur dark:border-white/5 dark:bg-[#0A0A0A]/90 sm:p-8">
               <div className="flex items-center gap-3">
@@ -1551,8 +1743,8 @@ function DesignerBookingDetail() {
               </p>
 
               {/*=====================================
-                            Prototype
-                            =====================================*/}
+              Prototype
+              =====================================*/}
 
               <article className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/5 dark:bg-white/[0.025]">
                 <div className="flex items-center justify-between gap-3">
@@ -1637,8 +1829,8 @@ function DesignerBookingDetail() {
               </article>
 
               {/*=====================================
-                            Final delivery
-                            =====================================*/}
+              Final delivery
+              =====================================*/}
 
               <article className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/5 dark:bg-white/[0.025]">
                 <div className="flex items-center justify-between gap-3">
@@ -1723,13 +1915,13 @@ function DesignerBookingDetail() {
           </div>
 
           {/*=================================================
-                    Sidebar
-                    =================================================*/}
+          Sidebar
+          =================================================*/}
 
           <aside className="space-y-7">
             {/*=========================================
-                        Contract summary
-                        =========================================*/}
+            Contract summary
+            =========================================*/}
 
             <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur dark:border-white/5 dark:bg-[#0A0A0A]/90">
               <div className="flex items-center gap-3">
@@ -1787,8 +1979,8 @@ function DesignerBookingDetail() {
             </section>
 
             {/*=========================================
-                        Schedule
-                        =========================================*/}
+            Schedule
+            =========================================*/}
 
             <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur dark:border-white/5 dark:bg-[#0A0A0A]/90">
               <div className="flex items-center gap-3">
@@ -1828,8 +2020,175 @@ function DesignerBookingDetail() {
             </section>
 
             {/*=========================================
-                        Cancellation record
-                        =========================================*/}
+            Private WhatsApp Contact
+            =========================================*/}
+
+            {whatsappContactEligible && (
+              <section className="overflow-hidden rounded-3xl border border-emerald-200 bg-white/90 shadow-sm backdrop-blur dark:border-emerald-400/15 dark:bg-[#0A0A0A]/90">
+                <div className="border-b border-emerald-100 bg-emerald-50/70 p-6 dark:border-emerald-400/10 dark:bg-emerald-400/[0.06]">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-emerald-200 bg-white text-emerald-700 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300">
+                        <MessageCircle size={20} />
+                      </div>
+
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
+                          Booking communication
+                        </p>
+
+                        <h2 className="mt-1 font-serif text-xl font-light text-slate-950 dark:text-white">
+                          WhatsApp Contact
+                        </h2>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => void fetchWhatsAppContact()}
+                      disabled={whatsappLoading}
+                      title="Refresh WhatsApp availability"
+                      aria-label="Refresh WhatsApp contact availability"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-200 bg-white text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-400/20 dark:bg-white/5 dark:text-emerald-300 dark:hover:bg-emerald-400/10"
+                    >
+                      <RefreshCw
+                        size={14}
+                        className={whatsappLoading ? "animate-spin" : ""}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-6">
+                  {whatsappLoading ? (
+                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500 dark:border-white/5 dark:bg-white/[0.025] dark:text-white/40">
+                      <Loader2
+                        size={17}
+                        className="shrink-0 animate-spin text-emerald-600 dark:text-emerald-300"
+                      />
+
+                      <p>Checking private booking contact availability...</p>
+                    </div>
+                  ) : whatsappError ? (
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-400/20 dark:bg-rose-400/10">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle
+                          size={17}
+                          className="mt-0.5 shrink-0 text-rose-700 dark:text-rose-300"
+                        />
+
+                        <div>
+                          <p className="text-sm font-semibold text-rose-900 dark:text-rose-100">
+                            Contact could not be loaded
+                          </p>
+
+                          <p className="mt-1 text-xs leading-5 text-rose-700/80 dark:text-rose-200/70">
+                            {whatsappError}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : whatsappAvailable ? (
+                    <div className="space-y-4">
+                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-400/15 dark:bg-emerald-400/[0.06]">
+                        <div className="flex items-start gap-3">
+                          <CheckCircle2
+                            size={18}
+                            className="mt-0.5 shrink-0 text-emerald-700 dark:text-emerald-300"
+                          />
+
+                          <div>
+                            <p className="text-sm font-semibold text-emerald-950 dark:text-emerald-100">
+                              {whatsappPartnerName} is available on WhatsApp
+                            </p>
+
+                            <p className="mt-1 text-xs leading-5 text-emerald-800/70 dark:text-emerald-200/60">
+                              The Creator has chosen to share WhatsApp contact
+                              through this booking. The raw phone number is not
+                              displayed on this page.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleOpenWhatsApp(whatsappContact?.message_url)
+                          }
+                          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-[9px] font-black uppercase tracking-[0.17em] text-white shadow-[0_12px_28px_rgba(5,150,105,0.16)] transition hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-500/15 dark:bg-emerald-500 dark:hover:bg-emerald-400"
+                        >
+                          <MessageCircle size={16} />
+                          Message on WhatsApp
+                          <ExternalLink size={14} />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleOpenWhatsApp(whatsappContact?.video_call_url)
+                          }
+                          disabled={
+                            !isSafeWhatsAppUrl(whatsappContact?.video_call_url)
+                          }
+                          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 text-[9px] font-black uppercase tracking-[0.17em] text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200 dark:hover:bg-emerald-400/15"
+                        >
+                          <Video size={16} />
+                          Open WhatsApp for Video Call
+                          <ExternalLink size={14} />
+                        </button>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/5 dark:bg-white/[0.025]">
+                        <p className="text-xs leading-5 text-slate-500 dark:text-white/40">
+                          {whatsappContact?.video_call_instruction ||
+                            "Open the WhatsApp chat, then use WhatsApp's video icon to start a video call."}
+                        </p>
+                      </div>
+
+                      <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-400/15 dark:bg-amber-400/[0.06]">
+                        <ShieldCheck
+                          size={17}
+                          className="mt-0.5 shrink-0 text-amber-700 dark:text-amber-300"
+                        />
+
+                        <p className="text-xs leading-5 text-amber-800/80 dark:text-amber-100/60">
+                          Use WhatsApp for communication or call coordination
+                          only. Keep acceptance, revisions, milestone
+                          submissions, cancellations, payments and payout
+                          decisions inside DesignByYou.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/5 dark:bg-white/[0.025]">
+                      <div className="flex items-start gap-3">
+                        <LockKeyhole
+                          size={17}
+                          className="mt-0.5 shrink-0 text-slate-500 dark:text-white/35"
+                        />
+
+                        <div>
+                          <p className="text-sm font-semibold text-slate-800 dark:text-white/70">
+                            WhatsApp contact unavailable
+                          </p>
+
+                          <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-white/40">
+                            {whatsappContact?.message ||
+                              "WhatsApp contact is not available for this booking."}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {/*=========================================
+            Cancellation record
+            =========================================*/}
 
             {(booking.cancellation_reason || booking.cancelled_at) && (
               <section className="rounded-3xl border border-rose-200 bg-rose-50 p-6 shadow-sm dark:border-rose-400/20 dark:bg-rose-400/10">
@@ -1856,8 +2215,8 @@ function DesignerBookingDetail() {
       </div>
 
       {/*=====================================================
-            Action modal
-            =====================================================*/}
+      Action modal
+      =====================================================*/}
 
       <ActionModal
         mode={modalMode}

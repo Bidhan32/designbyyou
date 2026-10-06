@@ -1,85 +1,114 @@
 "use strict";
 
-/*
-=========================================================
-DesignByYou / FashionVision
-P2P Booking Routes
-Secure Escrow, Refund and Milestone Workflow
-Version 3.3
-=========================================================
-
-SECURITY MODEL
----------------------------------------------------------
-
-CREATOR
-
-Creator accounts require:
-
-- authentication
-- creator role
-
-Creator accounts DO NOT require admin approval.
-
-A NEW booking/payment commitment additionally requires:
-
-- verified email
-
-
-DESIGNER
-
-Designer accounts require:
-
-- authentication
-- designer role
-
-A Designer may receive NEW bookings only when the
-controller confirms:
-
-- role = designer
-- approval_status = approved
-- is_email_verified = true
-
-Accepting or actively performing work additionally requires:
-
-- approved account
-- verified email
-
-
-EXISTING FINANCIAL RECOVERY
-
-Existing booking reconciliation, cancellation, rejection,
-refund recovery, Creator review, and final escrow release
-must not become inaccessible merely because account
-verification/approval state changes after money is already
-involved.
-
-=========================================================
-GLOBAL SUSPENSION
-=========================================================
-
-The protect middleware blocks suspended accounts globally.
-
-Therefore:
-
-approval_status = suspended
-
-cannot access protected application routes.
-
-This is enforced centrally in authMiddleware.js.
-
-=========================================================
-IMPORTANT
-=========================================================
-
-Stripe webhook routes are NOT defined here.
-
-P2P Stripe events continue through:
-
-POST
-/api/v1/webhooks/stripe
-
-=========================================================
-*/
+/**
+ * =========================================================
+ * DesignByYou / FashionVision
+ * P2P Booking Routes
+ * Secure Escrow, Refund, Milestone and Booking Contact Workflow
+ * Version 3.4
+ * =========================================================
+ *
+ * SECURITY MODEL
+ * ---------------------------------------------------------
+ *
+ * CREATOR
+ *
+ * Creator accounts require:
+ *
+ * - authentication
+ * - creator role
+ *
+ * Creator accounts DO NOT require admin approval.
+ *
+ * A NEW booking/payment commitment additionally requires:
+ *
+ * - verified email
+ *
+ *
+ * DESIGNER
+ *
+ * Designer accounts require:
+ *
+ * - authentication
+ * - designer role
+ *
+ * A Designer may receive NEW bookings only when the
+ * controller confirms:
+ *
+ * - role = designer
+ * - approval_status = approved
+ * - is_email_verified = true
+ *
+ * Accepting or actively performing work additionally requires:
+ *
+ * - approved account
+ * - verified email
+ *
+ *
+ * EXISTING FINANCIAL RECOVERY
+ *
+ * Existing booking reconciliation, cancellation, rejection,
+ * refund recovery, Creator review, and final escrow release
+ * must not become inaccessible merely because account
+ * verification/approval state changes after money is already
+ * involved.
+ *
+ *
+ * WHATSAPP BOOKING CONTACT
+ *
+ * WhatsApp contact is private account data.
+ *
+ * It is NEVER returned by:
+ *
+ * - /pipeline
+ * - /designers
+ * - public profile routes
+ * - Showcase routes
+ *
+ * It is available only through:
+ *
+ * GET /:id/whatsapp-contact
+ *
+ * The controller verifies:
+ *
+ * - authenticated user
+ * - requester is the booking Creator OR assigned Designer
+ * - booking is in an allowed post-acceptance state
+ * - the OTHER participant opted in
+ * - the stored number is valid
+ *
+ * No administrator bypass is permitted for private WhatsApp
+ * contact retrieval.
+ *
+ *
+ * =========================================================
+ * GLOBAL SUSPENSION
+ * =========================================================
+ *
+ * The protect middleware blocks suspended accounts globally.
+ *
+ * Therefore:
+ *
+ * approval_status = suspended
+ *
+ * cannot access protected application routes.
+ *
+ * This is enforced centrally in authMiddleware.js.
+ *
+ *
+ * =========================================================
+ * IMPORTANT
+ * =========================================================
+ *
+ * Stripe webhook routes are NOT defined here.
+ *
+ * P2P Stripe events continue through:
+ *
+ * POST
+ * /api/v1/webhooks/stripe
+ *
+ * =========================================================
+ */
 
 const express = require("express");
 
@@ -98,50 +127,50 @@ const {
 
 const router = express.Router();
 
-/*=========================================================
-Reusable Middleware Groups
-=========================================================*/
+/* =========================================================
+   Reusable Middleware Groups
+   ========================================================= */
 
-/*
----------------------------------------------------------
-Creator Base Access
-
-Used for EXISTING Creator booking actions.
-
-Creator accounts DO NOT require admin approval.
-
-Current verified-email state is intentionally not required
-for EXISTING financial recovery / workflow actions where
-blocking access could strand an existing booking.
----------------------------------------------------------
-*/
+/**
+ * ---------------------------------------------------------
+ * Creator Base Access
+ *
+ * Used for EXISTING Creator booking actions.
+ *
+ * Creator accounts DO NOT require admin approval.
+ *
+ * Current verified-email state is intentionally not required
+ * for EXISTING financial recovery / workflow actions where
+ * blocking access could strand an existing booking.
+ * ---------------------------------------------------------
+ */
 
 const creatorAccess = [protect, authorize("creator")];
 
-/*
----------------------------------------------------------
-New Creator Booking Access
-
-Creating a booking also creates/reuses a Stripe
-PaymentIntent.
-
-This is a NEW external financial commitment.
-
-Requires:
-
-- authenticated Creator
-- Creator role
-- verified Creator email
-
-Creator admin approval is intentionally NOT required.
-
-The controller separately validates the selected Designer:
-
-- designer role
-- approved account
-- verified email
----------------------------------------------------------
-*/
+/**
+ * ---------------------------------------------------------
+ * New Creator Booking Access
+ *
+ * Creating a booking also creates/reuses a Stripe
+ * PaymentIntent.
+ *
+ * This is a NEW external financial commitment.
+ *
+ * Requires:
+ *
+ * - authenticated Creator
+ * - Creator role
+ * - verified Creator email
+ *
+ * Creator admin approval is intentionally NOT required.
+ *
+ * The controller separately validates the selected Designer:
+ *
+ * - designer role
+ * - approved account
+ * - verified email
+ * ---------------------------------------------------------
+ */
 
 const newCreatorBookingAccess = [
   protect,
@@ -149,38 +178,38 @@ const newCreatorBookingAccess = [
   requireVerifiedEmail,
 ];
 
-/*
----------------------------------------------------------
-Designer Base Access
-
-Used where access to an EXISTING financial booking must
-remain available even if approval/email state changes.
-
-Examples:
-
-- rejecting existing work
-- refund/cancellation recovery
----------------------------------------------------------
-*/
+/**
+ * ---------------------------------------------------------
+ * Designer Base Access
+ *
+ * Used where access to an EXISTING financial booking must
+ * remain available even if approval/email state changes.
+ *
+ * Examples:
+ *
+ * - rejecting existing work
+ * - refund/cancellation recovery
+ * ---------------------------------------------------------
+ */
 
 const designerAccess = [protect, authorize("designer")];
 
-/*
----------------------------------------------------------
-Approved Designer Work Access
-
-Used when the Designer accepts or actively performs work.
-
-Requires:
-
-- authenticated Designer
-- Designer role
-- approved account
-- verified email
-
-Suspended accounts are already blocked by protect.
----------------------------------------------------------
-*/
+/**
+ * ---------------------------------------------------------
+ * Approved Designer Work Access
+ *
+ * Used when the Designer accepts or actively performs work.
+ *
+ * Requires:
+ *
+ * - authenticated Designer
+ * - Designer role
+ * - approved account
+ * - verified email
+ *
+ * Suspended accounts are already blocked by protect.
+ * ---------------------------------------------------------
+ */
 
 const approvedDesignerAccess = [
   protect,
@@ -189,785 +218,843 @@ const approvedDesignerAccess = [
   requireVerifiedEmail,
 ];
 
-/*=========================================================
-1. Static Routes
-=========================================================
+/* =========================================================
+   1. Static Routes
+   =========================================================
 
-IMPORTANT:
+   IMPORTANT:
 
-Static routes must remain ABOVE routes beginning with:
+   Static routes must remain ABOVE routes beginning with:
 
-/:id
+   /:id
 
-Otherwise Express could interpret:
+   Otherwise Express could interpret:
 
-/pipeline
-/designers
-/verify-escrow
+   /pipeline
+   /designers
+   /verify-escrow
 
-as booking IDs.
-=========================================================*/
+   as booking IDs.
+   ========================================================= */
 
-/*=========================================================
-Authenticated Booking Pipeline
+/* =========================================================
+   Authenticated Booking Pipeline
 
-GET
-/api/v1/p2p-bookings/pipeline
-=========================================================
+   GET
+   /api/v1/p2p-bookings/pipeline
+   =========================================================
 
-The controller returns only bookings where the
-authenticated user is:
+   The controller returns only bookings where the
+   authenticated user is:
 
-- the Creator
-OR
-- the assigned Designer
+   - the Creator
 
-The frontend must not send or trust a localStorage user ID
-for authorization.
+   OR
 
-Requires only authentication because this is an EXISTING
-booking view and may be needed for financial recovery.
-=========================================================*/
+   - the assigned Designer
 
-router.get(
-  "/pipeline",
+   The frontend must not send or trust a localStorage user ID
+   for authorization.
 
-  protect,
+   Requires only authentication because this is an EXISTING
+   booking view and may be needed for financial recovery.
 
-  p2pController.getUnifiedPeerPipeline,
-);
+   IMPORTANT:
 
-/*=========================================================
-Safe Designer Booking Directory
+   WhatsApp number and WhatsApp-sharing preference are NOT
+   returned by this route.
+   ========================================================= */
 
-GET
-/api/v1/p2p-bookings/designers
-=========================================================
+router.get("/pipeline", protect, p2pController.getUnifiedPeerPipeline);
 
-Creator-facing list of Designers currently eligible for
-NEW booking discovery.
+/* =========================================================
+   Safe Designer Booking Directory
 
-The controller returns only Designers satisfying:
+   GET
+   /api/v1/p2p-bookings/designers
+   =========================================================
 
-role = designer
-approval_status = approved
-is_email_verified = TRUE
+   Creator-facing list of Designers currently eligible for
+   NEW booking discovery.
 
-The controller intentionally exposes only safe directory
-fields.
+   The controller returns only Designers satisfying:
 
-It does NOT expose:
+   role = designer
+   approval_status = approved
+   is_email_verified = TRUE
 
-- email
-- is_email_verified
-- password/authentication data
-- Stripe identities
-- payout information
-- private financial information
+   The controller intentionally exposes only safe directory
+   fields.
 
-IMPORTANT:
+   It does NOT expose:
 
-The selected Designer is validated AGAIN inside
-createP2PBooking before any booking or Stripe financial
-commitment is accepted.
+   - email
+   - is_email_verified
+   - WhatsApp number
+   - WhatsApp sharing preference
+   - password/authentication data
+   - Stripe identities
+   - payout information
+   - private financial information
 
-The Designer is also revalidated transactionally during
-booking creation to close race conditions.
-=========================================================*/
+   IMPORTANT:
 
-router.get(
-  "/designers",
+   The selected Designer is validated AGAIN inside
+   createP2PBooking before any booking or Stripe financial
+   commitment is accepted.
 
-  ...creatorAccess,
+   The Designer is also revalidated transactionally during
+   booking creation to close race conditions.
+   ========================================================= */
 
-  p2pController.getAvailableDesigners,
-);
+router.get("/designers", ...creatorAccess, p2pController.getAvailableDesigners);
 
-/*=========================================================
-Create New P2P Booking
+/* =========================================================
+   Create New P2P Booking
 
-POST
-/api/v1/p2p-bookings/create
-=========================================================
+   POST
+   /api/v1/p2p-bookings/create
+   =========================================================
 
-Creates:
+   Creates:
 
-booking
-    ↓
-Stripe PaymentIntent
+   booking
+      ↓
+   Stripe PaymentIntent
 
-A stable client_request_id UUID must be generated by the
-frontend and reused for retries of the SAME logical booking.
+   A stable client_request_id UUID must be generated by the
+   frontend and reused for retries of the SAME logical booking.
 
-Example:
+   Example:
 
-{
-  "client_request_id":
-    "550e8400-e29b-41d4-a716-446655440000",
+   {
+     "client_request_id":
+       "550e8400-e29b-41d4-a716-446655440000",
 
-  "receiver_id":
-    "designer-uuid",
+     "receiver_id":
+       "designer-uuid",
 
-  "design_id":
-    "optional-design-uuid",
+     "design_id":
+       "optional-design-uuid",
 
-  "brief_text":
-    "Project requirements...",
+     "brief_text":
+       "Project requirements...",
 
-  "agreed_price":
-    100,
+     "agreed_price":
+       100,
 
-  "deadline":
-    "2026-09-20T23:59:59.999Z",
+     "deadline":
+       "2026-09-20T23:59:59.999Z",
 
-  "scheduled_at":
-    "2026-09-10T12:00:00.000Z",
+     "scheduled_at":
+       "2026-09-10T12:00:00.000Z",
 
-  "booking_type":
-    "commission"
-}
+     "booking_type":
+       "commission"
+   }
 
-booking_type may internally be:
+   booking_type may internally be:
 
-commission
-marketplace
+   commission
+   marketplace
 
-"marketplace" is retained only as a legacy/internal origin
-value for bookings initiated from a published Showcase
-design.
+   "marketplace" is retained only as a legacy/internal origin
+   value for bookings initiated from a published Showcase
+   design.
 
-Creator-facing UI should describe this as a:
+   Creator-facing UI should describe this as a:
 
-Showcase Commission
+   Showcase Commission
 
-not a product/store purchase.
+   not a product/store purchase.
 
-=========================================================
-NEW BOOKING SECURITY
-=========================================================
+   =========================================================
+   NEW BOOKING SECURITY
+   =========================================================
 
-Requires:
+   Requires:
 
-protect
-→ Creator role
-→ verified Creator email
-→ rate limiter
-→ controller validation
+   protect
+   → Creator role
+   → verified Creator email
+   → rate limiter
+   → controller validation
 
-Controller additionally requires the selected Designer to
-currently satisfy:
+   Controller additionally requires the selected Designer to
+   currently satisfy:
 
-role = designer
-approval_status = approved
-is_email_verified = TRUE
+   role = designer
+   approval_status = approved
+   is_email_verified = TRUE
 
-The controller also re-checks Designer eligibility inside
-the database transaction before committing the booking.
+   The controller also re-checks Designer eligibility inside
+   the database transaction before committing the booking.
 
-Does NOT require Creator admin approval.
-=========================================================*/
+   Does NOT require Creator admin approval.
+   ========================================================= */
 
 router.post(
   "/create",
-
   ...newCreatorBookingAccess,
-
   p2pBookingCreateLimiter,
-
   p2pController.createP2PBooking,
 );
 
-/*=========================================================
-Verify / Reconcile Stripe Escrow
+/* =========================================================
+   Verify / Reconcile Stripe Escrow
 
-POST
-/api/v1/p2p-bookings/verify-escrow
-=========================================================
+   POST
+   /api/v1/p2p-bookings/verify-escrow
+   =========================================================
 
-Body:
+   Body:
 
-{
-  "bookingId":
-    "booking-uuid"
-}
+   {
+     "bookingId":
+       "booking-uuid"
+   }
 
-IMPORTANT:
+   IMPORTANT:
 
-This does NOT trust the browser saying:
+   This does NOT trust the browser saying:
 
-"payment succeeded"
+   "payment succeeded"
 
-The controller retrieves the real PaymentIntent from
-Stripe and verifies:
+   The controller retrieves the real PaymentIntent from
+   Stripe and verifies:
 
-- booking ownership/admin authorization
-- PaymentIntent identity
-- Stripe succeeded status
-- transaction purpose
-- Creator ID
-- Designer ID
-- booking ID
-- client_request_id
-- currency
-- base amount
-- connection fee
-- total amount received
+   - booking ownership/admin authorization
+   - PaymentIntent identity
+   - Stripe succeeded status
+   - transaction purpose
+   - Creator ID
+   - Designer ID
+   - booking ID
+   - client_request_id
+   - currency
+   - base amount
+   - connection fee
+   - total amount received
 
-Only then may escrow be secured.
+   Only then may escrow be secured.
 
-=========================================================
-WHY NO EMAIL-VERIFICATION MIDDLEWARE?
-=========================================================
+   =========================================================
+   WHY NO EMAIL-VERIFICATION MIDDLEWARE?
+   =========================================================
 
-Stripe may already have charged the Creator.
+   Stripe may already have charged the Creator.
 
-If email verification changes after payment, we must still
-allow reconciliation of EXISTING money rather than strand
-the booking.
+   If email verification changes after payment, we must still
+   allow reconciliation of EXISTING money rather than strand
+   the booking.
 
-Controller authorization remains authoritative.
-=========================================================*/
+   Controller authorization remains authoritative.
+   ========================================================= */
 
-router.post(
-  "/verify-escrow",
+router.post("/verify-escrow", protect, p2pController.verifyEscrowPayment);
 
-  protect,
+/* =========================================================
+   2. Private Booking Contact
+   ========================================================= */
 
-  p2pController.verifyEscrowPayment,
-);
+/* =========================================================
+   Secure WhatsApp Booking Contact
 
-/*=========================================================
-2. Designer Contract Decisions
-=========================================================*/
+   GET
+   /api/v1/p2p-bookings/:id/whatsapp-contact
+   =========================================================
 
-/*=========================================================
-Designer Accepts Booking
+   PURPOSE:
 
-POST
-/api/v1/p2p-bookings/:id/accept
-=========================================================
+   Allows one booking participant to retrieve the OTHER
+   participant's WhatsApp contact only after the booking has
+   reached an eligible post-acceptance state.
 
-When escrow is already funded:
+   Requires:
 
-funded
-→ progress
+   - protect
 
-When escrow is not funded:
+   Controller then verifies:
 
-pending
-→ awaiting_payment
+   - valid booking ID
+   - booking exists
+   - requester is exactly booking.creator_id
+     OR booking.designer_id
+   - booking status allows contact
+   - partner exists with expected role
+   - partner explicitly enabled WhatsApp sharing
+   - partner number passes E.164 validation
 
-Requires:
+   IMPORTANT:
 
-- Designer authentication
-- Designer role
-- approved Designer account
-- verified email
+   There is intentionally NO:
 
-Accepting the project is a NEW work commitment.
+   authorize("creator")
+   authorize("designer")
 
-Suspended Designers are blocked globally by protect.
-=========================================================*/
+   middleware here because BOTH booking roles may call this
+   same endpoint.
+
+   The controller performs the exact participant check.
+
+   There is also intentionally NO admin bypass.
+
+   Allowed states:
+
+   awaiting_payment
+   progress
+   review_prototype
+   final_production
+   review_final
+   completed
+
+   Blocked states include:
+
+   pending
+   funded
+   cancellation_pending
+   refund_pending
+   refund_failed
+   cancelled
+   accepted (legacy)
+
+   "funded" remains blocked because payment may occur BEFORE
+   Designer acceptance.
+
+   The response may contain a private phone number, so the
+   controller also sends no-store cache headers.
+
+   This route must never be replaced by adding WhatsApp data
+   to /pipeline.
+   ========================================================= */
+
+router.get("/:id/whatsapp-contact", protect, p2pController.getWhatsAppContact);
+
+/* =========================================================
+   3. Designer Contract Decisions
+   ========================================================= */
+
+/* =========================================================
+   Designer Accepts Booking
+
+   POST
+   /api/v1/p2p-bookings/:id/accept
+   =========================================================
+
+   When escrow is already funded:
+
+   funded
+   → progress
+
+   When escrow is not funded:
+
+   pending
+   → awaiting_payment
+
+   Requires:
+
+   - Designer authentication
+   - Designer role
+   - approved Designer account
+   - verified email
+
+   Accepting the project is a NEW work commitment.
+
+   Suspended Designers are blocked globally by protect.
+   ========================================================= */
 
 router.post(
   "/:id/accept",
-
   ...approvedDesignerAccess,
-
   p2pController.acceptProject,
 );
 
-/*=========================================================
-Designer Rejects Booking
+/* =========================================================
+   Designer Rejects Booking
 
-POST
-/api/v1/p2p-bookings/:id/reject
-=========================================================
+   POST
+   /api/v1/p2p-bookings/:id/reject
+   =========================================================
 
-Body:
+   Body:
 
-{
-  "reason":
-    "Optional rejection reason"
-}
+   {
+     "reason":
+       "Optional rejection reason"
+   }
 
-May result in:
+   May result in:
 
-UNPAID
----------------------------------------------------------
+   UNPAID
+   ---------------------------------------------------------
 
-PaymentIntent cancellation
-→ booking cancelled
+   PaymentIntent cancellation
+   → booking cancelled
 
 
-FUNDED
----------------------------------------------------------
+   FUNDED
+   ---------------------------------------------------------
 
-Stripe refund
-→ refund_pending
-→ cancelled
+   Stripe refund
+   → refund_pending
+   → cancelled
 
-or:
+   or:
 
-→ refund_failed
+   → refund_failed
 
-=========================================================
-WHY BASE DESIGNER ACCESS?
-=========================================================
+   =========================================================
+   WHY BASE DESIGNER ACCESS?
+   =========================================================
 
-Rejecting an EXISTING financial booking may be necessary to
-cancel/refund Creator money.
+   Rejecting an EXISTING financial booking may be necessary to
+   cancel/refund Creator money.
 
-If the Designer later loses approval or email verification,
-financial recovery must not become impossible.
+   If the Designer later loses approval or email verification,
+   financial recovery must not become impossible.
 
-The controller verifies that the authenticated Designer is
-actually assigned to the booking.
+   The controller verifies that the authenticated Designer is
+   actually assigned to the booking.
 
-NOTE:
+   NOTE:
 
-A globally suspended account is still blocked by protect.
-=========================================================*/
+   A globally suspended account is still blocked by protect.
+   ========================================================= */
 
-router.post(
-  "/:id/reject",
+router.post("/:id/reject", ...designerAccess, p2pController.rejectProject);
 
-  ...designerAccess,
+/* =========================================================
+   4. Prototype Milestone
+   ========================================================= */
 
-  p2pController.rejectProject,
-);
+/* =========================================================
+   Designer Submits Prototype
 
-/*=========================================================
-3. Prototype Milestone
-=========================================================*/
+   POST
+   /api/v1/p2p-bookings/:id/submit-prototype
+   =========================================================
 
-/*=========================================================
-Designer Submits Prototype
+   Body:
 
-POST
-/api/v1/p2p-bookings/:id/submit-prototype
-=========================================================
+   {
+     "file_url":
+       "https://example.com/prototype-file",
 
-Body:
+     "message":
+       "Optional prototype notes",
 
-{
-  "file_url":
-    "https://example.com/prototype-file",
+     "tryon_image_url":
+       "Optional clean garment image URL"
+   }
 
-  "message":
-    "Optional prototype notes"
-}
+   Requires:
 
-Requires:
-
-- assigned Designer
-- approved Designer
-- verified email
-- funded escrow
-- valid booking workflow state
-=========================================================*/
+   - assigned Designer
+   - approved Designer
+   - verified email
+   - funded escrow
+   - valid booking workflow state
+   ========================================================= */
 
 router.post(
   "/:id/submit-prototype",
-
   ...approvedDesignerAccess,
-
   p2pController.submitPrototype,
 );
 
-/*=========================================================
-Creator Approves Prototype
+/* =========================================================
+   Creator Approves Prototype
 
-POST
-/api/v1/p2p-bookings/:id/approve-prototype
-=========================================================
+   POST
+   /api/v1/p2p-bookings/:id/approve-prototype
+   =========================================================
 
-Workflow:
+   Workflow:
 
-review_prototype
-→ final_production
+   review_prototype
+   → final_production
 
-This acts on an EXISTING funded booking.
+   This acts on an EXISTING funded booking.
 
-Therefore Creator admin approval and current email
-verification are intentionally NOT required.
+   Therefore Creator admin approval and current email
+   verification are intentionally NOT required.
 
-The controller verifies:
+   The controller verifies:
 
-- Creator owns the booking
-- escrow is funded
-- booking is in the correct workflow state
-=========================================================*/
+   - Creator owns the booking
+   - escrow is funded
+   - booking is in the correct workflow state
+   ========================================================= */
 
 router.post(
   "/:id/approve-prototype",
-
   ...creatorAccess,
-
   p2pController.approvePrototype,
 );
 
-/*=========================================================
-4. Final Deliverable Milestone
-=========================================================*/
+/* =========================================================
+   5. Final Deliverable Milestone
+   ========================================================= */
 
-/*=========================================================
-Designer Submits Final Deliverables
+/* =========================================================
+   Designer Submits Final Deliverables
 
-POST
-/api/v1/p2p-bookings/:id/submit-final
-=========================================================
+   POST
+   /api/v1/p2p-bookings/:id/submit-final
+   =========================================================
 
-Body:
+   Body:
 
-{
-  "file_url":
-    "https://example.com/final-delivery-file",
+   {
+     "file_url":
+       "https://example.com/final-delivery-file",
 
-  "message":
-    "Optional final-delivery notes"
-}
+     "message":
+       "Optional final-delivery notes",
 
-Workflow:
+     "tryon_image_url":
+       "Optional clean final garment image URL"
+   }
 
-final_production
-→ review_final
+   Workflow:
 
-Requires:
+   final_production
+   → review_final
 
-- assigned Designer
-- approved account
-- verified email
-- funded escrow
-=========================================================*/
+   Requires:
+
+   - assigned Designer
+   - approved account
+   - verified email
+   - funded escrow
+   ========================================================= */
 
 router.post(
   "/:id/submit-final",
-
   ...approvedDesignerAccess,
-
   p2pController.submitFinalDeliverables,
 );
 
-/*=========================================================
-Creator Requests Revision
+/* =========================================================
+   Creator Requests Revision
 
-POST
-/api/v1/p2p-bookings/:id/request-revision
-=========================================================
+   POST
+   /api/v1/p2p-bookings/:id/request-revision
+   =========================================================
 
-Body:
+   Body:
 
-{
-  "notes":
-    "Describe the required changes"
-}
+   {
+     "notes":
+       "Describe the required changes"
+   }
 
-Possible workflow:
+   Possible workflow:
 
-review_prototype
-→ progress
+   review_prototype
+   → progress
 
-or:
+   or:
 
-review_final
-→ final_production
+   review_final
+   → final_production
 
-The frontend does NOT control the resulting status.
+   The frontend does NOT control the resulting status.
 
-The controller determines the correct workflow transition.
+   The controller determines the correct workflow transition.
 
-Existing funded booking operation:
+   Existing funded booking operation:
 
-- no Creator approval requirement
-- no current verified-email requirement
-=========================================================*/
+   - no Creator approval requirement
+   - no current verified-email requirement
+   ========================================================= */
 
 router.post(
   "/:id/request-revision",
-
   ...creatorAccess,
-
   p2pController.requestRevision,
 );
 
-/*=========================================================
-5. Final Approval / Internal Escrow Release
-=========================================================*/
+/* =========================================================
+   6. Final Approval / Internal Escrow Release
+   ========================================================= */
 
-/*=========================================================
-Creator Releases Designer Earnings
+/* =========================================================
+   Creator Releases Designer Earnings
 
-POST
-/api/v1/p2p-bookings/:id/release
-=========================================================
+   POST
+   /api/v1/p2p-bookings/:id/release
+   =========================================================
 
-IMPORTANT:
+   IMPORTANT:
 
-This is NOT a Stripe Connect payout.
+   This is NOT a Stripe Connect payout.
 
-This operation moves the Designer's EXISTING booking escrow:
+   This operation moves the Designer's EXISTING booking escrow:
 
-designer_wallets.pending_escrow_balance
-        ↓
-designer_wallets.available_balance
+   designer_wallets.pending_escrow_balance
+           ↓
+   designer_wallets.available_balance
 
-The Designer may later withdraw eligible available wallet
-funds through the separate Designer Finance / Stripe
-Connect system.
+   The Designer may later withdraw eligible available wallet
+   funds through the separate Designer Finance payout system.
 
-=========================================================
-WHY NO VERIFIED-EMAIL GATE?
-=========================================================
+   =========================================================
+   WHY NO VERIFIED-EMAIL GATE?
+   =========================================================
 
-The Creator is finalizing EXISTING reserved escrow.
+   The Creator is finalizing EXISTING reserved escrow.
 
-Blocking this because the Creator's verification status
-changed could strand the Designer's earned money.
+   Blocking this because the Creator's verification status
+   changed could strand the Designer's earned money.
 
-The controller verifies:
+   The controller verifies:
 
-- Creator ownership
-- review_final state
-- funded escrow
-- wallet balances
-- commission calculation
-- idempotent transaction record
-=========================================================*/
+   - Creator ownership
+   - review_final state
+   - funded escrow
+   - wallet balances
+   - tier commission calculation
+   - idempotent transaction record
+   ========================================================= */
 
-router.post(
-  "/:id/release",
+router.post("/:id/release", ...creatorAccess, p2pController.releaseP2PPayout);
 
-  ...creatorAccess,
+/* =========================================================
+   7. Cancellation / Refund
+   ========================================================= */
 
-  p2pController.releaseP2PPayout,
-);
+/* =========================================================
+   Participant Requests Cancellation
 
-/*=========================================================
-6. Cancellation / Refund
-=========================================================*/
+   POST
+   /api/v1/p2p-bookings/:id/cancel
+   =========================================================
 
-/*=========================================================
-Participant Requests Cancellation
+   Body:
 
-POST
-/api/v1/p2p-bookings/:id/cancel
-=========================================================
+   {
+     "reason":
+       "Required cancellation reason"
+   }
 
-Body:
+   May be requested by:
 
-{
-  "reason":
-    "Required cancellation reason"
-}
+   - booking Creator
+   - assigned Designer
+   - administrator
 
-May be requested by:
+   The controller performs participant authorization.
 
-- booking Creator
-- assigned Designer
-- administrator
+   =========================================================
+   AUTOMATIC PARTICIPANT CANCELLATION
+   =========================================================
 
-The controller performs participant authorization.
+   Only available before work begins:
 
-=========================================================
-AUTOMATIC PARTICIPANT CANCELLATION
-=========================================================
+   pending
+   awaiting_payment
+   funded
 
-Only available before work begins:
+   Later workflow states require administrator/dispute
+   handling.
 
-pending
-awaiting_payment
-funded
+   =========================================================
+   FINANCIAL RECOVERY RULE
+   =========================================================
 
-Later workflow states require administrator/dispute
-handling.
+   This route intentionally uses only:
 
-=========================================================
-FINANCIAL RECOVERY RULE
-=========================================================
+   protect
 
-This route intentionally uses only:
+   and lets the controller determine authorization.
 
-protect
+   It intentionally does NOT require:
 
-and lets the controller determine authorization.
+   - Creator admin approval
+   - Designer current approval
+   - current verified email
 
-It intentionally does NOT require:
+   An account-state change must not prevent cancellation or
+   refund reconciliation of an EXISTING financial booking.
 
-- Creator admin approval
-- Designer current approval
-- current verified email
+   NOTE:
 
-An account-state change must not prevent cancellation or
-refund reconciliation of an EXISTING financial booking.
+   Suspended users remain globally blocked by protect.
+   ========================================================= */
 
-NOTE:
+router.post("/:id/cancel", protect, p2pController.requestCancellation);
 
-Suspended users remain globally blocked by protect.
-=========================================================*/
+/* =========================================================
+   Route Summary
+   =========================================================
 
-router.post(
-  "/:id/cancel",
+   READ
+   ---------------------------------------------------------
 
-  protect,
+   GET
+   /pipeline
 
-  p2pController.requestCancellation,
-);
+   Requires:
+   authenticated user
 
-/*=========================================================
-Route Summary
-=========================================================
 
-READ
----------------------------------------------------------
+   GET
+   /designers
 
-GET
-/pipeline
+   Requires:
+   authenticated Creator
 
-Requires:
-authenticated user
+   Controller returns only:
+   approved + verified Designers
 
 
-GET
-/designers
+   GET
+   /:id/whatsapp-contact
 
-Requires:
-authenticated Creator
+   Requires:
+   authentication
 
-Controller returns only:
-approved + verified Designers
+   Controller performs:
+   exact Creator/Designer participant authorization
+   allowed-status enforcement
+   partner consent validation
 
+   Does NOT expose contact through:
+   /pipeline
+   /designers
 
-NEW CREATOR BOOKING
----------------------------------------------------------
 
-POST
-/create
+   NEW CREATOR BOOKING
+   ---------------------------------------------------------
 
-Requires:
-authenticated Creator
-verified Creator email
+   POST
+   /create
 
-Controller additionally requires:
-eligible Designer
-approved Designer
-verified Designer email
+   Requires:
+   authenticated Creator
+   verified Creator email
 
-Does NOT require:
-Creator admin approval
+   Controller additionally requires:
+   eligible Designer
+   approved Designer
+   verified Designer email
 
+   Does NOT require:
+   Creator admin approval
 
-PAYMENT RECONCILIATION
----------------------------------------------------------
 
-POST
-/verify-escrow
+   PAYMENT RECONCILIATION
+   ---------------------------------------------------------
 
-Requires:
-authentication
+   POST
+   /verify-escrow
 
-Controller performs:
-Creator/admin authorization
-Stripe verification
+   Requires:
+   authentication
 
+   Controller performs:
+   Creator/admin authorization
+   Stripe verification
 
-DESIGNER ACCEPTANCE
----------------------------------------------------------
 
-POST
-/:id/accept
+   DESIGNER ACCEPTANCE
+   ---------------------------------------------------------
 
-Requires:
-Designer
-approved account
-verified email
+   POST
+   /:id/accept
 
+   Requires:
+   Designer
+   approved account
+   verified email
 
-DESIGNER ACTIVE WORK
----------------------------------------------------------
 
-POST
-/:id/submit-prototype
+   DESIGNER ACTIVE WORK
+   ---------------------------------------------------------
 
-POST
-/:id/submit-final
+   POST
+   /:id/submit-prototype
 
-Requires:
-Designer
-approved account
-verified email
+   POST
+   /:id/submit-final
 
+   Requires:
+   Designer
+   approved account
+   verified email
 
-DESIGNER REJECTION / REFUND RECOVERY
----------------------------------------------------------
 
-POST
-/:id/reject
+   DESIGNER REJECTION / REFUND RECOVERY
+   ---------------------------------------------------------
 
-Requires:
-Designer authentication
+   POST
+   /:id/reject
 
-Controller verifies:
-assigned Designer
+   Requires:
+   Designer authentication
 
-Current approval/email verification intentionally does not
-block recovery.
+   Controller verifies:
+   assigned Designer
 
+   Current approval/email verification intentionally does not
+   block recovery.
 
-CREATOR EXISTING BOOKING MANAGEMENT
----------------------------------------------------------
 
-POST
-/:id/approve-prototype
+   CREATOR EXISTING BOOKING MANAGEMENT
+   ---------------------------------------------------------
 
-POST
-/:id/request-revision
+   POST
+   /:id/approve-prototype
 
-POST
-/:id/release
+   POST
+   /:id/request-revision
 
-Requires:
-Creator authentication
+   POST
+   /:id/release
 
-Does NOT require:
-Creator admin approval
-current email verification
+   Requires:
+   Creator authentication
 
+   Does NOT require:
+   Creator admin approval
+   current email verification
 
-CANCELLATION / REFUND
----------------------------------------------------------
 
-POST
-/:id/cancel
+   CANCELLATION / REFUND
+   ---------------------------------------------------------
 
-Requires:
-authentication
+   POST
+   /:id/cancel
 
-Controller performs:
-participant/admin authorization
+   Requires:
+   authentication
 
+   Controller performs:
+   participant/admin authorization
 
-GLOBAL SUSPENSION
----------------------------------------------------------
 
-All protected routes:
+   GLOBAL SUSPENSION
+   ---------------------------------------------------------
 
-protect
-→ blocks approval_status = suspended
+   All protected routes:
 
+   protect
+   → blocks approval_status = suspended
 
-STRIPE WEBHOOK
----------------------------------------------------------
 
-NOT handled in this router.
+   STRIPE WEBHOOK
+   ---------------------------------------------------------
 
-P2P PaymentIntent/refund events use:
+   NOT handled in this router.
 
-POST
-/api/v1/webhooks/stripe
+   P2P PaymentIntent/refund events use:
 
-=========================================================
-Export
-=========================================================*/
+   POST
+   /api/v1/webhooks/stripe
+
+   =========================================================
+   Export
+   ========================================================= */
 
 module.exports = router;

@@ -1,12 +1,23 @@
 "use strict";
 
-/*
-=========================================================
-DesignByYou Authentication Controller
-Registration, Verification, Login, Session & Recovery
-Version 3.2
-=========================================================
-*/
+/**
+ * =========================================================
+ * DesignByYou Authentication Controller
+ * Registration, Verification, Login, Session & Recovery
+ * Version 3.3
+ * =========================================================
+ *
+ * WhatsApp privacy update:
+ *
+ * - whatsapp_number and whatsapp_contact_enabled are private
+ *   authenticated-account fields.
+ * - They are returned only in authenticated login/session
+ *   responses for the account owner.
+ * - Registration does not require a WhatsApp number.
+ * - Public user/profile exposure remains handled elsewhere
+ *   and must not expose these fields.
+ * =========================================================
+ */
 
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
@@ -111,17 +122,17 @@ function generateOtpExpiry() {
   return new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
 }
 
-/*
-=========================================================
-OTP Secret
-
-Production should use OTP_SECRET.
-
-During local development only, JWT_SECRET may temporarily
-act as the fallback so development does not immediately
-break while the environment is being configured.
-=========================================================
-*/
+/**
+ * =========================================================
+ * OTP Secret
+ *
+ * Production should use OTP_SECRET.
+ *
+ * During local development only, JWT_SECRET may temporarily
+ * act as the fallback so development does not immediately
+ * break while the environment is being configured.
+ * =========================================================
+ */
 
 function getOtpSecret() {
   const otpSecret = String(process.env.OTP_SECRET || "").trim();
@@ -345,6 +356,13 @@ exports.register = async (req, res) => {
 
     /*-------------------------------------------------
     Create User
+
+    WhatsApp is intentionally optional at registration.
+
+    DB defaults:
+
+    whatsapp_number = NULL
+    whatsapp_contact_enabled = FALSE
     -------------------------------------------------*/
 
     const newUser = await client.query(
@@ -408,11 +426,15 @@ exports.register = async (req, res) => {
         `,
       [
         fullName,
+
         email,
+
         hashedPassword,
+
         role,
 
         verificationOtpHash,
+
         verificationOtpExpires,
 
         approvalStatus,
@@ -536,10 +558,10 @@ exports.register = async (req, res) => {
 
     transactionStarted = false;
 
-    /*
-    Release the PostgreSQL connection before waiting for
-    the external SMTP provider.
-    */
+    /**
+     * Release PostgreSQL connection before waiting for
+     * external SMTP.
+     */
 
     client.release();
 
@@ -547,10 +569,6 @@ exports.register = async (req, res) => {
 
     /*-------------------------------------------------
     Send Verification Email
-
-    Registration remains successful if SMTP temporarily
-    fails. The account already exists and the user can
-    request another code through /resend-otp.
     -------------------------------------------------*/
 
     try {
@@ -588,10 +606,6 @@ exports.register = async (req, res) => {
         console.error("Registration rollback failed:", rollbackError);
       }
     }
-
-    /*
-    PostgreSQL unique constraint violation.
-    */
 
     if (error?.code === "23505") {
       return res.status(409).json({
@@ -633,12 +647,9 @@ exports.verifyEmail = async (req, res) => {
 
     const otpHash = hashOtp(otp);
 
-    /*
-    Atomic OTP consumption.
-
-    If the verification succeeds, the OTP is immediately
-    removed so it cannot be reused.
-    */
+    /**
+     * Atomic OTP consumption.
+     */
 
     const result = await db.query(
       `
@@ -683,11 +694,6 @@ exports.verifyEmail = async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      /*
-      Keep repeated verification requests friendly if
-      the account is already verified.
-      */
-
       const existing = await db.query(
         `
             SELECT
@@ -772,10 +778,6 @@ exports.resendOtp = async (req, res) => {
       [email],
     );
 
-    /*
-    Do not disclose whether the account exists.
-    */
-
     if (userResult.rows.length === 0) {
       return res.status(200).json(genericResponse);
     }
@@ -791,13 +793,6 @@ exports.resendOtp = async (req, res) => {
     const verificationOtpHash = hashOtp(verificationOtp);
 
     const expires = generateOtpExpiry();
-
-    /*
-    Replace the previous verification OTP.
-
-    The previous verification OTP immediately becomes
-    invalid.
-    */
 
     await db.query(
       `
@@ -829,12 +824,6 @@ exports.resendOtp = async (req, res) => {
         html: otpTemplate(user.full_name, verificationOtp),
       });
     } catch (emailError) {
-      /*
-      Keep the outward response generic so the endpoint
-      does not reveal account state through different
-      responses.
-      */
-
       console.error("Verification resend email failed:", {
         userId: user.id,
 
@@ -861,11 +850,12 @@ exports.resendOtp = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const email = normalizeEmail(req.body?.email);
+
     const password = req.body?.password;
 
     /**
-     * Keep invalid username/email and invalid password
-     * responses identical.
+     * Keep invalid email and invalid password responses
+     * identical.
      */
     if (
       !isValidEmail(email) ||
@@ -874,25 +864,29 @@ exports.login = async (req, res) => {
     ) {
       return res.status(401).json({
         status: "error",
+
         message: "Invalid email or password.",
       });
     }
 
     const initialCheck = await db.query(
       `
-        SELECT
-          id,
-          role,
-          password_hash,
-          approval_status,
-          is_email_verified,
-          token_version
-        FROM users
-        WHERE
-          LOWER(email) =
-            LOWER($1)
-        LIMIT 1
-      `,
+          SELECT
+            id,
+            role,
+            password_hash,
+            approval_status,
+            is_email_verified,
+            token_version
+
+          FROM users
+
+          WHERE
+            LOWER(email) =
+              LOWER($1)
+
+          LIMIT 1
+        `,
       [email],
     );
 
@@ -901,18 +895,21 @@ exports.login = async (req, res) => {
     if (!preUser || !preUser.password_hash) {
       return res.status(401).json({
         status: "error",
+
         message: "Invalid email or password.",
       });
     }
 
     const passwordMatches = await bcrypt.compare(
       password,
+
       preUser.password_hash,
     );
 
     if (!passwordMatches) {
       return res.status(401).json({
         status: "error",
+
         message: "Invalid email or password.",
       });
     }
@@ -924,36 +921,34 @@ exports.login = async (req, res) => {
      *
      * DESIGNER:
      * - May sign in while pending administrator approval.
-     * - Approval-required actions are protected using
-     *   requireApprovedAccount.
-     * - Sensitive financial/account actions may additionally
-     *   require verified email.
+     * - Approval-required actions use requireApprovedAccount.
      *
      * CREATOR:
      * - Does not require administrator approval.
-     * - MUST verify email before being allowed to sign in.
+     * - MUST verify email before signing in.
      */
 
     if (role === "creator" && preUser.is_email_verified !== true) {
       return res.status(403).json({
         status: "error",
+
         code: "EMAIL_NOT_VERIFIED",
+
         message: "Please verify your email before signing in.",
       });
     }
 
-    /**
-     * Only record a successful login after all login-level
-     * account requirements have passed.
-     */
     await db.query(
       `
         UPDATE users
+
         SET
           last_login =
             NOW(),
+
           updated_at =
             NOW()
+
         WHERE
           id =
             $1
@@ -970,40 +965,51 @@ exports.login = async (req, res) => {
     if (role === "designer") {
       userResult = await db.query(
         `
-          SELECT
-            u.id,
-            u.full_name,
-            u.email,
-            u.role,
-            u.profile_image_url,
-            u.approval_status,
-            u.is_email_verified,
-            u.subscription_tier,
-            u.subscription_active_until,
-            dp.portfolio_url,
-            dp.bio,
-            dp.address_line,
-            dp.city,
-            dp.country,
-            dp.tier,
-            dp.xp_points,
-            dp.avg_rating,
-            dp.total_completed_bookings,
-            w.available_balance,
-            w.pending_escrow_balance,
-            w.pending_payout_balance
-          FROM users u
-          LEFT JOIN designer_profiles dp
-            ON u.id =
-              dp.user_id
-          LEFT JOIN designer_wallets w
-            ON u.id =
-              w.user_id
-          WHERE
-            u.id =
-              $1
-          LIMIT 1
-        `,
+            SELECT
+              u.id,
+              u.full_name,
+              u.email,
+              u.role,
+              u.profile_image_url,
+              u.approval_status,
+              u.is_email_verified,
+
+              u.whatsapp_number,
+              u.whatsapp_contact_enabled,
+
+              u.subscription_tier,
+              u.subscription_active_until,
+
+              dp.portfolio_url,
+              dp.bio,
+              dp.address_line,
+              dp.city,
+              dp.country,
+              dp.tier,
+              dp.xp_points,
+              dp.avg_rating,
+              dp.total_completed_bookings,
+
+              w.available_balance,
+              w.pending_escrow_balance,
+              w.pending_payout_balance
+
+            FROM users u
+
+            LEFT JOIN designer_profiles dp
+              ON u.id =
+                dp.user_id
+
+            LEFT JOIN designer_wallets w
+              ON u.id =
+                w.user_id
+
+            WHERE
+              u.id =
+                $1
+
+            LIMIT 1
+          `,
         [preUser.id],
       );
     } else if (role === "creator") {
@@ -1013,75 +1019,87 @@ exports.login = async (req, res) => {
 
       userResult = await db.query(
         `
-          SELECT
-            u.id,
-            u.full_name,
-            u.email,
-            u.role,
-            u.profile_image_url,
-            u.approval_status,
-            u.is_email_verified,
-            u.subscription_tier,
-            u.subscription_active_until,
-            cp.company_name,
-            cp.preferred_category,
-            cp.default_dimensions,
-            cp.brand_guidelines_summary,
-            COALESCE(
-              cp.xp_points,
-              0
-            ) AS xp_points
-          FROM users u
-          LEFT JOIN creator_profiles cp
-            ON u.id =
-              cp.user_id
-          WHERE
-            u.id =
-              $1
-          LIMIT 1
-        `,
+            SELECT
+              u.id,
+              u.full_name,
+              u.email,
+              u.role,
+              u.profile_image_url,
+              u.approval_status,
+              u.is_email_verified,
+
+              u.whatsapp_number,
+              u.whatsapp_contact_enabled,
+
+              u.subscription_tier,
+              u.subscription_active_until,
+
+              cp.company_name,
+              cp.preferred_category,
+              cp.default_dimensions,
+              cp.brand_guidelines_summary,
+
+              COALESCE(
+                cp.xp_points,
+                0
+              ) AS xp_points
+
+            FROM users u
+
+            LEFT JOIN creator_profiles cp
+              ON u.id =
+                cp.user_id
+
+            WHERE
+              u.id =
+                $1
+
+            LIMIT 1
+          `,
         [preUser.id],
       );
     } else if (role === "admin" || role === "superadmin") {
       /*=================================================
       ADMIN / SUPERADMIN
-
-      These roles may exist in PostgreSQL but can NEVER be
-      created through public /register.
       =================================================*/
 
       userResult = await db.query(
         `
-          SELECT
-            id,
-            full_name,
-            email,
-            role,
-            profile_image_url,
-            approval_status,
-            is_email_verified,
-            subscription_tier,
-            subscription_active_until
-          FROM users
-          WHERE
-            id =
-              $1
-          LIMIT 1
-        `,
+            SELECT
+              id,
+              full_name,
+              email,
+              role,
+              profile_image_url,
+              approval_status,
+              is_email_verified,
+
+              whatsapp_number,
+              whatsapp_contact_enabled,
+
+              subscription_tier,
+              subscription_active_until
+
+            FROM users
+
+            WHERE
+              id =
+                $1
+
+            LIMIT 1
+          `,
         [preUser.id],
       );
     } else {
-      /*=================================================
-      Unknown Role Protection
-      =================================================*/
-
       console.error("Login rejected unknown role:", {
         userId: preUser.id,
+
         role: preUser.role,
       });
 
       return res.status(403).json({
         status: "error",
+
         message: "This account cannot access the application.",
       });
     }
@@ -1091,19 +1109,24 @@ exports.login = async (req, res) => {
     if (!user) {
       return res.status(401).json({
         status: "error",
+
         message: "Unable to load this account.",
       });
     }
 
     const token = signToken(
       preUser.id,
+
       role,
+
       Number(preUser.token_version ?? 0),
     );
 
     return res.status(200).json({
       status: "success",
+
       token,
+
       user,
     });
   } catch (error) {
@@ -1111,6 +1134,7 @@ exports.login = async (req, res) => {
 
     return res.status(500).json({
       status: "error",
+
       message: "An error occurred during login.",
     });
   }
@@ -1119,6 +1143,17 @@ exports.login = async (req, res) => {
 /*=========================================================
 5. GET CURRENT SESSION (/me)
 =========================================================*/
+
+/**
+ * Private authenticated owner response.
+ *
+ * whatsapp_number and whatsapp_contact_enabled are returned
+ * here because:
+ *
+ * - protect has authenticated the account
+ * - the query uses req.user.id
+ * - this is not a public profile endpoint
+ */
 
 exports.getMe = async (req, res) => {
   try {
@@ -1151,6 +1186,9 @@ exports.getMe = async (req, res) => {
               u.profile_image_url,
               u.approval_status,
               u.is_email_verified,
+
+              u.whatsapp_number,
+              u.whatsapp_contact_enabled,
 
               u.subscription_tier,
               u.subscription_active_until,
@@ -1203,6 +1241,9 @@ exports.getMe = async (req, res) => {
               u.approval_status,
               u.is_email_verified,
 
+              u.whatsapp_number,
+              u.whatsapp_contact_enabled,
+
               u.subscription_tier,
               u.subscription_active_until,
 
@@ -1210,6 +1251,7 @@ exports.getMe = async (req, res) => {
               cp.preferred_category,
               cp.default_dimensions,
               cp.brand_guidelines_summary,
+
               COALESCE(
                 cp.xp_points,
                 0
@@ -1244,6 +1286,10 @@ exports.getMe = async (req, res) => {
               profile_image_url,
               approval_status,
               is_email_verified,
+
+              whatsapp_number,
+              whatsapp_contact_enabled,
+
               subscription_tier,
               subscription_active_until
 
@@ -1296,10 +1342,10 @@ exports.getMe = async (req, res) => {
 =========================================================*/
 
 exports.forgotPassword = async (req, res) => {
-  /*
-  Always return this outward response whether the account
-  exists or not.
-  */
+  /**
+   * Always return this outward response whether the
+   * account exists or not.
+   */
 
   const genericResponse = {
     status: "success",
@@ -1317,24 +1363,20 @@ exports.forgotPassword = async (req, res) => {
 
     const userResult = await db.query(
       `
-          SELECT
-            id,
-            full_name
+            SELECT
+              id,
+              full_name
 
-          FROM users
+            FROM users
 
-          WHERE
-            LOWER(email) =
-              LOWER($1)
+            WHERE
+              LOWER(email) =
+                LOWER($1)
 
-          LIMIT 1
-        `,
+            LIMIT 1
+          `,
       [email],
     );
-
-    /*
-    Do not disclose whether an account exists.
-    */
 
     if (userResult.rows.length === 0) {
       return res.status(200).json(genericResponse);
@@ -1350,30 +1392,24 @@ exports.forgotPassword = async (req, res) => {
 
     await db.query(
       `
-        UPDATE users
+          UPDATE users
 
-        SET
-          password_reset_otp_hash =
-            $1,
+          SET
+            password_reset_otp_hash =
+              $1,
 
-          password_reset_otp_expires_at =
-            $2,
+            password_reset_otp_expires_at =
+              $2,
 
-          updated_at =
-            NOW()
+            updated_at =
+              NOW()
 
-        WHERE
-          id =
-            $3
-      `,
+          WHERE
+            id =
+              $3
+        `,
       [resetOtpHash, expires, user.id],
     );
-
-    /*
-    Do not expose email delivery status through this
-    endpoint because doing so could reveal whether the
-    account exists.
-    */
 
     try {
       await sendEmail({
@@ -1396,10 +1432,9 @@ exports.forgotPassword = async (req, res) => {
     console.error("Forgot password error:", error);
 
     /*
-    Keep outward behavior generic to prevent account
-    enumeration.
-    */
-
+     * Preserve generic outward behavior so account
+     * existence is not disclosed.
+     */
     return res.status(200).json(genericResponse);
   }
 };
@@ -1486,6 +1521,7 @@ exports.resetPassword = async (req, res) => {
     if (user.password_hash) {
       const samePassword = await bcrypt.compare(
         newPassword,
+
         user.password_hash,
       );
 
@@ -1499,7 +1535,11 @@ exports.resetPassword = async (req, res) => {
       }
     }
 
-    const newPasswordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    const newPasswordHash = await bcrypt.hash(
+      newPassword,
+
+      BCRYPT_ROUNDS,
+    );
 
     /*-------------------------------------------------
     Atomic Password Reset
@@ -1577,16 +1617,18 @@ exports.resetPassword = async (req, res) => {
 
 /*=========================================================
 8. LEGACY SUPERADMIN SETUP DISABLED
-
-There must be NO public auth route for creating an admin
-or superadmin account.
-
-The temporary stub remains only so an accidentally stale
-route cannot perform privileged account creation.
-
-Once you have confirmed no route references this function,
-this export may be removed entirely.
 =========================================================*/
+
+/**
+ * There must be NO public auth route for creating an admin
+ * or superadmin account.
+ *
+ * The temporary stub remains only so an accidentally stale
+ * route cannot perform privileged account creation.
+ *
+ * Once you have confirmed no route references this function,
+ * this export may be removed entirely.
+ */
 
 exports.setupSuperadmin = (req, res) => {
   return res.status(404).json({
