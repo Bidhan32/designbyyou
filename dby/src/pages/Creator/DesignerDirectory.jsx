@@ -44,31 +44,78 @@ export default function DesignerDirectory() {
   const [sortBy, setSortBy] = useState("top_rated"); // 'top_rated' | 'most_bookings' | 'price_low' | 'price_high'
 
   // Fetch Designers
-  useEffect(() => {
-    const fetchDesigners = async () => {
-      try {
-        setLoading(true);
-        // Fetch all users and filter for active designers
-        const { data } = await API.get("/users");
-        const userList = Array.isArray(data) ? data : data?.data || [];
+ // Fetch Bookable Designers
+useEffect(() => {
+  const controller = new AbortController();
 
-        const verifiedDesigners = userList.filter((u) => u.role === "designer");
-        setDesigners(verifiedDesigners);
-        setError(null);
-      } catch (err) {
-        console.error("Failed to load designer directory:", err);
-        setError("Unable to connect to the Visionary Directory.");
-      } finally {
+  const fetchDesigners = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      /*
+       * Use the dedicated booking-safe Designer directory.
+       *
+       * Backend already enforces:
+       * role = designer
+       * approval_status = approved
+       * is_email_verified = true
+       */
+      const response = await API.get("/p2p-bookings/designers", {
+        signal: controller.signal,
+      });
+
+      if (controller.signal.aborted) {
+        return;
+      }
+
+      const data = response?.data;
+
+      const designerList = Array.isArray(data?.data)
+        ? data.data
+        : Array.isArray(data)
+          ? data
+          : [];
+
+      setDesigners(designerList);
+    } catch (err) {
+      if (
+        err?.code === "ERR_CANCELED" ||
+        err?.name === "CanceledError" ||
+        err?.name === "AbortError"
+      ) {
+        return;
+      }
+
+      console.error(
+        "Failed to load designer directory:",
+        err?.response?.data || err,
+      );
+
+      setDesigners([]);
+
+      setError(
+        err?.response?.data?.message ||
+          "Unable to connect to the Visionary Directory.",
+      );
+    } finally {
+      if (!controller.signal.aborted) {
         setLoading(false);
       }
-    };
-
-    if (isCreator) {
-      fetchDesigners();
-    } else {
-      setLoading(false);
     }
-  }, [isCreator]);
+  };
+
+  if (isCreator) {
+    void fetchDesigners();
+  } else {
+    setDesigners([]);
+    setLoading(false);
+  }
+
+  return () => {
+    controller.abort();
+  };
+}, [isCreator]);
 
   // Client-side Filtering & Sorting Logic
   const filteredDesigners = useMemo(() => {
