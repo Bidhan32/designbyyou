@@ -4,7 +4,7 @@
 =========================================================
 DesignByYou
 Creator Create Booking
-Version 4.2
+Version 4.3
 =========================================================
 
 Responsibilities:
@@ -17,6 +17,7 @@ Responsibilities:
 6. Confirm Stripe PaymentIntent
 7. Reconcile escrow with the backend
 8. Surface Creator subscription benefits
+9. Explain privacy-safe WhatsApp coordination availability
 
 =========================================================
 IMPORTANT SECURITY / FINANCIAL RULES
@@ -36,6 +37,10 @@ IMPORTANT SECURITY / FINANCIAL RULES
 - Backend verification / signed webhook processing owns
   escrow state.
 - Creator subscription management lives in Creator Wallet.
+- WhatsApp numbers are never exposed from this setup page.
+- Private WhatsApp contact remains booking-scoped and is only
+  available after the backend confirms an eligible booking state
+  and the other participant has enabled contact sharing.
 =========================================================
 */
 
@@ -60,6 +65,8 @@ import {
   FileText,
   Loader2,
   LockKeyhole,
+  MessageCircle,
+  Video,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -1654,6 +1661,66 @@ export default function CreatorCreateBooking() {
           <div
             className="
               relative
+              mt-5
+              rounded-2xl
+              border
+              border-emerald-200
+              bg-emerald-50/70
+              p-4
+              text-left
+
+              dark:border-emerald-400/15
+              dark:bg-emerald-400/[0.05]
+            "
+          >
+            <div className="flex items-start gap-3">
+              <MessageCircle
+                size={17}
+                className="
+                  mt-0.5
+                  shrink-0
+                  text-emerald-600
+
+                  dark:text-emerald-300
+                "
+              />
+
+              <div>
+                <p
+                  className="
+                    text-[8px]
+                    font-black
+                    uppercase
+                    tracking-[0.16em]
+                    text-emerald-700
+
+                    dark:text-emerald-300
+                  "
+                >
+                  WhatsApp Coordination
+                </p>
+
+                <p
+                  className="
+                    mt-1
+                    text-[10px]
+                    leading-5
+                    text-slate-500
+
+                    dark:text-white/40
+                  "
+                >
+                  WhatsApp remains private until the Designer accepts the
+                  booking and contact-sharing rules are satisfied. Open the
+                  contract workspace when the booking becomes eligible.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div
+            className="
+              relative
               mt-8
               grid
               gap-3
@@ -3113,6 +3180,200 @@ export default function CreatorCreateBooking() {
                       )}
                     </div>
                   </div>
+
+                  {/*=================================================
+                  Private WhatsApp Coordination
+
+                  Informational only.
+
+                  This page never receives or exposes the Designer's
+                  WhatsApp number. Actual contact access remains behind
+                  the private booking-specific endpoint and is available
+                  only after the booking reaches an eligible accepted
+                  state and the Designer has enabled contact sharing.
+                  =================================================*/}
+
+                  {selectedDesigner && (
+                    <section
+                      className="
+                        relative
+                        overflow-hidden
+                        rounded-2xl
+                        border
+                        border-emerald-200
+                        bg-emerald-50/70
+                        p-5
+
+                        dark:border-emerald-400/15
+                        dark:bg-emerald-400/[0.05]
+                      "
+                    >
+                      <div
+                        className="
+                          pointer-events-none
+                          absolute
+                          -right-10
+                          -top-10
+                          h-32
+                          w-32
+                          rounded-full
+                          bg-emerald-400/10
+                          blur-[50px]
+                        "
+                      />
+
+                      <div
+                        className="
+                          relative
+                          flex
+                          items-start
+                          gap-4
+                        "
+                      >
+                        <div
+                          className="
+                            grid
+                            h-11
+                            w-11
+                            shrink-0
+                            place-items-center
+                            rounded-xl
+                            border
+                            border-emerald-200
+                            bg-white
+                            text-emerald-600
+
+                            dark:border-emerald-400/15
+                            dark:bg-white/[0.04]
+                            dark:text-emerald-300
+                          "
+                        >
+                          <MessageCircle size={18} />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <p
+                            className="
+                              text-[8px]
+                              font-black
+                              uppercase
+                              tracking-[0.18em]
+                              text-emerald-700
+
+                              dark:text-emerald-300
+                            "
+                          >
+                            Private WhatsApp Coordination
+                          </p>
+
+                          <h3
+                            className="
+                              mt-1.5
+                              font-serif
+                              text-xl
+                              text-slate-900
+
+                              dark:text-white
+                            "
+                          >
+                            Chat and video coordination after acceptance
+                          </h3>
+
+                          <p
+                            className="
+                              mt-2
+                              text-xs
+                              leading-5
+                              text-slate-500
+
+                              dark:text-white/40
+                            "
+                          >
+                            After the Designer accepts this booking, WhatsApp
+                            chat and video-call coordination can become
+                            available from the booking workspace if the Designer
+                            has enabled contact sharing.
+                          </p>
+
+                          <div
+                            className="
+                              mt-4
+                              flex
+                              flex-wrap
+                              gap-2
+                            "
+                          >
+                            <span
+                              className="
+                                inline-flex
+                                items-center
+                                gap-1.5
+                                rounded-full
+                                border
+                                border-emerald-200
+                                bg-white
+                                px-3
+                                py-1.5
+                                text-[8px]
+                                font-black
+                                uppercase
+                                tracking-[0.12em]
+                                text-emerald-700
+
+                                dark:border-emerald-400/15
+                                dark:bg-white/[0.035]
+                                dark:text-emerald-300
+                              "
+                            >
+                              <MessageCircle size={10} />
+                              WhatsApp Chat
+                            </span>
+
+                            <span
+                              className="
+                                inline-flex
+                                items-center
+                                gap-1.5
+                                rounded-full
+                                border
+                                border-emerald-200
+                                bg-white
+                                px-3
+                                py-1.5
+                                text-[8px]
+                                font-black
+                                uppercase
+                                tracking-[0.12em]
+                                text-emerald-700
+
+                                dark:border-emerald-400/15
+                                dark:bg-white/[0.035]
+                                dark:text-emerald-300
+                              "
+                            >
+                              <Video size={10} />
+                              Video Call
+                            </span>
+                          </div>
+
+                          <p
+                            className="
+                              mt-3
+                              text-[9px]
+                              leading-4
+                              text-slate-400
+
+                              dark:text-white/25
+                            "
+                          >
+                            Contact details stay private on this page. The
+                            backend releases booking-participant contact only
+                            when the booking and consent rules allow it.
+                          </p>
+                        </div>
+                      </div>
+                    </section>
+                  )}
 
                   {/* Amount + Deadline */}
 
