@@ -4,7 +4,7 @@
 =========================================================
 DesignByYou
 Creator Create Booking
-Version 4.1
+Version 4.2
 =========================================================
 
 Responsibilities:
@@ -314,6 +314,18 @@ function usersFrom(response) {
     return response.data.users;
   }
 
+  if (Array.isArray(response?.data?.designers)) {
+    return response.data.designers;
+  }
+
+  if (Array.isArray(response?.data?.data?.users)) {
+    return response.data.data.users;
+  }
+
+  if (Array.isArray(response?.data?.data?.designers)) {
+    return response.data.data.designers;
+  }
+
   return [];
 }
 
@@ -340,17 +352,33 @@ function designerAvatar(designer) {
 }
 
 function approvedDesigner(candidate) {
-  if (normalize(candidate?.role) !== "designer") {
+  if (!candidate || !designerId(candidate)) {
+    return false;
+  }
+
+  const role = normalize(candidate?.role);
+
+  /*
+  The dedicated P2P designer directory is authoritative and
+  already returns only booking-eligible Designers.
+
+  Some older deployed API responses did not include `role`,
+  so treat a missing role as compatible while still rejecting
+  any explicit non-Designer role.
+  */
+
+  if (role && role !== "designer") {
     return false;
   }
 
   const approval = normalize(candidate?.approval_status);
 
   /*
-  The safe P2P directory currently returns approval_status.
+  Likewise, tolerate an omitted approval_status for backwards
+  compatibility, but reject any explicit non-approved state.
 
-  The booking controller still performs the authoritative
-  approval check again when creating a booking.
+  The booking controller performs the authoritative Designer
+  eligibility check again when the booking is created.
   */
 
   return !approval || approval === "approved";
@@ -1322,10 +1350,7 @@ export default function CreatorCreateBooking() {
         );
       } else {
         setFormError(
-          apiError(
-            requestError,
-            "The booking contract could not be created.",
-          ),
+          apiError(requestError, "The booking contract could not be created."),
         );
       }
     } finally {
@@ -1539,8 +1564,8 @@ export default function CreatorCreateBooking() {
               dark:text-white/45
             "
           >
-            Your payment has been reconciled with the booking. The booking
-            will now continue through the designer workflow.
+            Your payment has been reconciled with the booking. The booking will
+            now continue through the designer workflow.
           </p>
 
           <div
@@ -2193,17 +2218,27 @@ export default function CreatorCreateBooking() {
                         pl-11
                         pr-10
                         text-sm
+                        text-slate-900
+                        caret-slate-900
                         outline-none
                         transition
+
+                        placeholder:text-slate-400
 
                         focus:border-[#D4AF37]/55
                         focus:bg-white
                         focus:ring-4
                         focus:ring-[#D4AF37]/10
 
+                        [color-scheme:light]
+
                         dark:border-white/10
-                        dark:bg-white/[0.035]
+                        dark:bg-[#111111]
                         dark:text-white
+                        dark:caret-white
+                        dark:placeholder:text-white/30
+                        dark:[color-scheme:dark]
+                        dark:focus:bg-[#151515]
                       "
                     />
 
@@ -2380,7 +2415,9 @@ export default function CreatorCreateBooking() {
                           dark:text-white/35
                         "
                       >
-                        Try another name or tier.
+                        {query
+                          ? "Try another designer name, country, or tier."
+                          : "No approved and verified designers are currently available for booking."}
                       </p>
                     </div>
                   ) : (
@@ -2473,6 +2510,9 @@ export default function CreatorCreateBooking() {
                                   truncate
                                   font-serif
                                   text-base
+                                  text-slate-900
+
+                                  dark:text-white
                                 "
                             >
                               {designerName(candidate)}
@@ -3019,8 +3059,11 @@ export default function CreatorCreateBooking() {
                                   truncate
                                   font-serif
                                   text-xl
+                                  text-slate-900
 
                                   sm:text-2xl
+
+                                  dark:text-white
                                 "
                               >
                                 {designerName(selectedDesigner)}

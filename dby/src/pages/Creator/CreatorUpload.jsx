@@ -677,6 +677,11 @@ function SelectField({ value, onChange, disabled, children }) {
           outline-none
           transition
 
+          [color-scheme:light]
+
+          [&>option]:bg-white
+          [&>option]:text-slate-900
+
           focus:border-[#D4AF37]/60
           focus:bg-white
           focus:ring-4
@@ -686,9 +691,15 @@ function SelectField({ value, onChange, disabled, children }) {
           disabled:opacity-60
 
           dark:border-white/10
-          dark:bg-white/[0.035]
+          dark:bg-[#111111]
           dark:text-white
-          dark:focus:bg-white/[0.05]
+
+          dark:[color-scheme:dark]
+
+          dark:[&>option]:bg-[#111111]
+          dark:[&>option]:text-white
+
+          dark:focus:bg-[#151515]
         "
       >
         {children}
@@ -705,7 +716,7 @@ function SelectField({ value, onChange, disabled, children }) {
           -translate-y-1/2
           text-slate-400
 
-          dark:text-white/25
+          dark:text-white/40
         "
       />
     </div>
