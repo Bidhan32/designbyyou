@@ -2526,43 +2526,50 @@ export default function CreatorUpload() {
 
               <label className="block">
                 <FieldLabel optional>Design Title</FieldLabel>
+<input
+  type="text"
+  maxLength={MAX_TITLE_LENGTH}
+  value={form.title}
+  disabled={loading || success}
+  onChange={(event) =>
+    handleInputChange("title", event.target.value)
+  }
+  placeholder="e.g. Asymmetrical Silk Blazer"
+  className="
+    h-[52px]
+    w-full
+    rounded-xl
+    border
+    border-slate-200
+    bg-slate-50
+    px-4
+    text-sm
+    text-slate-900
+    caret-slate-900
+    outline-none
+    transition
 
-                <input
-                  type="text"
-                  maxLength={MAX_TITLE_LENGTH}
-                  value={form.title}
-                  disabled={loading || success}
-                  onChange={(event) =>
-                    handleInputChange("title", event.target.value)
-                  }
-                  placeholder="e.g. Asymmetrical Silk Blazer"
-                  className="
-                    h-[52px]
-                    w-full
-                    rounded-xl
-                    border
-                    border-slate-200
-                    bg-slate-50
-                    px-4
-                    text-sm
-                    outline-none
-                    transition
+    placeholder:text-slate-400
 
-                    placeholder:text-slate-400
+    focus:border-[#D4AF37]/60
+    focus:bg-slate-50
+    focus:ring-4
+    focus:ring-[#D4AF37]/10
 
-                    focus:border-[#D4AF37]/60
-                    focus:bg-white
-                    focus:ring-4
-                    focus:ring-[#D4AF37]/10
+    disabled:opacity-60
 
-                    disabled:opacity-60
+    dark:border-white/10
+    dark:bg-[#111111]
+    dark:text-white
+    dark:caret-white
+    dark:placeholder:text-white/25
 
-                    dark:border-white/10
-                    dark:bg-white/[0.035]
-                    dark:text-white
-                    dark:placeholder:text-white/20
-                  "
-                />
+    dark:focus:border-[#D4AF37]/60
+    dark:focus:bg-[#111111]
+    dark:focus:text-white
+    dark:focus:ring-[#D4AF37]/10
+  "
+/>
               </label>
 
               {/* Format */}
