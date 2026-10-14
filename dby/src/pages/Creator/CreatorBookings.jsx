@@ -3,8 +3,8 @@
 /*
 =========================================================
 DesignByYou
-Creator Bookings / Contract Pipeline
-Version 4.0
+Creator Bookings / Booking Pipeline
+Version 4.1
 =========================================================
 
 Responsibilities:
@@ -168,7 +168,7 @@ const TAB_DEFINITIONS = Object.freeze([
 
     label: "Waiting",
 
-    description: "Requests and funding",
+    description: "Requests and payments",
   },
 
   {
@@ -338,7 +338,7 @@ function getApiErrorMessage(error) {
   return (
     error?.response?.data?.message ||
     error?.message ||
-    "The contract pipeline could not be loaded."
+    "The booking list could not be loaded."
   );
 }
 
@@ -416,8 +416,8 @@ function getDeadlineDetails(value, statusValue) {
     return {
       label:
         status === BOOKING_STATUS.CANCELLED
-          ? "Contract closed"
-          : "Contract completed",
+          ? "Booking closed"
+          : "Booking completed",
 
       urgent: false,
     };
@@ -499,7 +499,7 @@ function getDeadlineDetails(value, statusValue) {
 }
 
 /*=========================================================
-Escrow Display
+Payment Display
 =========================================================*/
 
 function getEscrowDetails(booking) {
@@ -574,7 +574,7 @@ function getStatusDetails(statusValue, designerName) {
         label: "Payment Required",
 
         description:
-          "The booking is ready for funding. Complete payment to secure the agreed amount in escrow.",
+          "The booking is ready for payment. Complete payment to secure the agreed amount.",
 
         badgeClass:
           "border-orange-300/60 bg-orange-50 text-orange-700 dark:border-orange-400/20 dark:bg-orange-400/10 dark:text-orange-300",
@@ -584,9 +584,9 @@ function getStatusDetails(statusValue, designerName) {
 
     case BOOKING_STATUS.FUNDED:
       return {
-        label: "Escrow Secured",
+        label: "Payment Secured",
 
-        description: `Your payment is protected in escrow while ${shortName} moves the booking into production.`,
+        description: `Your payment is secured while ${shortName} moves the booking into production.`,
 
         badgeClass:
           "border-emerald-300/60 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300",
@@ -612,7 +612,7 @@ function getStatusDetails(statusValue, designerName) {
         label: "Prototype Ready",
 
         description:
-          "A prototype is ready. Review it in the contract workspace and approve it or request changes.",
+          "A prototype is ready. Review it in the booking workspace and approve it or request changes.",
 
         badgeClass:
           "border-indigo-300/60 bg-indigo-50 text-indigo-700 dark:border-indigo-400/20 dark:bg-indigo-400/10 dark:text-indigo-300",
@@ -651,7 +651,7 @@ function getStatusDetails(statusValue, designerName) {
         label: "Cancellation Processing",
 
         description:
-          "The contract is being closed and any required payment or refund reconciliation is still processing.",
+          "The booking is being closed while any required payment or refund checks are still processing.",
 
         badgeClass:
           "border-rose-300/60 bg-rose-50 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-300",
@@ -666,7 +666,7 @@ function getStatusDetails(statusValue, designerName) {
         label: "Refund Processing",
 
         description:
-          "Stripe is processing the refund. The contract remains under reconciliation until the provider confirms the final state.",
+          "Stripe is processing the refund. This booking will remain under review until Stripe confirms the result.",
 
         badgeClass:
           "border-sky-300/60 bg-sky-50 text-sky-700 dark:border-sky-400/20 dark:bg-sky-400/10 dark:text-sky-300",
@@ -681,7 +681,7 @@ function getStatusDetails(statusValue, designerName) {
         label: "Refund Needs Attention",
 
         description:
-          "Stripe could not complete the refund. Open the contract to review the failure and available recovery state.",
+          "Stripe could not complete the refund. Open the booking to review what happened and the available next steps.",
 
         badgeClass:
           "border-rose-300/70 bg-rose-50 text-rose-700 dark:border-rose-400/25 dark:bg-rose-400/10 dark:text-rose-300",
@@ -719,7 +719,7 @@ function getStatusDetails(statusValue, designerName) {
         label: "Cancelled",
 
         description:
-          "This contract is closed. Open it to review its cancellation and financial record.",
+          "This booking is closed. Open it to review the cancellation and payment history.",
 
         badgeClass:
           "border-slate-300 bg-slate-100 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/45",
@@ -736,7 +736,7 @@ function getStatusDetails(statusValue, designerName) {
           : "Status Review",
 
         description:
-          "This contract has a workflow state that requires review. Open the workspace for the latest details.",
+          "This booking has a status that needs review. Open the workspace for the latest details.",
 
         badgeClass:
           "border-amber-300/60 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300",
@@ -772,7 +772,7 @@ function getNextAction(statusValue) {
       return {
         label: "Complete Payment",
 
-        detail: "Fund the agreed amount to secure escrow.",
+        detail: "Complete the agreed payment to secure this booking.",
 
         icon: WalletCards,
 
@@ -784,9 +784,9 @@ function getNextAction(statusValue) {
 
     case BOOKING_STATUS.FUNDED:
       return {
-        label: "Escrow Protected",
+        label: "Payment Secured",
 
-        detail: "Funding is secured while the booking progresses.",
+        detail: "Your payment is secured while the booking progresses.",
 
         icon: ShieldCheck,
 
@@ -903,9 +903,9 @@ function getNextAction(statusValue) {
     case BOOKING_STATUS.COMPLETED:
     case BOOKING_STATUS.DELIVERED:
       return {
-        label: "View Completed Contract",
+        label: "View Completed Booking",
 
-        detail: "Review final files and contract history.",
+        detail: "Review final files and booking history.",
 
         icon: CheckCircle2,
 
@@ -917,7 +917,7 @@ function getNextAction(statusValue) {
 
     case BOOKING_STATUS.CANCELLED:
       return {
-        label: "View Closed Contract",
+        label: "View Closed Booking",
 
         detail: "Review its cancellation and financial history.",
 
@@ -931,7 +931,7 @@ function getNextAction(statusValue) {
 
     default:
       return {
-        label: "Review Contract",
+        label: "Review Booking",
 
         detail: "Open the workspace to inspect this status.",
 
@@ -1385,9 +1385,9 @@ export default function CreatorBookings() {
                   dark:text-white/45
                 "
               >
-                Follow every design contract from request and secure escrow
+                Follow every design booking from request and secured payment
                 through prototype review, final delivery, cancellation, and
-                refund reconciliation.
+                refunds.
               </p>
             </div>
 
@@ -1472,7 +1472,7 @@ export default function CreatorBookings() {
                 "
               >
                 <Plus size={15} />
-                New Contract
+                New Booking
               </Link>
             </div>
           </div>
@@ -1495,7 +1495,7 @@ export default function CreatorBookings() {
         >
           {[
             {
-              label: "All Contracts",
+              label: "All Bookings",
 
               value: summary.total,
 
@@ -1526,7 +1526,7 @@ export default function CreatorBookings() {
             },
 
             {
-              label: "Escrow Protected",
+              label: "Payment Secured",
 
               value: summary.escrowProtected,
 
@@ -1676,7 +1676,7 @@ export default function CreatorBookings() {
         </section>
 
         {/*=================================================
-        Contract Pipeline Panel
+        Booking Pipeline Panel
         =================================================*/}
 
         <section
@@ -1804,7 +1804,7 @@ export default function CreatorBookings() {
                   xl:max-w-md
                 "
               >
-                <span className="sr-only">Search contracts</span>
+                <span className="sr-only">Search bookings</span>
 
                 <Search
                   size={15}
@@ -1825,7 +1825,7 @@ export default function CreatorBookings() {
                   value={searchQuery}
                   maxLength={100}
                   onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search designer, contract, title or ID"
+                  placeholder="Search designer, booking, title or ID"
                   className="
                     h-12
                     w-full
@@ -1987,7 +1987,7 @@ export default function CreatorBookings() {
                         dark:text-rose-100
                       "
                     >
-                      Could not load contracts
+                      Could not load bookings
                     </h2>
 
                     <p
@@ -2180,8 +2180,8 @@ export default function CreatorBookings() {
                 "
               >
                 {searchQuery
-                  ? "No matching contracts"
-                  : `No ${activeTabDefinition.label.toLowerCase()} contracts`}
+                  ? "No matching bookings"
+                  : `No ${activeTabDefinition.label.toLowerCase()} bookings`}
               </h2>
 
               <p
@@ -2196,10 +2196,10 @@ export default function CreatorBookings() {
                 "
               >
                 {searchQuery
-                  ? "Try another designer name, contract ID, design title, booking type, or workflow state."
+                  ? "Try another designer name, booking ID, design title, booking type, or workflow state."
                   : activeTab === "attention"
                     ? "Good news — there are no cancellation, refund, or unexpected workflow states requiring attention."
-                    : "Contracts will move into this section automatically as their workflow state changes."}
+                    : "Bookings will move into this section automatically as their workflow status changes."}
               </p>
 
               {searchQuery ? (
@@ -2262,7 +2262,7 @@ export default function CreatorBookings() {
                     "
                   >
                     <Plus size={14} />
-                    Create First Contract
+                    Create First Booking
                   </Link>
                 )
               )}
@@ -2779,7 +2779,7 @@ export default function CreatorBookings() {
                             </p>
                           </div>
 
-                          {/* Escrow */}
+                          {/* Payment */}
 
                           <div
                             className="
@@ -2808,7 +2808,7 @@ export default function CreatorBookings() {
                                 "
                             >
                               <LockKeyhole size={12} />
-                              Escrow
+                              Payment
                             </div>
 
                             <p

@@ -1,8 +1,8 @@
 /*
 =========================================================
 FashionVision Designer Booking Detail
-Designer Contract Workspace
-Version 2.4 - 2D + 3D + Virtual Try-On + Private WhatsApp Contact
+Designer Booking Workspace
+Version 2.5 - Simple Payment Language + 2D + 3D + Virtual Try-On + Private WhatsApp Contact
 =========================================================
 */
 
@@ -94,7 +94,7 @@ const WORKFLOW_STEPS = Object.freeze([
   },
   {
     id: "escrow",
-    label: "Escrow",
+    label: "Payment",
     statuses: [BOOKING_STATUS.AWAITING_PAYMENT, BOOKING_STATUS.FUNDED],
   },
   {
@@ -286,7 +286,7 @@ function getStatusDetails(status) {
         title: "Review this booking request",
 
         description:
-          "Read the creator's brief, confirm the scope and accept or reject the contract.",
+          "Read the Creator's brief, confirm the scope, then accept or reject the booking.",
 
         icon: Hourglass,
 
@@ -298,12 +298,12 @@ function getStatusDetails(status) {
 
     case BOOKING_STATUS.AWAITING_PAYMENT:
       return {
-        label: "Awaiting Escrow",
+        label: "Awaiting Payment",
 
         title: "Creator payment is pending",
 
         description:
-          "You accepted the project. Begin work only after escrow is confirmed as secured.",
+          "You accepted the project. Begin work only after the payment is confirmed as secured.",
 
         icon: LockKeyhole,
 
@@ -315,12 +315,12 @@ function getStatusDetails(status) {
 
     case BOOKING_STATUS.FUNDED:
       return {
-        label: "Escrow Funded",
+        label: "Payment Secured",
 
         title: "Payment is secured",
 
         description:
-          "Accept the funded contract to begin prototype production.",
+          "Accept the secured booking to begin prototype production.",
 
         icon: ShieldCheck,
 
@@ -372,7 +372,7 @@ function getStatusDetails(status) {
         title: "Prepare final deliverables",
 
         description:
-          "The prototype is approved. Submit the polished final 2D work and optional 3D model for payout review.",
+          "The prototype is approved. Submit the polished final 2D work and optional 3D model for Creator review.",
 
         icon: UploadCloud,
 
@@ -390,7 +390,7 @@ function getStatusDetails(status) {
         title: "Waiting for final approval",
 
         description:
-          "The creator is reviewing your final delivery. Payout is released after approval.",
+          "The Creator is reviewing your final delivery. Your payment is released after approval.",
 
         icon: FileCheck2,
 
@@ -424,10 +424,10 @@ function getStatusDetails(status) {
       return {
         label: "Completed & Paid",
 
-        title: "Contract successfully completed",
+        title: "Booking successfully completed",
 
         description:
-          "The final delivery was approved and payout was released to your wallet.",
+          "The final delivery was approved and your Designer payment was released to your wallet.",
 
         icon: CheckCircle2,
 
@@ -441,7 +441,7 @@ function getStatusDetails(status) {
       return {
         label: "Cancelled",
 
-        title: "This contract is closed",
+        title: "This booking is closed",
 
         description: "No further work is required for this booking.",
 
@@ -457,9 +457,9 @@ function getStatusDetails(status) {
       return {
         label: status || "Unknown",
 
-        title: "Contract status",
+        title: "Booking status",
 
-        description: "Review the contract information below.",
+        description: "Review the booking information below.",
 
         icon: Clock3,
 
@@ -491,9 +491,9 @@ function getAvailablePrimaryAction(status, escrowLocked) {
     return {
       type: "accept",
 
-      label: "Accept Contract",
+      label: "Accept Booking",
 
-      helper: "Move the project to escrow funding",
+      helper: "Move the booking to payment",
 
       icon: Check,
     };
@@ -505,7 +505,7 @@ function getAvailablePrimaryAction(status, escrowLocked) {
 
       label: "Accept & Begin",
 
-      helper: "Escrow is already secured",
+      helper: "Payment is already secured",
 
       icon: ShieldCheck,
     };
@@ -572,8 +572,8 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
       : mode === "final"
         ? "Submit final deliverables"
         : mode === "reject"
-          ? "Reject contract"
-          : "Cancel contract";
+          ? "Reject booking"
+          : "Cancel booking";
 
   const subtitle =
     mode === "prototype"
@@ -582,7 +582,7 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
         ? "Provide the required final 2D URL, optional 3D model URL, optional Virtual Try-On garment image URL, and completion notes."
         : mode === "reject"
           ? "Tell the creator why you are declining this request."
-          : "Explain why this active contract should be cancelled.";
+          : "Explain why this active booking should be cancelled.";
 
   const buttonLabel =
     mode === "prototype"
@@ -590,7 +590,7 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
       : mode === "final"
         ? "Submit Final Files"
         : mode === "reject"
-          ? "Reject Contract"
+          ? "Reject Booking"
           : "Request Cancellation";
 
   const canSubmit = isSubmission
@@ -634,7 +634,7 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
           <div className="flex items-start justify-between gap-5">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#9B791D] dark:text-[#D4AF37]">
-                Contract{" "}
+                Booking{" "}
                 {String(booking?.id || "")
                   .slice(0, 8)
                   .toUpperCase()}
@@ -775,7 +775,7 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
                 placeholder={
                   isReject
                     ? "Explain why this request is not a suitable fit."
-                    : "Explain why the contract must be cancelled."
+                    : "Explain why the booking must be cancelled."
                 }
                 className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-rose-400 focus:bg-white focus:ring-4 focus:ring-rose-500/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25"
               />
@@ -804,7 +804,7 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
             disabled={submitting}
             className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 px-5 text-xs font-black uppercase tracking-[0.16em] text-slate-600 transition hover:bg-slate-100 disabled:opacity-50 dark:border-white/10 dark:text-white/55 dark:hover:bg-white/5"
           >
-            Keep Contract
+            Keep Booking
           </button>
 
           <button
@@ -923,7 +923,7 @@ function DesignerBookingDetail() {
         if (String(matchedBooking.designer_id) !== String(currentUserId)) {
           setBooking(null);
 
-          setError("This contract is not assigned to your designer account.");
+          setError("This booking is not assigned to your Designer account.");
 
           return;
         }
@@ -1084,8 +1084,8 @@ function DesignerBookingDetail() {
       payload: {},
 
       success: booking.escrow_locked
-        ? "Contract accepted. Prototype production can begin."
-        : "Contract accepted. Waiting for creator escrow funding.",
+        ? "Booking accepted. Prototype production can begin."
+        : "Booking accepted. Waiting for Creator payment.",
     });
   };
 
@@ -1112,7 +1112,7 @@ function DesignerBookingDetail() {
           reason,
         },
 
-        success: "The contract request was rejected.",
+        success: "The booking request was rejected.",
       });
 
       return;
@@ -1273,7 +1273,7 @@ function DesignerBookingDetail() {
           </div>
 
           <p className="mt-5 text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 dark:text-white/40">
-            Loading contract workspace
+            Loading booking workspace
           </p>
         </div>
       </main>
@@ -1293,11 +1293,11 @@ function DesignerBookingDetail() {
           </div>
 
           <h1 className="mt-6 font-serif text-3xl font-light">
-            Contract unavailable
+            Booking unavailable
           </h1>
 
           <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-white/45">
-            {error || "This contract could not be loaded."}
+            {error || "This booking could not be loaded."}
           </p>
 
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
@@ -1348,7 +1348,7 @@ function DesignerBookingDetail() {
             className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 transition hover:text-[#9B791D] dark:text-white/45 dark:hover:text-[#D4AF37]"
           >
             <ArrowLeft size={16} />
-            Contract Pipeline
+            Booking Pipeline
           </Link>
 
           <button
@@ -1413,7 +1413,7 @@ function DesignerBookingDetail() {
         )}
 
         {/*=================================================
-        Contract hero
+        Booking hero
         =================================================*/}
 
         <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-sm backdrop-blur dark:border-white/5 dark:bg-[#0A0A0A]/90 dark:shadow-2xl">
@@ -1563,7 +1563,7 @@ function DesignerBookingDetail() {
                     className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-xs font-black uppercase tracking-[0.16em] text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 dark:border-white/10 dark:bg-transparent dark:text-white/40 dark:hover:border-rose-400/20 dark:hover:bg-rose-400/10 dark:hover:text-rose-300"
                   >
                     <Ban size={16} />
-                    Cancel Contract
+                    Cancel Booking
                   </button>
                 )}
               </div>
@@ -1589,7 +1589,7 @@ function DesignerBookingDetail() {
               </p>
 
               <h2 className="mt-2 font-serif text-3xl font-light">
-                Contract workflow
+                Booking workflow
               </h2>
             </div>
 
@@ -1659,7 +1659,7 @@ function DesignerBookingDetail() {
 
               <p>
                 {status === BOOKING_STATUS.CANCELLED
-                  ? "This workflow ended because the contract was cancelled."
+                  ? "This workflow ended because the booking was cancelled."
                   : "This workflow is temporarily paused while cancellation is processed."}
               </p>
             </div>
@@ -1920,7 +1920,7 @@ function DesignerBookingDetail() {
 
           <aside className="space-y-7">
             {/*=========================================
-            Contract summary
+            Booking summary
             =========================================*/}
 
             <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur dark:border-white/5 dark:bg-[#0A0A0A]/90">
@@ -1930,7 +1930,7 @@ function DesignerBookingDetail() {
                   className="text-[#9B791D] dark:text-[#D4AF37]"
                 />
 
-                <h2 className="text-lg font-semibold">Contract summary</h2>
+                <h2 className="text-lg font-semibold">Booking summary</h2>
               </div>
 
               <div className="mt-6 space-y-4">
@@ -1946,7 +1946,7 @@ function DesignerBookingDetail() {
 
                 <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-4 dark:border-white/10">
                   <span className="text-sm text-slate-500 dark:text-white/40">
-                    Escrow
+                    Payment status
                   </span>
 
                   <span
@@ -1962,7 +1962,7 @@ function DesignerBookingDetail() {
                       <LockKeyhole size={15} />
                     )}
 
-                    {booking.escrow_locked ? "Secured" : "Not funded"}
+                    {booking.escrow_locked ? "Secured" : "Not secured"}
                   </span>
                 </div>
 
@@ -2156,8 +2156,8 @@ function DesignerBookingDetail() {
                         <p className="text-xs leading-5 text-amber-800/80 dark:text-amber-100/60">
                           Use WhatsApp for communication or call coordination
                           only. Keep acceptance, revisions, milestone
-                          submissions, cancellations, payments and payout
-                          decisions inside DesignByYou.
+                          submissions, cancellations, payments and final
+                          approval inside DesignByYou.
                         </p>
                       </div>
                     </div>

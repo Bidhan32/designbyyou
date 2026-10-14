@@ -4,7 +4,7 @@
 =========================================================
 DesignByYou
 Creator Create Booking
-Version 4.3
+Version 4.4
 =========================================================
 
 Responsibilities:
@@ -618,7 +618,7 @@ function CheckoutForm({
                 dark:text-white/30
               "
             >
-              Contract Reference
+              Booking Reference
             </p>
 
             <p
@@ -663,7 +663,7 @@ function CheckoutForm({
                 dark:text-white/40
               "
             >
-              Designer escrow
+              Designer payment
             </span>
 
             <span className="font-mono">
@@ -807,7 +807,7 @@ function CheckoutForm({
         )}
 
         {verifying
-          ? "Securing Escrow"
+          ? "Securing Payment"
           : processing
             ? "Processing Stripe Payment"
             : `Pay ${formatMoney(payment?.totalCharged, paymentCurrency)}`}
@@ -823,7 +823,7 @@ function CheckoutForm({
           dark:text-white/25
         "
       >
-        Stripe processes the card payment. Designer payout remains governed by
+        Stripe processes the card payment. Designer payment remains governed by
         the booking workflow and final approval.
       </p>
     </form>
@@ -880,7 +880,7 @@ export default function CreatorCreateBooking() {
   const [subscriptionError, setSubscriptionError] = useState("");
 
   /*=======================================================
-  Contract Form
+  Booking Form
   =======================================================*/
 
   const [agreedPrice, setAgreedPrice] = useState(
@@ -1213,7 +1213,7 @@ export default function CreatorCreateBooking() {
     }
 
     if (!baseAmount) {
-      return "Enter an agreed contract value greater than zero.";
+      return "Enter an agreed project value greater than zero.";
     }
 
     if (brief.trim().length < 20) {
@@ -1349,15 +1349,15 @@ export default function CreatorCreateBooking() {
 
       if (code === "CLIENT_REQUEST_ID_REUSED") {
         setFormError(
-          "This booking request identity was already used with different contract details. Refresh the page before starting a different booking.",
+          "This booking request was already used with different booking details. Refresh the page before starting a different booking.",
         );
       } else if (code === "PAYMENT_INTENT_ALREADY_CANCELLED") {
         setFormError(
-          "The Stripe payment for this booking attempt was already cancelled. Refresh the page before starting a new contract attempt.",
+          "The Stripe payment for this booking attempt was already cancelled. Refresh the page before starting a new booking attempt.",
         );
       } else {
         setFormError(
-          apiError(requestError, "The booking contract could not be created."),
+          apiError(requestError, "The booking could not be created."),
         );
       }
     } finally {
@@ -1366,7 +1366,7 @@ export default function CreatorCreateBooking() {
   };
 
   /*=======================================================
-  Verify Escrow
+  Verify Secured Payment
 
   This reconciliation endpoint remains safe to retry after
   Stripe succeeds.
@@ -1387,7 +1387,7 @@ export default function CreatorCreateBooking() {
       });
 
       if (response?.data?.status !== "success") {
-        throw new Error("Escrow verification did not complete.");
+        throw new Error("Payment confirmation did not complete.");
       }
 
       setCheckoutOpen(false);
@@ -1405,7 +1405,7 @@ export default function CreatorCreateBooking() {
     } catch (error) {
       if (import.meta.env.DEV) {
         console.error(
-          "Escrow verification failed:",
+          "Payment confirmation failed:",
           error?.response?.data || error,
         );
       }
@@ -1413,7 +1413,7 @@ export default function CreatorCreateBooking() {
       setVerificationError(
         apiError(
           error,
-          "Stripe accepted the payment, but escrow has not been synchronized yet. Retry verification using this same booking.",
+          "Stripe accepted the payment, but the booking payment has not been confirmed yet. Retry payment confirmation using this same booking.",
         ),
       );
     } finally {
@@ -1545,7 +1545,7 @@ export default function CreatorCreateBooking() {
               sm:text-5xl
             "
           >
-            Escrow{" "}
+            Payment{" "}
             <span
               className="
                 italic
@@ -1571,8 +1571,8 @@ export default function CreatorCreateBooking() {
               dark:text-white/45
             "
           >
-            Your payment has been reconciled with the booking. The booking will
-            now continue through the designer workflow.
+            Your payment has been confirmed and secured for this booking. The
+            booking will now continue through the Designer workflow.
           </p>
 
           <div
@@ -1712,7 +1712,7 @@ export default function CreatorCreateBooking() {
                 >
                   WhatsApp remains private until the Designer accepts the
                   booking and contact-sharing rules are satisfied. Open the
-                  contract workspace when the booking becomes eligible.
+                  booking workspace when the booking becomes eligible.
                 </p>
               </div>
             </div>
@@ -1777,7 +1777,7 @@ export default function CreatorCreateBooking() {
                 hover:bg-[#E4C65D]
               "
             >
-              Open Contract
+              Open Booking
               <ArrowRight size={14} />
             </button>
           </div>
@@ -2015,8 +2015,8 @@ export default function CreatorCreateBooking() {
                   "
                 >
                   Choose a designer, define the project terms, review the
-                  backend-confirmed payment amount, and secure the contract
-                  through Stripe.
+                  backend-confirmed payment amount, and secure the booking
+                  payment through Stripe.
                 </p>
               </div>
 
@@ -2110,7 +2110,7 @@ export default function CreatorCreateBooking() {
                     dark:text-white/25
                   "
                 >
-                  Contract setup
+                  Booking setup
                 </span>
 
                 <span
@@ -2692,7 +2692,7 @@ export default function CreatorCreateBooking() {
             )}
 
             {/*===========================================
-            Contract Form
+            Booking Form
             ===========================================*/}
 
             <section
@@ -2762,7 +2762,7 @@ export default function CreatorCreateBooking() {
                         sm:text-4xl
                       "
                     >
-                      Define the contract
+                      Define the booking
                     </h2>
 
                     <p
@@ -2777,7 +2777,7 @@ export default function CreatorCreateBooking() {
                       "
                     >
                       Set the agreed project value, timing, and creative
-                      requirements before Stripe funding.
+                      requirements before Stripe payment.
                     </p>
                   </div>
 
@@ -2946,7 +2946,7 @@ export default function CreatorCreateBooking() {
                             dark:text-amber-100
                           "
                         >
-                          Contract created — payment pending
+                          Booking created — payment pending
                         </h3>
 
                         <p
@@ -2962,7 +2962,7 @@ export default function CreatorCreateBooking() {
                           Booking #
                           {String(createdBooking.id).slice(0, 8).toUpperCase()}{" "}
                           already exists. Continue that Stripe payment instead
-                          of creating another contract.
+                          of creating another booking.
                         </p>
                       </div>
                     </div>
@@ -3409,7 +3409,7 @@ export default function CreatorCreateBooking() {
                             dark:text-[#D4AF37]
                           "
                         />
-                        Agreed Contract Value
+                        Agreed Project Value
                       </span>
 
                       <div className="relative">
@@ -3487,7 +3487,7 @@ export default function CreatorCreateBooking() {
                         >
                           Pre-filled from the designer's indicative booking
                           starting budget. You may adjust it before creating the
-                          contract.
+                          booking.
                         </p>
                       )}
                     </label>
@@ -4148,7 +4148,7 @@ export default function CreatorCreateBooking() {
                         dark:text-white/35
                       "
                     >
-                      Creating the contract prepares a Stripe PaymentIntent. You
+                      Creating the booking prepares a Stripe PaymentIntent. You
                       will see the backend-confirmed total before submitting
                       your card payment.
                     </p>
@@ -4196,10 +4196,10 @@ export default function CreatorCreateBooking() {
                     )}
 
                     {submitting
-                      ? "Preparing Contract"
+                      ? "Preparing Booking"
                       : createdBooking
                         ? "Continue Payment"
-                        : "Review & Fund"}
+                        : "Review & Pay"}
                   </button>
                 </div>
               </form>
@@ -4243,7 +4243,7 @@ export default function CreatorCreateBooking() {
             <section
               role="dialog"
               aria-modal="true"
-              aria-label="Fund booking escrow"
+              aria-label="Secure booking payment"
               onMouseDown={(event) => event.stopPropagation()}
               className="
                   relative
@@ -4312,7 +4312,7 @@ export default function CreatorCreateBooking() {
                           text-3xl
                         "
                     >
-                      Fund escrow
+                      Secure Payment
                     </h2>
 
                     <p
@@ -4432,7 +4432,7 @@ export default function CreatorCreateBooking() {
                     ) : (
                       <RefreshCw size={14} />
                     )}
-                    Retry Escrow Verification
+                    Retry Payment Confirmation
                   </button>
                 )}
               </div>

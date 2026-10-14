@@ -4,13 +4,13 @@
 =========================================================
 DesignByYou
 Creator Initiate Commission
-Version 2.0
+Version 2.1
 =========================================================
 
 PURPOSE
 ---------------------------------------------------------
 
-This component is now a compatibility / routing bridge.
+This component is a compatibility / routing bridge.
 
 Historically this page contained its own commission form
 and submitted to:
@@ -20,7 +20,7 @@ POST /creators/commissions/request
 That created a second booking workflow separate from the
 secure P2P booking system.
 
-All Creator-to-Designer commissions must now use the single
+All Creator-to-Designer commissions now use the single
 canonical flow:
 
 CreatorCreateBooking
@@ -32,6 +32,10 @@ Stripe PaymentIntent
 POST /p2p-bookings/verify-escrow
         ↓
 P2P booking workflow
+
+The internal verify-escrow endpoint name is intentionally
+preserved because it belongs to the backend implementation.
+User-facing language uses simple "payment" wording.
 
 =========================================================
 WHY KEEP THIS COMPONENT?
@@ -66,10 +70,7 @@ This component:
 =========================================================
 */
 
-import React, {
-  useEffect,
-  useMemo,
-} from "react";
+import React, { useEffect, useMemo } from "react";
 
 import {
   ArrowLeft,
@@ -79,28 +80,16 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import {
-  useLocation,
-  useNavigate,
-  useParams,
-} from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 /*=========================================================
 Helpers
 =========================================================*/
 
 function cleanValue(value) {
-  const cleaned =
-    String(
-      value ?? "",
-    ).trim();
+  const cleaned = String(value ?? "").trim();
 
-  if (
-    !cleaned ||
-    ["null", "undefined"].includes(
-      cleaned.toLowerCase(),
-    )
-  ) {
+  if (!cleaned || ["null", "undefined"].includes(cleaned.toLowerCase())) {
     return null;
   }
 
@@ -108,19 +97,13 @@ function cleanValue(value) {
 }
 
 function positiveMoney(value) {
-  const amount =
-    Number(value);
+  const amount = Number(value);
 
-  if (
-    !Number.isFinite(amount) ||
-    amount <= 0
-  ) {
+  if (!Number.isFinite(amount) || amount <= 0) {
     return null;
   }
 
-  return Number(
-    amount.toFixed(2),
-  );
+  return Number(amount.toFixed(2));
 }
 
 /*=========================================================
@@ -128,99 +111,67 @@ Creator Initiate Commission
 =========================================================*/
 
 export default function CreatorInitiateCommission() {
-  const {
-    designerId,
-  } = useParams();
+  const { designerId } = useParams();
 
-  const navigate =
-    useNavigate();
+  const navigate = useNavigate();
 
-  const location =
-    useLocation();
+  const location = useLocation();
 
-  /*
-  Older Showcase / Designer Profile links may still pass
-  the selected design through route state.
+  /**
+   * Older Showcase / Designer Profile links may still pass
+   * the selected design through route state.
+   *
+   * We only use safe routing context from that object.
+   *
+   * The backend will independently validate:
+   *
+   * - Designer
+   * - design ownership
+   * - publication state
+   * - agreed amount
+   * - booking type
+   */
 
-  We only use safe routing context from that object.
-
-  The backend will independently validate:
-
-  - Designer
-  - design ownership
-  - publication state
-  - agreed amount
-  - booking type
-  */
-
-  const referenceDesign =
-    location.state
-      ?.referenceDesign ||
-    null;
+  const referenceDesign = location.state?.referenceDesign || null;
 
   /*=======================================================
   Destination
   =======================================================*/
 
-  const destination =
-    useMemo(() => {
-      const safeDesignerId =
-        cleanValue(
-          designerId,
-        );
+  const destination = useMemo(() => {
+    const safeDesignerId = cleanValue(designerId);
 
-      if (!safeDesignerId) {
-        return null;
-      }
+    if (!safeDesignerId) {
+      return null;
+    }
 
-      const params =
-        new URLSearchParams();
+    const params = new URLSearchParams();
 
-      params.set(
-        "designer_id",
-        safeDesignerId,
-      );
+    params.set("designer_id", safeDesignerId);
 
-      const designId =
-        cleanValue(
-          referenceDesign?.id,
-        );
+    const designId = cleanValue(referenceDesign?.id);
 
-      if (designId) {
-        params.set(
-          "design_id",
-          designId,
-        );
-      }
+    if (designId) {
+      params.set("design_id", designId);
+    }
 
-      /*
-      base_price is only an indicative starting budget.
+    /**
+     * base_price is only an indicative starting budget.
+     *
+     * CreatorCreateBooking allows the Creator to edit it.
+     *
+     * The backend remains authoritative for the eventual
+     * agreed booking amount and Stripe charge.
+     */
 
-      CreatorCreateBooking allows the Creator to edit it.
+    const budget = positiveMoney(referenceDesign?.base_price);
 
-      The backend remains authoritative for the eventual
-      agreed booking amount and Stripe charge.
-      */
+    if (budget) {
+      params.set("budget", String(budget));
+    }
 
-      const budget =
-        positiveMoney(
-          referenceDesign
-            ?.base_price,
-        );
-
-      if (budget) {
-        params.set(
-          "budget",
-          String(budget),
-        );
-      }
-
-      return `/creator/bookings/new?${params.toString()}`;
-    }, [
-      designerId,
-      referenceDesign?.id,
-      referenceDesign?.base_price,
-    ]);
+    return `/creator/bookings/new?${params.toString()}`;
+  }, [designerId, referenceDesign?.id, referenceDesign?.base_price]);
 
   /*=======================================================
   Redirect to Canonical Booking Flow
@@ -231,22 +182,16 @@ export default function CreatorInitiateCommission() {
       return;
     }
 
-    /*
-    replace:true prevents the browser Back button from
-    bouncing between this legacy bridge and the canonical
-    booking form.
-    */
+    /**
+     * replace:true prevents the browser Back button from
+     * bouncing between this legacy bridge and the canonical
+     * booking form.
+     */
 
-    navigate(
-      destination,
-      {
-        replace: true,
-      },
-    );
-  }, [
-    destination,
-    navigate,
-  ]);
+    navigate(destination, {
+      replace: true,
+    });
+  }, [destination, navigate]);
 
   /*=======================================================
   Invalid Legacy Route
@@ -320,9 +265,7 @@ export default function CreatorInitiateCommission() {
               dark:text-[#D4AF37]
             "
           >
-            <Sparkles
-              size={27}
-            />
+            <Sparkles size={27} />
           </div>
 
           <p
@@ -365,20 +308,13 @@ export default function CreatorInitiateCommission() {
               dark:text-white/40
             "
           >
-            This booking link does not
-            contain a valid Designer.
-            Return to the directory and
-            choose a Designer before
-            starting a contract.
+            This booking link does not contain a valid Designer. Return to the
+            directory and choose a Designer before starting a booking.
           </p>
 
           <button
             type="button"
-            onClick={() =>
-              navigate(
-                "/creator/directory",
-              )
-            }
+            onClick={() => navigate("/creator/directory")}
             className="
               mt-7
               inline-flex
@@ -400,10 +336,7 @@ export default function CreatorInitiateCommission() {
               hover:bg-[#E4C65D]
             "
           >
-            <ArrowLeft
-              size={14}
-            />
-
+            <ArrowLeft size={14} />
             Designer Directory
           </button>
         </section>
@@ -488,9 +421,7 @@ export default function CreatorInitiateCommission() {
             dark:text-emerald-300
           "
         >
-          <LockKeyhole
-            size={25}
-          />
+          <LockKeyhole size={25} />
 
           <span
             className="
@@ -510,9 +441,7 @@ export default function CreatorInitiateCommission() {
               dark:border-[#090909]
             "
           >
-            <ShieldCheck
-              size={12}
-            />
+            <ShieldCheck size={12} />
           </span>
         </div>
 
@@ -539,7 +468,7 @@ export default function CreatorInitiateCommission() {
             font-light
           "
         >
-          Preparing your contract
+          Preparing your booking
         </h1>
 
         <p
@@ -552,9 +481,7 @@ export default function CreatorInitiateCommission() {
             dark:text-white/40
           "
         >
-          Moving you to the secure
-          booking and Stripe escrow
-          workflow.
+          Moving you to the secure booking and Stripe payment workflow.
         </p>
 
         <Loader2

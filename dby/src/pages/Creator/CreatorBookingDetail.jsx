@@ -255,7 +255,7 @@ function getStatusDetails(status, designerName) {
         label: "Payment Required",
         title: "Designer accepted",
         description:
-          "The designer accepted your request, but escrow has not yet been confirmed.",
+          "The designer accepted your request, but the payment has not yet been confirmed.",
         icon: WalletCards,
         badgeClass:
           "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-400/20 dark:bg-orange-400/10 dark:text-orange-300",
@@ -265,7 +265,7 @@ function getStatusDetails(status, designerName) {
 
     case BOOKING_STATUS.FUNDED:
       return {
-        label: "Escrow Secured",
+        label: "Payment Secured",
         title: "Payment protected",
         description:
           "Your payment is secured while the designer reviews or accepts the project.",
@@ -292,8 +292,7 @@ function getStatusDetails(status, designerName) {
       return {
         label: "Review Prototype",
         title: "Your decision is needed",
-        description:
-          "Review the prototype, approve it or request a revision.",
+        description: "Review the prototype, approve it or request a revision.",
         icon: FileCheck2,
         badgeClass:
           "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-400/20 dark:bg-indigo-400/10 dark:text-indigo-300",
@@ -319,7 +318,7 @@ function getStatusDetails(status, designerName) {
         label: "Review Final Delivery",
         title: "Final approval required",
         description:
-          "Review the final 2D and optional 3D deliverables before releasing the designer payout.",
+          "Review the final 2D and optional 3D deliverables before approving the Designer payment.",
         icon: FileCheck2,
         badgeClass:
           "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300",
@@ -345,9 +344,9 @@ function getStatusDetails(status, designerName) {
     case BOOKING_STATUS.DELIVERED:
       return {
         label: "Completed & Paid",
-        title: "Contract completed",
+        title: "Booking completed",
         description:
-          "The final work was approved and the designer payout was released.",
+          "The final work was approved and the Designer payment was released.",
         icon: CheckCircle2,
         badgeClass:
           "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300",
@@ -358,9 +357,9 @@ function getStatusDetails(status, designerName) {
     case BOOKING_STATUS.CANCELLED:
       return {
         label: "Cancelled",
-        title: "Contract closed",
+        title: "Booking closed",
         description:
-          "No further work or creator action is required for this contract.",
+          "No further work or Creator action is required for this booking.",
         icon: Ban,
         badgeClass:
           "border-slate-200 bg-slate-100 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/45",
@@ -371,9 +370,8 @@ function getStatusDetails(status, designerName) {
     default:
       return {
         label: normalized || "Unknown",
-        title: "Contract status",
-        description:
-          "Refresh this page to retrieve the latest contract state.",
+        title: "Booking status",
+        description: "Refresh this page to get the latest booking status.",
         icon: Info,
         badgeClass:
           "border-slate-200 bg-slate-100 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/50",
@@ -443,18 +441,18 @@ function getTimeline(status, escrowLocked) {
 
   return [
     {
-      label: "Contract created",
-      description: "The project request was recorded.",
+      label: "Booking created",
+      description: "Your booking request was created.",
       complete: true,
     },
     {
       label: "Designer accepted",
-      description: "The designer agreed to the contract.",
+      description: "The Designer accepted the booking.",
       complete: designerAccepted,
     },
     {
-      label: "Escrow secured",
-      description: "Stripe payment was verified and protected.",
+      label: "Payment secured",
+      description: "Your Stripe payment was confirmed and secured.",
       complete: paymentComplete,
     },
     {
@@ -474,7 +472,7 @@ function getTimeline(status, escrowLocked) {
     },
     {
       label: "Completed and paid",
-      description: "The final payout was released.",
+      description: "The Designer payment was released.",
       complete: completed,
     },
   ];
@@ -571,13 +569,11 @@ export default function CreatorBookingDetail() {
         );
 
         if (!target) {
-          throw new Error("The requested contract was not found.");
+          throw new Error("The requested booking was not found.");
         }
 
         if (String(target.creator_id) !== String(currentUserId)) {
-          throw new Error(
-            "You are not authorized to access this creator contract.",
-          );
+          throw new Error("You are not authorized to access this booking.");
         }
 
         setBooking(target);
@@ -585,7 +581,7 @@ export default function CreatorBookingDetail() {
         setPageError(
           getApiErrorMessage(
             error,
-            "The contract workspace could not be loaded.",
+            "The booking workspace could not be loaded.",
           ),
         );
       } finally {
@@ -702,12 +698,7 @@ export default function CreatorBookingDetail() {
     };
   }, [tryOnFile]);
 
-  const runAction = async ({
-    name,
-    request,
-    successMessage,
-    afterSuccess,
-  }) => {
+  const runAction = async ({ name, request, successMessage, afterSuccess }) => {
     if (actionName) {
       return;
     }
@@ -753,15 +744,14 @@ export default function CreatorBookingDetail() {
           bookingId,
         }),
 
-      successMessage: "Stripe payment verified and escrow secured.",
+      successMessage: "Stripe payment confirmed and secured.",
     });
 
   const handleApprovePrototype = () =>
     runAction({
       name: "approve-prototype",
 
-      request: () =>
-        API.post(`/p2p-bookings/${bookingId}/approve-prototype`),
+      request: () => API.post(`/p2p-bookings/${bookingId}/approve-prototype`),
 
       successMessage: "Prototype approved. Final production can begin.",
 
@@ -787,19 +777,19 @@ export default function CreatorBookingDetail() {
 
         if (reward?.awarded === true && rewardPoints > 0) {
           return Number.isFinite(totalPoints)
-            ? `Final delivery approved and payout released. +${rewardPoints} reward points earned. Total points: ${totalPoints}.`
-            : `Final delivery approved and payout released. +${rewardPoints} reward points earned.`;
+            ? `Final delivery approved and Designer payment released. +${rewardPoints} reward points earned. Total points: ${totalPoints}.`
+            : `Final delivery approved and Designer payment released. +${rewardPoints} reward points earned.`;
         }
 
         if (reward?.awarded === true && rewardPoints === 0) {
-          return "Final delivery approved and payout released. This booking does not qualify for reward points.";
+          return "Final delivery approved and Designer payment released. This booking does not qualify for reward points.";
         }
 
         if (response?.data?.idempotent === true) {
           return "This booking was already completed and its reward was already processed.";
         }
 
-        return "Final delivery approved and payout released.";
+        return "Final delivery approved and Designer payment released.";
       },
 
       afterSuccess: (response) => {
@@ -1054,8 +1044,7 @@ export default function CreatorBookingDetail() {
       setTryOnResultImage(image);
 
       showToast(
-        response?.data?.message ||
-          "Virtual Try-On generated successfully.",
+        response?.data?.message || "Virtual Try-On generated successfully.",
         "success",
       );
     } catch (error) {
@@ -1080,7 +1069,7 @@ export default function CreatorBookingDetail() {
           />
 
           <p className="mt-4 text-[10px] font-black uppercase tracking-[0.24em] text-slate-400 dark:text-white/35">
-            Loading contract workspace
+            Loading booking workspace
           </p>
         </div>
       </main>
@@ -1098,11 +1087,11 @@ export default function CreatorBookingDetail() {
           </div>
 
           <h1 className="mt-6 font-serif text-3xl font-light">
-            Contract unavailable
+            Booking unavailable
           </h1>
 
           <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-white/45">
-            {pageError || "The contract could not be loaded."}
+            {pageError || "The booking could not be loaded."}
           </p>
 
           <div className="mt-7 grid gap-3 sm:grid-cols-2">
@@ -1146,8 +1135,7 @@ export default function CreatorBookingDetail() {
   const prototypeReview = status === BOOKING_STATUS.REVIEW_PROTOTYPE;
 
   const finalReview =
-    status === BOOKING_STATUS.REVIEW_FINAL ||
-    status === BOOKING_STATUS.REVIEW;
+    status === BOOKING_STATUS.REVIEW_FINAL || status === BOOKING_STATUS.REVIEW;
 
   const currentReviewUrl = prototypeReview
     ? booking.prototype_file_url
@@ -1184,7 +1172,7 @@ export default function CreatorBookingDetail() {
   const whatsappPartnerName =
     whatsappContact?.participant?.display_name || designerName;
 
-  const escrowLabel = booking.escrow_locked
+  const paymentStatusLabel = booking.escrow_locked
     ? "Secured"
     : [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.DELIVERED].includes(status)
       ? "Released"
@@ -1218,15 +1206,15 @@ export default function CreatorBookingDetail() {
             </Link>
 
             <h1 className="mt-3 font-serif text-3xl font-light tracking-tight sm:text-4xl">
-              Contract
+              Booking
               <span className="ml-2 italic text-[#A17D1C] dark:text-[#D4AF37]">
                 Workspace
               </span>
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-white/45">
-              Review milestones, 2D/3D deliverables, creator decisions,
-              protected funds and final delivery records.
+              Review milestones, 2D/3D deliverables, creator decisions, secured
+              payments and final delivery records.
             </p>
           </div>
 
@@ -1340,7 +1328,7 @@ export default function CreatorBookingDetail() {
 
               <div>
                 <h2 className="font-semibold text-rose-900 dark:text-rose-100">
-                  Contract cancelled
+                  Booking cancelled
                 </h2>
 
                 <p className="mt-2 text-sm leading-6 text-rose-700/80 dark:text-rose-200/70">
@@ -1500,9 +1488,7 @@ export default function CreatorBookingDetail() {
                           <button
                             type="button"
                             onClick={() =>
-                              openTryOn(
-                                prototypeReview ? "prototype" : "final",
-                              )
+                              openTryOn(prototypeReview ? "prototype" : "final")
                             }
                             disabled={Boolean(actionName) || tryOnLoading}
                             className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-violet-700 px-5 text-[9px] font-black uppercase tracking-[0.18em] text-white transition hover:bg-violet-800 disabled:opacity-50 dark:bg-violet-500 dark:hover:bg-violet-400"
@@ -1624,7 +1610,7 @@ export default function CreatorBookingDetail() {
 
                         {prototypeReview
                           ? "Approve prototype"
-                          : "Approve and release payout"}
+                          : "Approve final & pay Designer"}
                       </button>
                     </div>
                   )}
@@ -1835,7 +1821,7 @@ export default function CreatorBookingDetail() {
             <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-[#0B0B0B] dark:shadow-2xl sm:p-7">
               <div className="border-b border-slate-200 pb-5 dark:border-white/5">
                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/30">
-                  Contract progress
+                  Booking progress
                 </p>
 
                 <h2 className="mt-1 font-serif text-2xl font-light">
@@ -1882,12 +1868,12 @@ export default function CreatorBookingDetail() {
           {/* Right Sidebar */}
 
           <aside className="space-y-6 xl:sticky xl:top-28 xl:self-start">
-            {/* Escrow Ledger */}
+            {/* Payment Summary */}
 
             <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-white/5 dark:bg-[#0B0B0B] dark:shadow-2xl">
               <div className="border-b border-slate-200 bg-slate-50 p-6 dark:border-white/5 dark:bg-white/[0.025]">
                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/30">
-                  Escrow ledger
+                  Payment summary
                 </p>
 
                 <div className="mt-3 flex items-end justify-between gap-4">
@@ -1908,7 +1894,7 @@ export default function CreatorBookingDetail() {
                       <LockKeyhole size={13} />
                     )}
 
-                    {escrowLabel}
+                    {paymentStatusLabel}
                   </span>
                 </div>
               </div>
@@ -1960,7 +1946,7 @@ export default function CreatorBookingDetail() {
 
                   <div>
                     <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
-                      Contract type
+                      Booking type
                     </p>
 
                     <p className="mt-1 text-sm font-semibold capitalize">
@@ -2120,9 +2106,7 @@ export default function CreatorBookingDetail() {
                             )
                           }
                           disabled={
-                            !isSafeWhatsAppUrl(
-                              whatsappContact?.video_call_url,
-                            )
+                            !isSafeWhatsAppUrl(whatsappContact?.video_call_url)
                           }
                           className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 text-[9px] font-black uppercase tracking-[0.17em] text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200 dark:hover:bg-emerald-400/15"
                         >
@@ -2148,7 +2132,7 @@ export default function CreatorBookingDetail() {
                         <p className="text-xs leading-5 text-amber-800/80 dark:text-amber-100/60">
                           Use WhatsApp for communication or call coordination
                           only. Keep acceptance, revisions, milestone approvals,
-                          cancellations, payment and payout release inside
+                          cancellations, payments and final approval inside
                           DesignByYou.
                         </p>
                       </div>
@@ -2186,12 +2170,12 @@ export default function CreatorBookingDetail() {
                 <CheckCircle2 className="text-emerald-700 dark:text-emerald-300" />
 
                 <h2 className="mt-4 font-semibold text-emerald-900 dark:text-emerald-100">
-                  Contract settled
+                  Booking completed
                 </h2>
 
                 <p className="mt-2 text-sm leading-6 text-emerald-700/80 dark:text-emerald-200/70">
-                  The final payout was released. Your 2D and 3D delivery links
-                  remain available in the archive.
+                  The Designer payment was released. Your 2D and 3D delivery
+                  links remain available in the archive.
                 </p>
 
                 {booking.creator_reward_awarded_at && (
@@ -2229,11 +2213,10 @@ export default function CreatorBookingDetail() {
                   action.
                 </p>
               </section>
-            ) : status !== BOOKING_STATUS.CANCELLED &&
-              cancellationAllowed ? (
+            ) : status !== BOOKING_STATUS.CANCELLED && cancellationAllowed ? (
               <section className="rounded-3xl border border-rose-200 bg-white p-6 shadow-sm dark:border-rose-400/15 dark:bg-[#0B0B0B] dark:shadow-2xl">
                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-rose-600 dark:text-rose-300">
-                  Contract management
+                  Booking management
                 </p>
 
                 <h2 className="mt-2 font-serif text-2xl font-light">
@@ -2241,8 +2224,8 @@ export default function CreatorBookingDetail() {
                 </h2>
 
                 <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-white/40">
-                  Cancellation may trigger a Stripe refund when escrow was
-                  funded.
+                  Cancellation may trigger a Stripe refund when the payment was
+                  already secured.
                 </p>
 
                 {cancellationOpen ? (
@@ -2254,7 +2237,7 @@ export default function CreatorBookingDetail() {
                       }
                       rows={4}
                       maxLength={5000}
-                      placeholder="Explain why this contract should be cancelled..."
+                      placeholder="Explain why this booking should be cancelled..."
                       className="w-full resize-none rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-slate-900 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-500/10 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-white"
                     />
 
@@ -2269,7 +2252,7 @@ export default function CreatorBookingDetail() {
                         disabled={Boolean(actionName)}
                         className="h-11 rounded-xl border border-slate-200 bg-white text-[9px] font-black uppercase tracking-[0.17em] text-slate-600 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-white/55"
                       >
-                        Keep contract
+                        Keep booking
                       </button>
 
                       <button
@@ -2335,9 +2318,7 @@ export default function CreatorBookingDetail() {
 
                 <h2 className="mt-1 font-serif text-2xl font-light text-slate-950 dark:text-white">
                   Preview the{" "}
-                  {tryOnPhase === "prototype"
-                    ? "prototype"
-                    : "final garment"}
+                  {tryOnPhase === "prototype" ? "prototype" : "final garment"}
                 </h2>
 
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-white/45">
@@ -2399,10 +2380,7 @@ export default function CreatorBookingDetail() {
 
                   {tryOnError && (
                     <div className="mt-4 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">
-                      <AlertCircle
-                        size={17}
-                        className="mt-0.5 shrink-0"
-                      />
+                      <AlertCircle size={17} className="mt-0.5 shrink-0" />
 
                       <p>{tryOnError}</p>
                     </div>
@@ -2420,9 +2398,7 @@ export default function CreatorBookingDetail() {
                       <Sparkles size={16} />
                     )}
 
-                    {tryOnLoading
-                      ? "Generating..."
-                      : "Generate Virtual Try-On"}
+                    {tryOnLoading ? "Generating..." : "Generate Virtual Try-On"}
                   </button>
 
                   <p className="mt-3 text-center text-xs leading-5 text-slate-400 dark:text-white/30">
@@ -2448,10 +2424,7 @@ export default function CreatorBookingDetail() {
                     </div>
 
                     <div className="mt-4 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200">
-                      <CheckCircle2
-                        size={17}
-                        className="mt-0.5 shrink-0"
-                      />
+                      <CheckCircle2 size={17} className="mt-0.5 shrink-0" />
 
                       <p>
                         Virtual Try-On completed. This preview is temporary and
