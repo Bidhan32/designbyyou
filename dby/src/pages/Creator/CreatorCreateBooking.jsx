@@ -4,7 +4,7 @@
 =========================================================
 DesignByYou
 Creator Create Booking
-Version 4.4
+Version 4.5 — Unified Final Price
 =========================================================
 
 Responsibilities:
@@ -641,124 +641,18 @@ function CheckoutForm({
           <ShieldCheck size={21} className="text-emerald-500" />
         </div>
 
-        <div
-          className="
-            space-y-3
-            px-5
-            py-4
-            text-sm
-          "
-        >
-          <div
-            className="
-              flex
-              justify-between
-              gap-4
-            "
-          >
-            <span
-              className="
-                text-slate-500
-
-                dark:text-white/40
-              "
-            >
-              Designer payment
-            </span>
-
-            <span className="font-mono">
-              {formatMoney(payment?.baseAmount, paymentCurrency)}
-            </span>
-          </div>
-
-          <div
-            className="
-              flex
-              justify-between
-              gap-4
-            "
-          >
-            <span
-              className="
-                text-slate-500
-
-                dark:text-white/40
-              "
-            >
-              Connection fee
-            </span>
-
-            {payment?.connectionFeeWaived ? (
-              <span
-                className="
-                  text-[9px]
-                  font-black
-                  uppercase
-                  tracking-[0.15em]
-                  text-emerald-600
-
-                  dark:text-emerald-300
-                "
-              >
-                Waived
-              </span>
-            ) : (
-              <span className="font-mono">
-                {formatMoney(payment?.connectionFee, paymentCurrency)}
-              </span>
-            )}
-          </div>
-
-          <div
-            className="
-              flex
-              items-end
-              justify-between
-              gap-4
-              border-t
-              border-slate-200
-              pt-4
-
-              dark:border-white/[0.06]
-            "
-          >
+        <div className="px-5 py-5 text-sm">
+          <div className="flex items-end justify-between gap-4">
             <div>
-              <p
-                className="
-                  text-[8px]
-                  font-black
-                  uppercase
-                  tracking-[0.18em]
-                  text-slate-400
-
-                  dark:text-white/30
-                "
-              >
-                Stripe Authorization
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-white/40">
+                Final Price
               </p>
-
-              <p
-                className="
-                  mt-1
-                  text-[10px]
-                  text-slate-500
-
-                  dark:text-white/35
-                "
-              >
-                Final backend-confirmed amount
+              <p className="mt-2 text-[10px] leading-5 text-slate-400 dark:text-white/35">
+                Total amount payable for this booking, including applicable
+                charges.
               </p>
             </div>
-
-            <strong
-              className="
-                font-mono
-                text-2xl
-                text-[#98761A]
-
-                dark:text-[#D4AF37]
-              "
-            >
+            <strong className="shrink-0 font-mono text-2xl text-[#98761A] dark:text-[#D4AF37]">
               {formatMoney(payment?.totalCharged, paymentCurrency)}
             </strong>
           </div>
@@ -1641,7 +1535,7 @@ export default function CreatorCreateBooking() {
                   dark:text-white/40
                 "
               >
-                Stripe total
+                Final Price
               </span>
 
               <strong
@@ -2814,7 +2708,7 @@ export default function CreatorCreateBooking() {
                       : subscribed
                         ? `${subscriptionPlanLabel(
                             subscription?.plan,
-                          )} • Fee waived`
+                          )} • Membership active`
                         : "Pay-as-you-go"}
                   </div>
                 </div>
@@ -2857,8 +2751,8 @@ export default function CreatorCreateBooking() {
                           opacity-75
                         "
                       >
-                        The backend will still determine your actual connection
-                        fee before payment.
+                        The backend will confirm your final payment amount
+                        before checkout.
                       </p>
                     </div>
                   </div>
@@ -3868,8 +3762,8 @@ export default function CreatorCreateBooking() {
                             dark:text-white/35
                           "
                         >
-                          The exact connection fee and Stripe charge are
-                          calculated by the backend before you enter payment.
+                          Your final payable amount is securely confirmed by the
+                          backend before you complete payment.
                         </p>
                       </div>
 
@@ -3882,187 +3776,29 @@ export default function CreatorCreateBooking() {
                       />
                     </div>
 
-                    <div
-                      className="
-                        relative
-                        mt-5
-                        space-y-3
-                        text-sm
-                      "
-                    >
-                      <div
-                        className="
-                          flex
-                          items-center
-                          justify-between
-                          gap-4
-                        "
-                      >
-                        <span
-                          className="
-                            text-slate-500
-
-                            dark:text-white/40
-                          "
-                        >
-                          Agreed designer value
-                        </span>
-
-                        <span className="font-mono">
-                          {formatMoney(baseAmount)}
-                        </span>
-                      </div>
-
-                      <div
-                        className="
-                          flex
-                          items-center
-                          justify-between
-                          gap-4
-                        "
-                      >
-                        <span
-                          className="
-                            text-slate-500
-
-                            dark:text-white/40
-                          "
-                        >
-                          Platform connection fee
-                        </span>
-
-                        {createdBooking ? (
-                          displayedPayment.connectionFeeWaived ? (
-                            <span
-                              className="
-                                text-[8px]
-                                font-black
-                                uppercase
-                                tracking-[0.14em]
-                                text-emerald-600
-
-                                dark:text-emerald-300
-                              "
-                            >
-                              Waived
-                            </span>
-                          ) : (
-                            <span className="font-mono">
-                              {formatMoney(
-                                displayedPayment.connectionFee,
-                                displayedPayment.currency,
-                              )}
-                            </span>
-                          )
-                        ) : subscribed ? (
-                          <span
-                            className="
-                              text-[8px]
-                              font-black
-                              uppercase
-                              tracking-[0.14em]
-                              text-emerald-600
-
-                              dark:text-emerald-300
-                            "
-                          >
-                            Membership Waiver
-                          </span>
-                        ) : subscriptionLoading ? (
-                          <span
-                            className="
-                              inline-flex
-                              items-center
-                              gap-1.5
-                              text-[9px]
-                              text-slate-400
-                            "
-                          >
-                            <Loader2 size={11} className="animate-spin" />
-                            Checking
-                          </span>
-                        ) : (
-                          <span
-                            className="
-                              text-[9px]
-                              font-semibold
-                              text-slate-500
-
-                              dark:text-white/35
-                            "
-                          >
-                            Calculated by backend
-                          </span>
-                        )}
-                      </div>
-
-                      <div
-                        className="
-                          flex
-                          items-end
-                          justify-between
-                          gap-4
-                          border-t
-                          border-slate-200
-                          pt-4
-
-                          dark:border-white/[0.06]
-                        "
-                      >
+                    <div className="relative mt-5 space-y-3 text-sm">
+                      <div className="flex items-end justify-between gap-4">
                         <div>
-                          <p
-                            className="
-                              text-[8px]
-                              font-black
-                              uppercase
-                              tracking-[0.18em]
-                              text-slate-400
-
-                              dark:text-white/28
-                            "
-                          >
-                            Total Charge
+                          <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-white/40">
+                            Final Price
                           </p>
-
-                          <p
-                            className="
-                              mt-1
-                              text-[9px]
-                              text-slate-400
-
-                              dark:text-white/25
-                            "
-                          >
-                            Confirmed before card payment
+                          <p className="mt-2 text-[10px] leading-5 text-slate-400 dark:text-white/35">
+                            The total amount payable, including applicable
+                            charges.
                           </p>
                         </div>
 
-                        {createdBooking || subscribed ? (
-                          <strong
-                            className="
-                              font-mono
-                              text-xl
-                              text-[#98751A]
-
-                              dark:text-[#D4AF37]
-                            "
-                          >
+                        {createdBooking ||
+                        (subscribed && !subscriptionLoading) ? (
+                          <strong className="shrink-0 font-mono text-2xl text-[#98751A] dark:text-[#D4AF37]">
                             {formatMoney(
                               displayedPayment.totalCharged,
                               displayedPayment.currency,
                             )}
                           </strong>
                         ) : (
-                          <strong
-                            className="
-                              text-xs
-                              font-semibold
-                              text-slate-500
-
-                              dark:text-white/40
-                            "
-                          >
-                            Finalized at checkout
+                          <strong className="text-xs font-semibold text-slate-500 dark:text-white/40">
+                            Confirmed at checkout
                           </strong>
                         )}
                       </div>
