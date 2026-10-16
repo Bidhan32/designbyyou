@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from "react";
-
 import { useNavigate, Link } from "react-router-dom";
 
 import {
@@ -20,7 +19,6 @@ import {
 } from "lucide-react";
 
 import API from "../../api/axios";
-
 import { useAuth } from "../../context/AuthContext";
 
 const SPECIALTIES = [
@@ -562,9 +560,15 @@ export default function DesignerDirectory() {
                   dark:caret-white
                   outline-none
                   focus:border-[#D4AF37]/50
+                  focus:bg-white
+                  focus:ring-4
+                  focus:ring-[#D4AF37]/10
                   transition-all
                   placeholder:text-slate-400
                   dark:placeholder:text-white/20
+                  dark:focus:border-[#D4AF37]/60
+                  dark:focus:bg-[#151515]
+                  dark:focus:text-white
                   tracking-wide
                   font-light
                   shadow-inner
@@ -643,17 +647,24 @@ export default function DesignerDirectory() {
                   text-[#D4AF37]
                   outline-none
                   focus:border-[#D4AF37]/50
+                  focus:bg-white
+                  focus:ring-4
+                  focus:ring-[#D4AF37]/10
                   cursor-pointer
 
                   [color-scheme:light]
 
-                  dark:[color-scheme:dark]
-
                   [&>option]:bg-white
                   [&>option]:text-slate-900
 
+                  dark:[color-scheme:dark]
+
                   dark:[&>option]:bg-[#111]
                   dark:[&>option]:text-white
+
+                  dark:focus:border-[#D4AF37]/60
+                  dark:focus:bg-[#151515]
+                  dark:focus:text-[#D4AF37]
                 "
               >
                 <option value="top_rated">Top Rated ★</option>
@@ -709,6 +720,7 @@ export default function DesignerDirectory() {
                     uppercase
                     tracking-[0.2em]
                     transition-all
+
                     ${
                       selectedSpecialty === spec
                         ? "bg-[#D4AF37] text-black shadow-[0_0_15px_rgba(212,175,55,0.4)] scale-105"
@@ -976,39 +988,39 @@ export default function DesignerDirectory() {
                 <div
                   key={designerId}
                   className="
-                      bg-white
-                      dark:bg-[#0a0a0a]
-                      border
-                      border-slate-200
-                      dark:border-white/5
-                      rounded-3xl
-                      p-6
-                      flex
-                      flex-col
-                      justify-between
-                      group
-                      hover:border-[#D4AF37]/40
-                      transition-all
-                      duration-500
-                      shadow-2xl
-                      hover:-translate-y-1
-                      relative
-                      overflow-hidden
-                    "
+                    bg-white
+                    dark:bg-[#0a0a0a]
+                    border
+                    border-slate-200
+                    dark:border-white/5
+                    rounded-3xl
+                    p-6
+                    flex
+                    flex-col
+                    justify-between
+                    group
+                    hover:border-[#D4AF37]/40
+                    transition-all
+                    duration-500
+                    shadow-2xl
+                    hover:-translate-y-1
+                    relative
+                    overflow-hidden
+                  "
                 >
                   <div
                     className="
-                        absolute
-                        top-0
-                        right-0
-                        w-32
-                        h-32
-                        bg-[#D4AF37]/5
-                        blur-[40px]
-                        pointer-events-none
-                        group-hover:bg-[#D4AF37]/10
-                        transition-all
-                      "
+                      absolute
+                      top-0
+                      right-0
+                      w-32
+                      h-32
+                      bg-[#D4AF37]/5
+                      blur-[40px]
+                      pointer-events-none
+                      group-hover:bg-[#D4AF37]/10
+                      transition-all
+                    "
                   />
 
                   <div>
@@ -1016,12 +1028,12 @@ export default function DesignerDirectory() {
 
                     <div
                       className="
-                          flex
-                          items-start
-                          justify-between
-                          gap-4
-                          mb-6
-                        "
+                        flex
+                        items-start
+                        justify-between
+                        gap-4
+                        mb-6
+                      "
                     >
                       <div className="relative">
                         <img
@@ -1037,29 +1049,29 @@ export default function DesignerDirectory() {
                             "Designer"
                           }
                           className="
-                              w-16
-                              h-16
-                              rounded-2xl
-                              object-cover
-                              border
-                              border-slate-200
-                              dark:border-white/10
-                              group-hover:border-[#D4AF37]
-                              transition-colors
-                              shadow-lg
-                            "
+                            w-16
+                            h-16
+                            rounded-2xl
+                            object-cover
+                            border
+                            border-slate-200
+                            dark:border-white/10
+                            group-hover:border-[#D4AF37]
+                            transition-colors
+                            shadow-lg
+                          "
                         />
 
                         <div
                           className="
-                              absolute
-                              -bottom-1
-                              -right-1
-                              bg-white
-                              dark:bg-black
-                              rounded-full
-                              p-0.5
-                            "
+                            absolute
+                            -bottom-1
+                            -right-1
+                            bg-white
+                            dark:bg-black
+                            rounded-full
+                            p-0.5
+                          "
                         >
                           <CheckCircle2 size={14} className="text-[#D4AF37]" />
                         </div>
@@ -1069,36 +1081,36 @@ export default function DesignerDirectory() {
 
                       <div
                         className="
-                            bg-slate-100
-                            dark:bg-[#111]
-                            border
-                            border-slate-200
-                            dark:border-white/10
-                            px-3
-                            py-1.5
-                            rounded-full
-                            flex
-                            items-center
-                            gap-1.5
-                            shadow-inner
-                          "
+                          bg-slate-100
+                          dark:bg-[#111]
+                          border
+                          border-slate-200
+                          dark:border-white/10
+                          px-3
+                          py-1.5
+                          rounded-full
+                          flex
+                          items-center
+                          gap-1.5
+                          shadow-inner
+                        "
                       >
                         <Star
                           size={12}
                           className="
-                              text-[#D4AF37]
-                              fill-[#D4AF37]
-                            "
+                            text-[#D4AF37]
+                            fill-[#D4AF37]
+                          "
                         />
 
                         <span
                           className="
-                              text-[10px]
-                              font-mono
-                              font-bold
-                              text-slate-900
-                              dark:text-white
-                            "
+                            text-[10px]
+                            font-mono
+                            font-bold
+                            text-slate-900
+                            dark:text-white
+                          "
                         >
                           {rating}
                         </span>
@@ -1109,14 +1121,14 @@ export default function DesignerDirectory() {
 
                     <h3
                       className="
-                          text-xl
-                          font-serif
-                          text-slate-900
-                          dark:text-white
-                          group-hover:text-[#D4AF37]
-                          transition-colors
-                          truncate
-                        "
+                        text-xl
+                        font-serif
+                        text-slate-900
+                        dark:text-white
+                        group-hover:text-[#D4AF37]
+                        transition-colors
+                        truncate
+                      "
                     >
                       {designer.full_name ||
                         designer.username ||
@@ -1125,29 +1137,29 @@ export default function DesignerDirectory() {
 
                     <p
                       className="
-                          text-[9px]
-                          uppercase
-                          tracking-[0.2em]
-                          font-bold
-                          text-slate-500
-                          dark:text-white/40
-                          mt-0.5
-                          mb-4
-                        "
+                        text-[9px]
+                        uppercase
+                        tracking-[0.2em]
+                        font-bold
+                        text-slate-500
+                        dark:text-white/40
+                        mt-0.5
+                        mb-4
+                      "
                     >
                       {designer.tagline || "Pro Garment Architect"}
                     </p>
 
                     <p
                       className="
-                          text-xs
-                          text-slate-700
-                          dark:text-white/60
-                          font-light
-                          line-clamp-2
-                          leading-relaxed
-                          mb-6
-                        "
+                        text-xs
+                        text-slate-700
+                        dark:text-white/60
+                        font-light
+                        line-clamp-2
+                        leading-relaxed
+                        mb-6
+                      "
                     >
                       {designer.bio ||
                         "Crafting avant-garde silhouettes and digital apparel concepts for modern creators."}
@@ -1157,34 +1169,34 @@ export default function DesignerDirectory() {
 
                     <div
                       className="
-                          grid
-                          grid-cols-2
-                          gap-2
-                          bg-slate-100
-                          dark:bg-[#111]
-                          p-3
-                          rounded-2xl
-                          border
-                          border-slate-200
-                          dark:border-white/5
-                          mb-6
-                          text-center
-                        "
+                        grid
+                        grid-cols-2
+                        gap-2
+                        bg-slate-100
+                        dark:bg-[#111]
+                        p-3
+                        rounded-2xl
+                        border
+                        border-slate-200
+                        dark:border-white/5
+                        mb-6
+                        text-center
+                      "
                     >
                       <div>
                         <p
                           className="
-                              text-[8px]
-                              uppercase
-                              tracking-widest
-                              text-slate-500
-                              dark:text-white/30
-                              font-bold
-                              flex
-                              items-center
-                              justify-center
-                              gap-1
-                            "
+                            text-[8px]
+                            uppercase
+                            tracking-widest
+                            text-slate-500
+                            dark:text-white/30
+                            font-bold
+                            flex
+                            items-center
+                            justify-center
+                            gap-1
+                          "
                         >
                           <Briefcase size={10} />
                           Completed
@@ -1192,13 +1204,13 @@ export default function DesignerDirectory() {
 
                         <p
                           className="
-                              text-sm
-                              font-mono
-                              font-bold
-                              text-slate-900
-                              dark:text-white
-                              mt-0.5
-                            "
+                            text-sm
+                            font-mono
+                            font-bold
+                            text-slate-900
+                            dark:text-white
+                            mt-0.5
+                          "
                         >
                           {completedBookings}
                         </p>
@@ -1206,24 +1218,24 @@ export default function DesignerDirectory() {
 
                       <div
                         className="
-                            border-l
-                            border-slate-200
-                            dark:border-white/5
-                          "
+                          border-l
+                          border-slate-200
+                          dark:border-white/5
+                        "
                       >
                         <p
                           className="
-                              text-[8px]
-                              uppercase
-                              tracking-widest
-                              text-slate-500
-                              dark:text-white/30
-                              font-bold
-                              flex
-                              items-center
-                              justify-center
-                              gap-1
-                            "
+                            text-[8px]
+                            uppercase
+                            tracking-widest
+                            text-slate-500
+                            dark:text-white/30
+                            font-bold
+                            flex
+                            items-center
+                            justify-center
+                            gap-1
+                          "
                         >
                           <DollarSign size={10} />
                           From
@@ -1231,12 +1243,12 @@ export default function DesignerDirectory() {
 
                         <p
                           className="
-                              text-sm
-                              font-mono
-                              font-bold
-                              text-[#D4AF37]
-                              mt-0.5
-                            "
+                            text-sm
+                            font-mono
+                            font-bold
+                            text-[#D4AF37]
+                            mt-0.5
+                          "
                         >
                           ${startingRate.toFixed(0)}
                         </p>
@@ -1245,43 +1257,43 @@ export default function DesignerDirectory() {
                   </div>
 
                   {/*=====================================
-                    WhatsApp Availability
+                  WhatsApp Availability
 
-                    Informational only.
+                  Informational only.
 
-                    The phone number / wa.me link is NOT
-                    exposed from the directory.
+                  The phone number / wa.me link is NOT
+                  exposed from the directory.
 
-                    Actual WhatsApp contact remains behind
-                    the private booking contact endpoint.
-                    =====================================*/}
+                  Actual WhatsApp contact remains behind
+                  the private booking contact endpoint.
+                  =====================================*/}
 
                   <div
                     className="
-                        mb-3
-                        rounded-xl
-                        border
-                        border-emerald-200
-                        bg-emerald-50/70
-                        p-3
+                      mb-3
+                      rounded-xl
+                      border
+                      border-emerald-200
+                      bg-emerald-50/70
+                      p-3
 
-                        dark:border-emerald-400/15
-                        dark:bg-emerald-400/[0.05]
-                      "
+                      dark:border-emerald-400/15
+                      dark:bg-emerald-400/[0.05]
+                    "
                   >
                     <div
                       className="
-                          flex
-                          items-center
-                          gap-2
-                          text-[8px]
-                          font-black
-                          uppercase
-                          tracking-[0.16em]
-                          text-emerald-700
+                        flex
+                        items-center
+                        gap-2
+                        text-[8px]
+                        font-black
+                        uppercase
+                        tracking-[0.16em]
+                        text-emerald-700
 
-                          dark:text-emerald-300
-                        "
+                        dark:text-emerald-300
+                      "
                     >
                       <MessageCircle size={12} />
                       WhatsApp after booking
@@ -1289,13 +1301,13 @@ export default function DesignerDirectory() {
 
                     <p
                       className="
-                          mt-1.5
-                          text-[9px]
-                          leading-4
-                          text-slate-500
+                        mt-1.5
+                        text-[9px]
+                        leading-4
+                        text-slate-500
 
-                          dark:text-white/35
-                        "
+                        dark:text-white/35
+                      "
                     >
                       Chat and video-call coordination can become available
                       after the Designer accepts your booking and contact
@@ -1304,23 +1316,23 @@ export default function DesignerDirectory() {
 
                     <div
                       className="
-                          mt-2
-                          flex
-                          flex-wrap
-                          items-center
-                          gap-3
-                          text-[8px]
-                          text-slate-400
+                        mt-2
+                        flex
+                        flex-wrap
+                        items-center
+                        gap-3
+                        text-[8px]
+                        text-slate-400
 
-                          dark:text-white/25
-                        "
+                        dark:text-white/25
+                      "
                     >
                       <span
                         className="
-                            inline-flex
-                            items-center
-                            gap-1
-                          "
+                          inline-flex
+                          items-center
+                          gap-1
+                        "
                       >
                         <MessageCircle size={10} />
                         Messaging
@@ -1328,10 +1340,10 @@ export default function DesignerDirectory() {
 
                       <span
                         className="
-                            inline-flex
-                            items-center
-                            gap-1
-                          "
+                          inline-flex
+                          items-center
+                          gap-1
+                        "
                       >
                         <Video size={10} />
                         Video coordination
@@ -1343,35 +1355,35 @@ export default function DesignerDirectory() {
 
                   <div
                     className="
-                        space-y-2
-                        pt-2
-                        border-t
-                        border-slate-200
-                        dark:border-white/5
-                      "
+                      space-y-2
+                      pt-2
+                      border-t
+                      border-slate-200
+                      dark:border-white/5
+                    "
                   >
                     <Link
                       to={`/creator/bookings/new?designer_id=${designerId}&budget=${startingRate}`}
                       className="
-                          w-full
-                          py-3.5
-                          bg-[#D4AF37]
-                          hover:bg-[#ead28f]
-                          dark:hover:bg-white
-                          text-black
-                          text-[9px]
-                          uppercase
-                          tracking-[0.25em]
-                          font-black
-                          rounded-xl
-                          transition-all
-                          flex
-                          items-center
-                          justify-center
-                          gap-2
-                          shadow-[0_0_20px_rgba(212,175,55,0.2)]
-                          hover:shadow-[0_0_30px_rgba(255,255,255,0.4)]
-                        "
+                        w-full
+                        py-3.5
+                        bg-[#D4AF37]
+                        hover:bg-[#ead28f]
+                        dark:hover:bg-white
+                        text-black
+                        text-[9px]
+                        uppercase
+                        tracking-[0.25em]
+                        font-black
+                        rounded-xl
+                        transition-all
+                        flex
+                        items-center
+                        justify-center
+                        gap-2
+                        shadow-[0_0_20px_rgba(212,175,55,0.2)]
+                        hover:shadow-[0_0_30px_rgba(255,255,255,0.4)]
+                      "
                     >
                       <Zap size={14} />
                       Initiate Booking
@@ -1381,26 +1393,26 @@ export default function DesignerDirectory() {
                       type="button"
                       onClick={() => navigate(`/directory/${designerId}`)}
                       className="
-                          w-full
-                          py-2.5
-                          bg-transparent
-                          hover:bg-slate-100
-                          dark:hover:bg-white/5
-                          text-slate-500
-                          dark:text-white/40
-                          hover:text-slate-950
-                          dark:hover:text-white
-                          text-[8px]
-                          uppercase
-                          tracking-[0.2em]
-                          font-bold
-                          rounded-xl
-                          transition-colors
-                          flex
-                          items-center
-                          justify-center
-                          gap-1
-                        "
+                        w-full
+                        py-2.5
+                        bg-transparent
+                        hover:bg-slate-100
+                        dark:hover:bg-white/5
+                        text-slate-500
+                        dark:text-white/40
+                        hover:text-slate-950
+                        dark:hover:text-white
+                        text-[8px]
+                        uppercase
+                        tracking-[0.2em]
+                        font-bold
+                        rounded-xl
+                        transition-colors
+                        flex
+                        items-center
+                        justify-center
+                        gap-1
+                      "
                     >
                       View Portfolio
                       <ArrowUpRight size={12} />

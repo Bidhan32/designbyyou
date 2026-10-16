@@ -699,7 +699,9 @@ function SelectField({ value, onChange, disabled, children }) {
           dark:[&>option]:bg-[#111111]
           dark:[&>option]:text-white
 
+          dark:focus:border-[#D4AF37]/60
           dark:focus:bg-[#151515]
+          dark:focus:text-white
         "
       >
         {children}
@@ -2257,38 +2259,38 @@ export default function CreatorUpload() {
                   {!loading && !success && (
                     <div
                       className="
-                          absolute
-                          right-4
-                          top-4
-                          flex
-                          gap-2
-                        "
+                        absolute
+                        right-4
+                        top-4
+                        flex
+                        gap-2
+                      "
                     >
                       <button
                         type="button"
                         onClick={openFilePicker}
                         className="
-                            inline-flex
-                            h-10
-                            items-center
-                            justify-center
-                            gap-2
-                            rounded-xl
-                            border
-                            border-white/15
-                            bg-black/65
-                            px-4
-                            text-[8px]
-                            font-black
-                            uppercase
-                            tracking-[0.14em]
-                            text-white
-                            backdrop-blur
-                            transition
+                          inline-flex
+                          h-10
+                          items-center
+                          justify-center
+                          gap-2
+                          rounded-xl
+                          border
+                          border-white/15
+                          bg-black/65
+                          px-4
+                          text-[8px]
+                          font-black
+                          uppercase
+                          tracking-[0.14em]
+                          text-white
+                          backdrop-blur
+                          transition
 
-                            hover:bg-white
-                            hover:text-black
-                          "
+                          hover:bg-white
+                          hover:text-black
+                        "
                       >
                         <RefreshCw size={12} />
                         Replace
@@ -2299,21 +2301,21 @@ export default function CreatorUpload() {
                         onClick={clearFileSlot}
                         aria-label="Remove artwork"
                         className="
-                            grid
-                            h-10
-                            w-10
-                            place-items-center
-                            rounded-xl
-                            border
-                            border-rose-400/20
-                            bg-black/65
-                            text-rose-300
-                            backdrop-blur
-                            transition
+                          grid
+                          h-10
+                          w-10
+                          place-items-center
+                          rounded-xl
+                          border
+                          border-rose-400/20
+                          bg-black/65
+                          text-rose-300
+                          backdrop-blur
+                          transition
 
-                            hover:bg-rose-500
-                            hover:text-white
-                          "
+                          hover:bg-rose-500
+                          hover:text-white
+                        "
                       >
                         <X size={15} />
                       </button>
@@ -2526,50 +2528,51 @@ export default function CreatorUpload() {
 
               <label className="block">
                 <FieldLabel optional>Design Title</FieldLabel>
-<input
-  type="text"
-  maxLength={MAX_TITLE_LENGTH}
-  value={form.title}
-  disabled={loading || success}
-  onChange={(event) =>
-    handleInputChange("title", event.target.value)
-  }
-  placeholder="e.g. Asymmetrical Silk Blazer"
-  className="
-    h-[52px]
-    w-full
-    rounded-xl
-    border
-    border-slate-200
-    bg-slate-50
-    px-4
-    text-sm
-    text-slate-900
-    caret-slate-900
-    outline-none
-    transition
 
-    placeholder:text-slate-400
+                <input
+                  type="text"
+                  maxLength={MAX_TITLE_LENGTH}
+                  value={form.title}
+                  disabled={loading || success}
+                  onChange={(event) =>
+                    handleInputChange("title", event.target.value)
+                  }
+                  placeholder="e.g. Asymmetrical Silk Blazer"
+                  className="
+                    h-[52px]
+                    w-full
+                    rounded-xl
+                    border
+                    border-slate-200
+                    bg-slate-50
+                    px-4
+                    text-sm
+                    text-slate-900
+                    caret-slate-900
+                    outline-none
+                    transition
 
-    focus:border-[#D4AF37]/60
-    focus:bg-slate-50
-    focus:ring-4
-    focus:ring-[#D4AF37]/10
+                    placeholder:text-slate-400
 
-    disabled:opacity-60
+                    focus:border-[#D4AF37]/60
+                    focus:bg-slate-50
+                    focus:ring-4
+                    focus:ring-[#D4AF37]/10
 
-    dark:border-white/10
-    dark:bg-[#111111]
-    dark:text-white
-    dark:caret-white
-    dark:placeholder:text-white/25
+                    disabled:opacity-60
 
-    dark:focus:border-[#D4AF37]/60
-    dark:focus:bg-[#111111]
-    dark:focus:text-white
-    dark:focus:ring-[#D4AF37]/10
-  "
-/>
+                    dark:border-white/10
+                    dark:bg-[#111111]
+                    dark:text-white
+                    dark:caret-white
+                    dark:placeholder:text-white/25
+
+                    dark:focus:border-[#D4AF37]/60
+                    dark:focus:bg-[#111111]
+                    dark:focus:text-white
+                    dark:focus:ring-[#D4AF37]/10
+                  "
+                />
               </label>
 
               {/* Format */}
@@ -2647,28 +2650,28 @@ export default function CreatorUpload() {
                 {!categoriesLoading && categoriesError && (
                   <div
                     className="
-                        mt-3
-                        flex
-                        items-center
-                        justify-between
-                        gap-3
-                        rounded-xl
-                        border
-                        border-rose-200
-                        bg-rose-50
-                        p-3
+                      mt-3
+                      flex
+                      items-center
+                      justify-between
+                      gap-3
+                      rounded-xl
+                      border
+                      border-rose-200
+                      bg-rose-50
+                      p-3
 
-                        dark:border-rose-400/15
-                        dark:bg-rose-500/[0.06]
-                      "
+                      dark:border-rose-400/15
+                      dark:bg-rose-500/[0.06]
+                    "
                   >
                     <p
                       className="
-                          text-[10px]
-                          text-rose-700
+                        text-[10px]
+                        text-rose-700
 
-                          dark:text-rose-200
-                        "
+                        dark:text-rose-200
+                      "
                     >
                       {categoriesError}
                     </p>
@@ -2677,14 +2680,16 @@ export default function CreatorUpload() {
                       type="button"
                       onClick={() => void loadCategories()}
                       className="
-                          inline-flex
-                          items-center
-                          gap-1.5
-                          text-[8px]
-                          font-black
-                          uppercase
-                          text-rose-600
-                        "
+                        inline-flex
+                        items-center
+                        gap-1.5
+                        text-[8px]
+                        font-black
+                        uppercase
+                        text-rose-600
+
+                        dark:text-rose-200
+                      "
                     >
                       <RefreshCw size={10} />
                       Retry
@@ -2695,12 +2700,12 @@ export default function CreatorUpload() {
                 {selectedCategory && !categoriesError && (
                   <p
                     className="
-                        mt-2
-                        text-[9px]
-                        text-slate-400
+                      mt-2
+                      text-[9px]
+                      text-slate-400
 
-                        dark:text-white/25
-                      "
+                      dark:text-white/25
+                    "
                   >
                     {selectedCategory.description || selectedCategory.name}
                   </p>
@@ -2945,31 +2950,31 @@ export default function CreatorUpload() {
                               aria-pressed={selected}
                               onClick={() => toggleOccasion(occasion.id)}
                               className={`
-                                  relative
-                                  min-h-[76px]
-                                  rounded-xl
-                                  border
-                                  p-3
-                                  text-left
-                                  transition
+                                relative
+                                min-h-[76px]
+                                rounded-xl
+                                border
+                                p-3
+                                text-left
+                                transition
 
-                                  ${
-                                    selected
-                                      ? "border-[#D4AF37]/60 bg-[#D4AF37]/10 text-[#8A6814] dark:text-[#E4C65D]"
-                                      : "border-slate-200 bg-white text-slate-500 hover:border-[#D4AF37]/35 dark:border-white/10 dark:bg-white/[0.025] dark:text-white/40"
-                                  }
+                                ${
+                                  selected
+                                    ? "border-[#D4AF37]/60 bg-[#D4AF37]/10 text-[#8A6814] dark:text-[#E4C65D]"
+                                    : "border-slate-200 bg-white text-slate-500 hover:border-[#D4AF37]/35 dark:border-white/10 dark:bg-white/[0.025] dark:text-white/40"
+                                }
 
-                                  disabled:cursor-not-allowed
-                                  disabled:opacity-50
-                                `}
+                                disabled:cursor-not-allowed
+                                disabled:opacity-50
+                              `}
                             >
                               <div
                                 className="
-                                    flex
-                                    items-start
-                                    justify-between
-                                    gap-2
-                                  "
+                                  flex
+                                  items-start
+                                  justify-between
+                                  gap-2
+                                "
                               >
                                 <span className="text-xl">
                                   {occasion.emoji || "✦"}
@@ -2978,14 +2983,14 @@ export default function CreatorUpload() {
                                 {selected && (
                                   <span
                                     className="
-                                        grid
-                                        h-5
-                                        w-5
-                                        place-items-center
-                                        rounded-full
-                                        bg-[#D4AF37]
-                                        text-black
-                                      "
+                                      grid
+                                      h-5
+                                      w-5
+                                      place-items-center
+                                      rounded-full
+                                      bg-[#D4AF37]
+                                      text-black
+                                    "
                                   >
                                     <Check size={11} />
                                   </span>
@@ -2994,12 +2999,12 @@ export default function CreatorUpload() {
 
                               <p
                                 className="
-                                    mt-2
-                                    text-[9px]
-                                    font-black
-                                    uppercase
-                                    tracking-[0.1em]
-                                  "
+                                  mt-2
+                                  text-[9px]
+                                  font-black
+                                  uppercase
+                                  tracking-[0.1em]
+                                "
                               >
                                 {occasion.name}
                               </p>
@@ -3068,19 +3073,19 @@ export default function CreatorUpload() {
                           <span
                             key={occasion.id}
                             className="
-                                rounded-full
-                                bg-slate-100
-                                px-3
-                                py-1.5
-                                text-[8px]
-                                font-black
-                                uppercase
-                                tracking-[0.1em]
-                                text-slate-500
+                              rounded-full
+                              bg-slate-100
+                              px-3
+                              py-1.5
+                              text-[8px]
+                              font-black
+                              uppercase
+                              tracking-[0.1em]
+                              text-slate-500
 
-                                dark:bg-white/[0.05]
-                                dark:text-white/40
-                              "
+                              dark:bg-white/[0.05]
+                              dark:text-white/40
+                            "
                           >
                             {occasion.emoji} {occasion.name}
                           </span>
@@ -3114,7 +3119,9 @@ export default function CreatorUpload() {
                     focus-within:ring-[#D4AF37]/10
 
                     dark:border-white/10
-                    dark:bg-white/[0.035]
+                    dark:bg-[#111111]
+                    dark:focus-within:border-[#D4AF37]/60
+                    dark:focus-within:bg-[#111111]
                   "
                 >
                   <Tag
@@ -3123,7 +3130,7 @@ export default function CreatorUpload() {
                       shrink-0
                       text-slate-400
 
-                      dark:text-white/25
+                      dark:text-white/35
                     "
                   />
 
@@ -3145,9 +3152,17 @@ export default function CreatorUpload() {
                       flex-1
                       bg-transparent
                       text-sm
+                      text-slate-900
+                      caret-slate-900
                       outline-none
 
+                      placeholder:text-slate-400
+
+                      disabled:cursor-not-allowed
+
                       dark:text-white
+                      dark:caret-white
+                      dark:placeholder:text-white/25
                     "
                   />
 
@@ -3173,7 +3188,7 @@ export default function CreatorUpload() {
                       disabled:opacity-30
 
                       dark:bg-white/10
-                      dark:text-white/50
+                      dark:text-white/60
                     "
                   >
                     <Plus size={13} />
@@ -3211,23 +3226,23 @@ export default function CreatorUpload() {
                       <span
                         key={tag}
                         className="
-                            inline-flex
-                            items-center
-                            gap-1
-                            rounded-full
-                            border
-                            border-slate-200
-                            bg-slate-50
-                            py-1.5
-                            pl-3
-                            pr-1.5
-                            text-[9px]
-                            text-slate-500
+                          inline-flex
+                          items-center
+                          gap-1
+                          rounded-full
+                          border
+                          border-slate-200
+                          bg-slate-50
+                          py-1.5
+                          pl-3
+                          pr-1.5
+                          text-[9px]
+                          text-slate-500
 
-                            dark:border-white/10
-                            dark:bg-white/[0.03]
-                            dark:text-white/40
-                          "
+                          dark:border-white/10
+                          dark:bg-white/[0.03]
+                          dark:text-white/40
+                        "
                       >
                         #{tag}
                         <button
@@ -3236,12 +3251,22 @@ export default function CreatorUpload() {
                           disabled={loading || success}
                           aria-label={`Remove ${tag} tag`}
                           className="
-                              grid
-                              h-6
-                              w-6
-                              place-items-center
-                              rounded-full
-                            "
+                            grid
+                            h-6
+                            w-6
+                            place-items-center
+                            rounded-full
+
+                            text-slate-400
+                            transition
+
+                            hover:bg-slate-200
+                            hover:text-slate-700
+
+                            dark:text-white/40
+                            dark:hover:bg-white/10
+                            dark:hover:text-white
+                          "
                         >
                           <X size={11} />
                         </button>
@@ -3275,15 +3300,31 @@ export default function CreatorUpload() {
                     p-4
                     text-sm
                     leading-7
+                    text-slate-900
+                    caret-slate-900
                     outline-none
+                    transition
+
+                    placeholder:text-slate-400
 
                     focus:border-[#D4AF37]/60
+                    focus:bg-slate-50
                     focus:ring-4
                     focus:ring-[#D4AF37]/10
 
+                    disabled:cursor-not-allowed
+                    disabled:opacity-60
+
                     dark:border-white/10
-                    dark:bg-white/[0.035]
+                    dark:bg-[#111111]
                     dark:text-white
+                    dark:caret-white
+                    dark:placeholder:text-white/25
+
+                    dark:focus:border-[#D4AF37]/60
+                    dark:focus:bg-[#111111]
+                    dark:focus:text-white
+                    dark:focus:ring-[#D4AF37]/10
                   "
                 />
 
@@ -3345,48 +3386,48 @@ export default function CreatorUpload() {
                           handleInputChange("visibility", option.value)
                         }
                         className={`
-                            relative
-                            overflow-hidden
-                            rounded-2xl
-                            border
-                            p-5
-                            text-left
-                            transition
+                          relative
+                          overflow-hidden
+                          rounded-2xl
+                          border
+                          p-5
+                          text-left
+                          transition
 
-                            ${
-                              selected
-                                ? "border-[#D4AF37]/60 bg-[#D4AF37]/10 shadow-[0_12px_30px_rgba(212,175,55,0.08)]"
-                                : "border-slate-200 bg-slate-50 hover:border-[#D4AF37]/35 hover:bg-[#D4AF37]/[0.025] dark:border-white/10 dark:bg-white/[0.025]"
-                            }
+                          ${
+                            selected
+                              ? "border-[#D4AF37]/60 bg-[#D4AF37]/10 shadow-[0_12px_30px_rgba(212,175,55,0.08)]"
+                              : "border-slate-200 bg-slate-50 hover:border-[#D4AF37]/35 hover:bg-[#D4AF37]/[0.025] dark:border-white/10 dark:bg-white/[0.025]"
+                          }
 
-                            disabled:cursor-not-allowed
-                            disabled:opacity-60
-                          `}
+                          disabled:cursor-not-allowed
+                          disabled:opacity-60
+                        `}
                       >
                         <div
                           className="
-                              flex
-                              items-start
-                              justify-between
-                              gap-4
-                            "
+                            flex
+                            items-start
+                            justify-between
+                            gap-4
+                          "
                         >
                           <span
                             className={`
-                                grid
-                                h-11
-                                w-11
-                                shrink-0
-                                place-items-center
-                                rounded-xl
-                                border
+                              grid
+                              h-11
+                              w-11
+                              shrink-0
+                              place-items-center
+                              rounded-xl
+                              border
 
-                                ${
-                                  selected
-                                    ? "border-[#D4AF37]/30 bg-[#D4AF37]/15 text-[#8A6814] dark:text-[#E4C65D]"
-                                    : "border-slate-200 bg-white text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/40"
-                                }
-                              `}
+                              ${
+                                selected
+                                  ? "border-[#D4AF37]/30 bg-[#D4AF37]/15 text-[#8A6814] dark:text-[#E4C65D]"
+                                  : "border-slate-200 bg-white text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/40"
+                              }
+                            `}
                           >
                             <Icon size={18} />
                           </span>
@@ -3394,15 +3435,15 @@ export default function CreatorUpload() {
                           {selected && (
                             <span
                               className="
-                                  grid
-                                  h-6
-                                  w-6
-                                  shrink-0
-                                  place-items-center
-                                  rounded-full
-                                  bg-[#D4AF37]
-                                  text-black
-                                "
+                                grid
+                                h-6
+                                w-6
+                                shrink-0
+                                place-items-center
+                                rounded-full
+                                bg-[#D4AF37]
+                                text-black
+                              "
                             >
                               <Check size={13} />
                             </span>
@@ -3411,26 +3452,26 @@ export default function CreatorUpload() {
 
                         <p
                           className="
-                              mt-4
-                              text-sm
-                              font-bold
-                              text-slate-900
+                            mt-4
+                            text-sm
+                            font-bold
+                            text-slate-900
 
-                              dark:text-white
-                            "
+                            dark:text-white
+                          "
                         >
                           {option.label}
                         </p>
 
                         <p
                           className="
-                              mt-1.5
-                              text-[10px]
-                              leading-5
-                              text-slate-500
+                            mt-1.5
+                            text-[10px]
+                            leading-5
+                            text-slate-500
 
-                              dark:text-white/35
-                            "
+                            dark:text-white/35
+                          "
                         >
                           {option.description}
                         </p>

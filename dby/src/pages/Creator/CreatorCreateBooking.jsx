@@ -3448,6 +3448,8 @@ export default function CreatorCreateBooking() {
                           dark:bg-white/[0.035]
                           dark:text-white
                           dark:[color-scheme:dark]
+                          dark:focus:border-[#D4AF37]/60
+                          dark:focus:bg-white/[0.05]
                         "
                       />
                     </label>
@@ -3533,6 +3535,8 @@ export default function CreatorCreateBooking() {
                         dark:bg-white/[0.035]
                         dark:text-white
                         dark:[color-scheme:dark]
+                        dark:focus:border-[#D4AF37]/60
+                        dark:focus:bg-white/[0.05]
                       "
                     />
 
@@ -3639,6 +3643,8 @@ export default function CreatorCreateBooking() {
                         dark:bg-white/[0.035]
                         dark:text-white
                         dark:placeholder:text-white/20
+                        dark:focus:border-[#D4AF37]/60
+                        dark:focus:bg-white/[0.05]
                       "
                     />
 
@@ -4089,7 +4095,9 @@ export default function CreatorCreateBooking() {
                         disabled:opacity-40
 
                         dark:border-white/10
+                        dark:text-white/50
                         dark:hover:bg-white/5
+                        dark:hover:text-white/80
                       "
                   >
                     <X size={16} />

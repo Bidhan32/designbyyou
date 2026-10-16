@@ -681,7 +681,7 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
                       : "https://example.com/final-deliverable.png"
                   }
                   required
-                  className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25"
+                  className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25 dark:focus:border-[#D4AF37]/60 dark:focus:bg-white/[0.07]"
                 />
 
                 <p className="mt-2 text-[11px] leading-5 text-slate-400 dark:text-white/30">
@@ -707,7 +707,7 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
                       ? "https://example.com/prototype.glb"
                       : "https://example.com/final.glb"
                   }
-                  className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25"
+                  className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25 dark:focus:border-[#D4AF37]/60 dark:focus:bg-white/[0.07]"
                 />
 
                 <p className="mt-2 text-[11px] leading-5 text-slate-400 dark:text-white/30">
@@ -732,7 +732,7 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
                       ? "https://example.com/prototype-garment.png"
                       : "https://example.com/final-garment.png"
                   }
-                  className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25"
+                  className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25 dark:focus:border-[#D4AF37]/60 dark:focus:bg-white/[0.07]"
                 />
 
                 <p className="mt-2 text-[11px] leading-5 text-slate-400 dark:text-white/30">
@@ -756,7 +756,7 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
                       ? "Explain the prototype choices and what feedback you need."
                       : "Summarize the final files, formats and usage notes."
                   }
-                  className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25"
+                  className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25 dark:focus:border-[#D4AF37]/60 dark:focus:bg-white/[0.07]"
                 />
               </label>
             </>
@@ -777,7 +777,7 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
                     ? "Explain why this request is not a suitable fit."
                     : "Explain why the booking must be cancelled."
                 }
-                className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-rose-400 focus:bg-white focus:ring-4 focus:ring-rose-500/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25"
+                className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-rose-400 focus:bg-white focus:ring-4 focus:ring-rose-500/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25 dark:focus:border-rose-400 dark:focus:bg-white/[0.07]"
               />
             </label>
           )}
