@@ -8278,56 +8278,58 @@ function FashionEditor() {
             )}
 
             {activeTool === EDITOR_TOOLS.ERASER && (
-              <PanelSection title="Eraser">
-                <div className="space-y-5">
-                  <SliderField
-                    label="Size"
-                    value={eraser.size}
-                    minimum={eraser.minimumSize}
-                    maximum={eraser.maximumSize}
-                    suffix="px"
-                    onChange={setEraserSize}
-                  />
+  <PanelSection title="Precision Eraser">
+    <div className="space-y-5">
 
-                  <div>
-                    <p className="mb-2 text-xs font-medium text-slate-300">
-                      Eraser mode
-                    </p>
+      <SliderField
+        label="Eraser Size"
+        value={eraser.size}
+        minimum={eraser.minimumSize}
+        maximum={eraser.maximumSize}
+        suffix="px"
+        onChange={setEraserSize}
+      />
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEraserMode("stroke");
-                        }}
-                        className={[
-                          "min-h-11 rounded-lg border px-3 py-2 text-xs font-semibold transition",
-                          eraser.mode === "stroke"
-                            ? "border-violet-500 bg-violet-500 text-white"
-                            : "border-slate-700 bg-slate-900 text-slate-300",
-                        ].join(" ")}
-                      >
-                        Stroke
-                      </button>
+      <div className="space-y-3">
+        <p className="text-xs font-medium text-slate-300">
+          Eraser Mode
+        </p>
 
-                      <button
-                        type="button"
-                        disabled
-                        title="Partial eraser will be added later"
-                        className="min-h-11 cursor-not-allowed rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-600"
-                      >
-                        Partial
-                      </button>
-                    </div>
+        <button
+          type="button"
+          onClick={() => {
+            setEraserMode("precision");
+          }}
+          aria-pressed={eraser.mode === "precision"}
+          className={[
+            "min-h-11 w-full rounded-lg border",
+            "px-3 py-2 text-xs font-semibold",
+            "transition",
 
-                    <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
-                      Stroke mode removes the complete vector stroke touched by
-                      the eraser.
-                    </p>
-                  </div>
-                </div>
-              </PanelSection>
-            )}
+            eraser.mode === "precision"
+              ? "border-violet-500 bg-violet-500 text-white"
+              : "border-slate-700 bg-slate-900 text-slate-300"
+          ].join(" ")}
+        >
+          Precision Eraser
+        </button>
+
+        <p className="text-[10px] leading-relaxed text-slate-400">
+          Drag the eraser over vector strokes to
+          remove affected sections while preserving
+          the remaining parts of the drawing.
+        </p>
+
+        <p className="text-[10px] leading-relaxed text-slate-500">
+          Erasing is limited to the active,
+          unlocked layer. Raster images and
+          stamp brushes are not supported.
+        </p>
+      </div>
+
+    </div>
+  </PanelSection>
+)}
 
             {activeTool === EDITOR_TOOLS.SELECT && (
               <PanelSection title="Selection">

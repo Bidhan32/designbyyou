@@ -563,10 +563,10 @@ function createDefaultBrushSettings() {
 function createDefaultEraserSettings() {
     return {
         mode:
-            "stroke",
+            "precision",
 
         size:
-            36,
+            18,
 
         minimumSize:
             4,
@@ -2368,12 +2368,9 @@ export const useFashionEditorStore =
                                     );
 
                                 const mode =
-                                    updates.mode ===
-                                        "stroke" ||
-                                    updates.mode ===
-                                        "partial"
-                                        ? updates.mode
-                                        : state.eraser.mode;
+                                    updates.mode === "precision"
+        ? "precision"
+        : state.eraser.mode;
 
                                 return {
                                     eraser: {
@@ -2407,22 +2404,16 @@ export const useFashionEditorStore =
                             });
                     },
 
-                setEraserMode:
-                    mode => {
-                        if (
-                            mode !==
-                                "stroke" &&
-                            mode !==
-                                "partial"
-                        ) {
-                            return;
-                        }
+               setEraserMode:
+    mode => {
+        if (mode !== "precision") {
+            return;
+        }
 
-                        get()
-                            .setEraserSettings({
-                                mode
-                            });
-                    },
+        get().setEraserSettings({
+            mode: "precision"
+        });
+    },
 
                 /*=========================================
                 Shape, Fill, Text, Image and Pattern Actions
