@@ -2,21 +2,22 @@
  * =========================================================
  * FashionVision Professional Editor
  * Precision Vector Eraser
- * Version 2.0
+ *
+ * Version 2.1 — Stamp / Texture Brush Support
  * =========================================================
  *
- * Erases only affected sections of vector brush strokes.
+ * Supports:
+ * - Partial erasing of line strokes
+ * - Partial erasing of outline brush strokes
+ * - Charcoal and chalk stamp brush erasing
+ * - Rotated and scaled brush objects
+ * - Active-layer-only editing
+ * - Layer and object locking
+ * - Undo / redo transactions
+ * - Live eraser cursor
  *
- * Features:
- * - Partial stroke erasing
- * - Continuous drag erasing
- * - Stroke fragmentation
- * - Preservation of remaining brush geometry
- * - Layer and object lock protection
- * - Zoom-aware cursor
- * - One undo/redo transaction per drag
- *
- * Stamp brushes and raster images are excluded.
+ * Raster image pixels are not erased.
+ * Textured stamps are removed as complete individual marks.
  * =========================================================
  */
 
@@ -55,15 +56,11 @@ export const DEFAULT_ERASER_OPTIONS = Object.freeze({
   eraseHiddenLayers: false,
 
   cursorFill: "rgba(255,255,255,0.18)",
-
   cursorStroke: "#111827",
-
   cursorInnerStroke: "rgba(255,255,255,0.95)",
-
   cursorStrokeWidth: 1.5,
 
   maximumStep: 2,
-
   maximumSamplesPerPathSegment: 2048,
 });
 
@@ -99,7 +96,7 @@ const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const currentState = () => useFashionEditorStore.getState();
 
 /* =========================================================
-   Pointer Resolution
+   Pointer Helpers
    ========================================================= */
 
 function getScreenPoint(context) {
@@ -119,11 +116,9 @@ function getDocumentPoint(context) {
 
   const screen = getScreenPoint(context);
 
-  if (!screen || typeof context?.toDocumentPoint !== "function") {
-    return null;
-  }
-
-  return asPoint(context.toDocumentPoint(screen));
+  return screen && typeof context?.toDocumentPoint === "function"
+    ? asPoint(context.toDocumentPoint(screen))
+    : null;
 }
 
 function withinDocument(point, state) {
@@ -137,33 +132,24 @@ function withinDocument(point, state) {
   );
 }
 
-/* =========================================================
-   Eraser Size
-   ========================================================= */
-
 function brushSize(context, options) {
   return clamp(
     currentState()?.eraser?.size ?? context?.eraser?.size ?? options.size,
-
     options.minimumSize,
     options.maximumSize,
   );
 }
 
-/* =========================================================
-   ID Generation
-   ========================================================= */
-
 function createId() {
   if (typeof globalThis.crypto?.randomUUID === "function") {
-    return "brush-" + globalThis.crypto.randomUUID();
+    return `brush-${globalThis.crypto.randomUUID()}`;
   }
 
   return `brush-${Date.now()}-` + Math.random().toString(36).slice(2);
 }
 
 /* =========================================================
-   Layer Resolution
+   Layer and Brush Object Helpers
    ========================================================= */
 
 function getLayer(state, object) {
@@ -172,10 +158,6 @@ function getLayer(state, object) {
     (state.layers || []).find((layer) => layer.objectIds?.includes(object.id))
   );
 }
-
-/* =========================================================
-   Brush Render Mode
-   ========================================================= */
 
 function resolveRenderMode(object) {
   const mode =
@@ -204,10 +186,6 @@ function resolveRenderMode(object) {
   return "line";
 }
 
-/* =========================================================
-   Erasability Checks
-   ========================================================= */
-
 function isErasable(state, object, options) {
   if (!object || !options.eraseObjectTypes.includes(object.type)) {
     return false;
@@ -223,7 +201,6 @@ function isErasable(state, object, options) {
     return false;
   }
 
-  // Never modify locked content.
   if (object.locked || layer.locked) {
     return false;
   }
@@ -240,8 +217,7 @@ function isErasable(state, object, options) {
     return false;
   }
 
-  // Stamp brushes require per-stamp editing.
-  return resolveRenderMode(object) !== "stamp";
+  return resolveRenderMode(object) !== "stamp" || Array.isArray(object.stamps);
 }
 
 /* =========================================================
@@ -263,11 +239,14 @@ function normalizePoints(object) {
   if (typeof points[0] === "number") {
     const result = [];
 
-    for (let i = 0; i + 1 < points.length; i += 2) {
-      if (Number.isFinite(points[i]) && Number.isFinite(points[i + 1])) {
+    for (let index = 0; index + 1 < points.length; index += 2) {
+      if (
+        Number.isFinite(points[index]) &&
+        Number.isFinite(points[index + 1])
+      ) {
         result.push({
-          x: points[i],
-          y: points[i + 1],
+          x: points[index],
+          y: points[index + 1],
         });
       }
     }
@@ -277,20 +256,13 @@ function normalizePoints(object) {
 
   return points.filter(pointValid).map((point) => ({
     ...point,
-
     x: Number(point.x),
     y: Number(point.y),
   }));
 }
 
-/* =========================================================
-   Point Interpolation
-   ========================================================= */
-
 function interpolate(a, b, t) {
-  const next = {
-    ...a,
-  };
+  const next = { ...a };
 
   const numericFields = [
     "x",
@@ -315,7 +287,7 @@ function interpolate(a, b, t) {
 }
 
 /* =========================================================
-   Object Transform
+   Object Transform Helpers
    ========================================================= */
 
 function objectTransform(object) {
@@ -339,45 +311,36 @@ function maxTransformScale(transform) {
 
   return Math.max(
     0.00001,
-
     Math.hypot(matrix[0], matrix[1]),
-
     Math.hypot(matrix[2], matrix[3]),
   );
 }
 
 /* =========================================================
-   Point-to-Segment Distance
+   Geometry and Collision Helpers
    ========================================================= */
 
-function distPointToSegment(point, start, end) {
-  const dx = end.x - start.x;
-
-  const dy = end.y - start.y;
+function distPointToSegment(point, a, b) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
 
   const lengthSquared = dx * dx + dy * dy;
 
   if (lengthSquared < 1e-12) {
-    return distance(point, start);
+    return distance(point, a);
   }
 
-  const progress = clamp(
-    ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared,
-
+  const position = clamp(
+    ((point.x - a.x) * dx + (point.y - a.y) * dy) / lengthSquared,
     0,
     1,
   );
 
   return Math.hypot(
-    point.x - (start.x + progress * dx),
-
-    point.y - (start.y + progress * dy),
+    point.x - (a.x + position * dx),
+    point.y - (a.y + position * dy),
   );
 }
-
-/* =========================================================
-   Stroke Radius
-   ========================================================= */
 
 function strokeRadiusAt(point, object, scale) {
   const renderMode = resolveRenderMode(object);
@@ -387,33 +350,19 @@ function strokeRadiusAt(point, object, scale) {
   if (renderMode === "outline") {
     width = finite(
       point.width,
-
-      finite(
-        object.brush?.size,
-
-        finite(object.strokeWidth, 4),
-      ),
+      finite(object.brush?.size, finite(object.strokeWidth, 4)),
     );
   } else {
     width = finite(
       object.strokeWidth,
-
-      finite(
-        object.width,
-
-        finite(object.brush?.size, 4),
-      ),
+      finite(object.width, finite(object.brush?.size, 4)),
     );
   }
 
   return (Math.max(0, width) * scale) / 2;
 }
 
-/* =========================================================
-   Eraser Coverage
-   ========================================================= */
-
-function isCovered(point, transform, object, start, end, eraserRadius, scale) {
+function isCovered(point, transform, object, a, b, eraserRadius, scale) {
   const world = transform.point({
     x: point.x,
     y: point.y,
@@ -421,30 +370,24 @@ function isCovered(point, transform, object, start, end, eraserRadius, scale) {
 
   const strokeRadius = strokeRadiusAt(point, object, scale);
 
-  return distPointToSegment(world, start, end) <= eraserRadius + strokeRadius;
+  return distPointToSegment(world, a, b) <= eraserRadius + strokeRadius;
 }
 
-/* =========================================================
-   Find Exact Cut Boundary
-   ========================================================= */
+function cutBoundary(p0, p1, t0, t1, inside0, isInside) {
+  let lower = t0;
+  let upper = t1;
 
-function cutBoundary(pointA, pointB, startT, endT, initialInside, isInside) {
-  let low = startT;
-  let high = endT;
+  for (let index = 0; index < 12; index += 1) {
+    const middle = (lower + upper) / 2;
 
-  for (let i = 0; i < 12; i += 1) {
-    const middle = (low + high) / 2;
-
-    const candidate = interpolate(pointA, pointB, middle);
-
-    if (isInside(candidate) === initialInside) {
-      low = middle;
+    if (isInside(interpolate(p0, p1, middle)) === inside0) {
+      lower = middle;
     } else {
-      high = middle;
+      upper = middle;
     }
   }
 
-  return interpolate(pointA, pointB, (low + high) / 2);
+  return interpolate(p0, p1, (lower + upper) / 2);
 }
 
 function pushUnique(points, point) {
@@ -456,10 +399,255 @@ function pushUnique(points, point) {
 }
 
 /* =========================================================
-   Precision Path Clipping
+   Segment Intersection Helpers
    ========================================================= */
 
-function clipPath(points, object, start, end, radius, options) {
+function segmentsIntersect(a, b, c, d) {
+  const cross = (p, q, r) =>
+    (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+
+  const abC = cross(a, b, c);
+  const abD = cross(a, b, d);
+
+  const cdA = cross(c, d, a);
+  const cdB = cross(c, d, b);
+
+  return abC * abD < 0 && cdA * cdB < 0;
+}
+
+function distSegmentToSegment(a, b, c, d) {
+  if (segmentsIntersect(a, b, c, d)) {
+    return 0;
+  }
+
+  return Math.min(
+    distPointToSegment(a, c, d),
+    distPointToSegment(b, c, d),
+    distPointToSegment(c, a, b),
+    distPointToSegment(d, a, b),
+  );
+}
+
+function positiveOr(value, fallback) {
+  const numericValue = Number(value);
+
+  return Number.isFinite(numericValue) && numericValue > 0
+    ? numericValue
+    : fallback;
+}
+
+/* =========================================================
+   Stamp Brush Geometry
+   ========================================================= */
+
+function stampRadii(stamp, object) {
+  const defaultSize = Math.max(
+    0.1,
+    finite(
+      object.strokeWidth ??
+        object.width ??
+        object.size ??
+        object.style?.strokeWidth ??
+        object.brush?.size,
+      4,
+    ),
+  );
+
+  const size = Math.max(0.1, finite(stamp.size ?? stamp.diameter, defaultSize));
+
+  return {
+    rx: Math.max(
+      0.05,
+      finite(
+        stamp.radiusX ??
+          (stamp.width !== undefined
+            ? finite(stamp.width, size) / 2
+            : size / 2),
+        size / 2,
+      ),
+    ),
+
+    ry: Math.max(
+      0.05,
+      finite(
+        stamp.radiusY ??
+          (stamp.height !== undefined
+            ? finite(stamp.height, size) / 2
+            : size / 2),
+        size / 2,
+      ),
+    ),
+  };
+}
+
+/* =========================================================
+   Stamp Collision Detection
+
+   Charcoal and chalk are made of multiple textured
+   ellipse stamps. Instead of splitting their center path,
+   detect which individual stamps intersect the eraser.
+   ========================================================= */
+
+function stampTouched(
+  stamp,
+  object,
+  transform,
+  inverse,
+  maxScale,
+  a,
+  b,
+  radius,
+) {
+  if (!stamp || typeof stamp !== "object") {
+    return false;
+  }
+
+  const x = Number(stamp.x ?? stamp.point?.x);
+
+  const y = Number(stamp.y ?? stamp.point?.y);
+
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    return false;
+  }
+
+  const { rx, ry } = stampRadii(stamp, object);
+
+  const scaleX = positiveOr(stamp.scaleX ?? stamp.scale, 1);
+
+  const scaleY = positiveOr(stamp.scaleY ?? stamp.scale, 1);
+
+  const rotation = (finite(stamp.rotation ?? stamp.angle) * Math.PI) / 180;
+
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+
+  const extentX = rx * scaleX;
+  const extentY = ry * scaleY;
+
+  const center = transform.point({
+    x,
+    y,
+  });
+
+  // Reject stamps too far from the eraser path.
+  if (
+    distPointToSegment(center, a, b) >
+    radius + Math.max(extentX, extentY) * maxScale
+  ) {
+    return false;
+  }
+
+  const pointInside = (world) => {
+    if (!inverse) {
+      return false;
+    }
+
+    const local = inverse.point(world);
+
+    const dx = local.x - x;
+    const dy = local.y - y;
+
+    const u = (cos * dx + sin * dy) / extentX;
+
+    const v = (-sin * dx + cos * dy) / extentY;
+
+    return u * u + v * v <= 1;
+  };
+
+  if (pointInside(a) || pointInside(b)) {
+    return true;
+  }
+
+  // Approximate the ellipse perimeter for collision tests.
+  const steps = 32;
+
+  const ellipsePoint = (angle) => {
+    const dx = extentX * Math.cos(angle);
+    const dy = extentY * Math.sin(angle);
+
+    return transform.point({
+      x: x + cos * dx - sin * dy,
+      y: y + sin * dx + cos * dy,
+    });
+  };
+
+  let before = ellipsePoint(0);
+
+  for (let index = 1; index <= steps; index += 1) {
+    const next = ellipsePoint((index * 2 * Math.PI) / steps);
+
+    if (distSegmentToSegment(a, b, before, next) <= radius + 0.05) {
+      return true;
+    }
+
+    before = next;
+  }
+
+  return false;
+}
+
+/* =========================================================
+   Clip Stamp Dabs
+
+   IMPORTANT:
+   This is the function required for charcoal/chalk
+   erasing support.
+   ========================================================= */
+
+function clipStampDabs(object, a, b, eraserRadius) {
+  const stamps = Array.isArray(object.stamps) ? object.stamps : [];
+
+  if (!stamps.length) {
+    return {
+      changed: false,
+      stamps,
+    };
+  }
+
+  const transform = objectTransform(object);
+
+  let inverse = null;
+
+  try {
+    inverse = transform.copy().invert();
+  } catch {
+    // Ignore singular transforms.
+  }
+
+  const maxScale = maxTransformScale(transform);
+
+  let changed = false;
+
+  const survivors = stamps.filter((stamp) => {
+    const touched = stampTouched(
+      stamp,
+      object,
+      transform,
+      inverse,
+      maxScale,
+      a,
+      b,
+      eraserRadius,
+    );
+
+    if (touched) {
+      changed = true;
+    }
+
+    return !touched;
+  });
+
+  return {
+    changed,
+    stamps: changed ? survivors : stamps,
+  };
+}
+
+/* =========================================================
+   Clip Ordinary Vector Paths
+   ========================================================= */
+
+function clipPath(points, object, a, b, radius, options) {
   if (!points.length) {
     return {
       changed: false,
@@ -468,7 +656,6 @@ function clipPath(points, object, start, end, radius, options) {
   }
 
   const transform = objectTransform(object);
-
   const scale = maxTransformScale(transform);
 
   let minX = Infinity;
@@ -479,7 +666,6 @@ function clipPath(points, object, start, end, radius, options) {
 
   let maxStrokeRadius = 0;
 
-  // Calculate transformed brush bounds.
   for (const point of points) {
     const world = transform.point({
       x: point.x,
@@ -487,28 +673,24 @@ function clipPath(points, object, start, end, radius, options) {
     });
 
     minX = Math.min(minX, world.x);
-
     minY = Math.min(minY, world.y);
 
     maxX = Math.max(maxX, world.x);
-
     maxY = Math.max(maxY, world.y);
 
     maxStrokeRadius = Math.max(
       maxStrokeRadius,
-
       strokeRadiusAt(point, object, scale),
     );
   }
 
   const margin = radius + maxStrokeRadius + 4;
 
-  // Skip strokes outside the eraser path.
   if (
-    Math.min(start.x, end.x) - margin > maxX ||
-    Math.max(start.x, end.x) + margin < minX ||
-    Math.min(start.y, end.y) - margin > maxY ||
-    Math.max(start.y, end.y) + margin < minY
+    Math.min(a.x, b.x) - margin > maxX ||
+    Math.max(a.x, b.x) + margin < minX ||
+    Math.min(a.y, b.y) - margin > maxY ||
+    Math.max(a.y, b.y) + margin < minY
   ) {
     return {
       changed: false,
@@ -517,9 +699,8 @@ function clipPath(points, object, start, end, radius, options) {
   }
 
   const covered = (point) =>
-    isCovered(point, transform, object, start, end, radius, scale);
+    isCovered(point, transform, object, a, b, radius, scale);
 
-  // Single-point brush dab.
   if (points.length === 1) {
     return covered(points[0])
       ? {
@@ -554,71 +735,58 @@ function clipPath(points, object, start, end, radius, options) {
     open = [];
   };
 
-  // Examine each brush path segment.
-  for (let i = 0; i < points.length - 1; i += 1) {
-    const pointA = points[i];
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const p0 = points[index];
+    const p1 = points[index + 1];
 
-    const pointB = points[i + 1];
-
-    const worldA = transform.point({
-      x: pointA.x,
-      y: pointA.y,
+    const world0 = transform.point({
+      x: p0.x,
+      y: p0.y,
     });
 
-    const worldB = transform.point({
-      x: pointB.x,
-      y: pointB.y,
+    const world1 = transform.point({
+      x: p1.x,
+      y: p1.y,
     });
 
-    const segmentLength = distance(worldA, worldB);
+    const segmentLength = distance(world0, world1);
 
     const sampleSpacing = Math.max(
       0.5,
-
       Math.min(options.maximumStep, radius / 3),
     );
 
     const sampleCount = Math.max(
       1,
-
       Math.min(
         options.maximumSamplesPerPathSegment,
-
         Math.ceil(segmentLength / sampleSpacing),
       ),
     );
 
     let lastT = 0;
 
-    for (let k = 1; k <= sampleCount; k += 1) {
-      const t = k / sampleCount;
+    for (let sampleIndex = 1; sampleIndex <= sampleCount; sampleIndex += 1) {
+      const t = sampleIndex / sampleCount;
 
-      const candidate = interpolate(pointA, pointB, t);
+      const candidate = interpolate(p0, p1, t);
 
       const inside = covered(candidate);
 
       if (inside !== previousInside) {
-        const border = cutBoundary(
-          pointA,
-          pointB,
-          lastT,
-          t,
-          previousInside,
-          covered,
-        );
+        const border = cutBoundary(p0, p1, lastT, t, previousInside, covered);
 
         if (previousInside) {
           pushUnique(open, border);
         } else {
           pushUnique(open, border);
-
           finish();
         }
 
         changed = true;
       }
 
-      if (!inside && k === sampleCount) {
+      if (!inside && sampleIndex === sampleCount) {
         pushUnique(open, candidate);
       }
 
@@ -627,7 +795,6 @@ function clipPath(points, object, start, end, radius, options) {
       }
 
       lastT = t;
-
       previousInside = inside;
     }
   }
@@ -648,7 +815,7 @@ function clipPath(points, object, start, end, radius, options) {
 }
 
 /* =========================================================
-   Build Updated Brush Geometry
+   Rebuild Vector Stroke Fragments
    ========================================================= */
 
 function fragmentUpdate(object, points) {
@@ -684,7 +851,7 @@ function fragmentUpdate(object, points) {
 }
 
 /* =========================================================
-   Preserve Fragment Layer Order
+   Preserve Fragment Ordering
    ========================================================= */
 
 function repositionNewFragmentsAfterOriginal(layerId, originalId, createdIds) {
@@ -708,13 +875,7 @@ function repositionNewFragmentsAfterOriginal(layerId, originalId, createdIds) {
 
       const ids = current.filter((id) => !createdIds.includes(id));
 
-      ids.splice(
-        ids.indexOf(originalId) + 1,
-
-        0,
-
-        ...createdIds,
-      );
+      ids.splice(ids.indexOf(originalId) + 1, 0, ...createdIds);
 
       return {
         ...layer,
@@ -741,7 +902,7 @@ function eraseAlongDrag(context, session, currentDoc, options) {
 
   const processedIds = [];
 
-  // Snapshot object IDs before mutation.
+  // Snapshot IDs before changing any objects.
   const candidates = Object.values(state.objects || {});
 
   for (const old of candidates) {
@@ -753,20 +914,18 @@ function eraseAlongDrag(context, session, currentDoc, options) {
       continue;
     }
 
-    const points = normalizePoints(object);
+    const stampMode = resolveRenderMode(object) === "stamp";
 
-    if (!points.length) {
-      continue;
-    }
-
-    const clipped = clipPath(
-      points,
-      object,
-      previousDoc,
-      currentDoc,
-      radius,
-      options,
-    );
+    const clipped = stampMode
+      ? clipStampDabs(object, previousDoc, currentDoc, radius)
+      : clipPath(
+          normalizePoints(object),
+          object,
+          previousDoc,
+          currentDoc,
+          radius,
+          options,
+        );
 
     if (!clipped.changed) {
       continue;
@@ -782,7 +941,30 @@ function eraseAlongDrag(context, session, currentDoc, options) {
 
     processedIds.push(object.id);
 
-    // Remove only when nothing remains.
+    /* -----------------------------------------
+       Charcoal / Chalk / Stamp Brushes
+       ----------------------------------------- */
+
+    if (stampMode) {
+      if (!clipped.stamps.length) {
+        currentState().deleteObjects?.([object.id], HISTORY_LABEL);
+      } else {
+        currentState().updateObject?.(
+          object.id,
+          {
+            stamps: clipped.stamps,
+          },
+          HISTORY_LABEL,
+        );
+      }
+
+      continue;
+    }
+
+    /* -----------------------------------------
+       Ordinary Vector Brush Strokes
+       ----------------------------------------- */
+
     if (!clipped.fragments.length) {
       currentState().deleteObjects?.([object.id], HISTORY_LABEL);
 
@@ -791,13 +973,9 @@ function eraseAlongDrag(context, session, currentDoc, options) {
 
     const [first, ...rest] = clipped.fragments;
 
-    // Retain the original object for
-    // the first surviving fragment.
     currentState().updateObject?.(
       object.id,
-
       fragmentUpdate(object, first),
-
       HISTORY_LABEL,
     );
 
@@ -805,30 +983,22 @@ function eraseAlongDrag(context, session, currentDoc, options) {
       continue;
     }
 
-    // Create new editable objects
-    // for the remaining fragments.
-    const clones = rest.map((fragmentPoints, index) => ({
+    const clones = rest.map((points, index) => ({
       ...object,
-
-      ...fragmentUpdate(object, fragmentPoints),
+      ...fragmentUpdate(object, points),
 
       id: createId(),
 
-      name: `${object.name || "Brush"}` + ` (part ${index + 2})`,
+      name: `${object.name || "Brush"} ` + `(part ${index + 2})`,
 
       selected: false,
     }));
 
     const newIds =
-      currentState().addObjects?.(
-        clones,
-
-        {
-          label: HISTORY_LABEL,
-
-          select: false,
-        },
-      ) || [];
+      currentState().addObjects?.(clones, {
+        label: HISTORY_LABEL,
+        select: false,
+      }) || [];
 
     repositionNewFragmentsAfterOriginal(object.layerId, object.id, newIds);
   }
@@ -889,7 +1059,6 @@ function updateCursor(context, options) {
 
   if (!withinDocument(docPoint, currentState())) {
     removeCursor(context);
-
     return;
   }
 
@@ -904,14 +1073,12 @@ function updateCursor(context, options) {
 
     cursor = new Konva.Group({
       name: CURSOR_NAME,
-
       listening: false,
     });
 
     cursor.add(
       new Konva.Circle({
         name: "eraser-outer",
-
         listening: false,
 
         fill: options.cursorFill,
@@ -923,7 +1090,6 @@ function updateCursor(context, options) {
     cursor.add(
       new Konva.Circle({
         name: "eraser-inner",
-
         listening: false,
 
         stroke: options.cursorInnerStroke,
@@ -935,11 +1101,7 @@ function updateCursor(context, options) {
     cursor.moveToTop();
   }
 
-  const zoom = Math.max(
-    0.0001,
-
-    finite(currentState().viewport?.zoom, 1),
-  );
+  const zoom = Math.max(0.0001, finite(currentState().viewport?.zoom, 1));
 
   const radius = brushSize(context, options) / 2;
 
@@ -959,7 +1121,7 @@ function updateCursor(context, options) {
 }
 
 /* =========================================================
-   Interaction Session
+   Interaction Sessions
    ========================================================= */
 
 function startSession(context, options) {
@@ -1003,13 +1165,12 @@ function endSession(context, session) {
 }
 
 /* =========================================================
-   Create Eraser Tool
+   Eraser Tool Factory
    ========================================================= */
 
 export function createEraserTool(toolOptions = {}) {
   const options = {
     ...DEFAULT_ERASER_OPTIONS,
-
     ...toolOptions,
 
     eraseObjectTypes: Array.isArray(toolOptions.eraseObjectTypes)
@@ -1017,26 +1178,21 @@ export function createEraserTool(toolOptions = {}) {
       : [...DEFAULT_ERASER_OPTIONS.eraseObjectTypes],
   };
 
-  const stateOfTool = (context, erasing) => {
-    context.manager?.setToolState?.(
-      ERASER_TOOL_ID,
+  const stateOfTool = (context, erasing) =>
+    context.manager?.setToolState?.(ERASER_TOOL_ID, {
+      mode: options.mode,
 
-      {
-        mode: options.mode,
+      size: brushSize(context, options),
 
-        size: brushSize(context, options),
-
-        erasing,
-      },
-    );
-  };
+      erasing,
+    });
 
   return defineTool({
     id: ERASER_TOOL_ID,
 
     label: "Eraser",
 
-    description: "Erase only touched portions of vector brush strokes.",
+    description: "Erase vector stroke sections and textured stamp marks.",
 
     shortcut: "E",
 
@@ -1050,27 +1206,15 @@ export function createEraserTool(toolOptions = {}) {
 
     allowMiddleButton: false,
 
-    /* ---------------------------------------------
-           Activate
-           --------------------------------------------- */
-
     onActivate(context) {
       removeCursor(context);
 
       stateOfTool(context, false);
     },
 
-    /* ---------------------------------------------
-           Pointer Enter
-           --------------------------------------------- */
-
     onPointerEnter(context) {
       updateCursor(context, options);
     },
-
-    /* ---------------------------------------------
-           Pointer Down
-           --------------------------------------------- */
 
     onPointerDown(context) {
       if (context.button !== POINTER_BUTTONS.LEFT) {
@@ -1092,10 +1236,6 @@ export function createEraserTool(toolOptions = {}) {
       return session;
     },
 
-    /* ---------------------------------------------
-           Pointer Move
-           --------------------------------------------- */
-
     onPointerMove(context) {
       updateCursor(context, options);
 
@@ -1115,6 +1255,7 @@ export function createEraserTool(toolOptions = {}) {
         ? eraseAlongDrag(context, session, point, options)
         : {
             ...session,
+
             lastDoc: null,
           };
 
@@ -1122,10 +1263,6 @@ export function createEraserTool(toolOptions = {}) {
 
       return updated;
     },
-
-    /* ---------------------------------------------
-           Pointer Up
-           --------------------------------------------- */
 
     onPointerUp(context) {
       const session = context.interaction?.data;
@@ -1148,19 +1285,11 @@ export function createEraserTool(toolOptions = {}) {
       return result;
     },
 
-    /* ---------------------------------------------
-           Pointer Cancel
-           --------------------------------------------- */
-
     onPointerCancel(context) {
       endSession(context, context.interaction?.data);
 
       stateOfTool(context, false);
     },
-
-    /* ---------------------------------------------
-           Cancel
-           --------------------------------------------- */
 
     onCancel(context) {
       endSession(context, context.interaction?.data);
@@ -1168,19 +1297,11 @@ export function createEraserTool(toolOptions = {}) {
       stateOfTool(context, false);
     },
 
-    /* ---------------------------------------------
-           Pointer Leave
-           --------------------------------------------- */
-
     onPointerLeave(context) {
       if (!context.interaction?.data) {
         removeCursor(context);
       }
     },
-
-    /* ---------------------------------------------
-           Deactivate
-           --------------------------------------------- */
 
     onDeactivate(context) {
       endSession(context, context.interaction?.data);
@@ -1189,10 +1310,6 @@ export function createEraserTool(toolOptions = {}) {
 
       stateOfTool(context, false);
     },
-
-    /* ---------------------------------------------
-           Destroy
-           --------------------------------------------- */
 
     onDestroy(context) {
       endSession(context, context.interaction?.data);
@@ -1203,13 +1320,9 @@ export function createEraserTool(toolOptions = {}) {
 }
 
 /* =========================================================
-   Default Tool
+   Default Export
    ========================================================= */
 
 export const EraserTool = createEraserTool();
-
-/* =========================================================
-   Default Export
-   ========================================================= */
 
 export default EraserTool;

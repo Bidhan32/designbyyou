@@ -2822,22 +2822,21 @@ function FashionEditor() {
     }
   }, [getProjectData, showToast]);
 
-
   const handleOpenCreatorShowcase = useCallback(() => {
-  setMobileMenuOpen(false);
+    setMobileMenuOpen(false);
 
-  if (persistence.dirty) {
-    const confirmed = window.confirm(
-      "This design has unsaved changes. Leave the Fashion Editor and open the Creator Showcase?",
-    );
+    if (persistence.dirty) {
+      const confirmed = window.confirm(
+        "This design has unsaved changes. Leave the Fashion Editor and open the Creator Showcase?",
+      );
 
-    if (!confirmed) {
-      return;
+      if (!confirmed) {
+        return;
+      }
     }
-  }
 
-  navigate(CREATOR_SHOWCASE_ROUTE);
-}, [persistence.dirty, navigate]);
+    navigate(CREATOR_SHOWCASE_ROUTE);
+  }, [persistence.dirty, navigate]);
 
   /*=====================================================
     Cloud Project Loading
@@ -6093,13 +6092,27 @@ function FashionEditor() {
     }
   }, [setUiState, isDesktopPanel]);
 
+  // Open the layer manager directly, even when the Properties tab
+  // was most recently used for symmetry or brush settings.
+  const openLayersPanel = useCallback(() => {
+    setMobileMenuOpen(false);
+    setUiState({
+      rightPanelTab: "layers",
+      rightPanelOpen: true,
+    });
+
+    if (!isDesktopPanel) {
+      setPanelDrawerOpen(true);
+    }
+  }, [setUiState, isDesktopPanel]);
+
   /*=====================================================
     Right Panel Content
     =====================================================*/
 
   const rightPanelContent = (
     <>
-      <div className="flex h-12 shrink-0 items-center border-b border-slate-800 bg-slate-950">
+      <div className="sticky top-0 z-10 flex h-12 shrink-0 items-center border-b border-slate-800 bg-slate-950">
         <button
           type="button"
           onClick={() => {
@@ -8278,58 +8291,55 @@ function FashionEditor() {
             )}
 
             {activeTool === EDITOR_TOOLS.ERASER && (
-  <PanelSection title="Precision Eraser">
-    <div className="space-y-5">
+              <PanelSection title="Precision Eraser">
+                <div className="space-y-5">
+                  <SliderField
+                    label="Eraser Size"
+                    value={eraser.size}
+                    minimum={eraser.minimumSize}
+                    maximum={eraser.maximumSize}
+                    suffix="px"
+                    onChange={setEraserSize}
+                  />
 
-      <SliderField
-        label="Eraser Size"
-        value={eraser.size}
-        minimum={eraser.minimumSize}
-        maximum={eraser.maximumSize}
-        suffix="px"
-        onChange={setEraserSize}
-      />
+                  <div className="space-y-3">
+                    <p className="text-xs font-medium text-slate-300">
+                      Eraser Mode
+                    </p>
 
-      <div className="space-y-3">
-        <p className="text-xs font-medium text-slate-300">
-          Eraser Mode
-        </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEraserMode("precision");
+                      }}
+                      aria-pressed={eraser.mode === "precision"}
+                      className={[
+                        "min-h-11 w-full rounded-lg border",
+                        "px-3 py-2 text-xs font-semibold",
+                        "transition",
 
-        <button
-          type="button"
-          onClick={() => {
-            setEraserMode("precision");
-          }}
-          aria-pressed={eraser.mode === "precision"}
-          className={[
-            "min-h-11 w-full rounded-lg border",
-            "px-3 py-2 text-xs font-semibold",
-            "transition",
+                        eraser.mode === "precision"
+                          ? "border-violet-500 bg-violet-500 text-white"
+                          : "border-slate-700 bg-slate-900 text-slate-300",
+                      ].join(" ")}
+                    >
+                      Precision Eraser
+                    </button>
 
-            eraser.mode === "precision"
-              ? "border-violet-500 bg-violet-500 text-white"
-              : "border-slate-700 bg-slate-900 text-slate-300"
-          ].join(" ")}
-        >
-          Precision Eraser
-        </button>
+                    <p className="text-[10px] leading-relaxed text-slate-400">
+                      Drag the eraser over vector strokes to remove affected
+                      sections while preserving the remaining parts of the
+                      drawing.
+                    </p>
 
-        <p className="text-[10px] leading-relaxed text-slate-400">
-          Drag the eraser over vector strokes to
-          remove affected sections while preserving
-          the remaining parts of the drawing.
-        </p>
-
-        <p className="text-[10px] leading-relaxed text-slate-500">
-          Erasing is limited to the active,
-          unlocked layer. Raster images and
-          stamp brushes are not supported.
-        </p>
-      </div>
-
-    </div>
-  </PanelSection>
-)}
+                    <p className="text-[10px] leading-relaxed text-slate-500">
+                      Erasing is limited to the active, unlocked layer. Raster
+                      images and stamp brushes are not supported.
+                    </p>
+                  </div>
+                </div>
+              </PanelSection>
+            )}
 
             {activeTool === EDITOR_TOOLS.SELECT && (
               <PanelSection title="Selection">
@@ -10286,33 +10296,33 @@ function FashionEditor() {
       {/* Header */}
 
       <header className="relative z-[70] flex h-14 shrink-0 items-center justify-between gap-2 border-b border-slate-800 bg-slate-950 px-2 sm:px-4">
-      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500 text-xs font-black text-white shadow-lg shadow-violet-950/40">
-    FV
-  </div>
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500 text-xs font-black text-white shadow-lg shadow-violet-950/40">
+            FV
+          </div>
 
-  <div className="hidden shrink-0 lg:block">
-    <p className="text-xs font-bold tracking-wide text-white">
-      FashionVision
-    </p>
+          <div className="hidden shrink-0 lg:block">
+            <p className="text-xs font-bold tracking-wide text-white">
+              FashionVision
+            </p>
 
-    <p className="text-[9px] uppercase tracking-[0.2em] text-slate-500">
-      2D Studio
-    </p>
-  </div>
+            <p className="text-[9px] uppercase tracking-[0.2em] text-slate-500">
+              2D Studio
+            </p>
+          </div>
 
-  {/* Creator Showcase — permanently visible beside FashionVision */}
-  <button
-    type="button"
-    onClick={handleOpenCreatorShowcase}
-    title="Open Creator Showcase"
-    className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-violet-500/40 bg-violet-500/10 px-2.5 text-[10px] font-bold text-violet-200 transition hover:border-violet-400 hover:bg-violet-500/20 hover:text-white sm:px-3"
-  >
-    <span className="hidden sm:inline">Creator Showcase</span>
-    <span className="sm:hidden">Showcase</span>
-  </button>
+          {/* Creator Showcase — permanently visible beside FashionVision */}
+          <button
+            type="button"
+            onClick={handleOpenCreatorShowcase}
+            title="Open Creator Showcase"
+            className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-violet-500/40 bg-violet-500/10 px-2.5 text-[10px] font-bold text-violet-200 transition hover:border-violet-400 hover:bg-violet-500/20 hover:text-white sm:px-3"
+          >
+            <span className="hidden sm:inline">Creator Showcase</span>
+            <span className="sm:hidden">Showcase</span>
+          </button>
 
-  <div className="hidden h-6 w-px bg-slate-800 lg:block" />
+          <div className="hidden h-6 w-px bg-slate-800 lg:block" />
 
           <div className="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
             <DocumentNameField
@@ -10373,7 +10383,6 @@ function FashionEditor() {
               {showcaseSharing ? "Sharing…" : "Share"}
             </HeaderButton>
 
-
             <HeaderButton onClick={handleExportPng} disabled={exporting}>
               {exporting ? "Exporting…" : "Export PNG"}
             </HeaderButton>
@@ -10407,6 +10416,18 @@ function FashionEditor() {
           </HeaderButton>
 
           <HeaderButton
+            onClick={openLayersPanel}
+            active={
+              rightPanelTab === "layers" &&
+              (isDesktopPanel ? ui.rightPanelOpen !== false : panelDrawerOpen)
+            }
+            title="Open the Layers panel"
+            className="hidden sm:inline-flex"
+          >
+            Layers
+          </HeaderButton>
+
+          <HeaderButton
             onClick={() => {
               if (isDesktopPanel) {
                 setUiState({
@@ -10416,7 +10437,9 @@ function FashionEditor() {
                 setPanelDrawerOpen(true);
               }
             }}
-            active={isDesktopPanel ? ui.rightPanelOpen : panelDrawerOpen}
+            active={
+              isDesktopPanel ? ui.rightPanelOpen !== false : panelDrawerOpen
+            }
             title="Layers and properties"
             className="hidden sm:inline-flex"
           >
@@ -10493,7 +10516,6 @@ function FashionEditor() {
               >
                 {showcaseSharing ? "Sharing to Showcase…" : "Share to Showcase"}
               </button>
-
 
               <button
                 type="button"
@@ -12282,7 +12304,7 @@ function FashionEditor() {
       {/* Tablet/mobile panel drawer */}
 
       {!isDesktopPanel && panelDrawerOpen && (
-        <div className="fixed inset-0 z-50 xl:hidden">
+        <div className="fixed inset-0 z-[95] xl:hidden">
           <button
             type="button"
             aria-label="Close panel"
