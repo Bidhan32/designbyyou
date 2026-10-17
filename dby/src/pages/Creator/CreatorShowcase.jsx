@@ -177,7 +177,7 @@ const TOP_DESIGNERS_ENDPOINT = "/creator-showcase/top-designers";
 
 const HERO_ENDPOINT = "/showcase-hero";
 
-const CREATE_ROUTE = "/creator/upload";
+const CREATE_ROUTE = "/creator/tools";
 
 /*=========================================================
 Fallback Images
