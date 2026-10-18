@@ -4,7 +4,7 @@
 =========================================================
 DesignByYou
 Creator Showcase
-Version 5.1
+Version 5.2 — Detail Navigation Scroll Fix
 =========================================================
 
 CLIENT STRUCTURE
@@ -1249,11 +1249,16 @@ export default function CreatorShowcase() {
 
   const openDesign = useCallback(
     (slug) => {
-      if (!slug) {
+      const safeSlug = cleanText(slug);
+
+      if (!safeSlug) {
         return;
       }
 
-      navigate(`/creator/showcase/${encodeURIComponent(slug)}`);
+      // Do not carry the New Arrivals scroll position into the detail page.
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+
+      navigate(`/creator/showcase/${encodeURIComponent(safeSlug)}`);
     },
     [navigate],
   );

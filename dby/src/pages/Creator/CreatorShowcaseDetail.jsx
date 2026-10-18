@@ -1,117 +1,9 @@
 "use strict";
 
-/*
-=========================================================
-DesignByYou
-Creator Showcase Detail
-Version 3.2 — Public Showcase → Fashion Editor
-=========================================================
+/* DesignByYou — Creator Showcase Detail, Version 3.3 (navigation scroll fix).
+   Reconstructed from the supplied Markdown-formatted JSX. */
 
-PURPOSE
----------------------------------------------------------
-
-This page displays public Showcase creative work.
-
-Showcase items may belong to:
-
-- a Creator
-- an approved Designer
-
-This page is NOT:
-
-- ecommerce
-- a marketplace
-- a product page
-- checkout
-- a design purchase page
-- a licensing page
-
-=========================================================
-PUBLIC SHOWCASE → FASHION EDITOR
-=========================================================
-
-Any public Showcase design displayed on this page can be
-opened by an authenticated Creator in Fashion Editor.
-
-The browser sends only the public design ID to:
-
-POST
-/api/v1/creators/showcase/:designId/open-in-editor
-
-The backend decides whether to:
-
-- reopen the Creator's own original Fashion Editor project
-- reuse an existing private project created from the design
-- create a private copy of another Creator's editor project
-- create a private image-based project from a manual upload
-- create a private image-based project from Designer work
-
-Another user's source Showcase design/project is never
-modified by this action.
-
-=========================================================
-DESIGNER-OWNED SHOWCASE ITEM
-=========================================================
-
-Designer work may provide:
-
-- Open in Fashion Editor
-- View Designer Studio
-- Start Booking
-- Designer rating
-- Completed bookings
-
-=========================================================
-CREATOR-OWNED SHOWCASE ITEM
-=========================================================
-
-Creator work may provide:
-
-- creative concept
-- owner identity
-- category
-- style
-- tags
-- Open in Fashion Editor
-
-Creator work does NOT provide:
-
-- Book Designer
-- Commission Creator
-- Designer rating
-- Designer booking metrics
-
-=========================================================
-PUBLIC DETAIL BACKEND
-=========================================================
-
-GET
-/api/v1/creator-showcase/item/:slug
-
-The public detail response may expose safe Showcase
-metadata and capability fields, but this page does not
-need private editor project information in order to open
-the design.
-
-=========================================================
-SECURITY
-=========================================================
-
-The public detail endpoint intentionally does NOT expose:
-
-- canvas_state
-- raw editable source
-- editor_project_id
-- project_data
-- price
-- license information
-
-The authenticated open-in-editor endpoint resolves private
-editor data internally.
-=========================================================
-*/
-
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
 
 import { Link, useNavigate, useParams } from "react-router-dom";
 
@@ -135,10 +27,6 @@ import {
 
 import API from "../../api/axios";
 
-/*=========================================================
-Helpers
-=========================================================*/
-
 function cleanText(value, fallback = "") {
   const text = String(value ?? "").trim();
 
@@ -152,10 +40,6 @@ function isRequestCanceled(error) {
     error?.name === "AbortError"
   );
 }
-
-/*=========================================================
-Owner Model
-=========================================================*/
 
 function isDesignerOwned(item) {
   return (
@@ -177,10 +61,6 @@ function getOwnerAvatar(item) {
   return cleanText(item?.owner_avatar) || cleanText(item?.designer_avatar);
 }
 
-/*=========================================================
-Designer Rating
-=========================================================*/
-
 function getDesignerRating(item) {
   if (!isDesignerOwned(item)) {
     return null;
@@ -194,10 +74,6 @@ function getDesignerRating(item) {
 
   return rating;
 }
-
-/*=========================================================
-Completed Bookings
-=========================================================*/
 
 function getCompletedBookings(item) {
   if (!isDesignerOwned(item)) {
@@ -213,10 +89,6 @@ function getCompletedBookings(item) {
   return count;
 }
 
-/*=========================================================
-Date
-=========================================================*/
-
 function formatPublishedDate(value) {
   if (!value) {
     return "Recently";
@@ -230,24 +102,10 @@ function formatPublishedDate(value) {
 
   return new Intl.DateTimeFormat(undefined, {
     month: "long",
+
     year: "numeric",
   }).format(date);
 }
-
-/*=========================================================
-Booking URL
-
-IMPORTANT:
-
-This starts a custom booking.
-
-It does NOT:
-
-- buy the showcased design
-- transfer ownership
-- use a showcase price
-- pre-fill a commercial sale amount
-=========================================================*/
 
 function buildBookingUrl(item) {
   if (!isDesignerOwned(item)) {
@@ -264,15 +122,12 @@ function buildBookingUrl(item) {
 
   const params = new URLSearchParams({
     designer_id: String(designerId),
+
     design_id: String(designId),
   });
 
   return `/creator/bookings/new?${params.toString()}`;
 }
-
-/*=========================================================
-Creator Showcase Detail
-=========================================================*/
 
 export default function CreatorShowcaseDetail() {
   const { slug } = useParams();
@@ -288,10 +143,18 @@ export default function CreatorShowcaseDetail() {
   const [openingEditor, setOpeningEditor] = useState(false);
 
   const [editorError, setEditorError] = useState("");
+  // Reset scroll whenever a Showcase detail route opens or finishes loading.
+  // React Router otherwise may retain the scroll position from New Arrivals.
+  useLayoutEffect(() => {
+    const scrollToTop = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    };
 
-  /*=======================================================
-  Load Showcase Item
-  =======================================================*/
+    scrollToTop();
+    const frame = window.requestAnimationFrame(scrollToTop);
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [slug, loading]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -318,6 +181,7 @@ export default function CreatorShowcaseDetail() {
       try {
         const response = await API.get(
           `/creator-showcase/item/${encodeURIComponent(slug)}`,
+
           {
             signal: controller.signal,
           },
@@ -344,6 +208,7 @@ export default function CreatorShowcaseDetail() {
         if (import.meta.env.DEV) {
           console.error(
             "Creator Showcase detail request failed:",
+
             requestError?.response?.data || requestError,
           );
         }
@@ -377,19 +242,6 @@ export default function CreatorShowcaseDetail() {
     };
   }, [slug]);
 
-  /*=======================================================
-  Open Public Showcase Design in Fashion Editor
-
-  POST
-  /api/v1/creators/showcase/:designId/open-in-editor
-
-  The frontend sends only the public Showcase design ID.
-
-  The backend decides whether to reopen the Creator's own
-  project, reuse a generated private project, clone another
-  Creator's project, or create an image-based project.
-  =======================================================*/
-
   const handleOpenInEditor = async () => {
     if (openingEditor) {
       return;
@@ -412,6 +264,7 @@ export default function CreatorShowcaseDetail() {
     try {
       const response = await API.post(
         `/creators/showcase/${encodeURIComponent(designId)}/open-in-editor`,
+
         {},
       );
 
@@ -430,6 +283,7 @@ export default function CreatorShowcaseDetail() {
       if (import.meta.env.DEV) {
         console.error(
           "Open Showcase design in Fashion Editor failed:",
+
           requestError?.response?.data || requestError,
         );
       }
@@ -466,10 +320,6 @@ export default function CreatorShowcaseDetail() {
       setOpeningEditor(false);
     }
   };
-
-  /*=======================================================
-  Derived Data
-  =======================================================*/
 
   const derived = useMemo(() => {
     if (!item) {
@@ -521,37 +371,53 @@ export default function CreatorShowcaseDetail() {
     };
   }, [item]);
 
-  /*=======================================================
-  Loading
-  =======================================================*/
-
   if (loading) {
     return (
       <div
         className="
+
           flex
+
           min-h-[calc(100vh-5rem)]
+
           flex-col
+
           items-center
+
           justify-center
+
           gap-4
+
           bg-slate-50
+
           text-slate-900
+
           transition-colors
+
           duration-300
+
           dark:bg-[#030303]
+
           dark:text-white
+
         "
       >
         <div className="relative">
           <div
             className="
+
               absolute
+
               inset-0
+
               animate-spin
+
               rounded-full
+
               border-t-2
+
               border-[#D4AF37]
+
             "
           />
 
@@ -559,21 +425,32 @@ export default function CreatorShowcaseDetail() {
             size={40}
             aria-hidden="true"
             className="
+
               animate-spin
+
               text-slate-400
+
               dark:text-white/20
+
             "
           />
         </div>
 
         <span
           className="
+
             animate-pulse
+
             text-[10px]
+
             font-bold
+
             uppercase
+
             tracking-[0.3em]
+
             text-[#D4AF37]
+
           "
         >
           Loading Showcase
@@ -582,86 +459,132 @@ export default function CreatorShowcaseDetail() {
     );
   }
 
-  /*=======================================================
-  Error
-  =======================================================*/
-
   if (error || !item) {
     return (
       <div
         className="
+
           relative
+
           flex
+
           min-h-[calc(100vh-5rem)]
+
           items-center
+
           justify-center
+
           overflow-hidden
+
           bg-slate-50
+
           p-6
+
           text-slate-900
+
           transition-colors
+
           duration-300
+
           dark:bg-[#030303]
+
           dark:text-white
+
         "
       >
         <div
           aria-hidden="true"
           className="
+
             pointer-events-none
+
             absolute
+
             left-1/2
+
             top-1/2
+
             h-[40vw]
+
             w-[40vw]
+
             -translate-x-1/2
+
             -translate-y-1/2
+
             rounded-full
+
             bg-rose-500/5
+
             blur-[120px]
+
           "
         />
 
         <div
           className="
+
             relative
+
             z-10
+
             w-full
+
             max-w-md
+
             space-y-4
+
             rounded-3xl
+
             border
+
             border-slate-200
+
             bg-white
+
             p-10
+
             text-center
+
             shadow-2xl
+
             backdrop-blur-xl
 
             dark:border-white/10
+
             dark:bg-[#0a0a0a]
+
           "
         >
           <Sparkles
             size={48}
             aria-hidden="true"
             className="
+
               mx-auto
+
               mb-6
+
               text-slate-300
 
               dark:text-white/10
+
             "
           />
 
           <h2
             className="
+
               font-serif
+
               text-2xl
+
               tracking-wide
+
               text-slate-900
 
               dark:text-white
+
             "
           >
             Showcase Item Unavailable
@@ -669,14 +592,21 @@ export default function CreatorShowcaseDetail() {
 
           <p
             className="
+
               text-xs
+
               font-bold
+
               uppercase
+
               leading-6
+
               tracking-widest
+
               text-slate-500
 
               dark:text-white/40
+
             "
           >
             {error || "This showcase item is unavailable."}
@@ -685,25 +615,41 @@ export default function CreatorShowcaseDetail() {
           <Link
             to="/creator/showcase"
             className="
+
               mt-8
+
               inline-flex
+
               items-center
+
               justify-center
+
               gap-2
+
               rounded-full
+
               bg-[#D4AF37]
+
               px-8
+
               py-3
+
               text-[10px]
+
               font-black
+
               uppercase
+
               tracking-[0.2em]
+
               text-black
+
               transition
 
               hover:bg-[#ead28f]
 
               dark:hover:bg-white
+
             "
           >
             <ChevronLeft size={13} />
@@ -716,125 +662,187 @@ export default function CreatorShowcaseDetail() {
 
   const {
     designerOwned,
+
     ownerName,
+
     ownerAvatar,
+
     designerRating,
+
     completedBookings,
+
     bookingUrl,
+
     designerStudioUrl,
+
     canOpenInEditor,
+
     tags,
   } = derived;
-
-  /*=======================================================
-  Render
-  =======================================================*/
 
   return (
     <div
       className="
+
         relative
+
         min-h-screen
+
         overflow-x-hidden
+
         bg-slate-50
+
         pb-32
+
         text-slate-900
+
         transition-colors
+
         duration-300
+
         selection:bg-[#D4AF37]
+
         selection:text-black
 
         dark:bg-[#030303]
+
         dark:text-white
+
       "
     >
-      {/*===================================================
-      Ambient Background
-      ===================================================*/}
-
       <div
         aria-hidden="true"
         className="
+
           pointer-events-none
+
           fixed
+
           inset-0
+
           z-0
+
           overflow-hidden
+
         "
       >
         <div
           className="
+
             absolute
+
             -right-[5%]
+
             -top-[10%]
+
             h-[40vw]
+
             w-[40vw]
+
             rounded-full
+
             bg-[#D4AF37]/10
+
             blur-[150px]
+
           "
         />
 
         <div
           className="
+
             absolute
+
             -bottom-[20%]
+
             -left-[10%]
+
             h-[50vw]
+
             w-[50vw]
+
             rounded-full
+
             bg-violet-500/[0.035]
+
             blur-[160px]
+
           "
         />
       </div>
 
-      {/*===================================================
-      Navigation
-      ===================================================*/}
-
       <div
         className="
+
           sticky
+
           top-20
+
           z-40
+
           border-b
+
           border-slate-200
+
           bg-white/90
+
           px-4
+
           py-4
+
           shadow-2xl
+
           backdrop-blur-xl
 
           sm:px-6
 
           dark:border-white/5
+
           dark:bg-[#0a0a0a]/90
+
         "
       >
         <div
           className="
+
             mx-auto
+
             flex
+
             max-w-[1800px]
+
             items-center
+
             justify-between
+
             gap-4
+
           "
         >
           <Link
             to="/creator/showcase"
             className="
+
               group
+
               flex
+
               min-w-0
+
               items-center
+
               gap-2
+
               text-[9px]
+
               font-bold
+
               uppercase
+
               tracking-[0.16em]
+
               text-slate-500
+
               transition
 
               hover:text-slate-950
@@ -842,27 +850,42 @@ export default function CreatorShowcaseDetail() {
               sm:text-[10px]
 
               dark:text-white/40
+
               dark:hover:text-white
+
             "
           >
             <span
               className="
+
                 flex
+
                 h-8
+
                 w-8
+
                 shrink-0
+
                 items-center
+
                 justify-center
+
                 rounded-full
+
                 border
+
                 border-slate-200
+
                 bg-slate-100
 
                 group-hover:bg-slate-200
 
                 dark:border-white/5
+
                 dark:bg-white/5
+
                 dark:group-hover:bg-white/10
+
               "
             >
               <ChevronLeft size={14} />
@@ -873,34 +896,55 @@ export default function CreatorShowcaseDetail() {
 
           <div
             className="
+
               flex
+
               max-w-[55%]
+
               items-center
+
               gap-2
+
             "
           >
             {item?.category_name && (
               <span
                 className="
+
                   hidden
+
                   truncate
+
                   rounded-full
+
                   border
+
                   border-slate-200
+
                   bg-slate-100/80
+
                   px-3
+
                   py-2
+
                   text-[8px]
+
                   font-black
+
                   uppercase
+
                   tracking-[0.15em]
+
                   text-slate-600
 
                   sm:block
 
                   dark:border-white/10
+
                   dark:bg-white/[0.04]
+
                   dark:text-white/45
+
                 "
               >
                 {item.category_name}
@@ -909,20 +953,33 @@ export default function CreatorShowcaseDetail() {
 
             <span
               className="
+
                 truncate
+
                 rounded-full
+
                 border
+
                 border-[#D4AF37]/30
+
                 bg-[#D4AF37]/10
+
                 px-3
+
                 py-2
+
                 text-[8px]
+
                 font-black
+
                 uppercase
+
                 tracking-[0.18em]
+
                 text-[#D4AF37]
 
                 sm:px-4
+
               "
             >
               {item.style_category || "Showcase Design"}
@@ -931,20 +988,25 @@ export default function CreatorShowcaseDetail() {
         </div>
       </div>
 
-      {/*===================================================
-      Main Content
-      ===================================================*/}
-
       <div
         className="
+
           relative
+
           z-10
+
           mx-auto
+
           mt-8
+
           grid
+
           max-w-[1800px]
+
           grid-cols-1
+
           gap-8
+
           px-4
 
           sm:px-6
@@ -952,54 +1014,72 @@ export default function CreatorShowcaseDetail() {
           md:mt-12
 
           lg:grid-cols-12
+
           lg:gap-12
+
         "
       >
-        {/*=================================================
-        Main Design
-        =================================================*/}
-
         <div
           className="
+
             space-y-8
 
             lg:col-span-8
+
           "
         >
-          {/*===============================================
-          Preview
-          ===============================================*/}
-
           <div
             className="
+
               group
+
               relative
+
               flex
+
               aspect-[4/3]
+
               items-center
+
               justify-center
+
               overflow-hidden
+
               rounded-3xl
+
               border
+
               border-slate-200
+
               bg-white
+
               p-2
+
               shadow-2xl
 
               dark:border-white/5
+
               dark:bg-[#0a0a0a]
+
             "
           >
             <div
               className="
+
                 relative
+
                 h-full
+
                 w-full
+
                 overflow-hidden
+
                 rounded-2xl
+
                 bg-slate-100
 
                 dark:bg-[#111]
+
               "
             >
               {item.watermarked_preview_url ? (
@@ -1009,40 +1089,62 @@ export default function CreatorShowcaseDetail() {
                   loading="eager"
                   decoding="async"
                   className="
+
                     h-full
+
                     w-full
+
                     object-contain
+
                     opacity-95
+
                     transition
+
                     duration-[1.2s]
 
                     group-hover:scale-[1.02]
+
                     group-hover:opacity-100
+
                   "
                 />
               ) : (
                 <div
                   className="
+
                     flex
+
                     h-full
+
                     w-full
+
                     flex-col
+
                     items-center
+
                     justify-center
+
                     gap-3
+
                     text-slate-300
 
                     dark:text-white/10
+
                   "
                 >
                   <Sparkles size={48} />
 
                   <span
                     className="
+
                       text-[10px]
+
                       font-black
+
                       uppercase
+
                       tracking-widest
+
                     "
                   >
                     Preview Unavailable
@@ -1052,42 +1154,71 @@ export default function CreatorShowcaseDetail() {
 
               <div
                 className="
+
                   pointer-events-none
+
                   absolute
+
                   inset-0
+
                   bg-gradient-to-t
+
                   from-[#030303]/65
+
                   via-transparent
+
                   to-transparent
+
                 "
               />
 
               <div
                 className="
+
                   absolute
+
                   bottom-4
+
                   left-4
+
                   flex
+
                   items-center
+
                   gap-2
+
                   rounded-full
+
                   border
+
                   border-white/10
+
                   bg-black/55
+
                   px-3
+
                   py-2
+
                   text-[8px]
+
                   font-black
+
                   uppercase
+
                   tracking-[0.18em]
+
                   text-white/55
+
                   backdrop-blur-md
+
                 "
               >
                 <ShieldCheck
                   size={11}
                   className="
+
                     text-[#D4AF37]
+
                   "
                 />
                 Showcase Preview
@@ -1095,21 +1226,37 @@ export default function CreatorShowcaseDetail() {
 
               <div
                 className="
+
                   absolute
+
                   bottom-4
+
                   right-4
+
                   rounded-full
+
                   border
+
                   border-white/10
+
                   bg-black/55
+
                   px-3
+
                   py-2
+
                   text-[8px]
+
                   font-black
+
                   uppercase
+
                   tracking-[0.14em]
+
                   text-white/50
+
                   backdrop-blur-md
+
                 "
               >
                 {designerOwned ? "Designer Work" : "Creator Work"}
@@ -1117,18 +1264,21 @@ export default function CreatorShowcaseDetail() {
             </div>
           </div>
 
-          {/*===============================================
-          Design Information
-          ===============================================*/}
-
           <section
             className="
+
               space-y-8
+
               rounded-3xl
+
               border
+
               border-slate-200
+
               bg-white
+
               p-6
+
               shadow-2xl
 
               sm:p-8
@@ -1136,21 +1286,29 @@ export default function CreatorShowcaseDetail() {
               md:p-10
 
               dark:border-white/5
+
               dark:bg-[#0a0a0a]
+
             "
           >
             <div>
               <h1
                 className="
+
                   font-serif
+
                   text-3xl
+
                   font-light
+
                   leading-tight
+
                   tracking-tight
 
                   sm:text-4xl
 
                   md:text-5xl
+
                 "
               >
                 {item.title || "Untitled Design"}
@@ -1158,32 +1316,50 @@ export default function CreatorShowcaseDetail() {
 
               <div
                 className="
+
                   mt-5
+
                   flex
+
                   flex-wrap
+
                   items-center
+
                   gap-x-5
+
                   gap-y-2
+
                   text-[9px]
+
                   font-bold
+
                   uppercase
+
                   tracking-[0.16em]
+
                   text-slate-500
 
                   dark:text-white/35
+
                 "
               >
                 <span
                   className="
+
                     flex
+
                     items-center
+
                     gap-2
+
                   "
                 >
                   <Calendar
                     size={12}
                     className="
+
                       text-[#D4AF37]
+
                     "
                   />
                   Published {formatPublishedDate(item.created_at)}
@@ -1192,15 +1368,21 @@ export default function CreatorShowcaseDetail() {
                 {item?.category_name && (
                   <span
                     className="
+
                       flex
+
                       items-center
+
                       gap-2
+
                     "
                   >
                     <Layers3
                       size={12}
                       className="
+
                         text-[#D4AF37]
+
                       "
                     />
 
@@ -1211,15 +1393,21 @@ export default function CreatorShowcaseDetail() {
                 {item?.style_category && (
                   <span
                     className="
+
                       flex
+
                       items-center
+
                       gap-2
+
                     "
                   >
                     <Palette
                       size={12}
                       className="
+
                         text-[#D4AF37]
+
                       "
                     />
 
@@ -1231,33 +1419,46 @@ export default function CreatorShowcaseDetail() {
 
             <div
               className="
+
                 h-px
+
                 bg-gradient-to-r
+
                 from-slate-200
+
                 via-slate-100
+
                 to-transparent
 
                 dark:from-white/10
+
                 dark:via-white/5
+
               "
             />
-
-            {/*=============================================
-            Concept
-            =============================================*/}
 
             <div>
               <h2
                 className="
+
                   mb-4
+
                   flex
+
                   items-center
+
                   gap-2
+
                   text-[10px]
+
                   font-black
+
                   uppercase
+
                   tracking-[0.25em]
+
                   text-[#D4AF37]
+
                 "
               >
                 <Sparkles size={12} />
@@ -1266,45 +1467,58 @@ export default function CreatorShowcaseDetail() {
 
               <p
                 className="
+
                   whitespace-pre-wrap
+
                   text-sm
+
                   font-light
+
                   leading-loose
+
                   text-slate-700
 
                   md:text-base
 
                   dark:text-white/70
+
                 "
               >
                 {item.description || "No design description has been provided."}
               </p>
             </div>
 
-            {/*=============================================
-            Tags
-            =============================================*/}
-
             {tags.length > 0 && (
               <div
                 className="
+
                   border-t
+
                   border-slate-200
+
                   pt-7
 
                   dark:border-white/5
+
                 "
               >
                 <p
                   className="
+
                     mb-4
+
                     text-[9px]
+
                     font-black
+
                     uppercase
+
                     tracking-[0.2em]
+
                     text-slate-500
 
                     dark:text-white/30
+
                   "
                 >
                   Creative Tags
@@ -1312,33 +1526,54 @@ export default function CreatorShowcaseDetail() {
 
                 <div
                   className="
+
                     flex
+
                     flex-wrap
+
                     gap-2
+
                   "
                 >
                   {tags.map((tag, index) => (
                     <span
                       key={`${tag}-${index}`}
                       className="
+
                         flex
+
                         items-center
+
                         gap-1.5
+
                         rounded-full
+
                         border
+
                         border-slate-200
+
                         bg-slate-100
+
                         px-4
+
                         py-2
+
                         text-[9px]
+
                         font-bold
+
                         uppercase
+
                         tracking-[0.16em]
+
                         text-slate-600
 
                         dark:border-white/10
+
                         dark:bg-white/5
+
                         dark:text-white/50
+
                       "
                     >
                       <Tag size={10} />
@@ -1352,80 +1587,104 @@ export default function CreatorShowcaseDetail() {
           </section>
         </div>
 
-        {/*=================================================
-        Sidebar
-        =================================================*/}
-
         <aside
           className="
+
             space-y-6
 
             lg:col-span-4
+
           "
         >
-          {/*===============================================
-          Owner Card
-          ===============================================*/}
-
           <section
             className="
+
               overflow-hidden
+
               rounded-3xl
+
               border
+
               border-slate-200
+
               bg-white
+
               p-6
+
               shadow-2xl
 
               sm:p-8
 
               lg:sticky
+
               lg:top-36
 
               dark:border-white/5
+
               dark:bg-[#0a0a0a]
+
             "
           >
             <p
               className="
+
                 mb-5
+
                 text-[9px]
+
                 font-black
+
                 uppercase
+
                 tracking-[0.25em]
+
                 text-[#D4AF37]
+
               "
             >
               {designerOwned ? "Featured Designer" : "Showcase Creator"}
             </p>
 
-            {/*=============================================
-            Identity
-            =============================================*/}
-
             <div
               className="
+
                 flex
+
                 items-center
+
                 gap-4
+
               "
             >
               <div
                 className="
+
                   flex
+
                   h-16
+
                   w-16
+
                   shrink-0
+
                   items-center
+
                   justify-center
+
                   overflow-hidden
+
                   rounded-full
+
                   border
+
                   border-slate-200
+
                   bg-slate-100
 
                   dark:border-white/10
+
                   dark:bg-[#111]
+
                 "
               >
                 {ownerAvatar ? (
@@ -1435,18 +1694,24 @@ export default function CreatorShowcaseDetail() {
                     loading="lazy"
                     decoding="async"
                     className="
+
                       h-full
+
                       w-full
+
                       object-cover
+
                     "
                   />
                 ) : (
                   <User
                     size={24}
                     className="
+
                       text-slate-400
 
                       dark:text-white/20
+
                     "
                   />
                 )}
@@ -1455,9 +1720,13 @@ export default function CreatorShowcaseDetail() {
               <div className="min-w-0">
                 <h2
                   className="
+
                     truncate
+
                     font-serif
+
                     text-xl
+
                   "
                 >
                   {ownerName}
@@ -1465,15 +1734,25 @@ export default function CreatorShowcaseDetail() {
 
                 <p
                   className="
+
                     mt-1
+
                     flex
+
                     items-center
+
                     gap-1.5
+
                     text-[9px]
+
                     font-black
+
                     uppercase
+
                     tracking-[0.16em]
+
                     text-[#D4AF37]
+
                   "
                 >
                   <ShieldCheck size={11} />
@@ -1484,14 +1763,21 @@ export default function CreatorShowcaseDetail() {
                 {designerOwned && item.city && (
                   <p
                     className="
+
                       mt-2
+
                       flex
+
                       items-center
+
                       gap-1.5
+
                       text-[9px]
+
                       text-slate-500
 
                       dark:text-white/35
+
                     "
                   >
                     <MapPin size={10} />
@@ -1502,80 +1788,113 @@ export default function CreatorShowcaseDetail() {
               </div>
             </div>
 
-            {/*=============================================
-            Designer-specific Content
-            =============================================*/}
-
             {designerOwned ? (
               <>
                 {item.designer_bio && (
                   <p
                     className="
+
                       mt-6
+
                       rounded-2xl
+
                       border
+
                       border-slate-200
+
                       bg-slate-100
+
                       p-5
+
                       text-xs
+
                       font-light
+
                       leading-relaxed
+
                       text-slate-600
 
                       dark:border-white/5
+
                       dark:bg-[#111]
+
                       dark:text-white/50
+
                     "
                   >
                     {item.designer_bio}
                   </p>
                 )}
 
-                {/* Metrics */}
-
                 <div
                   className="
+
                     mt-6
+
                     grid
+
                     grid-cols-2
+
                     gap-3
+
                     border-t
+
                     border-slate-200
+
                     pt-6
 
                     dark:border-white/5
+
                   "
                 >
                   <div
                     className="
+
                       flex
+
                       flex-col
+
                       items-center
+
                       justify-center
+
                       rounded-2xl
+
                       border
+
                       border-slate-200
+
                       bg-slate-100/80
+
                       p-4
+
                       text-center
 
                       dark:border-white/5
+
                       dark:bg-white/[0.04]
+
                     "
                   >
                     <Star
                       size={16}
                       className="
+
                         mb-2
+
                         text-[#D4AF37]
+
                       "
                       fill={designerRating ? "currentColor" : "none"}
                     />
 
                     <span
                       className="
+
                         font-serif
+
                         text-xl
+
                       "
                     >
                       {designerRating ? designerRating.toFixed(1) : "New"}
@@ -1583,14 +1902,21 @@ export default function CreatorShowcaseDetail() {
 
                     <span
                       className="
+
                         mt-1
+
                         text-[8px]
+
                         font-bold
+
                         uppercase
+
                         tracking-[0.16em]
+
                         text-slate-500
 
                         dark:text-white/35
+
                       "
                     >
                       Rating
@@ -1599,35 +1925,53 @@ export default function CreatorShowcaseDetail() {
 
                   <div
                     className="
+
                       flex
+
                       flex-col
+
                       items-center
+
                       justify-center
+
                       rounded-2xl
+
                       border
+
                       border-slate-200
+
                       bg-slate-100/80
+
                       p-4
+
                       text-center
 
                       dark:border-white/5
+
                       dark:bg-white/[0.04]
+
                     "
                   >
                     <Briefcase
                       size={16}
                       className="
+
                         mb-2
+
                         text-slate-700
 
                         dark:text-white/60
+
                       "
                     />
 
                     <span
                       className="
+
                         font-serif
+
                         text-xl
+
                       "
                     >
                       {completedBookings}
@@ -1635,14 +1979,21 @@ export default function CreatorShowcaseDetail() {
 
                     <span
                       className="
+
                         mt-1
+
                         text-[8px]
+
                         font-bold
+
                         uppercase
+
                         tracking-[0.13em]
+
                         text-slate-500
 
                         dark:text-white/35
+
                       "
                     >
                       Completed
@@ -1650,25 +2001,36 @@ export default function CreatorShowcaseDetail() {
                   </div>
                 </div>
 
-                {/* Booking Explanation */}
-
                 <div
                   className="
+
                     mt-6
+
                     rounded-2xl
+
                     border
+
                     border-[#D4AF37]/15
+
                     bg-[#D4AF37]/[0.055]
+
                     p-5
+
                   "
                 >
                   <p
                     className="
+
                       text-[9px]
+
                       font-black
+
                       uppercase
+
                       tracking-[0.18em]
+
                       text-[#D4AF37]
+
                     "
                   >
                     Inspired by this work?
@@ -1676,12 +2038,17 @@ export default function CreatorShowcaseDetail() {
 
                   <p
                     className="
+
                       mt-2
+
                       text-xs
+
                       leading-6
+
                       text-slate-600
 
                       dark:text-white/45
+
                     "
                   >
                     Use this Showcase design as creative context when starting a
@@ -1692,23 +2059,36 @@ export default function CreatorShowcaseDetail() {
                 {canOpenInEditor && (
                   <div
                     className="
+
                       mt-5
+
                       rounded-2xl
+
                       border
+
                       border-violet-400/15
+
                       bg-violet-500/[0.055]
+
                       p-5
+
                     "
                   >
                     <p
                       className="
+
                         text-[9px]
+
                         font-black
+
                         uppercase
+
                         tracking-[0.18em]
+
                         text-violet-600
 
                         dark:text-violet-300
+
                       "
                     >
                       Fashion Editor
@@ -1716,28 +2096,33 @@ export default function CreatorShowcaseDetail() {
 
                     <p
                       className="
+
                         mt-2
+
                         text-xs
+
                         leading-6
+
                         text-slate-600
 
                         dark:text-white/45
+
                       "
                     >
                       Open this public Designer Showcase design in your Fashion
                       Editor. A private editable project will be prepared for
-                      you, and the Designer&apos;s original work remains
-                      unchanged.
+                      you, and the Designer's original work remains unchanged.
                     </p>
                   </div>
                 )}
 
-                {/* Actions */}
-
                 <div
                   className="
+
                     mt-6
+
                     space-y-3
+
                   "
                 >
                   {canOpenInEditor && (
@@ -1746,25 +2131,41 @@ export default function CreatorShowcaseDetail() {
                       onClick={handleOpenInEditor}
                       disabled={openingEditor}
                       className="
+
                         flex
+
                         w-full
+
                         items-center
+
                         justify-center
+
                         gap-2
+
                         rounded-xl
+
                         bg-violet-600
+
                         py-4
+
                         text-[10px]
+
                         font-black
+
                         uppercase
+
                         tracking-[0.18em]
+
                         text-white
+
                         transition
 
                         hover:bg-violet-500
 
                         disabled:cursor-not-allowed
+
                         disabled:opacity-60
+
                       "
                     >
                       {openingEditor ? (
@@ -1790,17 +2191,27 @@ export default function CreatorShowcaseDetail() {
                     <p
                       role="alert"
                       className="
+
                         rounded-xl
+
                         border
+
                         border-rose-500/15
+
                         bg-rose-500/[0.06]
+
                         px-4
+
                         py-3
+
                         text-[10px]
+
                         leading-5
+
                         text-rose-600
 
                         dark:text-rose-300
+
                       "
                     >
                       {editorError}
@@ -1811,24 +2222,39 @@ export default function CreatorShowcaseDetail() {
                     <Link
                       to={bookingUrl}
                       className="
+
                         flex
+
                         w-full
+
                         items-center
+
                         justify-center
+
                         gap-2
+
                         rounded-xl
+
                         bg-[#D4AF37]
+
                         py-4
+
                         text-[10px]
+
                         font-black
+
                         uppercase
+
                         tracking-[0.18em]
+
                         text-black
+
                         transition
 
                         hover:bg-[#ead28f]
 
                         dark:hover:bg-white
+
                       "
                     >
                       <Zap size={14} />
@@ -1841,30 +2267,51 @@ export default function CreatorShowcaseDetail() {
                     <Link
                       to={designerStudioUrl}
                       className="
+
                         flex
+
                         w-full
+
                         items-center
+
                         justify-center
+
                         gap-2
+
                         rounded-xl
+
                         border
+
                         border-slate-200
+
                         bg-slate-100/80
+
                         py-3.5
+
                         text-[9px]
+
                         font-black
+
                         uppercase
+
                         tracking-[0.16em]
+
                         text-slate-700
+
                         transition
 
                         hover:border-[#D4AF37]/40
+
                         hover:bg-[#D4AF37]/10
+
                         hover:text-[#D4AF37]
 
                         dark:border-white/10
+
                         dark:bg-white/[0.04]
+
                         dark:text-white/65
+
                       "
                     >
                       View Designer Studio
@@ -1878,29 +2325,49 @@ export default function CreatorShowcaseDetail() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="
+
                         flex
+
                         w-full
+
                         items-center
+
                         justify-center
+
                         gap-2
+
                         rounded-xl
+
                         border
+
                         border-slate-200
+
                         py-3.5
+
                         text-[9px]
+
                         font-black
+
                         uppercase
+
                         tracking-[0.16em]
+
                         text-slate-600
+
                         transition
 
                         hover:border-slate-400
+
                         hover:text-slate-950
 
                         dark:border-white/10
+
                         dark:text-white/45
+
                         dark:hover:border-white/25
+
                         dark:hover:text-white
+
                       "
                     >
                       Portfolio
@@ -1910,43 +2377,56 @@ export default function CreatorShowcaseDetail() {
                 </div>
               </>
             ) : (
-              /*===========================================
-              Creator-owned Showcase Item
-              ===========================================*/
-
               <div
                 className="
+
                   mt-6
+
                   border-t
+
                   border-slate-200
+
                   pt-6
 
                   dark:border-white/5
+
                 "
               >
                 <div
                   className="
+
                     rounded-2xl
+
                     border
+
                     border-violet-400/10
+
                     bg-violet-500/[0.055]
+
                     p-5
+
                   "
                 >
                   <Sparkles
                     size={17}
                     className="
+
                       text-violet-600
 
                       dark:text-violet-300
+
                     "
                   />
 
                   <h3
                     className="
+
                       mt-3
+
                       font-serif
+
                       text-lg
+
                     "
                   >
                     Community Inspiration
@@ -1954,12 +2434,17 @@ export default function CreatorShowcaseDetail() {
 
                   <p
                     className="
+
                       mt-2
+
                       text-xs
+
                       leading-6
+
                       text-slate-600
 
                       dark:text-white/42
+
                     "
                   >
                     This creative work was shared by a Creator in the
@@ -1970,21 +2455,34 @@ export default function CreatorShowcaseDetail() {
                 {canOpenInEditor && (
                   <div
                     className="
+
                       mt-5
+
                       rounded-2xl
+
                       border
+
                       border-[#D4AF37]/20
+
                       bg-[#D4AF37]/[0.055]
+
                       p-5
+
                     "
                   >
                     <p
                       className="
+
                         text-[9px]
+
                         font-black
+
                         uppercase
+
                         tracking-[0.18em]
+
                         text-[#D4AF37]
+
                       "
                     >
                       Fashion Editor
@@ -1992,12 +2490,17 @@ export default function CreatorShowcaseDetail() {
 
                     <p
                       className="
+
                         mt-2
+
                         text-xs
+
                         leading-6
+
                         text-slate-600
 
                         dark:text-white/45
+
                       "
                     >
                       Open this public design in Fashion Editor. If this is your
@@ -2011,20 +2514,35 @@ export default function CreatorShowcaseDetail() {
                       onClick={handleOpenInEditor}
                       disabled={openingEditor}
                       className="
+
                         mt-4
+
                         flex
+
                         w-full
+
                         items-center
+
                         justify-center
+
                         gap-2
+
                         rounded-xl
+
                         bg-[#D4AF37]
+
                         py-4
+
                         text-[10px]
+
                         font-black
+
                         uppercase
+
                         tracking-[0.18em]
+
                         text-black
+
                         transition
 
                         hover:bg-[#ead28f]
@@ -2032,7 +2550,9 @@ export default function CreatorShowcaseDetail() {
                         dark:hover:bg-white
 
                         disabled:cursor-not-allowed
+
                         disabled:opacity-60
+
                       "
                     >
                       {openingEditor ? (
@@ -2057,18 +2577,29 @@ export default function CreatorShowcaseDetail() {
                       <p
                         role="alert"
                         className="
+
                           mt-3
+
                           rounded-xl
+
                           border
+
                           border-rose-500/15
+
                           bg-rose-500/[0.06]
+
                           px-4
+
                           py-3
+
                           text-[10px]
+
                           leading-5
+
                           text-rose-600
 
                           dark:text-rose-300
+
                         "
                       >
                         {editorError}
@@ -2080,30 +2611,51 @@ export default function CreatorShowcaseDetail() {
                 <Link
                   to="/creator/showcase"
                   className="
+
                     mt-5
+
                     flex
+
                     w-full
+
                     items-center
+
                     justify-center
+
                     gap-2
+
                     rounded-xl
+
                     border
+
                     border-slate-200
+
                     bg-slate-100/80
+
                     py-3.5
+
                     text-[9px]
+
                     font-black
+
                     uppercase
+
                     tracking-[0.16em]
+
                     text-slate-700
+
                     transition
 
                     hover:border-[#D4AF37]/35
+
                     hover:text-[#D4AF37]
 
                     dark:border-white/10
+
                     dark:bg-white/[0.04]
+
                     dark:text-white/60
+
                   "
                 >
                   Explore More Designs

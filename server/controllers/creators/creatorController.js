@@ -4545,6 +4545,7 @@ exports.openShowcaseDesignInEditor = async (req, res) => {
           d.title,
           d.slug,
           d.watermarked_preview_url,
+          d.canvas_state,
           d.source_type,
           d.editor_project_id,
           d.is_editable,
@@ -4606,13 +4607,15 @@ exports.openShowcaseDesignInEditor = async (req, res) => {
       sourceOwnerId && String(sourceOwnerId) === String(creatorId);
 
     /*---------------------------------------------------
-      Resolve Source Fashion Editor Project
+      Resolve Original Project Identity
 
-      A valid project must belong to the same owner as the
-      Showcase design.
+      The live editor project is used only to:
+      - reopen an owner's own project
+      - establish source lineage for a valid published copy
 
-      If the source project is missing/corrupt we can still
-      fall back to the public preview image.
+      Other Creators never receive its live project_data.
+      Their copy uses designs.canvas_state, the snapshot
+      saved when the source was publicly shared.
     ---------------------------------------------------*/
 
     let sourceEditorProject = null;
@@ -4627,14 +4630,7 @@ exports.openShowcaseDesignInEditor = async (req, res) => {
               id,
               owner_id,
               title,
-              project_data,
-              schema_version,
-              preview_url,
-              source_project_id,
-              source_design_id,
-              version,
-              created_at,
-              updated_at
+              preview_url
 
             FROM editor_projects
 
@@ -4784,40 +4780,55 @@ exports.openShowcaseDesignInEditor = async (req, res) => {
     let sourceProjectId = null;
     let projectMode = null;
 
+    // Public preview only for other users: never fall back to the
+    // original owner's potentially unpublished project preview.
     const resolvedPreviewUrl =
       sourcePreviewUrl ||
-      cleanText(sourceEditorProject?.preview_url, 2048) ||
+      (sourceIsOwnedByCreator
+        ? cleanText(sourceEditorProject?.preview_url, 2048)
+        : null) ||
       null;
 
-    if (sourceEditorProject) {
-      let clonedProjectData = null;
+    /*---------------------------------------------------
+      Clone the PUBLISHED Fashion Editor snapshot.
+
+      designs.canvas_state is written when the design is
+      shared to Showcase. Reading live project_data for a
+      different Creator could reveal unpublished changes.
+
+      A missing or invalid snapshot falls back to the
+      public preview, without disclosing private state.
+    ---------------------------------------------------*/
+    if (sourceType === "fashion_editor" && source.canvas_state) {
+      let publishedProjectData = null;
 
       try {
-        clonedProjectData = JSON.parse(
-          JSON.stringify(sourceEditorProject.project_data),
-        );
+        publishedProjectData = JSON.parse(JSON.stringify(source.canvas_state));
       } catch {
-        clonedProjectData = null;
+        publishedProjectData = null;
       }
 
-      if (clonedProjectData && isPlainObject(clonedProjectData.document)) {
-        clonedProjectData.document.name = projectTitle;
+      if (
+        publishedProjectData &&
+        isPlainObject(publishedProjectData.document)
+      ) {
+        publishedProjectData.document.name = projectTitle;
       }
 
-      if (clonedProjectData) {
-        const clonedValidation =
-          validateEditorProjectPayload(clonedProjectData);
+      if (publishedProjectData) {
+        const publishedValidation =
+          validateEditorProjectPayload(publishedProjectData);
 
-        if (!clonedValidation.error) {
-          projectValidation = clonedValidation;
-          sourceProjectId = sourceEditorProject.id;
+        if (!publishedValidation.error) {
+          projectValidation = publishedValidation;
+          sourceProjectId = sourceEditorProject?.id || null;
           projectMode = "project_copy";
         } else {
           console.warn(
-            "Public Showcase Fashion Editor source is invalid; falling back to preview import.",
+            "Public Showcase published snapshot is invalid; falling back to public preview.",
             {
               designId: source.id,
-              sourceProjectId: sourceEditorProject.id,
+              sourceProjectId: sourceEditorProject?.id || null,
             },
           );
         }
