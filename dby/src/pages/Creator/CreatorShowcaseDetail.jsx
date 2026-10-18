@@ -4,7 +4,7 @@
 =========================================================
 DesignByYou
 Creator Showcase Detail
-Version 3.1
+Version 3.2 — Public Showcase → Fashion Editor
 =========================================================
 
 PURPOSE
@@ -27,13 +27,37 @@ This page is NOT:
 - a licensing page
 
 =========================================================
+PUBLIC SHOWCASE → FASHION EDITOR
+=========================================================
+
+Any public Showcase design displayed on this page can be
+opened by an authenticated Creator in Fashion Editor.
+
+The browser sends only the public design ID to:
+
+POST
+/api/v1/creators/showcase/:designId/open-in-editor
+
+The backend decides whether to:
+
+- reopen the Creator's own original Fashion Editor project
+- reuse an existing private project created from the design
+- create a private copy of another Creator's editor project
+- create a private image-based project from a manual upload
+- create a private image-based project from Designer work
+
+Another user's source Showcase design/project is never
+modified by this action.
+
+=========================================================
 DESIGNER-OWNED SHOWCASE ITEM
 =========================================================
 
 Designer work may provide:
 
+- Open in Fashion Editor
 - View Designer Studio
-- Start Commission
+- Start Booking
 - Designer rating
 - Completed bookings
 
@@ -41,21 +65,14 @@ Designer work may provide:
 CREATOR-OWNED SHOWCASE ITEM
 =========================================================
 
-Creator work provides:
+Creator work may provide:
 
 - creative concept
 - owner identity
 - category
 - style
 - tags
-
-Eligible Creator Fashion Editor work may also provide:
-
-- Remix / Redesign
-
-Remix creates a NEW private Creator-owned Fashion Editor
-project. It never modifies the source project or Showcase
-item.
+- Open in Fashion Editor
 
 Creator work does NOT provide:
 
@@ -65,61 +82,32 @@ Creator work does NOT provide:
 - Designer booking metrics
 
 =========================================================
-BACKEND
+PUBLIC DETAIL BACKEND
 =========================================================
 
 GET
 /api/v1/creator-showcase/item/:slug
 
-Generic owner fields:
-
-owner_id
-owner_role
-owner_name
-owner_avatar
-
-Designer-only fields:
-
-designer_id
-designer_name
-designer_avatar
-designer_bio
-portfolio_url
-city
-designer_avg_rating
-total_completed_bookings
-can_book_designer
-
-Category:
-
-category_id
-category_name
-category_slug
-
-Safe Creator Fashion Editor capability fields:
-
-source_type
-is_editable
-allow_remix
-original_design_id
-can_remix
-
-The detail page remixes by public design_id only.
-
-The backend resolves the private editor project internally.
+The public detail response may expose safe Showcase
+metadata and capability fields, but this page does not
+need private editor project information in order to open
+the design.
 
 =========================================================
 SECURITY
 =========================================================
 
-The endpoint intentionally does NOT expose:
+The public detail endpoint intentionally does NOT expose:
 
-canvas_state
-raw editable source
-editor_project_id
-project_data
-price
-license information
+- canvas_state
+- raw editable source
+- editor_project_id
+- project_data
+- price
+- license information
+
+The authenticated open-in-editor endpoint resolves private
+editor data internally.
 =========================================================
 */
 
@@ -165,15 +153,6 @@ function isRequestCanceled(error) {
   );
 }
 
-function isTruthy(value) {
-  return (
-    value === true ||
-    String(value ?? "")
-      .trim()
-      .toLowerCase() === "true"
-  );
-}
-
 /*=========================================================
 Owner Model
 =========================================================*/
@@ -183,19 +162,6 @@ function isDesignerOwned(item) {
     item?.owner_role === "designer" ||
     item?.can_book_designer === true ||
     item?.can_book_designer === "true"
-  );
-}
-
-function canRemixCreatorItem(item) {
-  if (!item || isDesignerOwned(item)) {
-    return false;
-  }
-
-  return (
-    cleanText(item?.source_type).toLowerCase() === "fashion_editor" &&
-    isTruthy(item?.is_editable) &&
-    isTruthy(item?.allow_remix) &&
-    isTruthy(item?.can_remix)
   );
 }
 
@@ -264,7 +230,6 @@ function formatPublishedDate(value) {
 
   return new Intl.DateTimeFormat(undefined, {
     month: "long",
-
     year: "numeric",
   }).format(date);
 }
@@ -299,7 +264,6 @@ function buildBookingUrl(item) {
 
   const params = new URLSearchParams({
     designer_id: String(designerId),
-
     design_id: String(designId),
   });
 
@@ -321,9 +285,9 @@ export default function CreatorShowcaseDetail() {
 
   const [error, setError] = useState("");
 
-  const [remixing, setRemixing] = useState(false);
+  const [openingEditor, setOpeningEditor] = useState(false);
 
-  const [remixError, setRemixError] = useState("");
+  const [editorError, setEditorError] = useState("");
 
   /*=======================================================
   Load Showcase Item
@@ -347,14 +311,13 @@ export default function CreatorShowcaseDetail() {
 
       setError("");
 
-      setRemixError("");
+      setEditorError("");
 
       setItem(null);
 
       try {
         const response = await API.get(
           `/creator-showcase/item/${encodeURIComponent(slug)}`,
-
           {
             signal: controller.signal,
           },
@@ -415,46 +378,50 @@ export default function CreatorShowcaseDetail() {
   }, [slug]);
 
   /*=======================================================
-  Remix / Redesign
+  Open Public Showcase Design in Fashion Editor
 
   POST
-  /api/v1/creators/showcase/:designId/remix
+  /api/v1/creators/showcase/:designId/open-in-editor
 
-  The backend creates a NEW private editor_projects row
-  owned by the authenticated Creator.
+  The frontend sends only the public Showcase design ID.
 
-  The source Showcase item and source editor project are
-  never modified.
+  The backend decides whether to reopen the Creator's own
+  project, reuse a generated private project, clone another
+  Creator's project, or create an image-based project.
   =======================================================*/
 
-  const handleRemix = async () => {
-    if (remixing) {
+  const handleOpenInEditor = async () => {
+    if (openingEditor) {
       return;
     }
 
     const designId = cleanText(item?.design_id);
 
-    if (!designId || !canRemixCreatorItem(item)) {
-      setRemixError("This Showcase design is not available for remixing.");
+    if (!designId) {
+      setEditorError(
+        "This Showcase design cannot be opened in Fashion Editor.",
+      );
 
       return;
     }
 
-    setRemixError("");
+    setEditorError("");
 
-    setRemixing(true);
+    setOpeningEditor(true);
 
     try {
       const response = await API.post(
-        `/creators/showcase/${encodeURIComponent(designId)}/remix`,
+        `/creators/showcase/${encodeURIComponent(designId)}/open-in-editor`,
         {},
       );
 
-      const projectId = cleanText(response?.data?.data?.id);
+      const projectId = cleanText(
+        response?.data?.data?.project_id || response?.data?.data?.id,
+      );
 
       if (!/^[1-9]\d*$/.test(projectId)) {
         throw new Error(
-          "The remix was created, but the new Fashion Editor project ID was not returned.",
+          "The Fashion Editor project was prepared, but its project ID was not returned.",
         );
       }
 
@@ -462,7 +429,7 @@ export default function CreatorShowcaseDetail() {
     } catch (requestError) {
       if (import.meta.env.DEV) {
         console.error(
-          "Creator Showcase remix request failed:",
+          "Open Showcase design in Fashion Editor failed:",
           requestError?.response?.data || requestError,
         );
       }
@@ -470,26 +437,33 @@ export default function CreatorShowcaseDetail() {
       const status = requestError?.response?.status;
 
       if (status === 401) {
-        setRemixError("Please sign in again before remixing this design.");
+        setEditorError(
+          "Please sign in again before opening this design in Fashion Editor.",
+        );
       } else if (status === 403) {
-        setRemixError(
+        setEditorError(
           requestError?.response?.data?.message ||
-            "Only Creator accounts can remix this design.",
+            "Only Creator accounts can open Showcase designs in Fashion Editor.",
         );
       } else if (status === 404) {
-        setRemixError(
+        setEditorError(
           requestError?.response?.data?.message ||
-            "This design is no longer available for remixing.",
+            "This Showcase design is no longer available.",
+        );
+      } else if (status === 409) {
+        setEditorError(
+          requestError?.response?.data?.message ||
+            "The Showcase source is no longer available for Fashion Editor.",
         );
       } else {
-        setRemixError(
+        setEditorError(
           requestError?.response?.data?.message ||
             requestError?.message ||
-            "The remix could not be created right now.",
+            "This design could not be opened in Fashion Editor right now.",
         );
       }
     } finally {
-      setRemixing(false);
+      setOpeningEditor(false);
     }
   };
 
@@ -514,7 +488,7 @@ export default function CreatorShowcaseDetail() {
 
         designerStudioUrl: null,
 
-        canRemix: false,
+        canOpenInEditor: false,
 
         tags: [],
       };
@@ -541,7 +515,7 @@ export default function CreatorShowcaseDetail() {
         ? `/creator/studio/${encodeURIComponent(designerId)}`
         : null,
 
-      canRemix: canRemixCreatorItem(item),
+      canOpenInEditor: Boolean(cleanText(item?.design_id)),
 
       tags: Array.isArray(item?.tags) ? item.tags.filter(Boolean) : [],
     };
@@ -586,7 +560,8 @@ export default function CreatorShowcaseDetail() {
             aria-hidden="true"
             className="
               animate-spin
-              text-slate-400 dark:text-white/20
+              text-slate-400
+              dark:text-white/20
             "
           />
         </div>
@@ -656,12 +631,15 @@ export default function CreatorShowcaseDetail() {
             space-y-4
             rounded-3xl
             border
-            border-slate-200 dark:border-white/10
-            bg-white dark:bg-[#0a0a0a]
+            border-slate-200
+            bg-white
             p-10
             text-center
             shadow-2xl
             backdrop-blur-xl
+
+            dark:border-white/10
+            dark:bg-[#0a0a0a]
           "
         >
           <Sparkles
@@ -670,7 +648,9 @@ export default function CreatorShowcaseDetail() {
             className="
               mx-auto
               mb-6
-              text-slate-300 dark:text-white/10
+              text-slate-300
+
+              dark:text-white/10
             "
           />
 
@@ -679,7 +659,9 @@ export default function CreatorShowcaseDetail() {
               font-serif
               text-2xl
               tracking-wide
-              text-slate-900 dark:text-white
+              text-slate-900
+
+              dark:text-white
             "
           >
             Showcase Item Unavailable
@@ -692,7 +674,9 @@ export default function CreatorShowcaseDetail() {
               uppercase
               leading-6
               tracking-widest
-              text-slate-500 dark:text-white/40
+              text-slate-500
+
+              dark:text-white/40
             "
           >
             {error || "This showcase item is unavailable."}
@@ -717,7 +701,9 @@ export default function CreatorShowcaseDetail() {
               text-black
               transition
 
-              hover:bg-[#ead28f] dark:hover:bg-white
+              hover:bg-[#ead28f]
+
+              dark:hover:bg-white
             "
           >
             <ChevronLeft size={13} />
@@ -736,7 +722,7 @@ export default function CreatorShowcaseDetail() {
     completedBookings,
     bookingUrl,
     designerStudioUrl,
-    canRemix,
+    canOpenInEditor,
     tags,
   } = derived;
 
@@ -756,9 +742,10 @@ export default function CreatorShowcaseDetail() {
         transition-colors
         duration-300
         selection:bg-[#D4AF37]
+        selection:text-black
+
         dark:bg-[#030303]
         dark:text-white
-        selection:text-black
       "
     >
       {/*===================================================
@@ -812,14 +799,17 @@ export default function CreatorShowcaseDetail() {
           top-20
           z-40
           border-b
-          border-slate-200 dark:border-white/5
-          bg-white/90 dark:bg-[#0a0a0a]/90
+          border-slate-200
+          bg-white/90
           px-4
           py-4
           shadow-2xl
           backdrop-blur-xl
 
           sm:px-6
+
+          dark:border-white/5
+          dark:bg-[#0a0a0a]/90
         "
       >
         <div
@@ -844,12 +834,15 @@ export default function CreatorShowcaseDetail() {
               font-bold
               uppercase
               tracking-[0.16em]
-              text-slate-500 dark:text-white/40
+              text-slate-500
               transition
 
-              hover:text-slate-950 dark:hover:text-white
+              hover:text-slate-950
 
               sm:text-[10px]
+
+              dark:text-white/40
+              dark:hover:text-white
             "
           >
             <span
@@ -862,10 +855,14 @@ export default function CreatorShowcaseDetail() {
                 justify-center
                 rounded-full
                 border
-                border-slate-200 dark:border-white/5
-                bg-slate-100 dark:bg-white/5
+                border-slate-200
+                bg-slate-100
 
-                group-hover:bg-slate-200 dark:group-hover:bg-white/10
+                group-hover:bg-slate-200
+
+                dark:border-white/5
+                dark:bg-white/5
+                dark:group-hover:bg-white/10
               "
             >
               <ChevronLeft size={14} />
@@ -889,17 +886,21 @@ export default function CreatorShowcaseDetail() {
                   truncate
                   rounded-full
                   border
-                  border-slate-200 dark:border-white/10
-                  bg-slate-100/80 dark:bg-white/[0.04]
+                  border-slate-200
+                  bg-slate-100/80
                   px-3
                   py-2
                   text-[8px]
                   font-black
                   uppercase
                   tracking-[0.15em]
-                  text-slate-600 dark:text-white/45
+                  text-slate-600
 
                   sm:block
+
+                  dark:border-white/10
+                  dark:bg-white/[0.04]
+                  dark:text-white/45
                 "
               >
                 {item.category_name}
@@ -980,10 +981,13 @@ export default function CreatorShowcaseDetail() {
               overflow-hidden
               rounded-3xl
               border
-              border-slate-200 dark:border-white/5
-              bg-white dark:bg-[#0a0a0a]
+              border-slate-200
+              bg-white
               p-2
               shadow-2xl
+
+              dark:border-white/5
+              dark:bg-[#0a0a0a]
             "
           >
             <div
@@ -993,7 +997,9 @@ export default function CreatorShowcaseDetail() {
                 w-full
                 overflow-hidden
                 rounded-2xl
-                bg-slate-100 dark:bg-[#111]
+                bg-slate-100
+
+                dark:bg-[#111]
               "
             >
               {item.watermarked_preview_url ? (
@@ -1024,7 +1030,9 @@ export default function CreatorShowcaseDetail() {
                     items-center
                     justify-center
                     gap-3
-                    text-slate-300 dark:text-white/10
+                    text-slate-300
+
+                    dark:text-white/10
                   "
                 >
                   <Sparkles size={48} />
@@ -1118,14 +1126,17 @@ export default function CreatorShowcaseDetail() {
               space-y-8
               rounded-3xl
               border
-              border-slate-200 dark:border-white/5
-              bg-white dark:bg-[#0a0a0a]
+              border-slate-200
+              bg-white
               p-6
               shadow-2xl
 
               sm:p-8
 
               md:p-10
+
+              dark:border-white/5
+              dark:bg-[#0a0a0a]
             "
           >
             <div>
@@ -1157,7 +1168,9 @@ export default function CreatorShowcaseDetail() {
                   font-bold
                   uppercase
                   tracking-[0.16em]
-                  text-slate-500 dark:text-white/35
+                  text-slate-500
+
+                  dark:text-white/35
                 "
               >
                 <span
@@ -1220,9 +1233,12 @@ export default function CreatorShowcaseDetail() {
               className="
                 h-px
                 bg-gradient-to-r
-                from-slate-200 dark:from-white/10
-                via-slate-100 dark:via-white/5
+                from-slate-200
+                via-slate-100
                 to-transparent
+
+                dark:from-white/10
+                dark:via-white/5
               "
             />
 
@@ -1254,9 +1270,11 @@ export default function CreatorShowcaseDetail() {
                   text-sm
                   font-light
                   leading-loose
-                  text-slate-700 dark:text-white/70
+                  text-slate-700
 
                   md:text-base
+
+                  dark:text-white/70
                 "
               >
                 {item.description || "No design description has been provided."}
@@ -1271,8 +1289,10 @@ export default function CreatorShowcaseDetail() {
               <div
                 className="
                   border-t
-                  border-slate-200 dark:border-white/5
+                  border-slate-200
                   pt-7
+
+                  dark:border-white/5
                 "
               >
                 <p
@@ -1282,7 +1302,9 @@ export default function CreatorShowcaseDetail() {
                     font-black
                     uppercase
                     tracking-[0.2em]
-                    text-slate-500 dark:text-white/30
+                    text-slate-500
+
+                    dark:text-white/30
                   "
                 >
                   Creative Tags
@@ -1299,21 +1321,25 @@ export default function CreatorShowcaseDetail() {
                     <span
                       key={`${tag}-${index}`}
                       className="
-                          flex
-                          items-center
-                          gap-1.5
-                          rounded-full
-                          border
-                          border-slate-200 dark:border-white/10
-                          bg-slate-100 dark:bg-white/5
-                          px-4
-                          py-2
-                          text-[9px]
-                          font-bold
-                          uppercase
-                          tracking-[0.16em]
-                          text-slate-600 dark:text-white/50
-                        "
+                        flex
+                        items-center
+                        gap-1.5
+                        rounded-full
+                        border
+                        border-slate-200
+                        bg-slate-100
+                        px-4
+                        py-2
+                        text-[9px]
+                        font-bold
+                        uppercase
+                        tracking-[0.16em]
+                        text-slate-600
+
+                        dark:border-white/10
+                        dark:bg-white/5
+                        dark:text-white/50
+                      "
                     >
                       <Tag size={10} />
 
@@ -1346,8 +1372,8 @@ export default function CreatorShowcaseDetail() {
               overflow-hidden
               rounded-3xl
               border
-              border-slate-200 dark:border-white/5
-              bg-white dark:bg-[#0a0a0a]
+              border-slate-200
+              bg-white
               p-6
               shadow-2xl
 
@@ -1355,6 +1381,9 @@ export default function CreatorShowcaseDetail() {
 
               lg:sticky
               lg:top-36
+
+              dark:border-white/5
+              dark:bg-[#0a0a0a]
             "
           >
             <p
@@ -1392,8 +1421,11 @@ export default function CreatorShowcaseDetail() {
                   overflow-hidden
                   rounded-full
                   border
-                  border-slate-200 dark:border-white/10
-                  bg-slate-100 dark:bg-[#111]
+                  border-slate-200
+                  bg-slate-100
+
+                  dark:border-white/10
+                  dark:bg-[#111]
                 "
               >
                 {ownerAvatar ? (
@@ -1412,7 +1444,9 @@ export default function CreatorShowcaseDetail() {
                   <User
                     size={24}
                     className="
-                      text-slate-400 dark:text-white/20
+                      text-slate-400
+
+                      dark:text-white/20
                     "
                   />
                 )}
@@ -1450,13 +1484,15 @@ export default function CreatorShowcaseDetail() {
                 {designerOwned && item.city && (
                   <p
                     className="
-                        mt-2
-                        flex
-                        items-center
-                        gap-1.5
-                        text-[9px]
-                        text-slate-500 dark:text-white/35
-                      "
+                      mt-2
+                      flex
+                      items-center
+                      gap-1.5
+                      text-[9px]
+                      text-slate-500
+
+                      dark:text-white/35
+                    "
                   >
                     <MapPin size={10} />
 
@@ -1478,13 +1514,17 @@ export default function CreatorShowcaseDetail() {
                       mt-6
                       rounded-2xl
                       border
-                      border-slate-200 dark:border-white/5
-                      bg-slate-100 dark:bg-[#111]
+                      border-slate-200
+                      bg-slate-100
                       p-5
                       text-xs
                       font-light
                       leading-relaxed
-                      text-slate-600 dark:text-white/50
+                      text-slate-600
+
+                      dark:border-white/5
+                      dark:bg-[#111]
+                      dark:text-white/50
                     "
                   >
                     {item.designer_bio}
@@ -1500,8 +1540,10 @@ export default function CreatorShowcaseDetail() {
                     grid-cols-2
                     gap-3
                     border-t
-                    border-slate-200 dark:border-white/5
+                    border-slate-200
                     pt-6
+
+                    dark:border-white/5
                   "
                 >
                   <div
@@ -1512,10 +1554,13 @@ export default function CreatorShowcaseDetail() {
                       justify-center
                       rounded-2xl
                       border
-                      border-slate-200 dark:border-white/5
-                      bg-slate-100/80 dark:bg-white/[0.04]
+                      border-slate-200
+                      bg-slate-100/80
                       p-4
                       text-center
+
+                      dark:border-white/5
+                      dark:bg-white/[0.04]
                     "
                   >
                     <Star
@@ -1543,7 +1588,9 @@ export default function CreatorShowcaseDetail() {
                         font-bold
                         uppercase
                         tracking-[0.16em]
-                        text-slate-500 dark:text-white/35
+                        text-slate-500
+
+                        dark:text-white/35
                       "
                     >
                       Rating
@@ -1558,17 +1605,22 @@ export default function CreatorShowcaseDetail() {
                       justify-center
                       rounded-2xl
                       border
-                      border-slate-200 dark:border-white/5
-                      bg-slate-100/80 dark:bg-white/[0.04]
+                      border-slate-200
+                      bg-slate-100/80
                       p-4
                       text-center
+
+                      dark:border-white/5
+                      dark:bg-white/[0.04]
                     "
                   >
                     <Briefcase
                       size={16}
                       className="
                         mb-2
-                        text-slate-700 dark:text-white/60
+                        text-slate-700
+
+                        dark:text-white/60
                       "
                     />
 
@@ -1588,7 +1640,9 @@ export default function CreatorShowcaseDetail() {
                         font-bold
                         uppercase
                         tracking-[0.13em]
-                        text-slate-500 dark:text-white/35
+                        text-slate-500
+
+                        dark:text-white/35
                       "
                     >
                       Completed
@@ -1596,7 +1650,7 @@ export default function CreatorShowcaseDetail() {
                   </div>
                 </div>
 
-                {/* Commission Explanation */}
+                {/* Booking Explanation */}
 
                 <div
                   className="
@@ -1625,13 +1679,58 @@ export default function CreatorShowcaseDetail() {
                       mt-2
                       text-xs
                       leading-6
-                      text-slate-600 dark:text-white/45
+                      text-slate-600
+
+                      dark:text-white/45
                     "
                   >
                     Use this Showcase design as creative context when starting a
                     custom booking with the Designer.
                   </p>
                 </div>
+
+                {canOpenInEditor && (
+                  <div
+                    className="
+                      mt-5
+                      rounded-2xl
+                      border
+                      border-violet-400/15
+                      bg-violet-500/[0.055]
+                      p-5
+                    "
+                  >
+                    <p
+                      className="
+                        text-[9px]
+                        font-black
+                        uppercase
+                        tracking-[0.18em]
+                        text-violet-600
+
+                        dark:text-violet-300
+                      "
+                    >
+                      Fashion Editor
+                    </p>
+
+                    <p
+                      className="
+                        mt-2
+                        text-xs
+                        leading-6
+                        text-slate-600
+
+                        dark:text-white/45
+                      "
+                    >
+                      Open this public Designer Showcase design in your Fashion
+                      Editor. A private editable project will be prepared for
+                      you, and the Designer&apos;s original work remains
+                      unchanged.
+                    </p>
+                  </div>
+                )}
 
                 {/* Actions */}
 
@@ -1641,6 +1740,73 @@ export default function CreatorShowcaseDetail() {
                     space-y-3
                   "
                 >
+                  {canOpenInEditor && (
+                    <button
+                      type="button"
+                      onClick={handleOpenInEditor}
+                      disabled={openingEditor}
+                      className="
+                        flex
+                        w-full
+                        items-center
+                        justify-center
+                        gap-2
+                        rounded-xl
+                        bg-violet-600
+                        py-4
+                        text-[10px]
+                        font-black
+                        uppercase
+                        tracking-[0.18em]
+                        text-white
+                        transition
+
+                        hover:bg-violet-500
+
+                        disabled:cursor-not-allowed
+                        disabled:opacity-60
+                      "
+                    >
+                      {openingEditor ? (
+                        <>
+                          <Loader2
+                            size={14}
+                            aria-hidden="true"
+                            className="animate-spin"
+                          />
+                          Opening Fashion Editor
+                        </>
+                      ) : (
+                        <>
+                          <Palette size={14} />
+                          Open in Fashion Editor
+                          <ArrowRight size={13} />
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                  {editorError && (
+                    <p
+                      role="alert"
+                      className="
+                        rounded-xl
+                        border
+                        border-rose-500/15
+                        bg-rose-500/[0.06]
+                        px-4
+                        py-3
+                        text-[10px]
+                        leading-5
+                        text-rose-600
+
+                        dark:text-rose-300
+                      "
+                    >
+                      {editorError}
+                    </p>
+                  )}
+
                   {bookingUrl && (
                     <Link
                       to={bookingUrl}
@@ -1660,7 +1826,9 @@ export default function CreatorShowcaseDetail() {
                         text-black
                         transition
 
-                        hover:bg-[#ead28f] dark:hover:bg-white
+                        hover:bg-[#ead28f]
+
+                        dark:hover:bg-white
                       "
                     >
                       <Zap size={14} />
@@ -1680,19 +1848,23 @@ export default function CreatorShowcaseDetail() {
                         gap-2
                         rounded-xl
                         border
-                        border-slate-200 dark:border-white/10
-                        bg-slate-100/80 dark:bg-white/[0.04]
+                        border-slate-200
+                        bg-slate-100/80
                         py-3.5
                         text-[9px]
                         font-black
                         uppercase
                         tracking-[0.16em]
-                        text-slate-700 dark:text-white/65
+                        text-slate-700
                         transition
 
                         hover:border-[#D4AF37]/40
                         hover:bg-[#D4AF37]/10
                         hover:text-[#D4AF37]
+
+                        dark:border-white/10
+                        dark:bg-white/[0.04]
+                        dark:text-white/65
                       "
                     >
                       View Designer Studio
@@ -1713,17 +1885,22 @@ export default function CreatorShowcaseDetail() {
                         gap-2
                         rounded-xl
                         border
-                        border-slate-200 dark:border-white/10
+                        border-slate-200
                         py-3.5
                         text-[9px]
                         font-black
                         uppercase
                         tracking-[0.16em]
-                        text-slate-600 dark:text-white/45
+                        text-slate-600
                         transition
 
-                        hover:border-slate-400 dark:hover:border-white/25
-                        hover:text-slate-950 dark:hover:text-white
+                        hover:border-slate-400
+                        hover:text-slate-950
+
+                        dark:border-white/10
+                        dark:text-white/45
+                        dark:hover:border-white/25
+                        dark:hover:text-white
                       "
                     >
                       Portfolio
@@ -1741,8 +1918,10 @@ export default function CreatorShowcaseDetail() {
                 className="
                   mt-6
                   border-t
-                  border-slate-200 dark:border-white/5
+                  border-slate-200
                   pt-6
+
+                  dark:border-white/5
                 "
               >
                 <div
@@ -1757,7 +1936,9 @@ export default function CreatorShowcaseDetail() {
                   <Sparkles
                     size={17}
                     className="
-                      text-violet-600 dark:text-violet-300
+                      text-violet-600
+
+                      dark:text-violet-300
                     "
                   />
 
@@ -1776,7 +1957,9 @@ export default function CreatorShowcaseDetail() {
                       mt-2
                       text-xs
                       leading-6
-                      text-slate-600 dark:text-white/42
+                      text-slate-600
+
+                      dark:text-white/42
                     "
                   >
                     This creative work was shared by a Creator in the
@@ -1784,7 +1967,7 @@ export default function CreatorShowcaseDetail() {
                   </p>
                 </div>
 
-                {canRemix && (
+                {canOpenInEditor && (
                   <div
                     className="
                       mt-5
@@ -1804,7 +1987,7 @@ export default function CreatorShowcaseDetail() {
                         text-[#D4AF37]
                       "
                     >
-                      Remixable Fashion Editor Design
+                      Fashion Editor
                     </p>
 
                     <p
@@ -1812,18 +1995,21 @@ export default function CreatorShowcaseDetail() {
                         mt-2
                         text-xs
                         leading-6
-                        text-slate-600 dark:text-white/45
+                        text-slate-600
+
+                        dark:text-white/45
                       "
                     >
-                      Create your own private editable copy in Fashion Editor.
-                      The original Creator&apos;s project and Showcase design
-                      remain unchanged.
+                      Open this public design in Fashion Editor. If this is your
+                      own Fashion Editor design, your existing project will
+                      reopen. Otherwise, DesignByYou prepares a private editable
+                      project and leaves the original work unchanged.
                     </p>
 
                     <button
                       type="button"
-                      onClick={handleRemix}
-                      disabled={remixing}
+                      onClick={handleOpenInEditor}
+                      disabled={openingEditor}
                       className="
                         mt-4
                         flex
@@ -1841,31 +2027,33 @@ export default function CreatorShowcaseDetail() {
                         text-black
                         transition
 
-                        hover:bg-[#ead28f] dark:hover:bg-white
+                        hover:bg-[#ead28f]
+
+                        dark:hover:bg-white
 
                         disabled:cursor-not-allowed
                         disabled:opacity-60
                       "
                     >
-                      {remixing ? (
+                      {openingEditor ? (
                         <>
                           <Loader2
                             size={14}
                             aria-hidden="true"
                             className="animate-spin"
                           />
-                          Creating Remix
+                          Opening Fashion Editor
                         </>
                       ) : (
                         <>
-                          <Sparkles size={14} />
-                          Remix / Redesign
+                          <Palette size={14} />
+                          Open in Fashion Editor
                           <ArrowRight size={13} />
                         </>
                       )}
                     </button>
 
-                    {remixError && (
+                    {editorError && (
                       <p
                         role="alert"
                         className="
@@ -1878,33 +2066,15 @@ export default function CreatorShowcaseDetail() {
                           py-3
                           text-[10px]
                           leading-5
-                          text-rose-600 dark:text-rose-300
+                          text-rose-600
+
+                          dark:text-rose-300
                         "
                       >
-                        {remixError}
+                        {editorError}
                       </p>
                     )}
                   </div>
-                )}
-
-                {!canRemix && remixError && (
-                  <p
-                    role="alert"
-                    className="
-                      mt-5
-                      rounded-xl
-                      border
-                      border-rose-500/15
-                      bg-rose-500/[0.06]
-                      px-4
-                      py-3
-                      text-[10px]
-                      leading-5
-                      text-rose-600 dark:text-rose-300
-                    "
-                  >
-                    {remixError}
-                  </p>
                 )}
 
                 <Link
@@ -1918,18 +2088,22 @@ export default function CreatorShowcaseDetail() {
                     gap-2
                     rounded-xl
                     border
-                    border-slate-200 dark:border-white/10
-                    bg-slate-100/80 dark:bg-white/[0.04]
+                    border-slate-200
+                    bg-slate-100/80
                     py-3.5
                     text-[9px]
                     font-black
                     uppercase
                     tracking-[0.16em]
-                    text-slate-700 dark:text-white/60
+                    text-slate-700
                     transition
 
                     hover:border-[#D4AF37]/35
                     hover:text-[#D4AF37]
+
+                    dark:border-white/10
+                    dark:bg-white/[0.04]
+                    dark:text-white/60
                   "
                 >
                   Explore More Designs

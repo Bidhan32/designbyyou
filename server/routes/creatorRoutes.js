@@ -4,7 +4,7 @@
  * =========================================================
  * DesignByYou / FashionVision
  * Creator Routes
- * Version 5.5
+ * Version 5.6 — Public Showcase → Fashion Editor
  * =========================================================
  *
  * Creator routes are showcase / creative-work routes.
@@ -51,6 +51,9 @@
  * /api/v1/creators/editor-projects/:projectId/share
  *
  * POST
+ * /api/v1/creators/showcase/:designId/open-in-editor
+ *
+ * POST
  * /api/v1/creators/showcase/:designId/remix
  *
  * =========================================================
@@ -80,6 +83,27 @@
  * The browser must not directly control:
  * - is_public
  * - is_published
+ *
+ * =========================================================
+ * PUBLIC SHOWCASE → FASHION EDITOR MODEL
+ * =========================================================
+ *
+ * Any authenticated Creator may open an eligible public +
+ * published Showcase design in Fashion Editor.
+ *
+ * The controller decides whether to:
+ *
+ * - reuse the Creator's own original Fashion Editor project
+ * - reuse an already-generated private project
+ * - clone another Creator's Fashion Editor project
+ * - create a private image-based editor project from a
+ *   Creator manual upload or Designer Showcase design
+ *
+ * The source Showcase design is never modified.
+ *
+ * This route does NOT use preview upload middleware because
+ * no file is uploaded by the browser. The controller resolves
+ * the trusted Showcase source internally by design ID.
  *
  * =========================================================
  * SECURITY MODEL
@@ -134,7 +158,7 @@ if (!uploadPreview || typeof uploadPreview.single !== "function") {
   );
 }
 
-/*
+/**
  * Multer .single("preview") allows zero or one preview file.
  * Unexpected/multiple files are rejected.
  */
@@ -151,36 +175,32 @@ function safePreviewUpload(req, res, next) {
     }
 
     /*-------------------------------------------------
-        File Too Large
-      -------------------------------------------------*/
+      File Too Large
+    -------------------------------------------------*/
 
     if (error.code === "LIMIT_FILE_SIZE") {
       return res.status(413).json({
         status: "error",
-
         code: "PREVIEW_TOO_LARGE",
-
         message: "The preview image must be 5 MB or smaller.",
       });
     }
 
     /*-------------------------------------------------
-        Unexpected File / Multiple Files
-      -------------------------------------------------*/
+      Unexpected File / Multiple Files
+    -------------------------------------------------*/
 
     if (error.code === "LIMIT_UNEXPECTED_FILE") {
       return res.status(400).json({
         status: "error",
-
         code: "UNEXPECTED_UPLOAD_FIELD",
-
         message: 'Only one optional image field named "preview" is accepted.',
       });
     }
 
     /*-------------------------------------------------
-        File / Multipart Part Limits
-      -------------------------------------------------*/
+      File / Multipart Part Limits
+    -------------------------------------------------*/
 
     if (
       error.code === "LIMIT_FILE_COUNT" ||
@@ -188,16 +208,14 @@ function safePreviewUpload(req, res, next) {
     ) {
       return res.status(400).json({
         status: "error",
-
         code: "UPLOAD_LIMIT_EXCEEDED",
-
         message: "The upload contains too many files or multipart parts.",
       });
     }
 
     /*-------------------------------------------------
-        Multipart Field Limits
-      -------------------------------------------------*/
+      Multipart Field Limits
+    -------------------------------------------------*/
 
     if (
       error.code === "LIMIT_FIELD_COUNT" ||
@@ -206,17 +224,15 @@ function safePreviewUpload(req, res, next) {
     ) {
       return res.status(400).json({
         status: "error",
-
         code: "INVALID_MULTIPART_REQUEST",
-
         message:
           "One or more multipart fields exceed the allowed upload limits.",
       });
     }
 
     /*-------------------------------------------------
-        Known Custom Image Validation Errors
-      -------------------------------------------------*/
+      Known Custom Image Validation Errors
+    -------------------------------------------------*/
 
     if (
       error.code === "INVALID_IMAGE_TYPE" ||
@@ -225,26 +241,22 @@ function safePreviewUpload(req, res, next) {
     ) {
       return res.status(400).json({
         status: "error",
-
         code: error.code,
-
         message: error.message || "The preview image is invalid.",
       });
     }
 
     /*-------------------------------------------------
-        Other Upload / Cloud Storage Errors
+      Other Upload / Cloud Storage Errors
 
-        Do not expose Cloudinary/storage internals.
-      -------------------------------------------------*/
+      Do not expose Cloudinary/storage internals.
+    -------------------------------------------------*/
 
     console.error("Creator preview upload middleware failed:", error);
 
     return res.status(400).json({
       status: "error",
-
       code: "PREVIEW_UPLOAD_FAILED",
-
       message:
         "The preview image could not be processed. Use JPG, PNG, or WEBP and try again.",
     });
@@ -255,7 +267,7 @@ function safePreviewUpload(req, res, next) {
   Global Creator Authentication
 =========================================================*/
 
-/*
+/**
  * IMPORTANT:
  *
  * These run before:
@@ -264,6 +276,7 @@ function safePreviewUpload(req, res, next) {
  * - Creator Studio controllers
  * - visibility controller
  * - Fashion Editor controllers
+ * - Showcase → Fashion Editor controllers
  *
  * Therefore unauthenticated / non-Creator accounts cannot
  * reach the underlying operations.
@@ -289,7 +302,6 @@ router.get(
 
   requireHandler(
     "creatorController.getCreatorStudioCategories",
-
     creatorController.getCreatorStudioCategories,
   ),
 );
@@ -373,7 +385,6 @@ router.get(
 
   requireHandler(
     "creatorController.getMyCreatorStudioAssets",
-
     creatorController.getMyCreatorStudioAssets,
   ),
 );
@@ -468,7 +479,6 @@ router.post(
 
   requireHandler(
     "creatorController.uploadCreatorStudioAsset",
-
     creatorController.uploadCreatorStudioAsset,
   ),
 );
@@ -548,7 +558,6 @@ router.patch(
 
   requireHandler(
     "creatorController.updateCreatorStudioAssetVisibility",
-
     creatorController.updateCreatorStudioAssetVisibility,
   ),
 );
@@ -580,7 +589,6 @@ router
   .get(
     requireHandler(
       "creatorController.getMyEditorProjects",
-
       creatorController.getMyEditorProjects,
     ),
   )
@@ -588,7 +596,6 @@ router
   .post(
     requireHandler(
       "creatorController.createEditorProject",
-
       creatorController.createEditorProject,
     ),
   );
@@ -708,7 +715,6 @@ router.post(
 
   requireHandler(
     "creatorController.uploadCreatorStudioAsset",
-
     creatorController.uploadCreatorStudioAsset,
   ),
 );
@@ -750,7 +756,6 @@ router
   .get(
     requireHandler(
       "creatorController.getEditorProject",
-
       creatorController.getEditorProject,
     ),
   )
@@ -758,13 +763,86 @@ router
   .put(
     requireHandler(
       "creatorController.updateEditorProject",
-
       creatorController.updateEditorProject,
     ),
   );
 
 /*=========================================================
+  Public Showcase -> Fashion Editor
+
+  POST
+  /api/v1/creators/showcase/:designId/open-in-editor
+
+  ---------------------------------------------------------
+
+  PUBLIC SHOWCASE RULE
+
+  Any authenticated Creator may open an eligible public +
+  published Showcase design in Fashion Editor.
+
+  The source may be:
+
+  - Creator Fashion Editor design
+  - Creator manual upload
+  - approved Designer public Showcase design
+
+  ---------------------------------------------------------
+
+  BEHAVIOR
+
+  Creator opening own Fashion Editor-backed design:
+
+  → return/reuse original owned editor project
+
+  Another Creator opening a Fashion Editor-backed design:
+
+  → create/reuse a private project copy
+
+  Creator manual upload or Designer Showcase image:
+
+  → create/reuse a private image-based editor project
+
+  ---------------------------------------------------------
+
+  SECURITY
+
+  The request supplies only :designId.
+
+  The controller resolves internally:
+
+  - source owner
+  - source type
+  - source editor project
+  - source preview URL
+  - public/published eligibility
+
+  No browser-supplied image URL or editor project ID is
+  trusted by this route.
+
+  The source Showcase item and source editor project are
+  never modified.
+
+  ---------------------------------------------------------
+
+  IMPORTANT
+
+  This route deliberately does NOT use safePreviewUpload.
+  The browser uploads no file for this operation.
+=========================================================*/
+
+router.post(
+  "/showcase/:designId/open-in-editor",
+
+  requireHandler(
+    "creatorController.openShowcaseDesignInEditor",
+    creatorController.openShowcaseDesignInEditor,
+  ),
+);
+
+/*=========================================================
   Creator Showcase Remix / Redesign
+
+  LEGACY / BACKWARD-COMPATIBILITY ROUTE
 
   POST
   /api/v1/creators/showcase/:designId/remix
@@ -773,7 +851,7 @@ router
 
   SOURCE DESIGN REQUIREMENTS
 
-  The controller must require:
+  The existing controller requires:
 
   is_public    = TRUE
   is_published = TRUE
@@ -805,7 +883,7 @@ router
   Instead, a NEW private editor_projects record is created
   for the authenticated Creator.
 
-  source_project_id records the lineage.
+  source_project_id records the legacy remix lineage.
 
   ---------------------------------------------------------
 
@@ -817,6 +895,16 @@ router
 
   If title is omitted, the controller may derive a remix
   title from the source design.
+
+  ---------------------------------------------------------
+
+  NOTE
+
+  New Showcase UI should migrate to:
+
+  /showcase/:designId/open-in-editor
+
+  This route is retained so existing clients do not break.
 =========================================================*/
 
 router.post(
@@ -824,7 +912,6 @@ router.post(
 
   requireHandler(
     "creatorController.remixCreatorShowcaseDesign",
-
     creatorController.remixCreatorShowcaseDesign,
   ),
 );
