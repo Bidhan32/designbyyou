@@ -185,6 +185,8 @@ Creator Showcase publishing remains separate.
 import FashionEditor from "./pages/sketches/editor/FashionEditor";
 import CreatorToolsPage from "./pages/Creator/CreatorToolsPage";
 import CreatorBackgroundRemover from "./pages/Creator/CreatorBackgroundRemover";
+import CreatorCostumeExtractor from "./pages/Creator/CreatorCostumeExtractor";
+
 
 /*=========================================================
 Development-Only Pages
@@ -647,7 +649,10 @@ Normal admins, creators and designers cannot enter.
   path="tools/background-remover"
   element={<CreatorBackgroundRemover />}
 />
-
+                <Route
+  path="tools/costume-extractor"
+  element={<CreatorCostumeExtractor />}
+/>
                   <Route
                     path="showcase/:slug"
                     element={<CreatorShowcaseDetail />}

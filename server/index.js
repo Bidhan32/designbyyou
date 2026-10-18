@@ -63,6 +63,7 @@ const creatorShowcaseRoutes = require("./routes/creatorshowcaseroute");
 const creatorBackgroundRemoverRoutes = require("./routes/creatorBackgroundRemoverRoutes");
 const avatarRoutes = require("./routes/avatarRoutes");
 const showcaseHeroRoutes = require("./routes/showcaseHeroRoutes");
+const creatorCostumeExtractorRoutes = require("./routes/creatorCostumeExtractorRoutes");
 
 /*=========================================================
 Application Configuration
@@ -365,6 +366,10 @@ app.use("/api/v1/p2p-bookings", p2pBookingRoutes);
 app.use("/api/v1/virtual-tryon", virtualTryOnRoutes);
 app.use("/api/v1/creator-tools", creatorBackgroundRemoverRoutes);
 app.use("/api/v1/ai-fashion", aiFashionRoutes);
+app.use(
+  "/api/v1/creator-tools/costume-extractor",
+  creatorCostumeExtractorRoutes,
+);
 
 app.use("/api/v1/chat", chatRoutes);
 
