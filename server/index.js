@@ -289,6 +289,18 @@ app.use(
   designRoutes,
 );
 
+
+/*=========================================================
+Fashion Editor Project Upload Limit
+=========================================================*/
+
+app.use(
+  "/api/v1/creators/editor-projects",
+  express.json({
+    limit: "28mb",
+  }),
+);
+
 /*=========================================================
 Standard Body Parsers
 

@@ -69,6 +69,9 @@ import {
   useFashionEditorStore,
 } from "../useFashionEditorStore";
 
+// Load the WebGL renderer only when a creator clicks 3D.
+const Garment3DViewer = React.lazy(() => import("./Garment3DViewer"));
+
 /*=========================================================
 Constants
 =========================================================*/
@@ -1465,6 +1468,8 @@ function FashionEditor() {
 
   const clothingArtworkFileInputRef = useRef(null);
 
+  const garmentLayerRevisionRef = useRef(new Map());
+
   const clothingArtworkInputModeRef = useRef({
     regionId: null,
 
@@ -1725,6 +1730,9 @@ function FashionEditor() {
   /*=====================================================
     Local State
     =====================================================*/
+
+  // View-only UI state. 2D artwork remains the saved source of truth.
+  const [editorViewMode, setEditorViewMode] = useState("2d");
 
   const [panelDrawerOpen, setPanelDrawerOpen] = useState(false);
 
@@ -2073,6 +2081,15 @@ function FashionEditor() {
       storedArtwork,
     );
   }, [selectedClothingTemplate, selectedImageObject]);
+
+  // Editable 3D layers are stored separately from the flattened SVG preview.
+  // Existing projects without this field are migrated on the first 3D edit.
+  const selectedClothingArtworkLayers = useMemo(() => {
+    const source = selectedImageObject?.metadata?.clothingArtworkLayers;
+    return source && typeof source === "object" && !Array.isArray(source)
+      ? source
+      : {};
+  }, [selectedImageObject]);
 
   const selectedClothingArtworkRegionId = useMemo(() => {
     const requested = String(clothingArtworkRegionId || "").trim();
@@ -2566,6 +2583,7 @@ function FashionEditor() {
     projectLoadControllerRef.current?.abort();
     projectSaveControllerRef.current?.abort();
     newDocument();
+    setEditorViewMode("2d");
 
     setCloudProjectId(null);
     setCloudProjectVersion(null);
@@ -2606,6 +2624,7 @@ function FashionEditor() {
         const project = JSON.parse(textContent);
 
         loadProject(project);
+        setEditorViewMode("2d");
 
         setCloudProjectId(null);
         setCloudProjectVersion(null);
@@ -2899,6 +2918,7 @@ function FashionEditor() {
         }
 
         loadProject(projectData);
+        setEditorViewMode("2d");
 
         setCloudProjectId(String(projectRecord.id));
 
@@ -4916,7 +4936,11 @@ function FashionEditor() {
   */
 
   const applySelectedClothingArtwork = useCallback(
-    (requestedArtwork, label = "Update garment artwork") => {
+    (
+      requestedArtwork,
+      label = "Update garment artwork",
+      layerUpdate = null,
+    ) => {
       if (
         !selectedImageObject ||
         selectedImageLocked ||
@@ -4926,14 +4950,39 @@ function FashionEditor() {
         return false;
       }
 
+      const liveObject =
+        useFashionEditorStore.getState().objects[selectedImageObject.id] ||
+        selectedImageObject;
+      const liveMetadata = liveObject.metadata || {};
+      const safeColours = layerUpdate?.regionId
+        ? {
+            ...selectedClothingColours,
+            ...(liveMetadata.clothingColours || {}),
+          }
+        : selectedClothingColours;
+      const liveArtwork = normaliseClothingTemplateArtwork(
+        selectedClothingTemplate,
+        liveMetadata.clothingArtwork,
+      );
+      const requested = layerUpdate?.regionId
+        ? { ...liveArtwork }
+        : requestedArtwork;
+      if (layerUpdate?.regionId) {
+        if (requestedArtwork[layerUpdate.regionId]) {
+          requested[layerUpdate.regionId] =
+            requestedArtwork[layerUpdate.regionId];
+        } else {
+          delete requested[layerUpdate.regionId];
+        }
+      }
       const nextArtwork = normaliseClothingTemplateArtwork(
         selectedClothingTemplate,
-        requestedArtwork,
+        requested,
       );
 
       const nextDataUrl = createClothingTemplatePreview(
         selectedClothingTemplate,
-        selectedClothingColours,
+        safeColours,
         nextArtwork,
       );
 
@@ -4943,10 +4992,58 @@ function FashionEditor() {
         return false;
       }
 
+      const previousLayerData = liveMetadata.clothingArtworkLayers;
+      const nextLayerData = {
+        ...(previousLayerData &&
+        typeof previousLayerData === "object" &&
+        !Array.isArray(previousLayerData)
+          ? previousLayerData
+          : {}),
+      };
+
+      // 2D legacy controls replace only the edited region, not every region's
+      // layered artwork. 3D layer edits specify the exact layer stack to retain.
+      const allRegionIds = new Set([
+        ...Object.keys(liveArtwork),
+        ...Object.keys(nextArtwork),
+      ]);
+      for (const regionId of allRegionIds) {
+        if (layerUpdate?.regionId === regionId) continue;
+        const oldEntry = liveArtwork[regionId] || null;
+        const newEntry = nextArtwork[regionId] || null;
+        const fields = [
+          "source",
+          "type",
+          "scale",
+          "rotation",
+          "offsetX",
+          "offsetY",
+          "opacity",
+          "fit",
+        ];
+        if (fields.some((key) => oldEntry?.[key] !== newEntry?.[key])) {
+          delete nextLayerData[regionId];
+        }
+      }
+      if (layerUpdate?.regionId) {
+        nextLayerData[layerUpdate.regionId] = layerUpdate.stack;
+      }
+
+      const replacedLayerRegions = Object.keys(previousLayerData || {}).filter(
+        (regionId) =>
+          !Object.prototype.hasOwnProperty.call(nextLayerData, regionId),
+      );
+      if (replacedLayerRegions.length > 0 && !layerUpdate?.regionId) {
+        const proceed = window.confirm(
+          "This 2D artwork control will replace the flattened artwork and remove separately editable 3D pattern/logo/text layers on this region. Continue? To keep your layers, edit them in 3D instead.",
+        );
+        if (!proceed) return false;
+      }
+
       const clothingMetadata =
         createClothingTemplateMetadata(
           selectedClothingTemplate,
-          selectedClothingColours,
+          safeColours,
           nextArtwork,
         ) || {};
 
@@ -4965,13 +5062,15 @@ function FashionEditor() {
           mimeType: "image/svg+xml",
 
           metadata: {
-            ...(selectedImageObject.metadata || {}),
+            ...liveMetadata,
 
             ...clothingMetadata,
 
-            clothingColours: selectedClothingColours,
+            clothingColours: safeColours,
 
             clothingArtwork: nextArtwork,
+
+            clothingArtworkLayers: nextLayerData,
 
             clothingDualView: selectedClothingTemplate.dualView === true,
 
@@ -4992,7 +5091,191 @@ function FashionEditor() {
       selectedClothingArtworkEditable,
       selectedClothingColours,
       selectedClothingViews,
+      selectedClothingArtwork,
       updateSelectedImage,
+      showToast,
+    ],
+  );
+
+  /*=====================================================
+    3D garment layers — non-destructive pattern + logos + text
+
+    metadata.clothingArtworkLayers retains editable entries. The existing
+    metadata.clothingArtwork remains one flattened transparent overlay per
+    region, so the 2D SVG, cloud saves, local projects and PNG exports work.
+    =====================================================*/
+
+  const handle3DArtworkChange = useCallback(
+    async (regionId, incomingStack, label = "Edit 3D garment layers") => {
+      if (
+        !selectedImageObject ||
+        !selectedClothingArtworkEditable ||
+        selectedImageLocked ||
+        !selectedClothingArtworkRegions.some((region) => region.id === regionId)
+      )
+        return false;
+
+      const originalObjectId = selectedImageObject.id;
+      const jobKey = `${originalObjectId}:${regionId}`;
+      const version = (garmentLayerRevisionRef.current.get(jobKey) || 0) + 1;
+      garmentLayerRevisionRef.current.set(jobKey, version);
+      try {
+        const { flattenRegionArtworkStack, normalizeRegionArtworkStack } =
+          await import("./Garment3DTextures");
+        const currentStack = selectedClothingArtworkLayers[regionId];
+        const normalized = normalizeRegionArtworkStack(
+          incomingStack,
+          currentStack ? null : selectedClothingArtwork[regionId],
+        );
+        const flattened = await flattenRegionArtworkStack(
+          "tshirt",
+          regionId,
+          normalized,
+        );
+        if (garmentLayerRevisionRef.current.get(jobKey) !== version)
+          return false;
+        const liveSelection =
+          useFashionEditorStore.getState().selectedObjectIds;
+        if (
+          liveSelection.length !== 1 ||
+          liveSelection[0] !== originalObjectId
+        ) {
+          showToast(
+            "Selected garment changed. Artwork edit was not applied.",
+            "error",
+          );
+          return false;
+        }
+        const nextArtwork = { ...selectedClothingArtwork };
+        if (flattened) nextArtwork[regionId] = flattened;
+        else delete nextArtwork[regionId];
+        return applySelectedClothingArtwork(nextArtwork, label, {
+          regionId,
+          stack: normalized,
+        });
+      } catch (error) {
+        console.error("3D garment layer update failed:", error);
+        showToast(
+          error?.message || "Could not update garment artwork layers.",
+          "error",
+        );
+        return false;
+      }
+    },
+    [
+      selectedImageObject,
+      selectedClothingArtworkEditable,
+      selectedImageLocked,
+      selectedClothingArtworkRegions,
+      selectedClothingArtworkLayers,
+      selectedClothingArtwork,
+      applySelectedClothingArtwork,
+      showToast,
+    ],
+  );
+
+  const handle3DArtworkUpload = useCallback(
+    async (regionId, type, file) => {
+      if (
+        !file ||
+        !selectedImageObject ||
+        !selectedClothingArtworkEditable ||
+        selectedImageLocked ||
+        !selectedClothingArtworkRegions.some((region) => region.id === regionId)
+      )
+        return false;
+
+      const originalObjectId = selectedImageObject.id;
+      const jobKey = `${originalObjectId}:${regionId}`;
+      const version = (garmentLayerRevisionRef.current.get(jobKey) || 0) + 1;
+      garmentLayerRevisionRef.current.set(jobKey, version);
+      try {
+        // Keep the established ImageTool size checks and SVG sanitization.
+        const asset = await loadImageAsset(file);
+        const liveState = useFashionEditorStore.getState();
+        if (
+          liveState.selectedObjectIds.length !== 1 ||
+          liveState.selectedObjectIds[0] !== originalObjectId
+        ) {
+          showToast(
+            "Selected garment changed during upload. Please retry.",
+            "error",
+          );
+          return false;
+        }
+        // Read current metadata AFTER awaiting the file, avoiding outdated
+        // stacks when several images have been added to the same region.
+        const liveObject = liveState.objects[originalObjectId];
+        const rawLayers = liveObject?.metadata?.clothingArtworkLayers || {};
+        const rawArtwork = liveObject?.metadata?.clothingArtwork || {};
+        const { flattenRegionArtworkStack, normalizeRegionArtworkStack } =
+          await import("./Garment3DTextures");
+        const stack = normalizeRegionArtworkStack(
+          rawLayers[regionId],
+          Object.hasOwn(rawLayers, regionId) ? null : rawArtwork[regionId],
+        );
+        const isPattern = type === CLOTHING_ARTWORK_TYPES.PATTERN;
+        if (!isPattern && stack.logos.length >= 24) {
+          showToast(
+            "This garment region supports up to 24 logo layers.",
+            "error",
+          );
+          return false;
+        }
+        const entry = {
+          id:
+            globalThis.crypto?.randomUUID?.() ||
+            `art-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          type: isPattern ? "pattern" : "image",
+          source: asset.dataUrl,
+          scale: isPattern ? 1 : 0.45,
+          rotation: 0,
+          offsetX: 0,
+          offsetY: 0,
+          opacity: 1,
+          fit: isPattern ? "cover" : "contain",
+        };
+        const nextStack = isPattern
+          ? { ...stack, pattern: entry }
+          : { ...stack, logos: [...stack.logos, entry] };
+        const flattened = await flattenRegionArtworkStack(
+          "tshirt",
+          regionId,
+          nextStack,
+        );
+        if (garmentLayerRevisionRef.current.get(jobKey) !== version)
+          return false;
+        const selectedNow = useFashionEditorStore.getState().selectedObjectIds;
+        if (selectedNow.length !== 1 || selectedNow[0] !== originalObjectId)
+          return false;
+        const nextArtwork = { ...rawArtwork };
+        if (flattened) nextArtwork[regionId] = flattened;
+        else delete nextArtwork[regionId];
+        const saved = applySelectedClothingArtwork(
+          nextArtwork,
+          `Add 3D ${isPattern ? "fabric pattern" : "logo/image"} to ${regionId}`,
+          { regionId, stack: nextStack },
+        );
+        if (saved)
+          showToast(
+            `${isPattern ? "Pattern" : "Logo"} added without replacing other layers.`,
+          );
+        return saved;
+      } catch (error) {
+        console.error("3D garment layer upload failed:", error);
+        showToast(
+          error?.message || "Could not upload the garment artwork.",
+          "error",
+        );
+        return false;
+      }
+    },
+    [
+      selectedImageObject,
+      selectedClothingArtworkEditable,
+      selectedImageLocked,
+      selectedClothingArtworkRegions,
+      applySelectedClothingArtwork,
       showToast,
     ],
   );
@@ -11448,23 +11731,88 @@ function FashionEditor() {
           </aside>
         )}
 
-        {/* Canvas */}
+        {/* 2D / 3D workspace. Keep the 2D canvas mounted beneath 3D so
+            cloud saves, artwork capture and existing tools remain intact. */}
+        <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-slate-800">
+          <div className="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-slate-700 bg-slate-950 px-3">
+            <span className="truncate text-[11px] font-semibold text-slate-300">
+              {editorViewMode === "3d"
+                ? "3D Garment Preview"
+                : "2D Design Canvas"}
+            </span>
+            <div
+              className="flex shrink-0 gap-1 rounded-lg border border-slate-700 bg-slate-900 p-0.5"
+              role="group"
+              aria-label="Fashion Editor viewing mode"
+            >
+              <button
+                type="button"
+                aria-pressed={editorViewMode === "2d"}
+                onClick={() => setEditorViewMode("2d")}
+                className={`rounded-md px-3 py-1 text-xs font-semibold transition ${
+                  editorViewMode === "2d"
+                    ? "bg-violet-600 text-white"
+                    : "text-slate-300 hover:bg-slate-800"
+                }`}
+              >
+                2D
+              </button>
+              <button
+                type="button"
+                aria-pressed={editorViewMode === "3d"}
+                onClick={() => setEditorViewMode("3d")}
+                className={`rounded-md px-3 py-1 text-xs font-semibold transition ${
+                  editorViewMode === "3d"
+                    ? "bg-violet-600 text-white"
+                    : "text-slate-300 hover:bg-slate-800"
+                }`}
+              >
+                3D
+              </button>
+            </div>
+          </div>
 
-        <section className="relative min-w-0 flex-1 overflow-hidden bg-slate-800">
-          <EditorCanvas
-            ref={stageRef}
-            className="h-full w-full"
-            minimumHeight={0}
-            onPointerPositionChange={setPointerInformation}
-            onSaveRequested={handleSaveProject}
-            onError={(error) => {
-              console.error(error);
+          <div className="relative min-h-0 flex-1">
+            <EditorCanvas
+              ref={stageRef}
+              className="h-full w-full"
+              minimumHeight={0}
+              onPointerPositionChange={setPointerInformation}
+              onSaveRequested={handleSaveProject}
+              onError={(error) => {
+                console.error(error);
+                setEditorError(error);
+                showToast("An editor error occurred.", "error");
+              }}
+            />
 
-              setEditorError(error);
-
-              showToast("An editor error occurred.", "error");
-            }}
-          />
+            {editorViewMode === "3d" && (
+              <div className="absolute inset-0 z-20 bg-slate-950">
+                <React.Suspense
+                  fallback={
+                    <div className="flex h-full items-center justify-center text-xs text-slate-300">
+                      Preparing the 3D studio…
+                    </div>
+                  }
+                >
+                  <Garment3DViewer
+                    templateId={selectedClothingTemplate?.id || ""}
+                    colours={selectedClothingColours}
+                    artwork={selectedClothingArtwork}
+                    artworkLayers={selectedClothingArtworkLayers}
+                    onColourChange={handleSelectedClothingColourChange}
+                    onArtworkChange={handle3DArtworkChange}
+                    onArtworkUpload={handle3DArtworkUpload}
+                    disabled={selectedImageLocked || !selectedClothingEditable}
+                    onError={(error) => {
+                      console.error("3D garment viewer error:", error);
+                      showToast("Unable to load the 3D garment.", "error");
+                    }}
+                  />
+                </React.Suspense>
+              </div>
+            )}
+          </div>
         </section>
 
         {/* Desktop right panel */}

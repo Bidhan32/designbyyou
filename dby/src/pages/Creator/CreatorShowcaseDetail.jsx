@@ -1,12 +1,18 @@
+
 "use strict";
+
 /**
  * DesignByYou — Creator Showcase Detail
- * Version 3.6 — Multi-select Showcase Gallery to Fashion Editor
- * Preserves Creator/Designer role-specific actions and scroll restoration.
- * Expects an owner-safe public detail response with `images` (ordered gallery).
- * Falls back to the legacy single preview when the gallery is absent.
+ * Version 3.8 — Responsive 2D/3D Showcase UI
+ *
+ * - Public 2D gallery and optional read-only 3D T-shirt preview
+ * - Existing multi-image selection and Open in Fashion Editor API preserved
+ * - Creator / Designer actions stay role-specific
+ * - Does not fetch private projects or expose editable 3D layer state
  */
+
 import React, {
+  Suspense,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -15,179 +21,163 @@ import React, {
 } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
+  ArrowLeft,
   ArrowRight,
+  Box,
   Briefcase,
-  Calendar,
+  CalendarDays,
+  Check,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
+  Image as ImageIcon,
   Layers3,
   Loader2,
   MapPin,
+  MousePointer2,
   Palette,
+  Rotate3D,
   ShieldCheck,
   Sparkles,
   Star,
   Tag,
-  User,
+  UserRound,
   Zap,
 } from "lucide-react";
 import API from "../../api/axios";
+
+// Keep WebGL out of the initial bundle. A 2D-only item never loads it.
+const ShowcaseGarment3D = React.lazy(() => import("./ShowcaseGarment3D"));
+
+const BUTTON_FOCUS =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#0b0b0b]";
+const GOLD_BUTTON =
+  `inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-5 py-3.5 text-xs font-bold text-black transition hover:bg-[#e7cb75] disabled:cursor-not-allowed disabled:opacity-50 ${BUTTON_FOCUS}`;
+const OUTLINE_BUTTON =
+  `inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:border-[#D4AF37]/60 hover:bg-[#D4AF37]/5 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/75 dark:hover:bg-white/[0.08] ${BUTTON_FOCUS}`;
+const PANEL =
+  "rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-white/10 dark:bg-[#101011]";
+
 function cleanText(value, fallback = "") {
   const text = String(value ?? "").trim();
   return text || fallback;
 }
+
 function isGalleryImageId(value) {
-  return (
-    typeof value === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-      value,
-    )
-  );
+  return typeof value === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function isRequestCanceled(error) {
-  return (
-    error?.code === "ERR_CANCELED" ||
+  return error?.code === "ERR_CANCELED" ||
     error?.name === "CanceledError" ||
-    error?.name === "AbortError"
-  );
+    error?.name === "AbortError";
 }
+
 function isDesignerOwned(item) {
-  return (
-    item?.owner_role === "designer" ||
+  return item?.owner_role === "designer" ||
     item?.can_book_designer === true ||
-    item?.can_book_designer === "true"
-  );
+    item?.can_book_designer === "true";
 }
-function getOwnerName(item) {
-  return (
-    cleanText(item?.owner_name) ||
-    cleanText(item?.designer_name) ||
-    "DesignByYou Creator"
-  );
+
+function isPublicImageUrl(value) {
+  if (typeof value !== "string" || !value) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" ||
+      (url.protocol === "http:" &&
+        ["localhost", "127.0.0.1"].includes(url.hostname));
+  } catch {
+    return false;
+  }
 }
-function getOwnerAvatar(item) {
-  return cleanText(item?.owner_avatar) || cleanText(item?.designer_avatar);
-}
-function getDesignerRating(item) {
-  if (!isDesignerOwned(item)) {
+
+function safeExternalUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : null;
+  } catch {
     return null;
   }
-  const rating = Number.parseFloat(item?.designer_avg_rating);
-  if (!Number.isFinite(rating) || rating <= 0) {
-    return null;
-  }
-  return rating;
 }
-function getCompletedBookings(item) {
-  if (!isDesignerOwned(item)) {
-    return 0;
-  }
-  const count = Number.parseInt(item?.total_completed_bookings, 10);
-  if (!Number.isInteger(count) || count < 0) {
-    return 0;
-  }
-  return count;
+
+function getShowcaseImages(item) {
+  if (!item || typeof item !== "object") return [];
+  const rows = Array.isArray(item.images) ? item.images : [];
+  const normalized = rows.map((image, originalIndex) => {
+    const url = cleanText(typeof image === "string"
+      ? image : image?.image_url || image?.url);
+    if (!isPublicImageUrl(url)) return null;
+    const order = Number(typeof image === "object" ? image?.display_order : NaN);
+    return {
+      id: image && typeof image === "object" && image.id
+        ? String(image.id) : `gallery-${originalIndex}`,
+      url,
+      position: Number.isInteger(order) && order > 0 ? order : originalIndex + 1,
+      originalIndex,
+    };
+  }).filter(Boolean).sort((a, b) =>
+    a.position - b.position || a.originalIndex - b.originalIndex);
+
+  const used = new Set();
+  const images = normalized.filter(({ url }) => {
+    if (used.has(url)) return false;
+    used.add(url);
+    return true;
+  }).slice(0, 6);
+  if (images.length) return images;
+
+  const fallback = cleanText(item.watermarked_preview_url || item.preview_url);
+  return isPublicImageUrl(fallback)
+    ? [{ id: "legacy-cover", url: fallback, position: 1, originalIndex: 0 }]
+    : [];
 }
+
 function formatPublishedDate(value) {
-  if (!value) {
-    return "Recently";
-  }
+  if (!value) return "Recently";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "Recently";
-  }
+  if (Number.isNaN(date.getTime())) return "Recently";
   return new Intl.DateTimeFormat(undefined, {
     month: "long",
     year: "numeric",
   }).format(date);
 }
-function buildBookingUrl(item) {
-  if (!isDesignerOwned(item)) {
-    return null;
-  }
-  const designerId = item?.designer_id;
-  const designId = item?.design_id;
-  if (!designerId || !designId) {
-    return null;
-  }
-  const params = new URLSearchParams({
-    designer_id: String(designerId),
-    design_id: String(designId),
+
+function bookingUrlFor(item) {
+  if (!isDesignerOwned(item) || !item?.designer_id || !item?.design_id) return null;
+  const query = new URLSearchParams({
+    designer_id: String(item.designer_id),
+    design_id: String(item.design_id),
   });
-  return `/creator/bookings/new?${params.toString()}`;
-}
-/** Normalize gallery rows coming from the public Showcase detail API. */
-function getShowcaseImages(item) {
-  if (!item || typeof item !== "object") return [];
-
-  // Gallery records are public only when the detail API authorizes the design.
-  // Do NOT make a separate request to the private Creator Studio owner endpoint.
-  const galleryRows = Array.isArray(item.images) ? item.images : [];
-  const entries = galleryRows
-    .map((image, originalIndex) => {
-      const rawUrl =
-        typeof image === "string"
-          ? image
-          : image?.image_url || image?.url || "";
-
-      const url = cleanText(rawUrl);
-      if (!isPublicImageUrl(url)) return null;
-
-      const rawPosition = Number(
-        typeof image === "object" ? image?.display_order : NaN,
-      );
-
-      return {
-        id:
-          typeof image === "object" && image?.id
-            ? String(image.id)
-            : `gallery-${originalIndex}`,
-        url,
-        position:
-          Number.isInteger(rawPosition) && rawPosition > 0
-            ? rawPosition
-            : originalIndex + 1,
-        originalIndex,
-      };
-    })
-    .filter(Boolean)
-    .sort(
-      (a, b) => a.position - b.position || a.originalIndex - b.originalIndex,
-    );
-
-  const unique = new Set();
-  const gallery = entries
-    .filter(({ url }) => {
-      if (unique.has(url)) return false;
-      unique.add(url);
-      return true;
-    })
-    .slice(0, 6);
-
-  if (gallery.length) return gallery;
-
-  // Backwards compatible: older Creator Studio / Fashion Editor / Designer items.
-  const cover = cleanText(item.watermarked_preview_url || item.preview_url);
-
-  return isPublicImageUrl(cover)
-    ? [{ id: "legacy-cover", url: cover, position: 1, originalIndex: 0 }]
-    : [];
+  return `/creator/bookings/new?${query.toString()}`;
 }
 
-function isPublicImageUrl(source) {
-  if (!source || typeof source !== "string") return false;
-  try {
-    const url = new URL(source);
-    return (
-      url.protocol === "https:" ||
-      (url.protocol === "http:" &&
-        ["localhost", "127.0.0.1"].includes(url.hostname))
-    );
-  } catch {
-    return false;
-  }
+function LoadingScreen() {
+  return (
+    <main className="flex min-h-[70vh] flex-col items-center justify-center gap-4 bg-slate-50 text-slate-700 dark:bg-[#050506] dark:text-white/80">
+      <Loader2 size={36} className="animate-spin text-[#D4AF37]" aria-hidden="true" />
+      <p className="text-xs font-semibold uppercase tracking-[0.22em]">Loading Showcase</p>
+    </main>
+  );
+}
+
+function ErrorScreen({ message }) {
+  return (
+    <main className="flex min-h-[70vh] items-center justify-center bg-slate-50 px-4 py-16 dark:bg-[#050506]">
+      <div className={`${PANEL} w-full max-w-md p-8 text-center sm:p-10`}>
+        <Sparkles size={35} className="mx-auto text-[#D4AF37]" aria-hidden="true" />
+        <h1 className="mt-5 font-serif text-2xl text-slate-900 dark:text-white">
+          Showcase Item Unavailable
+        </h1>
+        <p role="alert" className="mt-3 text-sm leading-6 text-slate-600 dark:text-white/60">
+          {message || "This Showcase design is unavailable."}
+        </p>
+        <Link to="/creator/showcase" className={`${GOLD_BUTTON} mt-7`}>
+          <ArrowLeft size={16} /> Return to Showcase
+        </Link>
+      </div>
+    </main>
+  );
 }
 
 export default function CreatorShowcaseDetail() {
@@ -198,119 +188,69 @@ export default function CreatorShowcaseDetail() {
   const [error, setError] = useState("");
   const [openingEditor, setOpeningEditor] = useState(false);
   const [editorError, setEditorError] = useState("");
+  const [previewMode, setPreviewMode] = useState("2d");
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  // Explicit multi-selection is independent of the image being previewed.
   const [selectedImageIds, setSelectedImageIds] = useState([]);
   const touchStartXRef = useRef(null);
 
   const showcaseImages = useMemo(() => getShowcaseImages(item), [item]);
-  const currentImage =
-    showcaseImages[activeImageIndex] || showcaseImages[0] || null;
   const hasGallery = showcaseImages.length > 1;
-  const currentImageId = isGalleryImageId(currentImage?.id)
-    ? currentImage.id
-    : null;
-  const selectedGalleryImages = showcaseImages.filter(
-    (image) =>
-      isGalleryImageId(image.id) && selectedImageIds.includes(image.id),
-  );
-  const selectedCount = selectedGalleryImages.length;
-  const eligibleImageIds = showcaseImages
-    .filter((image) => isGalleryImageId(image.id))
+  const has3D = item?.preview_3d?.model === "tshirt";
+  const is3D = has3D && previewMode === "3d";
+  const currentImage = showcaseImages[activeImageIndex] || showcaseImages[0] || null;
+  const currentImageId = isGalleryImageId(currentImage?.id) ? currentImage.id : null;
+  const selectedImages = showcaseImages.filter((image) =>
+    isGalleryImageId(image.id) && selectedImageIds.includes(image.id));
+  const selectedCount = selectedImages.length;
+  const selectableIds = showcaseImages.filter((image) => isGalleryImageId(image.id))
     .map((image) => image.id);
-  const selectedImageNumber = Math.min(
-    activeImageIndex + 1,
-    showcaseImages.length,
-  );
-  const editorActionLabel =
-    selectedCount > 1
+  const selectedImageNumber = Math.min(activeImageIndex + 1, showcaseImages.length);
+
+  const designerOwned = isDesignerOwned(item);
+  const ownerName = cleanText(item?.owner_name) ||
+    cleanText(item?.designer_name) || "DesignByYou Creator";
+  const ownerAvatar = cleanText(item?.owner_avatar) || cleanText(item?.designer_avatar);
+  const bookingUrl = bookingUrlFor(item);
+  const designerStudioUrl = designerOwned && item?.designer_id
+    ? `/creator/studio/${encodeURIComponent(item.designer_id)}` : null;
+  const portfolioUrl = safeExternalUrl(item?.portfolio_url);
+  const rating = Number.parseFloat(item?.designer_avg_rating);
+  const designerRating = designerOwned && Number.isFinite(rating) && rating > 0 ? rating : null;
+  const rawBookings = Number.parseInt(item?.total_completed_bookings, 10);
+  const completedBookings = designerOwned && Number.isInteger(rawBookings) && rawBookings > 0
+    ? rawBookings : 0;
+  const canOpenInEditor = Boolean(cleanText(item?.design_id));
+  const tags = Array.isArray(item?.tags) ? item.tags.filter(Boolean) : [];
+
+  const editorActionLabel = is3D
+    ? "Open in Fashion Editor"
+    : selectedCount > 1
       ? `Open ${selectedCount} Images in Fashion Editor`
       : selectedCount === 1
-        ? `Open Selected Image in Fashion Editor`
+        ? "Open Selected Image in Fashion Editor"
         : hasGallery
           ? `Edit Image ${selectedImageNumber} in Fashion Editor`
           : "Open in Fashion Editor";
 
-  const toggleImageSelection = (imageId) => {
-    if (openingEditor || !isGalleryImageId(imageId)) return;
-    setEditorError("");
-    setSelectedImageIds((previous) =>
-      previous.includes(imageId)
-        ? previous.filter((id) => id !== imageId)
-        : [...previous, imageId].slice(0, 6),
-    );
-  };
-
-  const selectAllImages = () => {
-    if (openingEditor) return;
-    setSelectedImageIds(eligibleImageIds.slice(0, 6));
-    setEditorError("");
-  };
-
-  const clearImageSelection = () => {
-    if (openingEditor) return;
-    setSelectedImageIds([]);
-    setEditorError("");
-  };
-
-  const changeImage = (direction) => {
-    if (showcaseImages.length < 2 || openingEditor) return;
-    setActiveImageIndex(
-      (index) =>
-        (index + direction + showcaseImages.length) % showcaseImages.length,
-    );
-  };
-
-  const onImageKeyDown = (event) => {
-    if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      changeImage(-1);
-    } else if (event.key === "ArrowRight") {
-      event.preventDefault();
-      changeImage(1);
-    }
-  };
-
-  const onImageTouchStart = (event) => {
-    touchStartXRef.current = event.changedTouches?.[0]?.clientX ?? null;
-  };
-
-  const onImageTouchEnd = (event) => {
-    const startX = touchStartXRef.current;
-    touchStartXRef.current = null;
-    if (startX === null || !hasGallery) return;
-
-    const endX = event.changedTouches?.[0]?.clientX;
-    if (!Number.isFinite(endX)) return;
-
-    const delta = endX - startX;
-    if (Math.abs(delta) >= 45) changeImage(delta < 0 ? 1 : -1);
-  };
-
   useEffect(() => {
+    setPreviewMode("2d");
     setActiveImageIndex(0);
     setSelectedImageIds([]);
   }, [slug, item?.design_id]);
 
-  // Reset scroll whenever a Showcase detail route opens or finishes loading.
-
-  // React Router otherwise may retain the scroll position from New Arrivals.
-
   useLayoutEffect(() => {
-    const scrollToTop = () => {
-      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-    };
+    const scrollToTop = () => window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     scrollToTop();
-
     const frame = window.requestAnimationFrame(scrollToTop);
     return () => window.cancelAnimationFrame(frame);
   }, [slug, loading]);
+
   useEffect(() => {
     const controller = new AbortController();
-    const loadItem = async () => {
+    async function loadItem() {
       if (!slug) {
         setItem(null);
-        setError("The requested showcase item is invalid.");
+        setError("The requested Showcase item is invalid.");
         setLoading(false);
         return;
       }
@@ -321,84 +261,83 @@ export default function CreatorShowcaseDetail() {
       try {
         const response = await API.get(
           `/creator-showcase/item/${encodeURIComponent(slug)}`,
-          {
-            signal: controller.signal,
-          },
+          { signal: controller.signal },
         );
-        if (controller.signal.aborted) {
-          return;
-        }
-        const showcaseItem = response?.data?.data;
-        if (!showcaseItem) {
-          setError("The showcase item could not be loaded.");
-          return;
-        }
-        setActiveImageIndex(0);
-        setItem(showcaseItem);
+        if (controller.signal.aborted) return;
+        const record = response?.data?.data;
+        if (!record) throw new Error("The Showcase item could not be loaded.");
+        setItem(record);
       } catch (requestError) {
-        if (controller.signal.aborted || isRequestCanceled(requestError)) {
-          return;
-        }
+        if (controller.signal.aborted || isRequestCanceled(requestError)) return;
         if (import.meta.env.DEV) {
-          console.error(
-            "Creator Showcase detail request failed:",
-            requestError?.response?.data || requestError,
-          );
+          console.error("Creator Showcase detail request failed:", requestError);
         }
-        const status = requestError?.response?.status;
-        if (status === 404) {
-          setError("This showcase design is no longer available.");
-        } else if (status === 400) {
-          setError(
-            requestError?.response?.data?.message ||
-              "The requested showcase item is invalid.",
-          );
-        } else {
-          setError(
-            requestError?.response?.data?.message ||
-              "Unable to load this showcase design right now.",
-          );
-        }
+        setError(requestError?.response?.status === 404
+          ? "This Showcase design is no longer available."
+          : requestError?.response?.data?.message ||
+            requestError?.message || "Unable to load this design right now.");
       } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
+        if (!controller.signal.aborted) setLoading(false);
       }
-    };
+    }
     void loadItem();
-    return () => {
-      controller.abort();
-    };
+    return () => controller.abort();
   }, [slug]);
+
+  const changeImage = (direction) => {
+    if (openingEditor || showcaseImages.length < 2) return;
+    setActiveImageIndex((index) =>
+      (index + direction + showcaseImages.length) % showcaseImages.length);
+    setEditorError("");
+  };
+
+  const onImageKeyDown = (event) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    changeImage(event.key === "ArrowLeft" ? -1 : 1);
+  };
+
+  const onImageTouchStart = (event) => {
+    touchStartXRef.current = event.changedTouches?.[0]?.clientX ?? null;
+  };
+
+  const onImageTouchEnd = (event) => {
+    const startX = touchStartXRef.current;
+    touchStartXRef.current = null;
+    const endX = event.changedTouches?.[0]?.clientX;
+    if (startX === null || !hasGallery || !Number.isFinite(endX)) return;
+    const delta = endX - startX;
+    if (Math.abs(delta) >= 45) changeImage(delta < 0 ? 1 : -1);
+  };
+
+  const toggleImageSelection = (id) => {
+    if (openingEditor || !isGalleryImageId(id)) return;
+    setSelectedImageIds((previous) => previous.includes(id)
+      ? previous.filter((existing) => existing !== id)
+      : [...previous, id].slice(0, 6));
+    setEditorError("");
+  };
+
   const handleOpenInEditor = async () => {
     if (openingEditor) return;
-
     const designId = cleanText(item?.design_id);
     if (!designId) {
-      setEditorError(
-        "This Showcase design cannot be opened in Fashion Editor.",
-      );
+      setEditorError("This Showcase design cannot be opened in Fashion Editor.");
       return;
     }
 
-    // A gallery selection must use database image identifiers, never URLs.
-    // When nothing is checked, keep the existing single-current-image behavior.
-    if (hasGallery && selectedCount === 0 && !currentImageId) {
-      setEditorError(
-        "The gallery image cannot be identified. Refresh and try again.",
-      );
+    // 3D means open the design, NOT a previously selected flat gallery image.
+    // The backend decides if the Creator gets their original or a private copy.
+    const requestedIds = is3D ? [] : selectedImages.map((image) => image.id);
+    if (!is3D && hasGallery && requestedIds.length === 0 && !currentImageId) {
+      setEditorError("The gallery image cannot be identified. Refresh and try again.");
       return;
     }
-
-    const requestedIds = selectedGalleryImages.map((image) => image.id);
-    let payload;
-    if (requestedIds.length > 1) {
-      payload = { image_ids: requestedIds };
-    } else if (requestedIds.length === 1) {
-      payload = { image_id: requestedIds[0] };
-    } else {
-      payload = currentImageId ? { image_id: currentImageId } : {};
-    }
+    const payload = requestedIds.length > 1
+      ? { image_ids: requestedIds }
+      : requestedIds.length === 1
+        ? { image_id: requestedIds[0] }
+        : !is3D && currentImageId ? { image_id: currentImageId } : {};
 
     setEditorError("");
     setOpeningEditor(true);
@@ -409,19 +348,14 @@ export default function CreatorShowcaseDetail() {
       );
       const record = response?.data?.data || {};
 
-      // Version 5.5 does not support image_ids. Reject older single-image
-      // responses rather than incorrectly navigate to a cover-image project.
       if (requestedIds.length > 1) {
-        const returnedIds = Array.isArray(record.source_image_ids)
-          ? record.source_image_ids.map(String)
-          : [];
-        const matches =
-          returnedIds.length === requestedIds.length &&
-          requestedIds.every((id) => returnedIds.includes(id));
-        if (!matches) {
+        const returned = Array.isArray(record.source_image_ids)
+          ? record.source_image_ids.map(String) : [];
+        if (returned.length !== requestedIds.length ||
+          !requestedIds.every((id) => returned.includes(id))) {
           throw new Error(
             "Multi-image opening needs the updated creatorController.js backend. " +
-              "The server has not confirmed this selection, so the old cover project was not opened.",
+            "The server has not confirmed your selection.",
           );
         }
       }
@@ -430,1603 +364,333 @@ export default function CreatorShowcaseDetail() {
       if (!/^[1-9]\d*$/.test(projectId)) {
         throw new Error("The Fashion Editor project ID was not returned.");
       }
-
       navigate(`/creator/fashion-editor/${encodeURIComponent(projectId)}`);
     } catch (requestError) {
       if (import.meta.env.DEV) {
-        console.error(
-          "Open Showcase design in Fashion Editor failed:",
-          requestError?.response?.data || requestError,
-        );
+        console.error("Open Showcase design in Fashion Editor failed:", requestError);
       }
       const status = requestError?.response?.status;
-      if (status === 401) {
-        setEditorError(
-          "Please sign in again to open this design in Fashion Editor.",
-        );
-      } else if (status === 403) {
-        setEditorError(
-          requestError?.response?.data?.message ||
-            "Only Creator accounts can open Showcase designs in Fashion Editor.",
-        );
-      } else if (status === 404) {
-        setEditorError(
-          requestError?.response?.data?.message ||
-            "This Showcase design is no longer available.",
-        );
-      } else if (status === 409) {
-        setEditorError(
-          requestError?.response?.data?.message ||
-            "This Showcase source is no longer available.",
-        );
-      } else {
-        setEditorError(
-          requestError?.response?.data?.message ||
-            requestError?.message ||
-            "This design could not be opened in Fashion Editor right now.",
-        );
-      }
+      const serverMessage = requestError?.response?.data?.message;
+      setEditorError(status === 401
+        ? "Please sign in again to open this design in Fashion Editor."
+        : status === 403
+          ? serverMessage || "Only Creator accounts can open Showcase designs in Fashion Editor."
+          : status === 404
+            ? serverMessage || "This Showcase design is no longer available."
+            : status === 409
+              ? serverMessage || "This Showcase source is no longer available."
+              : serverMessage || requestError?.message ||
+                "This design could not be opened in Fashion Editor right now.");
     } finally {
       setOpeningEditor(false);
     }
   };
 
-  const derived = useMemo(() => {
-    if (!item) {
-      return {
-        designerOwned: false,
-        ownerName: "",
-        ownerAvatar: "",
-        designerRating: null,
-        completedBookings: 0,
-        bookingUrl: null,
-        designerStudioUrl: null,
-        canOpenInEditor: false,
-        tags: [],
-      };
-    }
-    const designerOwned = isDesignerOwned(item);
-    const designerId = designerOwned ? item?.designer_id : null;
-    return {
-      designerOwned,
-      ownerName: getOwnerName(item),
-      ownerAvatar: getOwnerAvatar(item),
-      designerRating: getDesignerRating(item),
-      completedBookings: getCompletedBookings(item),
-      bookingUrl: buildBookingUrl(item),
-      designerStudioUrl: designerId
-        ? `/creator/studio/${encodeURIComponent(designerId)}`
-        : null,
-      canOpenInEditor: Boolean(cleanText(item?.design_id)),
-      tags: Array.isArray(item?.tags) ? item.tags.filter(Boolean) : [],
-    };
-  }, [item]);
-  if (loading) {
-    return (
-      <div
-        className="
-          flex
-          min-h-[calc(100vh-5rem)]
-          flex-col
-          items-center
-          justify-center
-          gap-4
-          bg-slate-50
-          text-slate-900
-          transition-colors
-          duration-300
-          dark:bg-[#030303]
-          dark:text-white
-        "
-      >
-        <div className="relative">
-          <div
-            className="
-              absolute
-              inset-0
-              animate-spin
-              rounded-full
-              border-t-2
-              border-[#D4AF37]
-            "
-          />
-          <Loader2
-            size={40}
-            aria-hidden="true"
-            className="
-              animate-spin
-              text-slate-400
-              dark:text-white/20
-            "
-          />
-        </div>
-        <span
-          className="
-            animate-pulse
-            text-[10px]
-            font-bold
-            uppercase
-            tracking-[0.3em]
-            text-[#D4AF37]
-          "
-        >
-          Loading Showcase
-        </span>
-      </div>
-    );
-  }
-  if (error || !item) {
-    return (
-      <div
-        className="
-          relative
-          flex
-          min-h-[calc(100vh-5rem)]
-          items-center
-          justify-center
-          overflow-hidden
-          bg-slate-50
-          p-6
-          text-slate-900
-          transition-colors
-          duration-300
-          dark:bg-[#030303]
-          dark:text-white
-        "
-      >
-        <div
-          aria-hidden="true"
-          className="
-            pointer-events-none
-            absolute
-            left-1/2
-            top-1/2
-            h-[40vw]
-            w-[40vw]
-            -translate-x-1/2
-            -translate-y-1/2
-            rounded-full
-            bg-rose-500/5
-            blur-[120px]
-          "
-        />
-        <div
-          className="
-            relative
-            z-10
-            w-full
-            max-w-md
-            space-y-4
-            rounded-3xl
-            border
-            border-slate-200
-            bg-white
-            p-10
-            text-center
-            shadow-2xl
-            backdrop-blur-xl
-            dark:border-white/10
-            dark:bg-[#0a0a0a]
-          "
-        >
-          <Sparkles
-            size={48}
-            aria-hidden="true"
-            className="
-              mx-auto
-              mb-6
-              text-slate-300
-              dark:text-white/10
-            "
-          />
-          <h2
-            className="
-              font-serif
-              text-2xl
-              tracking-wide
-              text-slate-900
-              dark:text-white
-            "
-          >
-            Showcase Item Unavailable
-          </h2>
-          <p
-            className="
-              text-xs
-              font-bold
-              uppercase
-              leading-6
-              tracking-widest
-              text-slate-500
-              dark:text-white/40
-            "
-          >
-            {error || "This showcase item is unavailable."}
-          </p>
-          <Link
-            to="/creator/showcase"
-            className="
-              mt-8
-              inline-flex
-              items-center
-              justify-center
-              gap-2
-              rounded-full
-              bg-[#D4AF37]
-              px-8
-              py-3
-              text-[10px]
-              font-black
-              uppercase
-              tracking-[0.2em]
-              text-black
-              transition
-              hover:bg-[#ead28f]
-              dark:hover:bg-white
-            "
-          >
-            <ChevronLeft size={13} />
-            Return to Showcase
-          </Link>
-        </div>
-      </div>
-    );
-  }
-  const {
-    designerOwned,
-    ownerName,
-    ownerAvatar,
-    designerRating,
-    completedBookings,
-    bookingUrl,
-    designerStudioUrl,
-    canOpenInEditor,
-    tags,
-  } = derived;
+  if (loading) return <LoadingScreen />;
+  if (error || !item) return <ErrorScreen message={error} />;
+
   return (
-    <div
-      className="
-        relative
-        min-h-screen
-        overflow-x-hidden
-        bg-slate-50
-        pb-32
-        text-slate-900
-        transition-colors
-        duration-300
-        selection:bg-[#D4AF37]
-        selection:text-black
-        dark:bg-[#030303]
-        dark:text-white
-      "
-    >
-      <div
-        aria-hidden="true"
-        className="
-          pointer-events-none
-          fixed
-          inset-0
-          z-0
-          overflow-hidden
-        "
-      >
-        <div
-          className="
-            absolute
-            -right-[5%]
-            -top-[10%]
-            h-[40vw]
-            w-[40vw]
-            rounded-full
-            bg-[#D4AF37]/10
-            blur-[150px]
-          "
-        />
-        <div
-          className="
-            absolute
-            -bottom-[20%]
-            -left-[10%]
-            h-[50vw]
-            w-[50vw]
-            rounded-full
-            bg-violet-500/[0.035]
-            blur-[160px]
-          "
-        />
-      </div>
-      <div
-        className="
-          sticky
-          top-20
-          z-40
-          border-b
-          border-slate-200
-          bg-white/90
-          px-4
-          py-4
-          shadow-2xl
-          backdrop-blur-xl
-          sm:px-6
-          dark:border-white/5
-          dark:bg-[#0a0a0a]/90
-        "
-      >
-        <div
-          className="
-            mx-auto
-            flex
-            max-w-[1800px]
-            items-center
-            justify-between
-            gap-4
-          "
-        >
-          <Link
-            to="/creator/showcase"
-            className="
-              group
-              flex
-              min-w-0
-              items-center
-              gap-2
-              text-[9px]
-              font-bold
-              uppercase
-              tracking-[0.16em]
-              text-slate-500
-              transition
-              hover:text-slate-950
-              sm:text-[10px]
-              dark:text-white/40
-              dark:hover:text-white
-            "
-          >
-            <span
-              className="
-                flex
-                h-8
-                w-8
-                shrink-0
-                items-center
-                justify-center
-                rounded-full
-                border
-                border-slate-200
-                bg-slate-100
-                group-hover:bg-slate-200
-                dark:border-white/5
-                dark:bg-white/5
-                dark:group-hover:bg-white/10
-              "
-            >
-              <ChevronLeft size={14} />
-            </span>
+    <main className="min-h-screen overflow-x-hidden bg-slate-50 pb-20 text-slate-900 dark:bg-[#050506] dark:text-white">
+      {/* Header / breadcrumb */}
+      <div className="sticky top-16 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#09090b]/95 sm:top-20">
+        <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+          <Link to="/creator/showcase"
+            className={`inline-flex min-w-0 items-center gap-2 text-xs font-semibold text-slate-600 hover:text-[#b68c23] dark:text-white/65 dark:hover:text-[#D4AF37] ${BUTTON_FOCUS}`}>
+            <ArrowLeft size={16} className="shrink-0" />
             <span className="truncate">Back to Showcase</span>
           </Link>
-          <div
-            className="
-              flex
-              max-w-[55%]
-              items-center
-              gap-2
-            "
-          >
-            {item?.category_name && (
-              <span
-                className="
-                  hidden
-                  truncate
-                  rounded-full
-                  border
-                  border-slate-200
-                  bg-slate-100/80
-                  px-3
-                  py-2
-                  text-[8px]
-                  font-black
-                  uppercase
-                  tracking-[0.15em]
-                  text-slate-600
-                  sm:block
-                  dark:border-white/10
-                  dark:bg-white/[0.04]
-                  dark:text-white/45
-                "
-              >
+          <div className="flex min-w-0 items-center gap-2">
+            {item.category_name && (
+              <span className="hidden max-w-[160px] truncate rounded-full border border-slate-200 px-3 py-1.5 text-[11px] text-slate-500 dark:border-white/15 dark:text-white/60 sm:inline">
                 {item.category_name}
               </span>
             )}
-            <span
-              className="
-                truncate
-                rounded-full
-                border
-                border-[#D4AF37]/30
-                bg-[#D4AF37]/10
-                px-3
-                py-2
-                text-[8px]
-                font-black
-                uppercase
-                tracking-[0.18em]
-                text-[#D4AF37]
-                sm:px-4
-              "
-            >
+            <span className="max-w-[140px] truncate rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-3 py-1.5 text-[11px] font-bold text-[#9e7414] dark:text-[#D4AF37] sm:max-w-[220px]">
               {item.style_category || "Showcase Design"}
             </span>
           </div>
         </div>
       </div>
-      <div
-        className="
-          relative
-          z-10
-          mx-auto
-          mt-8
-          grid
-          max-w-[1800px]
-          grid-cols-1
-          gap-8
-          px-4
-          sm:px-6
-          md:mt-12
-          lg:grid-cols-12
-          lg:gap-12
-        "
-      >
-        <div
-          className="
-            space-y-8
-            lg:col-span-8
-          "
-        >
-          <div
-            className="
-              group
-              relative
-              flex
-              aspect-[4/3]
-              items-center
-              justify-center
-              overflow-hidden
-              rounded-3xl
-              border
-              border-slate-200
-              bg-white
-              p-2
-              shadow-2xl
-              dark:border-white/5
-              dark:bg-[#0a0a0a]
-            "
-          >
-            <div
-              className="
-                relative
-                h-full
-                w-full
-                overflow-hidden
-                rounded-2xl
-                bg-slate-100
-                dark:bg-[#111]
-              "
-              tabIndex={hasGallery ? 0 : undefined}
-              role={hasGallery ? "region" : undefined}
-              aria-label={
-                hasGallery
-                  ? "Showcase image gallery, use arrow keys to navigate"
-                  : undefined
-              }
-              onKeyDown={hasGallery ? onImageKeyDown : undefined}
-              onTouchStart={hasGallery ? onImageTouchStart : undefined}
-              onTouchEnd={hasGallery ? onImageTouchEnd : undefined}
-            >
-              {currentImage?.url ? (
-                <img
-                  src={currentImage.url}
-                  alt={`${item.title || "Showcase design"} — image ${activeImageIndex + 1} of ${showcaseImages.length}`}
-                  loading="eager"
-                  decoding="async"
-                  className="
-                    h-full
-                    w-full
-                    object-contain
-                    opacity-95
-                    transition
-                    duration-[1.2s]
-                    group-hover:scale-[1.02]
-                    group-hover:opacity-100
-                  "
-                />
-              ) : (
-                <div
-                  className="
-                    flex
-                    h-full
-                    w-full
-                    flex-col
-                    items-center
-                    justify-center
-                    gap-3
-                    text-slate-300
-                    dark:text-white/10
-                  "
-                >
-                  <Sparkles size={48} />
-                  <span
-                    className="
-                      text-[10px]
-                      font-black
-                      uppercase
-                      tracking-widest
-                    "
-                  >
-                    Preview Unavailable
-                  </span>
-                </div>
-              )}
-              {hasGallery && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => changeImage(-1)}
-                    aria-label="Previous gallery image"
-                    className="absolute left-3 top-1/2 z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/65 text-white backdrop-blur transition hover:bg-[#D4AF37] hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] sm:left-5"
-                  >
-                    <ChevronLeft size={21} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => changeImage(1)}
-                    aria-label="Next gallery image"
-                    className="absolute right-3 top-1/2 z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/65 text-white backdrop-blur transition hover:bg-[#D4AF37] hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] sm:right-5"
-                  >
-                    <ChevronRight size={21} />
-                  </button>
-                  <span
-                    aria-live="polite"
-                    className="absolute left-1/2 top-4 z-20 -translate-x-1/2 rounded-full border border-white/15 bg-black/65 px-4 py-2 text-[10px] font-bold tracking-[0.15em] text-white backdrop-blur"
-                  >
-                    {activeImageIndex + 1} / {showcaseImages.length}
-                  </span>
-                </>
-              )}
 
-              <div
-                className="
-                  pointer-events-none
-                  absolute
-                  inset-0
-                  bg-gradient-to-t
-                  from-[#030303]/65
-                  via-transparent
-                  to-transparent
-                "
-              />
-              <div
-                className="
-                  absolute
-                  bottom-4
-                  left-4
-                  flex
-                  items-center
-                  gap-2
-                  rounded-full
-                  border
-                  border-white/10
-                  bg-black/55
-                  px-3
-                  py-2
-                  text-[8px]
-                  font-black
-                  uppercase
-                  tracking-[0.18em]
-                  text-white/55
-                  backdrop-blur-md
-                "
-              >
-                <ShieldCheck
-                  size={11}
-                  className="
-                    text-[#D4AF37]
-                  "
-                />
-                Showcase Preview
-              </div>
-              <div
-                className="
-                  absolute
-                  bottom-4
-                  right-4
-                  rounded-full
-                  border
-                  border-white/10
-                  bg-black/55
-                  px-3
-                  py-2
-                  text-[8px]
-                  font-black
-                  uppercase
-                  tracking-[0.14em]
-                  text-white/50
-                  backdrop-blur-md
-                "
-              >
-                {designerOwned ? "Designer Work" : "Creator Work"}
-              </div>
+      <div className="mx-auto max-w-[1500px] px-4 pt-6 sm:px-6 sm:pt-9 lg:px-8">
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-4 sm:mb-8">
+          <div className="max-w-4xl">
+            <p className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-[#ad8723] dark:text-[#D4AF37]">
+              <Sparkles size={13} /> Community Showcase
+            </p>
+            <h1 className="font-serif text-3xl leading-tight tracking-tight sm:text-4xl lg:text-5xl">
+              {item.title || "Untitled Design"}
+            </h1>
+            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-500 dark:text-white/50">
+              <span className="inline-flex items-center gap-2"><CalendarDays size={14} /> Published {formatPublishedDate(item.created_at)}</span>
+              {item.category_name && <span className="inline-flex items-center gap-2"><Layers3 size={14} /> {item.category_name}</span>}
+              {item.style_category && <span className="inline-flex items-center gap-2"><Palette size={14} /> {item.style_category}</span>}
             </div>
           </div>
-          {hasGallery && (
-            <div
-              aria-label="Showcase gallery thumbnails and Editor image selection"
-              className="rounded-2xl border border-slate-200 bg-white/90 p-3 shadow-sm dark:border-white/10 dark:bg-[#0a0a0a] sm:p-4"
-            >
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3 px-1">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-800 dark:text-white/80">
-                    Choose images for Fashion Editor
-                  </p>
-                  <p
-                    aria-live="polite"
-                    className="mt-1 text-[11px] text-slate-500 dark:text-white/45"
-                  >
-                    {selectedCount > 0
-                      ? `${selectedCount} of ${showcaseImages.length} selected`
-                      : `No checkboxes selected — opens preview image ${selectedImageNumber}`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={selectAllImages}
-                    disabled={openingEditor || eligibleImageIds.length === 0}
-                    className="rounded-lg border border-[#D4AF37]/35 px-3 py-2 text-[10px] font-bold text-[#9f7711] hover:bg-[#D4AF37]/10 disabled:opacity-50 dark:text-[#D4AF37]"
-                  >
-                    Select All
-                  </button>
-                  <button
-                    type="button"
-                    onClick={clearImageSelection}
-                    disabled={openingEditor || selectedCount === 0}
-                    className="rounded-lg border border-slate-200 px-3 py-2 text-[10px] font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-50 dark:border-white/15 dark:text-white/65 dark:hover:bg-white/10"
-                  >
-                    Clear
-                  </button>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-                {showcaseImages.map((image, index) => {
-                  const selectable = isGalleryImageId(image.id);
-                  const checked =
-                    selectable && selectedImageIds.includes(image.id);
-                  return (
-                    <div key={`${image.id}-${index}`} className="relative">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (openingEditor) return;
-                          setActiveImageIndex(index);
-                          setEditorError("");
-                        }}
-                        disabled={openingEditor}
-                        aria-label={`Preview image ${index + 1} of ${showcaseImages.length}`}
-                        aria-pressed={index === activeImageIndex}
-                        className={`relative block aspect-[4/3] w-full overflow-hidden rounded-xl border-2 bg-slate-100 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] dark:bg-[#111] ${
-                          index === activeImageIndex
-                            ? "border-[#D4AF37] ring-2 ring-[#D4AF37]/30"
-                            : "border-slate-200 hover:border-[#D4AF37]/50 dark:border-white/10"
-                        }`}
-                      >
-                        <img
-                          src={image.url}
-                          alt={`Thumbnail ${index + 1}`}
-                          loading="lazy"
-                          decoding="async"
-                          className="h-full w-full object-contain"
-                        />
-                        <span className="absolute bottom-1 right-1 rounded bg-black/65 px-1.5 py-0.5 text-[9px] text-white">
-                          {index + 1}
-                        </span>
-                      </button>
-                      {selectable && (
-                        <label className="absolute left-1 top-1 z-10 flex cursor-pointer items-center gap-1 rounded-lg bg-black/80 px-2 py-1 text-[9px] font-bold text-white shadow-lg">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            disabled={openingEditor}
-                            onChange={() => toggleImageSelection(image.id)}
-                            aria-label={`Select image ${index + 1} for Fashion Editor`}
-                            className="h-4 w-4 cursor-pointer accent-[#D4AF37]"
-                          />
-                          {checked ? "Selected" : "Select"}
-                        </label>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              <p className="mt-3 px-1 text-center text-[10px] text-slate-500 dark:text-white/40">
-                Click a thumbnail to preview it. Tick checkboxes to open several
-                images together in one project (maximum 6).
-              </p>
-            </div>
+          {has3D && (
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-3 py-2 text-xs font-semibold text-[#957019] dark:text-[#D4AF37]">
+              <Box size={15} /> Interactive 3D available
+            </span>
           )}
-
-          <section
-            className="
-              space-y-8
-              rounded-3xl
-              border
-              border-slate-200
-              bg-white
-              p-6
-              shadow-2xl
-              sm:p-8
-              md:p-10
-              dark:border-white/5
-              dark:bg-[#0a0a0a]
-            "
-          >
-            <div>
-              <h1
-                className="
-                  font-serif
-                  text-3xl
-                  font-light
-                  leading-tight
-                  tracking-tight
-                  sm:text-4xl
-                  md:text-5xl
-                "
-              >
-                {item.title || "Untitled Design"}
-              </h1>
-              <div
-                className="
-                  mt-5
-                  flex
-                  flex-wrap
-                  items-center
-                  gap-x-5
-                  gap-y-2
-                  text-[9px]
-                  font-bold
-                  uppercase
-                  tracking-[0.16em]
-                  text-slate-500
-                  dark:text-white/35
-                "
-              >
-                <span
-                  className="
-                    flex
-                    items-center
-                    gap-2
-                  "
-                >
-                  <Calendar
-                    size={12}
-                    className="
-                      text-[#D4AF37]
-                    "
-                  />
-                  Published {formatPublishedDate(item.created_at)}
-                </span>
-                {item?.category_name && (
-                  <span
-                    className="
-                      flex
-                      items-center
-                      gap-2
-                    "
-                  >
-                    <Layers3
-                      size={12}
-                      className="
-                        text-[#D4AF37]
-                      "
-                    />
-                    {item.category_name}
-                  </span>
-                )}
-                {item?.style_category && (
-                  <span
-                    className="
-                      flex
-                      items-center
-                      gap-2
-                    "
-                  >
-                    <Palette
-                      size={12}
-                      className="
-                        text-[#D4AF37]
-                      "
-                    />
-                    {item.style_category}
-                  </span>
-                )}
-              </div>
-            </div>
-            <div
-              className="
-                h-px
-                bg-gradient-to-r
-                from-slate-200
-                via-slate-100
-                to-transparent
-                dark:from-white/10
-                dark:via-white/5
-              "
-            />
-            <div>
-              <h2
-                className="
-                  mb-4
-                  flex
-                  items-center
-                  gap-2
-                  text-[10px]
-                  font-black
-                  uppercase
-                  tracking-[0.25em]
-                  text-[#D4AF37]
-                "
-              >
-                <Sparkles size={12} />
-                Concept
-              </h2>
-              <p
-                className="
-                  whitespace-pre-wrap
-                  text-sm
-                  font-light
-                  leading-loose
-                  text-slate-700
-                  md:text-base
-                  dark:text-white/70
-                "
-              >
-                {item.description || "No design description has been provided."}
-              </p>
-            </div>
-            {tags.length > 0 && (
-              <div
-                className="
-                  border-t
-                  border-slate-200
-                  pt-7
-                  dark:border-white/5
-                "
-              >
-                <p
-                  className="
-                    mb-4
-                    text-[9px]
-                    font-black
-                    uppercase
-                    tracking-[0.2em]
-                    text-slate-500
-                    dark:text-white/30
-                  "
-                >
-                  Creative Tags
-                </p>
-                <div
-                  className="
-                    flex
-                    flex-wrap
-                    gap-2
-                  "
-                >
-                  {tags.map((tag, index) => (
-                    <span
-                      key={`${tag}-${index}`}
-                      className="
-                        flex
-                        items-center
-                        gap-1.5
-                        rounded-full
-                        border
-                        border-slate-200
-                        bg-slate-100
-                        px-4
-                        py-2
-                        text-[9px]
-                        font-bold
-                        uppercase
-                        tracking-[0.16em]
-                        text-slate-600
-                        dark:border-white/10
-                        dark:bg-white/5
-                        dark:text-white/50
-                      "
-                    >
-                      <Tag size={10} />
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </section>
         </div>
-        <aside
-          className="
-            space-y-6
-            lg:col-span-4
-          "
-        >
-          <section
-            className="
-              overflow-hidden
-              rounded-3xl
-              border
-              border-slate-200
-              bg-white
-              p-6
-              shadow-2xl
-              sm:p-8
-              lg:sticky
-              lg:top-36
-              dark:border-white/5
-              dark:bg-[#0a0a0a]
-            "
-          >
-            <p
-              className="
-                mb-5
-                text-[9px]
-                font-black
-                uppercase
-                tracking-[0.25em]
-                text-[#D4AF37]
-              "
-            >
-              {designerOwned ? "Featured Designer" : "Showcase Creator"}
-            </p>
-            <div
-              className="
-                flex
-                items-center
-                gap-4
-              "
-            >
-              <div
-                className="
-                  flex
-                  h-16
-                  w-16
-                  shrink-0
-                  items-center
-                  justify-center
-                  overflow-hidden
-                  rounded-full
-                  border
-                  border-slate-200
-                  bg-slate-100
-                  dark:border-white/10
-                  dark:bg-[#111]
-                "
-              >
-                {ownerAvatar ? (
-                  <img
-                    src={ownerAvatar}
-                    alt={`${ownerName} profile`}
-                    loading="lazy"
-                    decoding="async"
-                    className="
-                      h-full
-                      w-full
-                      object-cover
-                    "
-                  />
-                ) : (
-                  <User
-                    size={24}
-                    className="
-                      text-slate-400
-                      dark:text-white/20
-                    "
-                  />
-                )}
-              </div>
-              <div className="min-w-0">
-                <h2
-                  className="
-                    truncate
-                    font-serif
-                    text-xl
-                  "
-                >
-                  {ownerName}
-                </h2>
-                <p
-                  className="
-                    mt-1
-                    flex
-                    items-center
-                    gap-1.5
-                    text-[9px]
-                    font-black
-                    uppercase
-                    tracking-[0.16em]
-                    text-[#D4AF37]
-                  "
-                >
-                  <ShieldCheck size={11} />
-                  {designerOwned ? "Approved Designer" : "Creator"}
+
+        <div className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-12 lg:gap-8">
+          {/* Design gallery and information */}
+          <div className="min-w-0 space-y-6 lg:col-span-8">
+            <section className={`${PANEL} min-w-0 overflow-hidden p-3 sm:p-4`} aria-label="Design preview">
+              {/* 2D/3D mode tabs */}
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3 sm:mb-4">
+                <div className="inline-flex w-full rounded-xl bg-slate-100 p-1 dark:bg-white/[0.07] sm:w-auto" role="group" aria-label="Showcase preview mode">
+                  <button type="button" aria-pressed={!is3D} onClick={() => setPreviewMode("2d")}
+                    className={`inline-flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-bold transition sm:flex-none ${BUTTON_FOCUS} ${!is3D ? "bg-white text-slate-950 shadow-sm dark:bg-[#28282b] dark:text-white" : "text-slate-500 hover:text-slate-900 dark:text-white/55 dark:hover:text-white"}`}>
+                    <ImageIcon size={16} /> 2D Images
+                  </button>
+                  {has3D && (
+                    <button type="button" aria-pressed={is3D} onClick={() => setPreviewMode("3d")}
+                      className={`inline-flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-bold transition sm:flex-none ${BUTTON_FOCUS} ${is3D ? "bg-[#D4AF37] text-black shadow-sm" : "text-slate-500 hover:text-slate-900 dark:text-white/55 dark:hover:text-white"}`}>
+                      <Box size={16} /> 3D T-Shirt
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 dark:text-white/45">
+                  {is3D ? "Read-only · Rotate and zoom" : `${showcaseImages.length} ${showcaseImages.length === 1 ? "image" : "images"}`}
                 </p>
-                {designerOwned && item.city && (
-                  <p
-                    className="
-                      mt-2
-                      flex
-                      items-center
-                      gap-1.5
-                      text-[9px]
-                      text-slate-500
-                      dark:text-white/35
-                    "
-                  >
-                    <MapPin size={10} />
-                    {item.city}
-                  </p>
+              </div>
+
+              {/* Explicit height lets React Three Fiber fill the entire preview on every breakpoint. */}
+              <div className="relative h-[340px] min-w-0 overflow-hidden rounded-xl bg-slate-100 dark:bg-[#161619] sm:h-[460px] lg:h-[min(65vh,670px)]">
+                {is3D ? (
+                  <Suspense fallback={
+                    <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-slate-500 dark:text-white/55">
+                      <Loader2 className="animate-spin text-[#D4AF37]" size={28} />
+                      Loading 3D garment…
+                    </div>
+                  }>
+                    <ShowcaseGarment3D preview={item.preview_3d} />
+                  </Suspense>
+                ) : (
+                  <div className="relative flex h-full w-full items-center justify-center"
+                    role={hasGallery ? "region" : undefined}
+                    aria-label={hasGallery ? "Showcase image gallery. Use left and right arrow keys." : undefined}
+                    tabIndex={hasGallery ? 0 : undefined}
+                    onKeyDown={hasGallery ? onImageKeyDown : undefined}
+                    onTouchStart={hasGallery ? onImageTouchStart : undefined}
+                    onTouchEnd={hasGallery ? onImageTouchEnd : undefined}>
+                    {currentImage?.url ? (
+                      <img src={currentImage.url}
+                        alt={`${item.title || "Showcase design"} — image ${selectedImageNumber} of ${showcaseImages.length}`}
+                        loading="eager" decoding="async"
+                        className="h-full w-full select-none object-contain" />
+                    ) : (
+                      <div className="flex flex-col items-center gap-3 text-slate-400 dark:text-white/35">
+                        <ImageIcon size={44} />
+                        <span className="text-sm">Image preview unavailable</span>
+                      </div>
+                    )}
+                    {hasGallery && (
+                      <>
+                        <button type="button" aria-label="Previous gallery image" onClick={() => changeImage(-1)}
+                          className={`absolute left-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/70 text-white transition hover:bg-[#D4AF37] hover:text-black sm:left-5 ${BUTTON_FOCUS}`}>
+                          <ChevronLeft size={21} />
+                        </button>
+                        <button type="button" aria-label="Next gallery image" onClick={() => changeImage(1)}
+                          className={`absolute right-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/70 text-white transition hover:bg-[#D4AF37] hover:text-black sm:right-5 ${BUTTON_FOCUS}`}>
+                          <ChevronRight size={21} />
+                        </button>
+                        <span aria-live="polite" className="absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1.5 text-xs font-semibold text-white">
+                          {selectedImageNumber} / {showcaseImages.length}
+                        </span>
+                      </>
+                    )}
+                    <span className="pointer-events-none absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-black/65 px-3 py-1.5 text-[11px] text-white">
+                      <ShieldCheck size={13} className="text-[#D4AF37]" /> Showcase Preview
+                    </span>
+                  </div>
                 )}
               </div>
-            </div>
-            {designerOwned ? (
-              <>
-                {item.designer_bio && (
-                  <p
-                    className="
-                      mt-6
-                      rounded-2xl
-                      border
-                      border-slate-200
-                      bg-slate-100
-                      p-5
-                      text-xs
-                      font-light
-                      leading-relaxed
-                      text-slate-600
-                      dark:border-white/5
-                      dark:bg-[#111]
-                      dark:text-white/50
-                    "
-                  >
-                    {item.designer_bio}
-                  </p>
-                )}
-                <div
-                  className="
-                    mt-6
-                    grid
-                    grid-cols-2
-                    gap-3
-                    border-t
-                    border-slate-200
-                    pt-6
-                    dark:border-white/5
-                  "
-                >
-                  <div
-                    className="
-                      flex
-                      flex-col
-                      items-center
-                      justify-center
-                      rounded-2xl
-                      border
-                      border-slate-200
-                      bg-slate-100/80
-                      p-4
-                      text-center
-                      dark:border-white/5
-                      dark:bg-white/[0.04]
-                    "
-                  >
-                    <Star
-                      size={16}
-                      className="
-                        mb-2
-                        text-[#D4AF37]
-                      "
-                      fill={designerRating ? "currentColor" : "none"}
-                    />
-                    <span
-                      className="
-                        font-serif
-                        text-xl
-                      "
-                    >
-                      {designerRating ? designerRating.toFixed(1) : "New"}
-                    </span>
-                    <span
-                      className="
-                        mt-1
-                        text-[8px]
-                        font-bold
-                        uppercase
-                        tracking-[0.16em]
-                        text-slate-500
-                        dark:text-white/35
-                      "
-                    >
-                      Rating
-                    </span>
-                  </div>
-                  <div
-                    className="
-                      flex
-                      flex-col
-                      items-center
-                      justify-center
-                      rounded-2xl
-                      border
-                      border-slate-200
-                      bg-slate-100/80
-                      p-4
-                      text-center
-                      dark:border-white/5
-                      dark:bg-white/[0.04]
-                    "
-                  >
-                    <Briefcase
-                      size={16}
-                      className="
-                        mb-2
-                        text-slate-700
-                        dark:text-white/60
-                      "
-                    />
-                    <span
-                      className="
-                        font-serif
-                        text-xl
-                      "
-                    >
-                      {completedBookings}
-                    </span>
-                    <span
-                      className="
-                        mt-1
-                        text-[8px]
-                        font-bold
-                        uppercase
-                        tracking-[0.13em]
-                        text-slate-500
-                        dark:text-white/35
-                      "
-                    >
-                      Completed
-                    </span>
-                  </div>
-                </div>
-                <div
-                  className="
-                    mt-6
-                    rounded-2xl
-                    border
-                    border-[#D4AF37]/15
-                    bg-[#D4AF37]/[0.055]
-                    p-5
-                  "
-                >
-                  <p
-                    className="
-                      text-[9px]
-                      font-black
-                      uppercase
-                      tracking-[0.18em]
-                      text-[#D4AF37]
-                    "
-                  >
-                    Inspired by this work?
-                  </p>
-                  <p
-                    className="
-                      mt-2
-                      text-xs
-                      leading-6
-                      text-slate-600
-                      dark:text-white/45
-                    "
-                  >
-                    Use this Showcase design as creative context when starting a
-                    custom booking with the Designer.
-                  </p>
-                </div>
-                {canOpenInEditor && (
-                  <div
-                    className="
-                      mt-5
-                      rounded-2xl
-                      border
-                      border-violet-400/15
-                      bg-violet-500/[0.055]
-                      p-5
-                    "
-                  >
-                    <p
-                      className="
-                        text-[9px]
-                        font-black
-                        uppercase
-                        tracking-[0.18em]
-                        text-violet-600
-                        dark:text-violet-300
-                      "
-                    >
-                      Fashion Editor
-                    </p>
-                    <p
-                      className="
-                        mt-2
-                        text-xs
-                        leading-6
-                        text-slate-600
-                        dark:text-white/45
-                      "
-                    >
-                      Choose one or more gallery images above. Selected images
-                      open together in one private Fashion Editor project, with
-                      each image as its own editable object. The Designer's
-                      original work remains unchanged.
+
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-slate-500 dark:text-white/45">
+                <span className="inline-flex items-center gap-1.5">
+                  {is3D ? <Rotate3D size={14} /> : <ImageIcon size={14} />}
+                  {is3D ? "Drag the garment to rotate; use camera buttons for front and back." : "Published design imagery"}
+                </span>
+                <span>{designerOwned ? "Designer Work" : "Creator Work"}</span>
+              </div>
+            </section>
+
+            {/* The gallery selection belongs only to the 2D view. */}
+            {!is3D && hasGallery && (
+              <section className={`${PANEL} p-4 sm:p-5`} aria-label="Gallery images and editor selection">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-sm font-bold">Explore the gallery</h2>
+                    <p aria-live="polite" className="mt-1 text-xs text-slate-500 dark:text-white/45">
+                      {selectedCount
+                        ? `${selectedCount} image${selectedCount === 1 ? "" : "s"} selected for Fashion Editor`
+                        : "Select a thumbnail to view it; tick boxes to edit multiple images."}
                     </p>
                   </div>
-                )}
-                <div
-                  className="
-                    mt-6
-                    space-y-3
-                  "
-                >
-                  {canOpenInEditor && (
-                    <button
-                      type="button"
-                      onClick={handleOpenInEditor}
-                      disabled={openingEditor}
-                      className="
-                        flex
-                        w-full
-                        items-center
-                        justify-center
-                        gap-2
-                        rounded-xl
-                        bg-violet-600
-                        py-4
-                        text-[10px]
-                        font-black
-                        uppercase
-                        tracking-[0.18em]
-                        text-white
-                        transition
-                        hover:bg-violet-500
-                        disabled:cursor-not-allowed
-                        disabled:opacity-60
-                      "
-                    >
-                      {openingEditor ? (
-                        <>
-                          <Loader2
-                            size={14}
-                            aria-hidden="true"
-                            className="animate-spin"
-                          />
-                          Opening Fashion Editor
-                        </>
-                      ) : (
-                        <>
-                          <Palette size={14} />
-
-                          {editorActionLabel}
-
-                          <ArrowRight size={13} />
-                        </>
-                      )}
-                    </button>
-                  )}
-                  {editorError && (
-                    <p
-                      role="alert"
-                      className="
-                        rounded-xl
-                        border
-                        border-rose-500/15
-                        bg-rose-500/[0.06]
-                        px-4
-                        py-3
-                        text-[10px]
-                        leading-5
-                        text-rose-600
-                        dark:text-rose-300
-                      "
-                    >
-                      {editorError}
-                    </p>
-                  )}
-                  {bookingUrl && (
-                    <Link
-                      to={bookingUrl}
-                      className="
-                        flex
-                        w-full
-                        items-center
-                        justify-center
-                        gap-2
-                        rounded-xl
-                        bg-[#D4AF37]
-                        py-4
-                        text-[10px]
-                        font-black
-                        uppercase
-                        tracking-[0.18em]
-                        text-black
-                        transition
-                        hover:bg-[#ead28f]
-                        dark:hover:bg-white
-                      "
-                    >
-                      <Zap size={14} />
-                      Start Booking
-                      <ArrowRight size={13} />
-                    </Link>
-                  )}
-                  {designerStudioUrl && (
-                    <Link
-                      to={designerStudioUrl}
-                      className="
-                        flex
-                        w-full
-                        items-center
-                        justify-center
-                        gap-2
-                        rounded-xl
-                        border
-                        border-slate-200
-                        bg-slate-100/80
-                        py-3.5
-                        text-[9px]
-                        font-black
-                        uppercase
-                        tracking-[0.16em]
-                        text-slate-700
-                        transition
-                        hover:border-[#D4AF37]/40
-                        hover:bg-[#D4AF37]/10
-                        hover:text-[#D4AF37]
-                        dark:border-white/10
-                        dark:bg-white/[0.04]
-                        dark:text-white/65
-                      "
-                    >
-                      View Designer Studio
-                      <ExternalLink size={12} />
-                    </Link>
-                  )}
-                  {item.portfolio_url && (
-                    <a
-                      href={item.portfolio_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="
-                        flex
-                        w-full
-                        items-center
-                        justify-center
-                        gap-2
-                        rounded-xl
-                        border
-                        border-slate-200
-                        py-3.5
-                        text-[9px]
-                        font-black
-                        uppercase
-                        tracking-[0.16em]
-                        text-slate-600
-                        transition
-                        hover:border-slate-400
-                        hover:text-slate-950
-                        dark:border-white/10
-                        dark:text-white/45
-                        dark:hover:border-white/25
-                        dark:hover:text-white
-                      "
-                    >
-                      Portfolio
-                      <ExternalLink size={12} />
-                    </a>
-                  )}
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => {
+                      setSelectedImageIds(selectableIds.slice(0, 6));
+                      setEditorError("");
+                    }} disabled={openingEditor || selectableIds.length === 0}
+                      className={`${OUTLINE_BUTTON} disabled:opacity-40`}>Select All</button>
+                    <button type="button" onClick={() => {
+                      setSelectedImageIds([]);
+                      setEditorError("");
+                    }} disabled={openingEditor || selectedCount === 0}
+                      className={`${OUTLINE_BUTTON} disabled:opacity-40`}>Clear</button>
+                  </div>
                 </div>
-              </>
-            ) : (
-              <div
-                className="
-                  mt-6
-                  border-t
-                  border-slate-200
-                  pt-6
-                  dark:border-white/5
-                "
-              >
-                <div
-                  className="
-                    rounded-2xl
-                    border
-                    border-violet-400/10
-                    bg-violet-500/[0.055]
-                    p-5
-                  "
-                >
-                  <Sparkles
-                    size={17}
-                    className="
-                      text-violet-600
-                      dark:text-violet-300
-                    "
-                  />
-                  <h3
-                    className="
-                      mt-3
-                      font-serif
-                      text-lg
-                    "
-                  >
-                    Community Inspiration
-                  </h3>
-                  <p
-                    className="
-                      mt-2
-                      text-xs
-                      leading-6
-                      text-slate-600
-                      dark:text-white/42
-                    "
-                  >
-                    This creative work was shared by a Creator in the
-                    DesignByYou Showcase.
-                  </p>
+
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 sm:gap-3">
+                  {showcaseImages.map((image, index) => {
+                    const selectable = isGalleryImageId(image.id);
+                    const checked = selectable && selectedImageIds.includes(image.id);
+                    return (
+                      <div key={`${image.id}-${index}`} className="relative min-w-0">
+                        <button type="button" disabled={openingEditor} aria-label={`View image ${index + 1}`}
+                          aria-pressed={activeImageIndex === index}
+                          onClick={() => { setActiveImageIndex(index); setEditorError(""); }}
+                          className={`block aspect-square w-full overflow-hidden rounded-xl border-2 bg-slate-100 transition dark:bg-[#1c1c1f] ${BUTTON_FOCUS} ${activeImageIndex === index ? "border-[#D4AF37] ring-2 ring-[#D4AF37]/25" : "border-slate-200 hover:border-[#D4AF37]/60 dark:border-white/10"}`}>
+                          <img src={image.url} alt={`Design thumbnail ${index + 1}`}
+                            loading="lazy" decoding="async" className="h-full w-full object-contain" />
+                        </button>
+                        {selectable && (
+                          <label className="absolute left-1 top-1 flex cursor-pointer items-center gap-1 rounded-md bg-black/75 px-1.5 py-1 text-[10px] font-semibold text-white sm:left-2 sm:top-2">
+                            <input type="checkbox" checked={checked} disabled={openingEditor}
+                              onChange={() => toggleImageSelection(image.id)}
+                              aria-label={`Select gallery image ${index + 1} for Fashion Editor`}
+                              className="h-3.5 w-3.5 accent-[#D4AF37]" />
+                            <span className="hidden sm:inline">{checked ? "Selected" : "Select"}</span>
+                            {checked && <Check size={11} className="sm:hidden" />}
+                          </label>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-                {canOpenInEditor && (
-                  <div
-                    className="
-                      mt-5
-                      rounded-2xl
-                      border
-                      border-[#D4AF37]/20
-                      bg-[#D4AF37]/[0.055]
-                      p-5
-                    "
-                  >
-                    <p
-                      className="
-                        text-[9px]
-                        font-black
-                        uppercase
-                        tracking-[0.18em]
-                        text-[#D4AF37]
-                      "
-                    >
-                      Fashion Editor
-                    </p>
-                    <p
-                      className="
-                        mt-2
-                        text-xs
-                        leading-6
-                        text-slate-600
-                        dark:text-white/45
-                      "
-                    >
-                      Choose images from the gallery above. Multiple checked
-                      images open together on one private Fashion Editor canvas.
-                      If no images are checked, the previewed image opens
-                      individually. Original Showcase work remains unchanged.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={handleOpenInEditor}
-                      disabled={openingEditor}
-                      className="
-                        mt-4
-                        flex
-                        w-full
-                        items-center
-                        justify-center
-                        gap-2
-                        rounded-xl
-                        bg-[#D4AF37]
-                        py-4
-                        text-[10px]
-                        font-black
-                        uppercase
-                        tracking-[0.18em]
-                        text-black
-                        transition
-                        hover:bg-[#ead28f]
-                        dark:hover:bg-white
-                        disabled:cursor-not-allowed
-                        disabled:opacity-60
-                      "
-                    >
-                      {openingEditor ? (
-                        <>
-                          <Loader2
-                            size={14}
-                            aria-hidden="true"
-                            className="animate-spin"
-                          />
-                          Opening Fashion Editor
-                        </>
-                      ) : (
-                        <>
-                          <Palette size={14} />
+                <p className="mt-3 text-xs text-slate-500 dark:text-white/45">
+                  Maximum 6 images per editing session. Original Showcase designs remain unchanged.
+                </p>
+              </section>
+            )}
 
-                          {editorActionLabel}
+            <section className={`${PANEL} space-y-6 p-5 sm:p-7`}>
+              <div>
+                <h2 className="flex items-center gap-2 text-sm font-bold"><Sparkles size={16} className="text-[#D4AF37]" /> The concept</h2>
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-600 dark:text-white/65">
+                  {item.description || "No design description has been provided."}
+                </p>
+              </div>
+              {tags.length > 0 && (
+                <div className="border-t border-slate-200 pt-5 dark:border-white/10">
+                  <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-white/50">Creative tags</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {tags.map((tag, index) => (
+                      <span key={`${tag}-${index}`} className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs text-slate-600 dark:bg-white/[0.07] dark:text-white/65">
+                        <Tag size={12} /> {String(tag)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+          </div>
 
-                          <ArrowRight size={13} />
-                        </>
-                      )}
-                    </button>
-                    {editorError && (
-                      <p
-                        role="alert"
-                        className="
-                          mt-3
-                          rounded-xl
-                          border
-                          border-rose-500/15
-                          bg-rose-500/[0.06]
-                          px-4
-                          py-3
-                          text-[10px]
-                          leading-5
-                          text-rose-600
-                          dark:text-rose-300
-                        "
-                      >
-                        {editorError}
+          {/* Owner and actions */}
+          <aside className="min-w-0 lg:col-span-4">
+            <div className="space-y-5 lg:sticky lg:top-36">
+              <section className={`${PANEL} p-5 sm:p-6`}>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#a77f19] dark:text-[#D4AF37]">
+                  {designerOwned ? "Featured Designer" : "Showcase Creator"}
+                </p>
+                <div className="mt-4 flex min-w-0 items-center gap-3">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100 dark:border-white/10 dark:bg-white/[0.07]">
+                    {ownerAvatar && isPublicImageUrl(ownerAvatar) ? (
+                      <img src={ownerAvatar} alt={`${ownerName} profile`} className="h-full w-full object-cover" />
+                    ) : (
+                      <UserRound size={23} className="text-slate-400 dark:text-white/40" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="truncate font-serif text-xl">{ownerName}</h2>
+                    <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-[#9e7414] dark:text-[#D4AF37]">
+                      <ShieldCheck size={13} /> {designerOwned ? "Approved Designer" : "Creator"}
+                    </p>
+                    {designerOwned && item.city && (
+                      <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-white/45">
+                        <MapPin size={12} /> {item.city}
                       </p>
                     )}
                   </div>
+                </div>
+
+                {designerOwned && item.designer_bio && (
+                  <p className="mt-5 rounded-xl bg-slate-50 p-4 text-xs leading-6 text-slate-600 dark:bg-white/[0.04] dark:text-white/60">
+                    {item.designer_bio}
+                  </p>
                 )}
-                <Link
-                  to="/creator/showcase"
-                  className="
-                    mt-5
-                    flex
-                    w-full
-                    items-center
-                    justify-center
-                    gap-2
-                    rounded-xl
-                    border
-                    border-slate-200
-                    bg-slate-100/80
-                    py-3.5
-                    text-[9px]
-                    font-black
-                    uppercase
-                    tracking-[0.16em]
-                    text-slate-700
-                    transition
-                    hover:border-[#D4AF37]/35
-                    hover:text-[#D4AF37]
-                    dark:border-white/10
-                    dark:bg-white/[0.04]
-                    dark:text-white/60
-                  "
-                >
-                  Explore More Designs
-                  <ArrowRight size={12} />
-                </Link>
-              </div>
-            )}
-          </section>
-        </aside>
+                {designerOwned && (
+                  <div className="mt-5 grid grid-cols-2 gap-3 border-t border-slate-200 pt-5 dark:border-white/10">
+                    <div className="rounded-xl bg-slate-50 p-3 text-center dark:bg-white/[0.05]">
+                      <Star size={16} className="mx-auto text-[#D4AF37]" />
+                      <p className="mt-1 font-serif text-xl">{designerRating ? designerRating.toFixed(1) : "New"}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-white/45">Rating</p>
+                    </div>
+                    <div className="rounded-xl bg-slate-50 p-3 text-center dark:bg-white/[0.05]">
+                      <Briefcase size={16} className="mx-auto text-[#D4AF37]" />
+                      <p className="mt-1 font-serif text-xl">{completedBookings}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-white/45">Completed</p>
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              {canOpenInEditor && (
+                <section className={`${PANEL} p-5 sm:p-6`}>
+                  <div className="flex items-center gap-2 text-sm font-bold"><Palette size={17} className="text-[#D4AF37]" /> Open in Fashion Editor</div>
+                  <p className="mt-3 text-xs leading-6 text-slate-500 dark:text-white/55">
+                    {is3D
+                      ? "Explore the published 3D T-shirt, then open this design in your private Fashion Editor workspace."
+                      : hasGallery
+                        ? "Open the current gallery image, or select several images to place them on one private Fashion Editor canvas."
+                        : "Use this design as inspiration in your private Fashion Editor workspace. The published original stays unchanged."}
+                  </p>
+                  <button type="button" disabled={openingEditor} onClick={handleOpenInEditor}
+                    className={`${GOLD_BUTTON} mt-4`}>
+                    {openingEditor ? <Loader2 size={16} className="animate-spin" /> : <MousePointer2 size={16} />}
+                    <span className="min-w-0 truncate">{openingEditor ? "Opening Fashion Editor…" : editorActionLabel}</span>
+                    {!openingEditor && <ArrowRight size={15} className="shrink-0" />}
+                  </button>
+                  {editorError && (
+                    <p role="alert" className="mt-3 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-3 text-xs leading-5 text-rose-700 dark:text-rose-300">
+                      {editorError}
+                    </p>
+                  )}
+                </section>
+              )}
+
+              {designerOwned && (
+                <section className={`${PANEL} space-y-3 p-5 sm:p-6`}>
+                  <h2 className="text-sm font-bold">Inspired by this work?</h2>
+                  <p className="text-xs leading-6 text-slate-500 dark:text-white/55">
+                    Use this Showcase design as creative context for a custom booking with the Designer.
+                  </p>
+                  {bookingUrl && <Link to={bookingUrl} className={GOLD_BUTTON}><Zap size={15} /> Start Booking <ArrowRight size={15} /></Link>}
+                  {designerStudioUrl && <Link to={designerStudioUrl} className={`${OUTLINE_BUTTON} w-full`}>View Designer Studio <ExternalLink size={14} /></Link>}
+                  {portfolioUrl && <a href={portfolioUrl} target="_blank" rel="noopener noreferrer" className={`${OUTLINE_BUTTON} w-full`}>Portfolio <ExternalLink size={14} /></a>}
+                </section>
+              )}
+
+              <Link to="/creator/showcase" className={`${OUTLINE_BUTTON} w-full`}>
+                Explore More Designs <ArrowRight size={14} />
+              </Link>
+            </div>
+          </aside>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

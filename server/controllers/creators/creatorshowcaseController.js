@@ -1230,6 +1230,145 @@ private.
 
 =========================================================*/
 
+/*=========================================================
+ Public 3D preview: deliberately read-only and derived ONLY from
+ a public, published Fashion Editor garment. Never expose the
+ underlying canvas_state, editing layers, project IDs or raw SVG.
+=========================================================*/
+const SHOWCASE_3D_REGIONS = Object.freeze([
+  "frontBody",
+  "backBody",
+  "frontLeftSleeve",
+  "frontRightSleeve",
+  "backLeftSleeve",
+  "backRightSleeve",
+  "frontCollar",
+  "backCollar",
+]);
+const SHOWCASE_3D_HEX = /^#[0-9a-f]{6}$/i;
+const SHOWCASE_3D_IMAGE =
+  /^data:image\/(png|jpeg|jpg|webp);base64,([A-Za-z0-9+/=]+)$/i;
+const SHOWCASE_3D_MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const SHOWCASE_3D_MAX_OUTPUT_BYTES = 300 * 1024;
+let showcaseSharp;
+
+function readShowcaseSharp() {
+  if (showcaseSharp !== undefined) return showcaseSharp;
+  try {
+    showcaseSharp = require("sharp");
+  } catch {
+    showcaseSharp = null;
+  }
+  return showcaseSharp;
+}
+
+async function makePublic3DOverlay(raw) {
+  if (typeof raw !== "string" || raw.length > 7_000_000) return null;
+  const match = SHOWCASE_3D_IMAGE.exec(raw);
+  if (!match) return null;
+  const bytes = Buffer.from(match[2], "base64");
+  if (!bytes.length || bytes.length > SHOWCASE_3D_MAX_IMAGE_BYTES) return null;
+
+  const sharp = readShowcaseSharp();
+  if (sharp) {
+    try {
+      const converted = await sharp(bytes, { limitInputPixels: 6_000_000 })
+        .rotate()
+        .resize({
+          width: 768,
+          height: 768,
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .webp({ quality: 76, effort: 4 })
+        .toBuffer();
+      if (converted.length <= SHOWCASE_3D_MAX_OUTPUT_BYTES) {
+        return `data:image/webp;base64,${converted.toString("base64")}`;
+      }
+    } catch (error) {
+      // Invalid preview data must never fail the whole Showcase detail.
+      console.warn("Public 3D overlay conversion skipped:", error?.message);
+    }
+    return null;
+  }
+
+  // A very small, already-flattened artwork can render without Sharp.
+  // Larger artwork is omitted instead of exposing its full-resolution source.
+  if (bytes.length <= SHOWCASE_3D_MAX_OUTPUT_BYTES) return raw;
+  return null;
+}
+
+async function getPublicGarment3DPreview(designId) {
+  // This query selects ONLY the published garment's appearance fields.
+  // It never reads private projects or returns all of canvas_state to JS.
+  const result = await db.query(
+    `
+      SELECT
+        region.value #> '{metadata,clothingColours}' AS colours,
+        region.value #> '{metadata,clothingArtwork}' AS artwork
+      FROM public.designs d
+      INNER JOIN public.users u ON u.id = d.owner_id
+      CROSS JOIN LATERAL jsonb_each(
+        CASE
+          WHEN jsonb_typeof(d.canvas_state->'objects') = 'object'
+          THEN d.canvas_state->'objects'
+          ELSE '{}'::jsonb
+        END
+      ) AS region(key, value)
+      WHERE d.id = $1::uuid
+        AND d.source_type = 'fashion_editor'
+        AND d.is_public = TRUE
+        AND d.is_published = TRUE
+        AND (
+          u.role = 'creator'
+          OR (u.role = 'designer' AND u.approval_status = 'approved')
+        )
+        AND region.value #>> '{metadata,clothingTemplateId}' = 'tshirt'
+        AND region.value->>'visible' IS DISTINCT FROM 'false'
+      ORDER BY region.value #>> '{metadata,clothingUpdatedAt}' DESC NULLS LAST
+      LIMIT 1
+    `,
+    [designId],
+  );
+  const garment = result.rows[0];
+  if (!garment) return null;
+
+  const colours = {};
+  const artwork = {};
+  const rawColours =
+    garment.colours && typeof garment.colours === "object"
+      ? garment.colours
+      : {};
+  const rawArtwork =
+    garment.artwork && typeof garment.artwork === "object"
+      ? garment.artwork
+      : {};
+
+  for (const id of SHOWCASE_3D_REGIONS) {
+    const colour = rawColours[id];
+    colours[id] =
+      typeof colour === "string" && SHOWCASE_3D_HEX.test(colour)
+        ? colour
+        : "#ffffff";
+    const source = await makePublic3DOverlay(rawArtwork[id]?.source);
+    if (source) {
+      // The 2D/3D editor already flattened its pattern, logos, and text into
+      // one transparent image. Avoid sending the editable layer source here.
+      artwork[id] = {
+        source,
+        type: "image",
+        scale: 1,
+        rotation: 0,
+        offsetX: 0,
+        offsetY: 0,
+        opacity: 1,
+        fit: "fill",
+      };
+    }
+  }
+  return { model: "tshirt", version: 1, colours, artwork };
+}
+
 exports.getShowcaseItem = async (req, res) => {
   const slug = cleanText(req.params.slug);
 
@@ -1701,12 +1840,28 @@ exports.getShowcaseItem = async (req, res) => {
       ];
     }
 
+    // Only public/published appearance is revealed. This cannot grant remix
+    // rights or expose privately saved project/layer metadata.
+    let preview3d = null;
+    if (design.source_type === "fashion_editor") {
+      try {
+        preview3d = await getPublicGarment3DPreview(design.design_id);
+      } catch (previewError) {
+        console.error(
+          "Showcase 3D preview could not be prepared:",
+          previewError,
+        );
+        // Preserve the public image gallery if an older schema lacks 3D fields.
+      }
+    }
+
     return res.status(200).json({
       status: "success",
       data: {
         ...design,
         images,
         image_count: images.length,
+        preview_3d: preview3d,
       },
     });
   } catch (error) {
