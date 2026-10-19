@@ -4,155 +4,87 @@
  * =========================================================
  * DesignByYou / FashionVision
  * Cloudinary Upload Middleware
- * Version 2.1
+ * Version 2.2 — Creator Studio Gallery Uploads
  * =========================================================
  *
  * UPLOAD TYPES
  *
  * 1. uploadProfile
- *    - standard account/profile images
- *    - image files only
- *    - JPG / PNG / WEBP
- *    - maximum 5 MB
- *    - optimized by Cloudinary
+ *    - Profile images
+ *    - Maximum 1 image, 5 MB
  *
  * 2. uploadPreview
- *    - Creator Studio / Showcase preview images
- *    - image files only
- *    - JPG / PNG / WEBP
- *    - maximum 5 MB
- *    - optimized by Cloudinary
+ *    - Fashion Editor / existing Showcase previews
+ *    - Maximum 1 image, 5 MB
  *
- * 3. uploadDesign
- *    - high-resolution project/design assets
- *    - maximum 25 MB
- *    - preserves existing resource_type:auto behavior
+ * 3. uploadCreatorGallery
+ *    - Manual Creator Studio image galleries
+ *    - 0 to 6 images, maximum 5 MB per image
  *
- * =========================================================
- * SECURITY MODEL
- * =========================================================
+ * 4. uploadDesign
+ *    - High-resolution design assets
+ *    - Maximum 1 file, 25 MB
  *
- * Browser validation is NEVER trusted as the security
- * boundary.
- *
- * Multer enforces:
- *
- * - upload size limits
- * - maximum file count
- * - multipart field-size limits
- *
- * Image upload middleware additionally enforces:
- *
- * - image MIME allow-list
- * - Cloudinary resource_type = image
- * - Cloudinary allowed_formats
- *
- * The Creator Studio controller performs further
- * validation after this middleware.
- *
- * =========================================================
  * IMPORTANT
- * =========================================================
  *
- * Fashion Persona configuration does NOT use uploadProfile.
+ * - All existing single-file uploaders remain compatible.
+ * - Only manual Creator Studio uses uploadCreatorGallery.
+ * - The gallery route must use:
  *
- * Standard profile photo:
+ *   uploadCreatorGallery.array("preview", 6)
  *
- *   uploadProfile
- *
- * Fashion Persona:
- *
- *   /avatar/*
- *
- * High-resolution design assets:
- *
- *   uploadDesign
+ * - Controller and route changes are required before
+ *   multi-image uploads become operational.
  *
  * =========================================================
  */
 
-const cloudinary =
-  require("cloudinary").v2;
+const cloudinary = require("cloudinary").v2;
 
-const {
-  CloudinaryStorage,
-} = require(
-  "multer-storage-cloudinary",
-);
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
 
 const multer = require("multer");
 
-/*=========================================================
-  Cloudinary Configuration
-=========================================================*/
+/* =========================================================
+   Cloudinary Configuration
+   ========================================================= */
 
 cloudinary.config({
-  cloud_name:
-    process.env.CLOUDINARY_NAME,
-
-  api_key:
-    process.env.CLOUDINARY_KEY,
-
-  api_secret:
-    process.env.CLOUDINARY_SECRET,
-
-  /*
-   * Always generate secure Cloudinary URLs where
-   * supported.
-   */
+  cloud_name: process.env.CLOUDINARY_NAME,
+  api_key: process.env.CLOUDINARY_KEY,
+  api_secret: process.env.CLOUDINARY_SECRET,
   secure: true,
 });
 
-/*=========================================================
-  Constants
-=========================================================*/
+/* =========================================================
+   Constants
+   ========================================================= */
 
-const FIVE_MB =
-  5 * 1024 * 1024;
+const FIVE_MB = 5 * 1024 * 1024;
 
-const TWENTY_FIVE_MB =
-  25 * 1024 * 1024;
+const TWENTY_FIVE_MB = 25 * 1024 * 1024;
 
-/*
- * Creator Studio canvas_state is capped at 2 MB by
- * the controller.
- *
- * Keeping the multipart field limit aligned prevents
- * an oversized text field from reaching the controller.
- */
-const MAX_MULTIPART_FIELD_BYTES =
-  2 * 1024 * 1024;
+const MAX_MULTIPART_FIELD_BYTES = 2 * 1024 * 1024;
 
-/*
- * Prevent excessively large multipart field names.
- */
 const MAX_FIELD_NAME_BYTES = 100;
 
-/*
- * A generous multipart-field count prevents field-flood
- * abuse while remaining compatible with other routes that
- * may reuse uploadPreview.
- */
 const MAX_MULTIPART_FIELDS = 50;
 
-const MAX_MULTIPART_PARTS =
-  MAX_MULTIPART_FIELDS + 1;
+const MAX_MULTIPART_PARTS = MAX_MULTIPART_FIELDS + 1;
 
-const ALLOWED_IMAGE_MIME_TYPES =
-  new Set([
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-  ]);
+const MAX_CREATOR_GALLERY_IMAGES = 6;
 
-/*=========================================================
-  Upload Error Helper
-=========================================================*/
+const ALLOWED_IMAGE_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
 
-function createUploadError(
-  message,
-  code,
-) {
+/* =========================================================
+   Upload Error Helper
+   ========================================================= */
+
+function createUploadError(message, code) {
   const error = new Error(message);
 
   error.code = code;
@@ -160,73 +92,45 @@ function createUploadError(
   return error;
 }
 
-/*=========================================================
-  Image File Filter
-=========================================================*/
-
-/**
- * Do not rely on React validation.
+/* =========================================================
+   Image File Filter
+   =========================================================
  *
- * A client may call the API directly using:
+ * Shared by:
  *
- * - curl
- * - Postman
- * - custom JavaScript
- * - another HTTP client
+ * - uploadProfile
+ * - uploadPreview
+ * - uploadCreatorGallery
  *
- * Therefore Multer performs its own MIME allow-list check.
+ * Validates declared MIME types and filename metadata.
  *
- * IMPORTANT:
+ * MIME metadata can be spoofed, so it is not treated
+ * as proof that a file contains a valid image.
  *
- * MIME values originate from multipart metadata and can
- * theoretically be spoofed.
+ * Cloudinary uses resource_type: "image" and
+ * allowed_formats for an additional validation layer.
  *
- * This is therefore NOT the only validation layer.
+ * The application controller must also validate the
+ * uploaded file metadata before saving database rows.
  *
- * Cloudinary additionally receives the file using:
- *
- *   resource_type: "image"
- *
- * with an explicit allowed format list.
- *
- * The Creator controller also performs additional checks
- * where file-buffer information is available.
+ * =========================================================
  */
 
-function imageFileFilter(
-  req,
-  file,
-  callback,
-) {
+function imageFileFilter(req, file, callback) {
   if (!file) {
     return callback(
-      createUploadError(
-        "The uploaded image is invalid.",
-        "INVALID_IMAGE_FILE",
-      ),
+      createUploadError("The uploaded image is invalid.", "INVALID_IMAGE_FILE"),
     );
   }
 
-  /*-------------------------------------------------------
-    Validate Original Filename Metadata
-  -------------------------------------------------------*/
+  /* -------------------------------------------------------
+     Validate original filename metadata
+     ------------------------------------------------------- */
 
   const originalName =
-    typeof file.originalname === "string"
-      ? file.originalname
-      : "";
+    typeof file.originalname === "string" ? file.originalname : "";
 
-  /*
-   * The filename is NOT trusted for storage or content
-   * validation.
-   *
-   * This merely prevents malformed filename metadata.
-   */
-
-  if (
-    originalName.length > 255 ||
-    originalName.includes("\0")
-  ) {
+  if (originalName.length > 255 || originalName.includes("\0")) {
     return callback(
       createUploadError(
         "The uploaded file name is invalid.",
@@ -235,21 +139,15 @@ function imageFileFilter(
     );
   }
 
-  /*-------------------------------------------------------
-    Validate Declared MIME Type
-  -------------------------------------------------------*/
+  /* -------------------------------------------------------
+     Validate declared MIME type
+     ------------------------------------------------------- */
 
-  const mimeType = String(
-    file.mimetype || "",
-  )
+  const mimeType = String(file.mimetype || "")
     .trim()
     .toLowerCase();
 
-  if (
-    !ALLOWED_IMAGE_MIME_TYPES.has(
-      mimeType,
-    )
-  ) {
+  if (!ALLOWED_IMAGE_MIME_TYPES.has(mimeType)) {
     return callback(
       createUploadError(
         "Only JPG, PNG, and WEBP image files are allowed.",
@@ -258,312 +156,315 @@ function imageFileFilter(
     );
   }
 
-  return callback(
-    null,
-    true,
-  );
+  return callback(null, true);
 }
 
-/*=========================================================
-  Shared Image Transformation
-=========================================================*/
-
-/*
- * Cloudinary receives image uploads as actual image
- * resources.
+/* =========================================================
+   Shared Image Transformations
+   =========================================================
  *
- * width/height use "limit", so smaller images are not
- * enlarged.
+ * Preserve existing optimization behavior:
  *
- * strip_profile removes unnecessary embedded metadata
- * such as EXIF/profile information from transformed
- * output.
+ * - Maximum dimensions: 1200 x 1200
+ * - No unnecessary enlargement
+ * - Automatic quality optimization
+ * - Strip image metadata in transformed output
+ * - Automatic delivery format
+ *
+ * =========================================================
  */
 
 const imageTransformations = [
   {
     width: 1200,
-
     height: 1200,
-
     crop: "limit",
   },
-
   {
     quality: "auto:good",
   },
-
   {
     flags: "strip_profile",
   },
-
   {
     fetch_format: "auto",
   },
 ];
 
-/*=========================================================
-  1. Standard Profile Image Storage
-=========================================================*/
+/* =========================================================
+   1. Standard Profile Image Storage
+   ========================================================= */
 
-/*
- * Separate storage from design assets.
+const profileStorage = new CloudinaryStorage({
+  cloudinary,
+
+  params: {
+    folder: "designbyyou_profiles",
+
+    resource_type: "image",
+
+    allowed_formats: ["jpg", "jpeg", "png", "webp"],
+
+    overwrite: false,
+
+    transformation: imageTransformations,
+  },
+});
+
+/* =========================================================
+   2. Preview Image Storage
+   =========================================================
  *
- * Profile images:
+ * Used by:
  *
- * - images only
- * - max 5 MB
- * - JPG / PNG / WEBP
- * - 1200x1200 upper bound
- * - Cloudinary-generated identifier
- * - automatic quality optimization
- * - automatic delivery format
+ * - Fashion Editor Showcase preview uploads
+ * - Existing single-image previews
+ * - New Creator Studio gallery uploads
+ *
+ * Keep the existing Cloudinary folder unchanged.
+ *
+ * =========================================================
  */
 
-const profileStorage =
-  new CloudinaryStorage({
-    cloudinary,
+const previewStorage = new CloudinaryStorage({
+  cloudinary,
 
-    params: {
-      folder:
-        "designbyyou_profiles",
+  params: {
+    folder: "designbyyou_previews",
 
-      resource_type:
-        "image",
+    resource_type: "image",
 
-      allowed_formats: [
-        "jpg",
-        "jpeg",
-        "png",
-        "webp",
-      ],
+    allowed_formats: ["jpg", "jpeg", "png", "webp"],
 
-      /*
-       * Do not overwrite an existing Cloudinary
-       * resource in the unlikely event of an identifier
-       * collision.
-       */
-      overwrite: false,
+    overwrite: false,
 
-      transformation:
-        imageTransformations,
-    },
-  });
+    transformation: imageTransformations,
+  },
+});
 
-/*=========================================================
-  2. Preview Storage
-=========================================================*/
-
-/*
- * Used for:
+/* =========================================================
+   3. High-Resolution Design Asset Storage
+   =========================================================
  *
- * - Creator Studio previews
- * - Fashion Editor Showcase previews
- * - other design/showcase preview images
+ * Preserve the existing resource_type: "auto".
  *
- * Preview images are NOT high-resolution source assets.
+ * High-resolution assets may be different from ordinary
+ * profile and Showcase preview images.
+ *
+ * =========================================================
  */
 
-const previewStorage =
-  new CloudinaryStorage({
-    cloudinary,
+const highResStorage = new CloudinaryStorage({
+  cloudinary,
 
-    params: {
-      folder:
-        "designbyyou_previews",
+  params: {
+    folder: "designbyyou_assets",
 
-      resource_type:
-        "image",
+    resource_type: "auto",
 
-      allowed_formats: [
-        "jpg",
-        "jpeg",
-        "png",
-        "webp",
-      ],
+    overwrite: false,
+  },
+});
 
-      overwrite: false,
-
-      transformation:
-        imageTransformations,
-    },
-  });
-
-/*=========================================================
-  3. High-Resolution Design Asset Storage
-=========================================================*/
-
-/**
- * Preserve the existing high-resolution asset behavior.
+/* =========================================================
+   4. Shared Single-Image Upload Limits
+   =========================================================
  *
- * resource_type: "auto"
+ * Do not increase the file count here.
  *
- * is intentional because these project assets may not
- * always be ordinary preview images.
+ * Profile images and Fashion Editor previews must
+ * continue to use the existing one-file restriction.
  *
- * IMPORTANT:
- *
- * uploadDesign MUST NOT be substituted for:
- *
- * - account profile pictures
- * - Creator Studio preview images
- * - Fashion Editor preview images
- *
- * Those use the stricter image-only middleware above.
+ * =========================================================
  */
-
-const highResStorage =
-  new CloudinaryStorage({
-    cloudinary,
-
-    params: {
-      folder:
-        "designbyyou_assets",
-
-      resource_type:
-        "auto",
-
-      overwrite: false,
-    },
-  });
-
-/*=========================================================
-  Shared Image Upload Limits
-=========================================================*/
 
 const imageUploadLimits = {
-  /*
-   * Multer/Busboy rejects the upload while parsing the
-   * multipart stream if it exceeds this size.
-   */
-  fileSize:
-    FIVE_MB,
+  fileSize: FIVE_MB,
 
-  /*
-   * .single(...) already expects one file, but this
-   * provides another explicit limit.
-   */
   files: 1,
 
-  /*
-   * Prevent field-name abuse.
-   */
-  fieldNameSize:
-    MAX_FIELD_NAME_BYTES,
+  fieldNameSize: MAX_FIELD_NAME_BYTES,
 
-  /*
-   * Maximum size for each non-file multipart field.
-   *
-   * This is especially useful for canvas_state.
-   */
-  fieldSize:
-    MAX_MULTIPART_FIELD_BYTES,
+  fieldSize: MAX_MULTIPART_FIELD_BYTES,
 
-  /*
-   * Prevent requests containing thousands of text
-   * fields/parts.
-   */
-  fields:
-    MAX_MULTIPART_FIELDS,
+  fields: MAX_MULTIPART_FIELDS,
 
-  parts:
-    MAX_MULTIPART_PARTS,
+  parts: MAX_MULTIPART_PARTS,
 };
 
-/*=========================================================
-  Profile Upload
-=========================================================*/
-
-const uploadProfile =
-  multer({
-    storage:
-      profileStorage,
-
-    limits:
-      imageUploadLimits,
-
-    fileFilter:
-      imageFileFilter,
-  });
-
-/*=========================================================
-  Preview Upload
-=========================================================*/
-
-/*
- * IMPORTANT:
+/* =========================================================
+   5. NEW: Creator Studio Gallery Upload Limits
+   =========================================================
  *
- * A route using:
+ * Allows up to six images in one multipart request.
+ *
+ * - Maximum 6 files
+ * - Maximum 5 MB per file
+ * - Maximum 50 non-file fields
+ * - Maximum 56 multipart parts
+ *
+ * Other single-image uploaders are unaffected.
+ *
+ * =========================================================
+ */
+
+const creatorGalleryUploadLimits = {
+  ...imageUploadLimits,
+
+  files: MAX_CREATOR_GALLERY_IMAGES,
+
+  parts: MAX_MULTIPART_FIELDS + MAX_CREATOR_GALLERY_IMAGES,
+};
+
+/* =========================================================
+   6. Profile Upload Middleware
+   =========================================================
+ *
+ * Usage:
+ *
+ * uploadProfile.single("profile")
+ *
+ * The existing field name used by each consuming route
+ * must remain unchanged.
+ *
+ * =========================================================
+ */
+
+const uploadProfile = multer({
+  storage: profileStorage,
+
+  limits: imageUploadLimits,
+
+  fileFilter: imageFileFilter,
+});
+
+/* =========================================================
+   7. Existing Single Preview Middleware
+   =========================================================
+ *
+ * Usage:
  *
  * uploadPreview.single("preview")
  *
- * does NOT require the preview file to exist.
+ * Used by:
+ * - Fashion Editor sharing
+ * - Existing single-preview routes
  *
- * Therefore Creator Studio may submit:
+ * Important:
+ * A file is optional.
  *
- * no preview
- *
- * and Multer will simply continue to the controller.
- *
- * If a preview IS supplied, all limits and image
- * validation below apply.
+ * =========================================================
  */
 
-const uploadPreview =
-  multer({
-    storage:
-      previewStorage,
+const uploadPreview = multer({
+  storage: previewStorage,
 
-    limits:
-      imageUploadLimits,
+  limits: imageUploadLimits,
 
-    fileFilter:
-      imageFileFilter,
-  });
+  fileFilter: imageFileFilter,
+});
 
-/*=========================================================
-  High-Resolution Design Upload
-=========================================================*/
-
-/*
- * High-resolution files intentionally preserve
- * resource_type:auto.
+/* =========================================================
+   8. NEW: Creator Studio Gallery Middleware
+   =========================================================
  *
- * A 25 MB limit is enforced before the upload can
- * continue through the request.
+ * Usage:
+ *
+ * uploadCreatorGallery.array("preview", 6)
+ *
+ * Supports:
+ *
+ * - No images (metadata-only creation)
+ * - One image
+ * - Two images
+ * - Three images
+ * - Four images
+ * - Five images
+ * - Six images
+ *
+ * The frontend may accumulate images across multiple
+ * selection events, then submit them together.
+ *
+ * Successful uploads produce:
+ *
+ * req.files = [
+ *   {
+ *     fieldname: "preview",
+ *     path: "https://res.cloudinary.com/...",
+ *     filename: "designbyyou_previews/...",
+ *     ...
+ *   }
+ * ]
+ *
+ * `path` is the Cloudinary URL.
+ * `filename` is the Cloudinary public identifier.
+ *
+ * The controller will:
+ *
+ * 1. Validate the uploaded files.
+ * 2. Select the cover image.
+ * 3. Save the parent designs row.
+ * 4. Save ordered design_images rows.
+ * 5. Preserve the existing Public/Private policy.
+ *
+ * SECURITY NOTE:
+ *
+ * With CloudinaryStorage, images are uploaded before
+ * the controller writes the database records.
+ *
+ * The route/controller must clean up orphaned files
+ * if a multi-file upload or database operation fails.
+ *
+ * Do not enable this new route in production until
+ * that cleanup logic is implemented and tested.
+ *
+ * =========================================================
  */
 
-const uploadDesign =
-  multer({
-    storage:
-      highResStorage,
+const uploadCreatorGallery = multer({
+  storage: previewStorage,
 
-    limits: {
-      fileSize:
-        TWENTY_FIVE_MB,
+  limits: creatorGalleryUploadLimits,
 
-      files: 1,
+  fileFilter: imageFileFilter,
+});
 
-      fieldNameSize:
-        MAX_FIELD_NAME_BYTES,
+/* =========================================================
+   9. High-Resolution Design Upload
+   =========================================================
+ *
+ * Preserve the existing 25 MB limit.
+ * Preserve resource_type: "auto".
+ * Preserve the single-file behavior.
+ *
+ * =========================================================
+ */
 
-      fieldSize:
-        MAX_MULTIPART_FIELD_BYTES,
+const uploadDesign = multer({
+  storage: highResStorage,
 
-      fields:
-        MAX_MULTIPART_FIELDS,
+  limits: {
+    fileSize: TWENTY_FIVE_MB,
 
-      parts:
-        MAX_MULTIPART_PARTS,
-    },
-  });
+    files: 1,
 
-/*=========================================================
-  Exports
-=========================================================*/
+    fieldNameSize: MAX_FIELD_NAME_BYTES,
+
+    fieldSize: MAX_MULTIPART_FIELD_BYTES,
+
+    fields: MAX_MULTIPART_FIELDS,
+
+    parts: MAX_MULTIPART_PARTS,
+  },
+});
+
+/* =========================================================
+   Exports
+   ========================================================= */
 
 module.exports = {
   uploadProfile,
   uploadPreview,
+  uploadCreatorGallery,
   uploadDesign,
 };

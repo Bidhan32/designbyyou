@@ -1,54 +1,16 @@
+
 "use strict";
 
-/*
-=========================================================
-DesignByYou
-Creator Studio
-Version 6.2
-=========================================================
-
-PURPOSE
----------------------------------------------------------
-
-Creator Studio lets a Creator save creative/reference work
-with optional metadata and choose whether the saved asset
-is Private or Public.
-
-Private:
-- saved to the Creator account
-- hidden from the public Showcase
-
-Public:
-- saved to the Creator account
-- may appear in the DesignByYou Showcase
-
-This page is NOT ecommerce, checkout, purchasing, or
-licensing.
-
-UPLOAD
----------------------------------------------------------
-
-POST /api/v1/creators/studio/upload
-
-Optional multipart fields:
-- preview
-- title
-- description
-- style_category
-- format
-- category_id
-- showcase_term_ids
-- tags
-- canvas_state
-
-Visibility:
-- visibility = "private" | "public"
-
-The frontend deliberately does NOT send database flags such
-as is_public directly. The backend translates visibility
-into authoritative database state.
-=========================================================
-*/
+/**
+ * DesignByYou / Creator Studio — Version 7.0
+ *
+ * Manual upload: 0–6 images under one creation.
+ * Multiple selection and incremental selection supported.
+ * All creative metadata remains optional.
+ * Visibility defaults to Private.
+ *
+ * Fashion Editor sharing remains a separate workflow.
+ */
 
 import React, {
   useCallback,
@@ -61,6 +23,8 @@ import React, {
 import {
   AlertCircle,
   ArrowLeft,
+  ArrowDown,
+  ArrowUp,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -74,333 +38,96 @@ import {
   Plus,
   RefreshCw,
   Sparkles,
+  Star,
   Tag,
+  Trash2,
   UploadCloud,
   X,
 } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
-
 import API from "../../api/axios";
-
 import { useSketchStore } from "../sketches/useSketchStore";
 
-/*=========================================================
-Configuration
-=========================================================*/
+/* =========================================================
+   Configuration
+   ========================================================= */
 
 const UPLOAD_ENDPOINT = "/creators/studio/upload";
-
 const CATEGORIES_ENDPOINT = "/creators/studio/categories";
-
 const DISCOVERY_ENDPOINT = "/creator-showcase/discovery";
-
 const CREATOR_HUB_ROUTE = "/creator/showcase";
 
+const MAX_IMAGES = 6;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-
 const MAX_TITLE_LENGTH = 120;
-
 const MAX_DESCRIPTION_LENGTH = 3000;
-
 const MAX_TAG_LENGTH = 30;
-
 const MAX_TAGS = 12;
-
 const MAX_CANVAS_STATE_BYTES = 2 * 1024 * 1024;
 
-const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-/*=========================================================
-Creative Formats
-=========================================================*/
-
 const FORMAT_OPTIONS = [
-  {
-    value: "sketch",
-    label: "Fashion Sketch",
-  },
-
-  {
-    value: "3d_garment",
-    label: "3D Garment",
-  },
-
-  {
-    value: "tech_pack",
-    label: "Technical Design",
-  },
+  { value: "sketch", label: "Fashion Sketch" },
+  { value: "3d_garment", label: "3D Garment" },
+  { value: "tech_pack", label: "Technical Design" },
 ];
-
-const ALLOWED_FORMAT_VALUES = new Set(
-  FORMAT_OPTIONS.map((option) => option.value),
-);
-
-/*=========================================================
-Visibility
-=========================================================*/
 
 const VISIBILITY_OPTIONS = [
   {
     value: "private",
-
     label: "Private",
-
-    description: "Only you can see this asset in your Creator area.",
+    description: "Only you can see this creation in your Creator area.",
+    Icon: Lock,
   },
-
   {
     value: "public",
-
     label: "Public",
-
     description: "Visible to others through the DesignByYou Showcase.",
+    Icon: Globe2,
   },
 ];
 
-const ALLOWED_VISIBILITY_VALUES = new Set(
-  VISIBILITY_OPTIONS.map((option) => option.value),
-);
-
-/*=========================================================
-Initial Form
-=========================================================*/
-
-const INITIAL_FORM_STATE = {
+const INITIAL_FORM = {
   title: "",
-
   description: "",
-
   format: "",
-
   category_id: "",
-
   style_term_id: "",
-
   garment_term_id: "",
-
   occasion_term_ids: [],
-
-  /*
-   * Privacy-first default.
-   */
   visibility: "private",
 };
 
-/*=========================================================
-Helpers
-=========================================================*/
+/* =========================================================
+   Input Sanitization
+   ========================================================= */
 
-function removeUnsafeControlCharacters(
-  value,
-  { preserveLineBreaks = false } = {},
-) {
-  const source = String(value ?? "");
-
-  if (preserveLineBreaks) {
-    return source
-      .replace(/\r\n?/g, "\n")
-      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "");
-  }
-
-  return source.replace(/[\u0000-\u001F\u007F]/g, " ");
+function cleanText(value) {
+  return String(value ?? "")
+    .replace(/[\u0000-\u001F\u007F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-function cleanText(value, fallback = "") {
-  const text = removeUnsafeControlCharacters(value).replace(/\s+/g, " ").trim();
-
-  return text || fallback;
+function cleanMultiline(value) {
+  return String(value ?? "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .trim();
 }
 
-function cleanMultilineText(value) {
-  return removeUnsafeControlCharacters(value, {
-    preserveLineBreaks: true,
-  }).trim();
-}
-
-function isValidUuid(value) {
+function isUuid(value) {
   return UUID_PATTERN.test(String(value || "").trim());
 }
-
-function isCancelledRequest(error) {
-  return (
-    error?.code === "ERR_CANCELED" ||
-    error?.name === "CanceledError" ||
-    error?.name === "AbortError"
-  );
-}
-
-function getErrorMessage(error, fallback) {
-  if (isCancelledRequest(error)) {
-    return "";
-  }
-
-  return (
-    error?.response?.data?.message ||
-    error?.response?.data?.error ||
-    error?.message ||
-    fallback
-  );
-}
-
-function isAllowedStudioImageUrl(value) {
-  const source = String(value || "").trim();
-
-  if (!source) {
-    return false;
-  }
-
-  if (/^data:image\/(?:jpeg|png|webp);base64,/i.test(source)) {
-    return true;
-  }
-
-  if (source.startsWith("blob:")) {
-    return true;
-  }
-
-  try {
-    const parsed = new URL(source, window.location.href);
-
-    if (parsed.protocol === "https:") {
-      return true;
-    }
-
-    if (parsed.protocol === "http:") {
-      return (
-        parsed.origin === window.location.origin ||
-        parsed.hostname === "localhost" ||
-        parsed.hostname === "127.0.0.1"
-      );
-    }
-  } catch {
-    return false;
-  }
-
-  return false;
-}
-
-/*=========================================================
-Category Normalization
-=========================================================*/
-
-function normalizeCategoriesResponse(response) {
-  const raw = Array.isArray(response?.data?.data)
-    ? response.data.data
-    : Array.isArray(response?.data?.categories)
-      ? response.data.categories
-      : [];
-
-  const result = [];
-
-  const seen = new Set();
-
-  for (const item of raw) {
-    const id = cleanText(item?.id);
-
-    const name = cleanText(item?.name);
-
-    if (!id || !name || seen.has(id)) {
-      continue;
-    }
-
-    seen.add(id);
-
-    result.push({
-      id,
-
-      name,
-
-      slug: cleanText(item?.slug) || null,
-
-      description: cleanText(item?.description) || null,
-
-      sort_order: Number.isFinite(Number(item?.sort_order))
-        ? Number(item.sort_order)
-        : 0,
-    });
-  }
-
-  return result;
-}
-
-/*=========================================================
-Discovery Normalization
-=========================================================*/
-
-function normalizeDiscoveryTerm(item) {
-  if (!item || typeof item !== "object") {
-    return null;
-  }
-
-  const id = cleanText(item.id);
-
-  const name = cleanText(item.name);
-
-  if (!id || !name) {
-    return null;
-  }
-
-  return {
-    id,
-
-    name,
-
-    slug: cleanText(item.slug) || null,
-
-    search_term: cleanText(item.search_term, name),
-
-    emoji: cleanText(item.emoji) || null,
-
-    description: cleanText(item.description) || null,
-
-    sort_order: Number.isFinite(Number(item.sort_order))
-      ? Number(item.sort_order)
-      : 0,
-  };
-}
-
-function normalizeDiscoveryArray(value) {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  const result = [];
-
-  const seen = new Set();
-
-  for (const item of value) {
-    const normalized = normalizeDiscoveryTerm(item);
-
-    if (!normalized || seen.has(normalized.id)) {
-      continue;
-    }
-
-    seen.add(normalized.id);
-
-    result.push(normalized);
-  }
-
-  return result;
-}
-
-function normalizeDiscoveryResponse(response) {
-  const data = response?.data?.data || {};
-
-  return {
-    styles: normalizeDiscoveryArray(data.styles),
-
-    garments: normalizeDiscoveryArray(data.garments),
-
-    occasions: normalizeDiscoveryArray(data.occasions),
-  };
-}
-
-/*=========================================================
-Tags
-=========================================================*/
 
 function normalizeTag(value) {
   return cleanText(value)
@@ -413,65 +140,127 @@ function normalizeTag(value) {
 }
 
 function uniqueTags(values) {
-  const result = [];
+  return Array.from(
+    new Set(values.map(normalizeTag).filter(Boolean))
+  ).slice(0, MAX_TAGS);
+}
+
+function isCancelled(error) {
+  return (
+    ["ERR_CANCELED", "CanceledError", "AbortError"].includes(error?.code) ||
+    ["CanceledError", "AbortError"].includes(error?.name)
+  );
+}
+
+function errorMessage(error, fallback) {
+  return (
+    error?.response?.data?.message ||
+    error?.response?.data?.error ||
+    error?.message ||
+    fallback
+  );
+}
+
+/* =========================================================
+   Category / Discovery Normalization
+   ========================================================= */
+
+function normalizeCategoryList(response) {
+  const source = Array.isArray(response?.data?.data)
+    ? response.data.data
+    : Array.isArray(response?.data?.categories)
+      ? response.data.categories
+      : [];
 
   const seen = new Set();
 
-  for (const value of values) {
-    const tag = normalizeTag(value);
+  return source
+    .filter((item) => {
+      const id = cleanText(item?.id);
 
-    if (!tag || seen.has(tag)) {
-      continue;
-    }
+      if (
+        !id ||
+        !cleanText(item?.name) ||
+        seen.has(id)
+      ) {
+        return false;
+      }
 
-    seen.add(tag);
-
-    result.push(tag);
-
-    if (result.length >= MAX_TAGS) {
-      break;
-    }
-  }
-
-  return result;
+      seen.add(id);
+      return true;
+    })
+    .map((item) => ({
+      id: cleanText(item.id),
+      name: cleanText(item.name),
+      description: cleanText(item.description),
+      slug: cleanText(item.slug),
+    }));
 }
 
-/*=========================================================
-Image Validation
-=========================================================*/
+function normalizeDiscovery(response) {
+  const data = response?.data?.data || {};
 
-function validateImageFile(file) {
-  if (!file) {
-    throw new Error("Select an image before continuing.");
-  }
+  const normalize = (items) => {
+    const seen = new Set();
 
+    return (Array.isArray(items) ? items : [])
+      .filter((item) => {
+        const id = cleanText(item?.id);
+
+        if (
+          !id ||
+          !cleanText(item?.name) ||
+          seen.has(id)
+        ) {
+          return false;
+        }
+
+        seen.add(id);
+        return true;
+      })
+      .map((item) => ({
+        id: cleanText(item.id),
+        name: cleanText(item.name),
+        emoji: cleanText(item.emoji),
+        description: cleanText(item.description),
+      }));
+  };
+
+  return {
+    styles: normalize(data.styles),
+    garments: normalize(data.garments),
+    occasions: normalize(data.occasions),
+  };
+}
+
+/* =========================================================
+   Image Validation
+   ========================================================= */
+
+function validateFile(file) {
   if (!(file instanceof Blob)) {
     throw new Error("The selected artwork is not a valid image.");
   }
 
-  const mimeType = String(file.type || "").toLowerCase();
-
-  if (!ALLOWED_IMAGE_TYPES.has(mimeType)) {
-    throw new Error("Only JPG, PNG, and WEBP images are supported.");
+  if (!IMAGE_TYPES.has(String(file.type || "").toLowerCase())) {
+    throw new Error("Only JPG, PNG and WEBP images are supported.");
   }
 
-  if (Number(file.size || 0) <= 0) {
-    throw new Error("The selected image is empty.");
+  if (!Number.isFinite(file.size) || file.size < 1) {
+    throw new Error("An image is empty.");
   }
 
   if (file.size > MAX_IMAGE_BYTES) {
-    throw new Error("The image must be 5 MB or smaller.");
+    throw new Error("Each image must be 5 MB or smaller.");
   }
-
-  return true;
 }
 
-async function validateImageSignature(file) {
-  validateImageFile(file);
+async function validateSignature(file) {
+  validateFile(file);
 
-  const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
-
-  const mimeType = String(file.type || "").toLowerCase();
+  const bytes = new Uint8Array(
+    await file.slice(0, 12).arrayBuffer()
+  );
 
   const isJpeg =
     bytes.length >= 3 &&
@@ -481,43 +270,59 @@ async function validateImageSignature(file) {
 
   const isPng =
     bytes.length >= 8 &&
-    bytes[0] === 0x89 &&
-    bytes[1] === 0x50 &&
-    bytes[2] === 0x4e &&
-    bytes[3] === 0x47 &&
-    bytes[4] === 0x0d &&
-    bytes[5] === 0x0a &&
-    bytes[6] === 0x1a &&
-    bytes[7] === 0x0a;
+    [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every(
+      (byte, index) => bytes[index] === byte
+    );
 
   const isWebp =
     bytes.length >= 12 &&
-    bytes[0] === 0x52 &&
-    bytes[1] === 0x49 &&
-    bytes[2] === 0x46 &&
-    bytes[3] === 0x46 &&
-    bytes[8] === 0x57 &&
-    bytes[9] === 0x45 &&
-    bytes[10] === 0x42 &&
-    bytes[11] === 0x50;
+    String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" &&
+    String.fromCharCode(...bytes.slice(8, 12)) === "WEBP";
 
-  const signatureMatches =
-    (mimeType === "image/jpeg" && isJpeg) ||
-    (mimeType === "image/png" && isPng) ||
-    (mimeType === "image/webp" && isWebp);
+  const valid =
+    (file.type === "image/jpeg" && isJpeg) ||
+    (file.type === "image/png" && isPng) ||
+    (file.type === "image/webp" && isWebp);
 
-  if (!signatureMatches) {
+  if (!valid) {
     throw new Error(
-      "The selected file does not match its declared image type.",
+      "One image does not match its declared file type."
     );
   }
-
-  return true;
 }
 
-/*=========================================================
-Studio Image Conversion
-=========================================================*/
+/* =========================================================
+   Existing Studio Image Bridge
+   ========================================================= */
+
+function isAllowedImageUrl(value) {
+  const source = String(value || "").trim();
+
+  if (/^data:image\/(?:jpeg|png|webp);base64,/i.test(source)) {
+    return true;
+  }
+
+  if (source.startsWith("blob:")) {
+    return true;
+  }
+
+  try {
+    const parsed = new URL(source, window.location.href);
+
+    return (
+      parsed.protocol === "https:" ||
+      (
+        parsed.protocol === "http:" &&
+        (
+          parsed.origin === window.location.origin ||
+          ["localhost", "127.0.0.1"].includes(parsed.hostname)
+        )
+      )
+    );
+  } catch {
+    return false;
+  }
+}
 
 async function convertStudioImageToFile(source) {
   if (!source) {
@@ -525,74 +330,58 @@ async function convertStudioImageToFile(source) {
   }
 
   if (source instanceof File) {
-    await validateImageSignature(source);
-
+    await validateSignature(source);
     return source;
   }
 
   if (source instanceof Blob) {
-    const mimeType = source.type || "image/png";
-
     const extension =
-      mimeType === "image/webp"
+      source.type === "image/webp"
         ? "webp"
-        : mimeType === "image/jpeg"
+        : source.type === "image/jpeg"
           ? "jpg"
           : "png";
 
     const file = new File(
       [source],
-
       `creator-studio-${Date.now()}.${extension}`,
-
-      {
-        type: mimeType,
-      },
+      { type: source.type || "image/png" }
     );
 
-    await validateImageSignature(file);
-
+    await validateSignature(file);
     return file;
   }
 
   if (typeof source === "object") {
-    const nestedSource =
+    const nested =
       source.file ||
       source.blob ||
       source.dataUrl ||
       source.data_url ||
       source.url ||
       source.src ||
-      source.image ||
-      null;
+      source.image;
 
-    if (nestedSource && nestedSource !== source) {
-      return convertStudioImageToFile(nestedSource);
+    if (nested && nested !== source) {
+      return convertStudioImageToFile(nested);
     }
   }
 
-  if (typeof source === "string") {
-    const url = source.trim();
-
-    if (!url) {
-      throw new Error("The Studio image is empty.");
-    }
-
-    if (!isAllowedStudioImageUrl(url)) {
-      throw new Error("The Studio image URL uses an unsupported source.");
-    }
-
+  if (
+    typeof source === "string" &&
+    isAllowedImageUrl(source)
+  ) {
     const parsed =
-      url.startsWith("data:") || url.startsWith("blob:")
+      source.startsWith("data:") ||
+      source.startsWith("blob:")
         ? null
-        : new URL(url, window.location.href);
+        : new URL(source, window.location.href);
 
-    const response = await fetch(url, {
+    const response = await fetch(source, {
       credentials:
-        parsed && parsed.origin === window.location.origin
+        parsed?.origin === window.location.origin
           ? "same-origin"
           : "omit",
-
       referrerPolicy: "no-referrer",
     });
 
@@ -600,109 +389,56 @@ async function convertStudioImageToFile(source) {
       throw new Error("The Studio image could not be loaded.");
     }
 
-    const blob = await response.blob();
-
-    return convertStudioImageToFile(blob);
+    return convertStudioImageToFile(
+      await response.blob()
+    );
   }
 
-  throw new Error("The Studio image format is unsupported.");
+  throw new Error("The Studio image source is unsupported.");
 }
 
-/*=========================================================
-Field Label
-=========================================================*/
+function fileFingerprint(file) {
+  return `${file.name || "studio"}:${file.size}:${file.lastModified || 0}:${file.type}`;
+}
+
+function makeImageId() {
+  return typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+/* =========================================================
+   Reusable Form Components
+   ========================================================= */
 
 function FieldLabel({ children, optional = false }) {
   return (
-    <span
-      className="
-        mb-2.5
-        flex
-        items-center
-        justify-between
-        gap-3
-        text-[9px]
-        font-black
-        uppercase
-        tracking-[0.17em]
-        text-slate-500
-
-        dark:text-white/40
-      "
-    >
+    <div className="mb-2 flex items-center justify-between gap-3 text-[9px] font-black uppercase tracking-[0.17em] text-slate-500 dark:text-white/40">
       <span>{children}</span>
 
       {optional && (
-        <span
-          className="
-            text-[7px]
-            font-medium
-            tracking-[0.12em]
-            text-slate-300
-
-            dark:text-white/20
-          "
-        >
+        <span className="text-[8px] font-medium tracking-wider text-slate-400 dark:text-white/25">
           Optional
         </span>
       )}
-    </span>
+    </div>
   );
 }
 
-/*=========================================================
-Select Field
-=========================================================*/
-
-function SelectField({ value, onChange, disabled, children }) {
+function SelectField({
+  value,
+  onChange,
+  disabled,
+  children,
+}) {
   return (
     <div className="relative">
       <select
         value={value}
         onChange={onChange}
         disabled={disabled}
-        className="
-          h-[52px]
-          w-full
-          appearance-none
-          rounded-xl
-          border
-          border-slate-200
-          bg-slate-50
-          px-4
-          pr-11
-          text-sm
-          font-medium
-          text-slate-800
-          outline-none
-          transition
-
-          [color-scheme:light]
-
-          [&>option]:bg-white
-          [&>option]:text-slate-900
-
-          focus:border-[#D4AF37]/60
-          focus:bg-white
-          focus:ring-4
-          focus:ring-[#D4AF37]/10
-
-          disabled:cursor-not-allowed
-          disabled:opacity-60
-
-          dark:border-white/10
-          dark:bg-[#111111]
-          dark:text-white
-
-          dark:[color-scheme:dark]
-
-          dark:[&>option]:bg-[#111111]
-          dark:[&>option]:text-white
-
-          dark:focus:border-[#D4AF37]/60
-          dark:focus:bg-[#151515]
-          dark:focus:text-white
-        "
+        className="h-[52px] w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-4 pr-11 text-sm text-slate-900 outline-none transition focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 disabled:opacity-60 dark:border-white/10 dark:bg-[#111111] dark:text-white dark:[color-scheme:dark]"
       >
         {children}
       </select>
@@ -710,65 +446,49 @@ function SelectField({ value, onChange, disabled, children }) {
       <ChevronDown
         size={15}
         aria-hidden="true"
-        className="
-          pointer-events-none
-          absolute
-          right-4
-          top-1/2
-          -translate-y-1/2
-          text-slate-400
-
-          dark:text-white/40
-        "
+        className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
       />
     </div>
   );
 }
 
-/*=========================================================
-Creator Studio
-=========================================================*/
+const textFieldClass =
+  "h-[52px] w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 disabled:opacity-60 dark:border-white/10 dark:bg-[#111111] dark:text-white dark:placeholder:text-white/25";
+
+const miniButtonClass =
+  "inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-black/65 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-white transition hover:bg-white hover:text-black disabled:opacity-40";
+
+/* =========================================================
+   Main Creator Studio
+   ========================================================= */
 
 export default function CreatorUpload() {
   const navigate = useNavigate();
 
-  /*=======================================================
-  Sketch Store
-  =======================================================*/
-
   const pendingStudioImage = useSketchStore(
-    (state) => state.pendingStudioImage,
+    (state) => state.pendingStudioImage
   );
 
   const setPendingStudioImage = useSketchStore(
-    (state) => state.setPendingStudioImage,
+    (state) => state.setPendingStudioImage
   );
 
-  const strokes = useSketchStore((state) => state.strokes);
+  const strokes = useSketchStore(
+    (state) => state.strokes
+  );
 
-  /*=======================================================
-  Form
-  =======================================================*/
+  /* -------------------------------------------------------
+     Form State
+     ------------------------------------------------------- */
 
-  const [form, setForm] = useState(INITIAL_FORM_STATE);
-
+  const [form, setForm] = useState(INITIAL_FORM);
   const [tags, setTags] = useState([]);
-
   const [tagInput, setTagInput] = useState("");
 
-  /*=======================================================
-  Categories
-  =======================================================*/
-
   const [categories, setCategories] = useState([]);
-
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
-
+  const [categoriesLoading, setCategoriesLoading] =
+    useState(true);
   const [categoriesError, setCategoriesError] = useState("");
-
-  /*=======================================================
-  Discovery
-  =======================================================*/
 
   const [discovery, setDiscovery] = useState({
     styles: [],
@@ -776,340 +496,452 @@ export default function CreatorUpload() {
     occasions: [],
   });
 
-  const [discoveryLoading, setDiscoveryLoading] = useState(true);
-
+  const [discoveryLoading, setDiscoveryLoading] =
+    useState(true);
   const [discoveryError, setDiscoveryError] = useState("");
 
-  /*=======================================================
-  Artwork
-  =======================================================*/
+  /* -------------------------------------------------------
+     Image Gallery
+     -------------------------------------------------------
+     Each entry:
+     {
+       id,
+       file,
+       url,
+       source
+     }
 
-  const [displayImage, setDisplayImage] = useState(null);
+     URL.createObjectURL is used for local previews.
+     URLs are revoked on removal and unmount.
+     ------------------------------------------------------- */
 
-  const [imageSource, setImageSource] = useState("");
+  const [gallery, setGallery] = useState([]);
+  const galleryRef = useRef([]);
 
-  const [previewUrl, setPreviewUrl] = useState("");
-
+  const [coverId, setCoverId] = useState(null);
+  const [activeId, setActiveId] = useState(null);
   const [imageDimensions, setImageDimensions] = useState(null);
 
   const [dragActive, setDragActive] = useState(false);
 
-  /*=======================================================
-  Request
-  =======================================================*/
+  const dragDepthRef = useRef(0);
+  const pickerRef = useRef(null);
+  const selectingRef = useRef(false);
+  const mountedRef = useRef(true);
+
+  /* -------------------------------------------------------
+     Request State
+     ------------------------------------------------------- */
 
   const [loading, setLoading] = useState(false);
-
   const [uploadProgress, setUploadProgress] = useState(0);
-
   const [success, setSuccess] = useState(false);
-
   const [errorMsg, setErrorMsg] = useState("");
 
-  /*=======================================================
-  Refs
-  =======================================================*/
-
-  const imageInputRef = useRef(null);
-
-  const dragDepthRef = useRef(0);
-
   const uploadControllerRef = useRef(null);
-
+  const uploadInProgressRef = useRef(false);
   const categoriesControllerRef = useRef(null);
-
   const discoveryControllerRef = useRef(null);
-
   const navigationTimerRef = useRef(null);
 
-  /*=======================================================
-  Selected Category
-  =======================================================*/
+  /* -------------------------------------------------------
+     Gallery State Synchronization
+     ------------------------------------------------------- */
 
-  const selectedCategory = useMemo(() => {
-    if (!form.category_id) {
-      return null;
-    }
+  const setGallerySafe = useCallback((items) => {
+    galleryRef.current = items;
+    setGallery(items);
+  }, []);
 
-    return (
-      categories.find((category) => category.id === form.category_id) || null
-    );
-  }, [categories, form.category_id]);
+  /* -------------------------------------------------------
+     Selected Metadata
+     ------------------------------------------------------- */
 
-  /*=======================================================
-  Selected Style
-  =======================================================*/
+  const selectedCategory = useMemo(
+    () =>
+      categories.find(
+        (category) => category.id === form.category_id
+      ) || null,
+    [categories, form.category_id]
+  );
 
-  const selectedStyle = useMemo(() => {
-    if (!form.style_term_id) {
-      return null;
-    }
+  const selectedStyle = useMemo(
+    () =>
+      discovery.styles.find(
+        (style) => style.id === form.style_term_id
+      ) || null,
+    [discovery.styles, form.style_term_id]
+  );
 
-    return (
-      discovery.styles.find((style) => style.id === form.style_term_id) || null
-    );
-  }, [discovery.styles, form.style_term_id]);
-
-  /*=======================================================
-  Selected Garment
-  =======================================================*/
-
-  const selectedGarment = useMemo(() => {
-    if (!form.garment_term_id) {
-      return null;
-    }
-
-    return (
+  const selectedGarment = useMemo(
+    () =>
       discovery.garments.find(
-        (garment) => garment.id === form.garment_term_id,
-      ) || null
-    );
-  }, [discovery.garments, form.garment_term_id]);
-
-  /*=======================================================
-  Selected Occasions
-  =======================================================*/
+        (garment) => garment.id === form.garment_term_id
+      ) || null,
+    [discovery.garments, form.garment_term_id]
+  );
 
   const selectedOccasions = useMemo(() => {
-    const selectedIds = new Set(
-      Array.isArray(form.occasion_term_ids) ? form.occasion_term_ids : [],
-    );
+    const ids = new Set(form.occasion_term_ids);
 
-    return discovery.occasions.filter((occasion) =>
-      selectedIds.has(occasion.id),
+    return discovery.occasions.filter(
+      (occasion) => ids.has(occasion.id)
     );
   }, [discovery.occasions, form.occasion_term_ids]);
 
-  /*=======================================================
-  Showcase IDs
-  =======================================================*/
+  const selectedTermIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          [
+            selectedStyle?.id,
+            selectedGarment?.id,
+            ...selectedOccasions.map(
+              (occasion) => occasion.id
+            ),
+          ].filter(Boolean)
+        )
+      ),
+    [selectedStyle, selectedGarment, selectedOccasions]
+  );
 
-  const selectedShowcaseTermIds = useMemo(() => {
-    const result = [];
+  const activeImage =
+    gallery.find((image) => image.id === activeId) ||
+    gallery[0] ||
+    null;
 
-    if (selectedStyle?.id) {
-      result.push(selectedStyle.id);
+  const coverImage =
+    gallery.find((image) => image.id === coverId) ||
+    gallery[0] ||
+    null;
+
+  const strokeCount = Array.isArray(strokes)
+    ? strokes.length
+    : 0;
+
+  const serializedCanvas = useMemo(() => {
+    try {
+      return JSON.stringify(
+        Array.isArray(strokes) ? strokes : strokes || []
+      );
+    } catch {
+      return "[]";
     }
+  }, [strokes]);
 
-    if (selectedGarment?.id) {
-      result.push(selectedGarment.id);
-    }
-
-    for (const occasion of selectedOccasions) {
-      if (occasion?.id) {
-        result.push(occasion.id);
-      }
-    }
-
-    return Array.from(new Set(result));
-  }, [selectedStyle, selectedGarment, selectedOccasions]);
-
-  /*=======================================================
-  Load Categories
-  =======================================================*/
+  /* =======================================================
+     Load Categories
+     ======================================================= */
 
   const loadCategories = useCallback(async () => {
     categoriesControllerRef.current?.abort();
 
     const controller = new AbortController();
-
     categoriesControllerRef.current = controller;
 
     setCategoriesLoading(true);
-
     setCategoriesError("");
 
     try {
-      const response = await API.get(CATEGORIES_ENDPOINT, {
-        signal: controller.signal,
-      });
+      const response = await API.get(
+        CATEGORIES_ENDPOINT,
+        { signal: controller.signal }
+      );
 
-      const loaded = normalizeCategoriesResponse(response);
+      if (controller.signal.aborted) return;
 
-      setCategories(loaded);
+      const list = normalizeCategoryList(response);
 
-      setForm((current) => {
-        if (
-          current.category_id &&
-          loaded.some((category) => category.id === current.category_id)
-        ) {
-          return current;
-        }
+      setCategories(list);
 
-        return {
-          ...current,
+      setForm((old) => ({
+        ...old,
+        category_id: list.some(
+          (category) => category.id === old.category_id
+        )
+          ? old.category_id
+          : "",
+      }));
 
-          category_id: "",
-        };
-      });
-
-      if (loaded.length === 0) {
+      if (!list.length) {
         setCategoriesError(
-          "No active creative categories are currently available.",
+          "No active creative categories are currently available."
         );
       }
     } catch (error) {
-      if (isCancelledRequest(error)) {
-        return;
-      }
+      if (isCancelled(error)) return;
 
       if (import.meta.env.DEV) {
-        console.error("Creator Studio categories failed to load:", error);
+        console.error("Creator categories failed:", error);
       }
 
       setCategories([]);
 
-      setForm((current) => ({
-        ...current,
-
-        category_id: "",
-      }));
-
       setCategoriesError(
-        getErrorMessage(
+        errorMessage(
           error,
-
-          "Creative categories could not be loaded.",
-        ),
+          "Creative categories could not be loaded."
+        )
       );
     } finally {
       if (categoriesControllerRef.current === controller) {
         categoriesControllerRef.current = null;
-
         setCategoriesLoading(false);
       }
     }
   }, []);
 
-  /*=======================================================
-  Load Discovery
-  =======================================================*/
+  /* =======================================================
+     Load Showcase Discovery
+     ======================================================= */
 
   const loadDiscovery = useCallback(async () => {
     discoveryControllerRef.current?.abort();
 
     const controller = new AbortController();
-
     discoveryControllerRef.current = controller;
 
     setDiscoveryLoading(true);
-
     setDiscoveryError("");
 
     try {
-      const response = await API.get(DISCOVERY_ENDPOINT, {
-        signal: controller.signal,
-      });
+      const response = await API.get(
+        DISCOVERY_ENDPOINT,
+        { signal: controller.signal }
+      );
 
-      const loaded = normalizeDiscoveryResponse(response);
+      if (controller.signal.aborted) return;
 
-      setDiscovery(loaded);
+      const data = normalizeDiscovery(response);
 
-      setForm((current) => {
-        const styleStillExists = loaded.styles.some(
-          (term) => term.id === current.style_term_id,
-        );
+      setDiscovery(data);
 
-        const garmentStillExists = loaded.garments.some(
-          (term) => term.id === current.garment_term_id,
-        );
+      setForm((old) => ({
+        ...old,
 
-        const validOccasionIds = new Set(
-          loaded.occasions.map((term) => term.id),
-        );
+        style_term_id: data.styles.some(
+          (style) => style.id === old.style_term_id
+        )
+          ? old.style_term_id
+          : "",
 
-        const occasionIds = Array.isArray(current.occasion_term_ids)
-          ? current.occasion_term_ids.filter((id) => validOccasionIds.has(id))
-          : [];
+        garment_term_id: data.garments.some(
+          (garment) => garment.id === old.garment_term_id
+        )
+          ? old.garment_term_id
+          : "",
 
-        return {
-          ...current,
-
-          style_term_id: styleStillExists ? current.style_term_id : "",
-
-          garment_term_id: garmentStillExists ? current.garment_term_id : "",
-
-          occasion_term_ids: occasionIds,
-        };
-      });
-
-      if (loaded.styles.length === 0 || loaded.garments.length === 0) {
-        setDiscoveryError("Showcase discovery options are incomplete.");
-      }
-    } catch (error) {
-      if (isCancelledRequest(error)) {
-        return;
-      }
-
-      if (import.meta.env.DEV) {
-        console.error("Creator Studio discovery failed to load:", error);
-      }
-
-      setDiscovery({
-        styles: [],
-        garments: [],
-        occasions: [],
-      });
-
-      setForm((current) => ({
-        ...current,
-
-        style_term_id: "",
-
-        garment_term_id: "",
-
-        occasion_term_ids: [],
+        occasion_term_ids: old.occasion_term_ids.filter(
+          (id) =>
+            data.occasions.some(
+              (occasion) => occasion.id === id
+            )
+        ),
       }));
 
-      setDiscoveryError(
-        getErrorMessage(
-          error,
+      if (
+        !data.styles.length ||
+        !data.garments.length
+      ) {
+        setDiscoveryError(
+          "Showcase discovery options are incomplete."
+        );
+      }
+    } catch (error) {
+      if (isCancelled(error)) return;
 
-          "Showcase discovery options could not be loaded.",
-        ),
+      if (import.meta.env.DEV) {
+        console.error("Creator discovery failed:", error);
+      }
+
+      setDiscoveryError(
+        errorMessage(
+          error,
+          "Showcase discovery options could not be loaded."
+        )
       );
     } finally {
       if (discoveryControllerRef.current === controller) {
         discoveryControllerRef.current = null;
-
         setDiscoveryLoading(false);
       }
     }
   }, []);
 
-  /*=======================================================
-  Initial Metadata
-  =======================================================*/
-
   useEffect(() => {
     void loadCategories();
-
     void loadDiscovery();
 
     return () => {
       categoriesControllerRef.current?.abort();
-
       discoveryControllerRef.current?.abort();
     };
   }, [loadCategories, loadDiscovery]);
 
-  /*=======================================================
-  Cleanup
-  =======================================================*/
+  /* =======================================================
+     Cleanup
+     ======================================================= */
 
   useEffect(() => {
+    mountedRef.current = true;
+
     return () => {
+      mountedRef.current = false;
+
       uploadControllerRef.current?.abort();
 
       if (navigationTimerRef.current) {
-        window.clearTimeout(navigationTimerRef.current);
+        window.clearTimeout(
+          navigationTimerRef.current
+        );
       }
+
+      galleryRef.current.forEach(
+        (item) => URL.revokeObjectURL(item.url)
+      );
     };
   }, []);
 
-  /*=======================================================
-  Studio Image Bridge
-  =======================================================*/
+  useEffect(() => {
+    setImageDimensions(null);
+  }, [activeImage?.id]);
+
+  /* =======================================================
+     Add Images
+     =======================================================
+     This function supports:
+     - Selecting 1 image
+     - Selecting several images
+     - Reopening the same picker to add more
+     - Dragging several files
+     - Imported Studio images
+
+     Invalid batches are rejected without partially
+     adding their files.
+     ======================================================= */
+
+  const appendFiles = useCallback(
+    async (incoming, source = "upload") => {
+      if (
+        uploadInProgressRef.current ||
+        success
+      ) {
+        return;
+      }
+
+      if (selectingRef.current) {
+        setErrorMsg(
+          "Please wait for the current images to finish loading."
+        );
+        return;
+      }
+
+      const files = Array.from(incoming || []);
+
+      if (!files.length) return;
+
+      selectingRef.current = true;
+
+      try {
+        if (files.length > MAX_IMAGES) {
+          throw new Error(
+            `You can upload up to ${MAX_IMAGES} images per creation.`
+          );
+        }
+
+        for (const file of files) {
+          await validateSignature(file);
+        }
+
+        if (!mountedRef.current) return;
+
+        const current = galleryRef.current;
+
+        const fingerprints = new Set(
+          current.map(
+            (entry) => fileFingerprint(entry.file)
+          )
+        );
+
+        const accepted = [];
+
+        for (const file of files) {
+          const fingerprint =
+            fileFingerprint(file);
+
+          if (fingerprints.has(fingerprint)) {
+            continue;
+          }
+
+          fingerprints.add(fingerprint);
+          accepted.push(file);
+        }
+
+        if (
+          current.length + accepted.length >
+          MAX_IMAGES
+        ) {
+          throw new Error(
+            `Only ${MAX_IMAGES} images are allowed. You already selected ${current.length}.`
+          );
+        }
+
+        if (!accepted.length) {
+          throw new Error(
+            "These images are already selected."
+          );
+        }
+
+        const newEntries = [];
+
+        try {
+          for (const file of accepted) {
+            newEntries.push({
+              id: makeImageId(),
+              file,
+              url: URL.createObjectURL(file),
+              source,
+            });
+          }
+        } catch (error) {
+          newEntries.forEach(
+            (entry) =>
+              URL.revokeObjectURL(entry.url)
+          );
+
+          throw error;
+        }
+
+        setGallerySafe([
+          ...current,
+          ...newEntries,
+        ]);
+
+        if (!current.length) {
+          setCoverId(newEntries[0].id);
+          setActiveId(newEntries[0].id);
+        }
+
+        setUploadProgress(0);
+        setSuccess(false);
+        setErrorMsg("");
+      } catch (error) {
+        if (mountedRef.current) {
+          setErrorMsg(
+            error?.message ||
+              "One or more images could not be added."
+          );
+        }
+      } finally {
+        selectingRef.current = false;
+      }
+    },
+    [setGallerySafe, success]
+  );
+
+  /* =======================================================
+     Import Pending Studio Image
+     ======================================================= */
 
   useEffect(() => {
     if (!pendingStudioImage) {
@@ -1118,851 +950,672 @@ export default function CreatorUpload() {
 
     let cancelled = false;
 
-    const prepareImage = async () => {
+    (async () => {
       try {
-        setErrorMsg("");
+        const file =
+          await convertStudioImageToFile(
+            pendingStudioImage
+          );
 
-        const file = await convertStudioImageToFile(pendingStudioImage);
-
-        if (cancelled) {
-          return;
+        if (!cancelled) {
+          await appendFiles(
+            [file],
+            "studio"
+          );
         }
-
-        setDisplayImage(file);
-
-        setImageSource("studio");
-
-        setUploadProgress(0);
-
-        setSuccess(false);
       } catch (error) {
         if (!cancelled) {
           setErrorMsg(
-            error?.message || "The Studio image could not be prepared.",
+            error?.message ||
+              "The Studio image could not be prepared."
           );
         }
       } finally {
-        if (!cancelled && typeof setPendingStudioImage === "function") {
+        if (
+          !cancelled &&
+          typeof setPendingStudioImage ===
+            "function"
+        ) {
           setPendingStudioImage(null);
         }
       }
-    };
-
-    void prepareImage();
+    })();
 
     return () => {
       cancelled = true;
     };
-  }, [pendingStudioImage, setPendingStudioImage]);
+  }, [
+    pendingStudioImage,
+    setPendingStudioImage,
+    appendFiles,
+  ]);
 
-  /*=======================================================
-  Preview URL
-  =======================================================*/
+  /* =======================================================
+     File Picker
+     ======================================================= */
 
-  useEffect(() => {
-    if (!displayImage) {
-      setPreviewUrl("");
-
-      setImageDimensions(null);
-
-      return undefined;
-    }
-
-    const objectUrl = URL.createObjectURL(displayImage);
-
-    setPreviewUrl(objectUrl);
-
-    return () => {
-      URL.revokeObjectURL(objectUrl);
-    };
-  }, [displayImage]);
-
-  /*=======================================================
-  Form Changes
-  =======================================================*/
-
-  const handleInputChange = useCallback((field, value) => {
-    setForm((current) => ({
-      ...current,
-
-      [field]: value,
-    }));
-
-    setSuccess(false);
-
-    setErrorMsg("");
-  }, []);
-
-  /*=======================================================
-  Occasion Toggle
-  =======================================================*/
-
-  const toggleOccasion = useCallback((occasionId) => {
-    if (!occasionId) {
+  const openPicker = useCallback(() => {
+    if (
+      loading ||
+      success ||
+      galleryRef.current.length >= MAX_IMAGES
+    ) {
       return;
     }
 
-    setForm((current) => {
-      const currentIds = Array.isArray(current.occasion_term_ids)
-        ? current.occasion_term_ids
-        : [];
-
-      const exists = currentIds.includes(occasionId);
-
-      return {
-        ...current,
-
-        occasion_term_ids: exists
-          ? currentIds.filter((id) => id !== occasionId)
-          : [...currentIds, occasionId],
-      };
-    });
-
-    setErrorMsg("");
-
-    setSuccess(false);
-  }, []);
-
-  /*=======================================================
-  Tags
-  =======================================================*/
-
-  const addCurrentTag = useCallback(() => {
-    const tag = normalizeTag(tagInput);
-
-    if (!tag) {
-      setTagInput("");
-
-      return;
-    }
-
-    if (tags.includes(tag)) {
-      setTagInput("");
-
-      return;
-    }
-
-    if (tags.length >= MAX_TAGS) {
-      setErrorMsg(`You can add up to ${MAX_TAGS} tags.`);
-
-      return;
-    }
-
-    setTags((current) => uniqueTags([...current, tag]));
-
-    setTagInput("");
-
-    setErrorMsg("");
-  }, [tagInput, tags]);
-
-  const handleTagKeyDown = useCallback(
-    (event) => {
-      if (event.key === "Enter" || event.key === ",") {
-        event.preventDefault();
-
-        addCurrentTag();
-
-        return;
-      }
-
-      if (event.key === "Backspace" && !tagInput && tags.length > 0) {
-        setTags((current) => current.slice(0, -1));
-      }
-    },
-    [addCurrentTag, tagInput, tags.length],
-  );
-
-  const removeTag = useCallback((tag) => {
-    setTags((current) => current.filter((item) => item !== tag));
-  }, []);
-
-  /*=======================================================
-  Artwork
-  =======================================================*/
-
-  const applySelectedImage = useCallback(async (file, source = "upload") => {
-    await validateImageSignature(file);
-
-    setDisplayImage(file);
-
-    setImageSource(source);
-
-    setUploadProgress(0);
-
-    setSuccess(false);
-
-    setErrorMsg("");
-  }, []);
-
-  const handleFileChange = useCallback(
-    async (event) => {
-      const file = event.target.files?.[0];
-
-      if (!file) {
-        return;
-      }
-
-      try {
-        await applySelectedImage(file, "upload");
-      } catch (error) {
-        setErrorMsg(error?.message || "The selected image could not be used.");
-
-        event.target.value = "";
-      }
-    },
-    [applySelectedImage],
-  );
-
-  const openFilePicker = useCallback(() => {
-    if (loading || success) {
-      return;
-    }
-
-    if (imageInputRef.current) {
-      imageInputRef.current.value = "";
-
-      imageInputRef.current.click();
+    if (pickerRef.current) {
+      pickerRef.current.value = "";
+      pickerRef.current.click();
     }
   }, [loading, success]);
 
-  /*=======================================================
-  Drag / Drop
-  =======================================================*/
+  const handleFileChange = useCallback(
+    async (event) => {
+      const files = Array.from(
+        event.target.files || []
+      );
 
-  const handleDragEnter = useCallback(
-    (event) => {
-      event.preventDefault();
+      event.target.value = "";
 
-      event.stopPropagation();
-
-      if (loading || success) {
-        return;
-      }
-
-      dragDepthRef.current += 1;
-
-      setDragActive(true);
+      await appendFiles(files);
     },
-    [loading, success],
+    [appendFiles]
   );
 
-  const handleDragOver = useCallback((event) => {
-    event.preventDefault();
+  /* =======================================================
+     Drag and Drop
+     ======================================================= */
 
+  const handleDragEnter = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (loading || success) return;
+
+    dragDepthRef.current += 1;
+    setDragActive(true);
+  };
+
+  const handleDragOver = (event) => {
+    event.preventDefault();
     event.stopPropagation();
 
     if (event.dataTransfer) {
       event.dataTransfer.dropEffect = "copy";
     }
-  }, []);
+  };
 
-  const handleDragLeave = useCallback((event) => {
+  const handleDragLeave = (event) => {
     event.preventDefault();
-
     event.stopPropagation();
 
-    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    dragDepthRef.current = Math.max(
+      0,
+      dragDepthRef.current - 1
+    );
 
-    if (dragDepthRef.current === 0) {
+    if (!dragDepthRef.current) {
       setDragActive(false);
     }
-  }, []);
+  };
 
-  const handleDrop = useCallback(
-    async (event) => {
-      event.preventDefault();
+  const handleDrop = async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
 
-      event.stopPropagation();
+    dragDepthRef.current = 0;
+    setDragActive(false);
 
-      dragDepthRef.current = 0;
+    if (!loading && !success) {
+      await appendFiles(
+        event.dataTransfer?.files
+      );
+    }
+  };
 
-      setDragActive(false);
+  /* =======================================================
+     Remove / Clear / Reorder Images
+     ======================================================= */
 
-      if (loading || success) {
-        return;
-      }
+  const removeImage = (id) => {
+    if (loading || success) return;
 
-      const files = Array.from(event.dataTransfer?.files || []);
+    const current = galleryRef.current;
 
-      if (files.length === 0) {
-        return;
-      }
+    const removed = current.find(
+      (image) => image.id === id
+    );
 
-      if (files.length > 1) {
-        setErrorMsg("Please add one image at a time.");
+    if (!removed) return;
 
-        return;
-      }
+    const next = current.filter(
+      (image) => image.id !== id
+    );
 
-      try {
-        await applySelectedImage(files[0], "upload");
-      } catch (error) {
-        setErrorMsg(error?.message || "The dropped image could not be used.");
-      }
-    },
-    [applySelectedImage, loading, success],
-  );
+    setGallerySafe(next);
 
-  /*=======================================================
-  Remove Artwork
-  =======================================================*/
+    URL.revokeObjectURL(removed.url);
 
-  const clearFileSlot = useCallback(() => {
-    if (loading || success) {
+    if (coverId === id) {
+      setCoverId(next[0]?.id || null);
+    }
+
+    if (activeId === id) {
+      setActiveId(next[0]?.id || null);
+    }
+
+    setUploadProgress(0);
+    setErrorMsg("");
+  };
+
+  const clearAllImages = () => {
+    if (loading || success) return;
+
+    galleryRef.current.forEach(
+      (item) => URL.revokeObjectURL(item.url)
+    );
+
+    setGallerySafe([]);
+
+    setCoverId(null);
+    setActiveId(null);
+    setImageDimensions(null);
+
+    if (pickerRef.current) {
+      pickerRef.current.value = "";
+    }
+
+    setUploadProgress(0);
+    setErrorMsg("");
+  };
+
+  const moveImage = (id, direction) => {
+    if (loading || success) return;
+
+    const next = [
+      ...galleryRef.current,
+    ];
+
+    const from = next.findIndex(
+      (item) => item.id === id
+    );
+
+    const to = from + direction;
+
+    if (
+      from < 0 ||
+      to < 0 ||
+      to >= next.length
+    ) {
       return;
     }
 
-    setDisplayImage(null);
+    [next[from], next[to]] = [
+      next[to],
+      next[from],
+    ];
 
-    setImageSource("");
+    setGallerySafe(next);
+    setErrorMsg("");
+  };
 
-    setImageDimensions(null);
+  /* =======================================================
+     Metadata Changes
+     ======================================================= */
 
-    setUploadProgress(0);
+  const handleFormChange = (
+    field,
+    value
+  ) => {
+    setForm((old) => ({
+      ...old,
+      [field]: value,
+    }));
 
     setErrorMsg("");
+    setSuccess(false);
+  };
 
-    if (imageInputRef.current) {
-      imageInputRef.current.value = "";
+  const toggleOccasion = (id) => {
+    setForm((old) => ({
+      ...old,
+
+      occasion_term_ids:
+        old.occasion_term_ids.includes(id)
+          ? old.occasion_term_ids.filter(
+              (item) => item !== id
+            )
+          : [
+              ...old.occasion_term_ids,
+              id,
+            ],
+    }));
+
+    setErrorMsg("");
+  };
+
+  const addTag = () => {
+    const next = normalizeTag(tagInput);
+
+    if (!next) {
+      setTagInput("");
+      return;
     }
-  }, [loading, success]);
 
-  /*=======================================================
-  Preview Dimensions
-  =======================================================*/
+    if (
+      tags.length >= MAX_TAGS &&
+      !tags.includes(next)
+    ) {
+      setErrorMsg(
+        `You can add up to ${MAX_TAGS} tags.`
+      );
+      return;
+    }
 
-  const handlePreviewLoad = useCallback((event) => {
-    const image = event.currentTarget;
+    setTags((old) =>
+      uniqueTags([
+        ...old,
+        next,
+      ])
+    );
 
-    setImageDimensions({
-      width: image.naturalWidth,
+    setTagInput("");
+    setErrorMsg("");
+  };
 
-      height: image.naturalHeight,
-    });
-  }, []);
+  /* =======================================================
+     Submit Creation
+     ======================================================= */
 
-  /*=======================================================
-  Canvas State
-  =======================================================*/
+  const submit = async (event) => {
+    event.preventDefault();
 
-  const serializedCanvasState = useMemo(() => {
+    if (
+      uploadInProgressRef.current ||
+      success
+    ) {
+      return;
+    }
+
+    uploadInProgressRef.current = true;
+
+    setLoading(true);
+    setErrorMsg("");
+    setUploadProgress(0);
+
+    const controller =
+      new AbortController();
+
+    uploadControllerRef.current =
+      controller;
+
     try {
-      return JSON.stringify(Array.isArray(strokes) ? strokes : strokes || []);
-    } catch {
-      return "[]";
-    }
-  }, [strokes]);
+      const files =
+        galleryRef.current;
 
-  const strokeCount = Array.isArray(strokes) ? strokes.length : 0;
-
-  /*=======================================================
-  Submit
-  =======================================================*/
-
-  const handleUploadSubmit = useCallback(
-    async (event) => {
-      event.preventDefault();
-
-      if (loading || success) {
-        return;
-      }
-
-      setErrorMsg("");
-
-      /*-----------------------------------------------
-          Optional artwork
-        -----------------------------------------------*/
-
-      if (displayImage) {
-        try {
-          await validateImageSignature(displayImage);
-        } catch (error) {
-          setErrorMsg(error.message);
-
-          return;
-        }
-      }
-
-      /*-----------------------------------------------
-          Optional text
-        -----------------------------------------------*/
-
-      const title = cleanText(form.title);
-
-      if (title.length > MAX_TITLE_LENGTH) {
-        setErrorMsg(`Title must not exceed ${MAX_TITLE_LENGTH} characters.`);
-
-        return;
-      }
-
-      const description = cleanMultilineText(form.description);
-
-      if (description.length > MAX_DESCRIPTION_LENGTH) {
-        setErrorMsg(
-          `Description must not exceed ${MAX_DESCRIPTION_LENGTH} characters.`,
+      if (files.length > MAX_IMAGES) {
+        throw new Error(
+          `Maximum ${MAX_IMAGES} images allowed.`
         );
-
-        return;
       }
 
-      /*-----------------------------------------------
-          Visibility
-        -----------------------------------------------*/
-
-      const visibility = cleanText(form.visibility).toLowerCase();
-
-      if (!ALLOWED_VISIBILITY_VALUES.has(visibility)) {
-        setErrorMsg("Choose either Private or Public visibility.");
-
-        return;
+      for (const item of files) {
+        await validateSignature(
+          item.file
+        );
       }
 
-      /*-----------------------------------------------
-          Optional classification
-        -----------------------------------------------*/
+      /* -----------------------------------------------
+         Optional Metadata
+         ----------------------------------------------- */
 
-      const format = cleanText(form.format);
+      const title =
+        cleanText(form.title);
 
-      const categoryId = cleanText(form.category_id);
+      const description =
+        cleanMultiline(form.description);
 
-      if (format && !ALLOWED_FORMAT_VALUES.has(format)) {
-        setErrorMsg("The selected creative format is invalid.");
-
-        return;
+      if (
+        title.length >
+        MAX_TITLE_LENGTH
+      ) {
+        throw new Error(
+          `Title must not exceed ${MAX_TITLE_LENGTH} characters.`
+        );
       }
 
-      if (categoryId) {
-        if (!isValidUuid(categoryId)) {
-          setErrorMsg("The selected creative category is invalid.");
-
-          return;
-        }
-
-        if (!categories.some((category) => category.id === categoryId)) {
-          setErrorMsg("The selected creative category is no longer available.");
-
-          return;
-        }
+      if (
+        description.length >
+        MAX_DESCRIPTION_LENGTH
+      ) {
+        throw new Error(
+          `Description must not exceed ${MAX_DESCRIPTION_LENGTH} characters.`
+        );
       }
 
-      if (selectedShowcaseTermIds.some((id) => !isValidUuid(id))) {
-        setErrorMsg("One or more Showcase selections are invalid.");
-
-        return;
+      if (
+        !["public", "private"].includes(
+          form.visibility
+        )
+      ) {
+        throw new Error(
+          "Choose Private or Public visibility."
+        );
       }
 
-      /*-----------------------------------------------
-          Tags / canvas
-        -----------------------------------------------*/
-
-      const finalTags = uniqueTags([...tags, tagInput]);
-
-      const canvasStateBytes = new Blob([serializedCanvasState]).size;
-
-      if (canvasStateBytes > MAX_CANVAS_STATE_BYTES) {
-        setErrorMsg("The editable Studio data is too large to save safely.");
-
-        return;
+      if (
+        form.format &&
+        !FORMAT_OPTIONS.some(
+          (item) =>
+            item.value === form.format
+        )
+      ) {
+        throw new Error(
+          "Invalid creative format."
+        );
       }
 
-      /*-----------------------------------------------
-          Multipart
-        -----------------------------------------------*/
+      if (
+        form.category_id &&
+        (
+          !isUuid(form.category_id) ||
+          !categories.some(
+            (category) =>
+              category.id === form.category_id
+          )
+        )
+      ) {
+        throw new Error(
+          "The selected creative category is no longer available."
+        );
+      }
 
-      const formData = new FormData();
+      if (
+        selectedTermIds.some(
+          (id) => !isUuid(id)
+        )
+      ) {
+        throw new Error(
+          "Invalid Showcase discovery selection."
+        );
+      }
+
+      const finalTags =
+        uniqueTags([
+          ...tags,
+          tagInput,
+        ]);
+
+      if (
+        new Blob([
+          serializedCanvas,
+        ]).size >
+        MAX_CANVAS_STATE_BYTES
+      ) {
+        throw new Error(
+          "The editable Studio data is too large to save safely."
+        );
+      }
+
+      /* -----------------------------------------------
+         FormData
+         ----------------------------------------------- */
+
+      const formData =
+        new FormData();
 
       if (title) {
-        formData.append("title", title);
+        formData.append(
+          "title",
+          title
+        );
       }
 
       if (description) {
-        formData.append("description", description);
+        formData.append(
+          "description",
+          description
+        );
       }
-
-      /*
-       * Legacy compatibility only.
-       *
-       * Backend does NOT trust this value.
-       * It derives style_category from validated
-       * Showcase terms.
-       */
 
       if (selectedStyle?.name) {
-        formData.append("style_category", selectedStyle.name);
+        formData.append(
+          "style_category",
+          selectedStyle.name
+        );
       }
 
-      if (format) {
-        formData.append("format", format);
+      if (form.format) {
+        formData.append(
+          "format",
+          form.format
+        );
       }
 
-      if (categoryId) {
-        formData.append("category_id", categoryId);
+      if (form.category_id) {
+        formData.append(
+          "category_id",
+          form.category_id
+        );
       }
 
-      if (selectedShowcaseTermIds.length > 0) {
+      if (
+        selectedTermIds.length
+      ) {
         formData.append(
           "showcase_term_ids",
-
-          JSON.stringify(selectedShowcaseTermIds),
+          JSON.stringify(
+            selectedTermIds
+          )
         );
       }
 
-      if (finalTags.length > 0) {
+      if (
+        finalTags.length
+      ) {
         formData.append(
           "tags",
-
-          JSON.stringify(finalTags),
+          JSON.stringify(
+            finalTags
+          )
         );
       }
 
-      if (serializedCanvasState && serializedCanvasState !== "[]") {
+      if (
+        serializedCanvas &&
+        serializedCanvas !== "[]"
+      ) {
         formData.append(
           "canvas_state",
-
-          serializedCanvasState,
+          serializedCanvas
         );
       }
 
-      if (displayImage) {
+      /* -----------------------------------------------
+         New Gallery Multipart Fields
+         -----------------------------------------------
+         Same field name for every image.
+         One request = one creation.
+         ----------------------------------------------- */
+
+      files.forEach((item) => {
         formData.append(
           "preview",
+          item.file,
+          item.file.name
+        );
+      });
 
-          displayImage,
+      if (files.length) {
+        const coverIndex =
+          files.findIndex(
+            (item) =>
+              item.id ===
+              coverImage?.id
+          );
+
+        formData.append(
+          "cover_image_index",
+          String(
+            Math.max(
+              0,
+              coverIndex
+            )
+          )
         );
       }
 
-      /*
-       * Security:
-       *
-       * Never send:
-       *
-       * is_public
-       * is_published
-       *
-       * Send only the user intent.
-       *
-       * Backend will map this to authoritative DB state.
-       */
+      /* -----------------------------------------------
+         Visibility
+         ----------------------------------------------- */
 
-      formData.append("visibility", visibility);
+      formData.append(
+        "visibility",
+        form.visibility
+      );
 
-      /*-----------------------------------------------
-          Request
-        -----------------------------------------------*/
+      /* -----------------------------------------------
+         API Request
+         ----------------------------------------------- */
 
-      const controller = new AbortController();
+      await API.post(
+        UPLOAD_ENDPOINT,
+        formData,
+        {
+          signal:
+            controller.signal,
 
-      uploadControllerRef.current = controller;
+          onUploadProgress:
+            (progress) => {
+              const total =
+                Number(
+                  progress.total || 0
+                );
 
-      setLoading(true);
-
-      setUploadProgress(0);
-
-      try {
-        await API.post(
-          UPLOAD_ENDPOINT,
-
-          formData,
-
-          {
-            signal: controller.signal,
-
-            onUploadProgress: (progressEvent) => {
-              const total = Number(progressEvent.total || 0);
-
-              const loaded = Number(progressEvent.loaded || 0);
-
-              if (total <= 0) {
-                return;
+              if (
+                total > 0
+              ) {
+                setUploadProgress(
+                  Math.min(
+                    100,
+                    Math.round(
+                      Number(
+                        progress.loaded || 0
+                      ) /
+                        total *
+                        100
+                    )
+                  )
+                );
               }
-
-              const percentage = Math.min(
-                100,
-
-                Math.round((loaded / total) * 100),
-              );
-
-              setUploadProgress(percentage);
             },
-          },
-        );
+        }
+      );
 
-        setTags(finalTags);
+      setTags(finalTags);
+      setTagInput("");
+      setUploadProgress(100);
+      setSuccess(true);
 
-        setTagInput("");
-
-        setUploadProgress(100);
-
-        setSuccess(true);
-
-        navigationTimerRef.current = window.setTimeout(
-          () => {
+      navigationTimerRef.current =
+        window.setTimeout(
+          () =>
             navigate(
               CREATOR_HUB_ROUTE,
-
               {
                 replace: true,
-              },
-            );
-          },
-
-          1200,
+              }
+            ),
+          1200
         );
-      } catch (error) {
-        if (isCancelledRequest(error)) {
-          return;
+    } catch (error) {
+      if (!isCancelled(error)) {
+        if (
+          import.meta.env.DEV
+        ) {
+          console.error(
+            "Creator Studio upload failed:",
+            error
+          );
         }
-
-        if (import.meta.env.DEV) {
-          console.error("Creator Studio asset save failed:", error);
-        }
-
-        setUploadProgress(0);
 
         setErrorMsg(
-          getErrorMessage(
+          errorMessage(
             error,
-
-            "The Studio asset could not be saved. Please try again.",
-          ),
+            "The Studio creation could not be saved."
+          )
         );
-      } finally {
-        if (uploadControllerRef.current === controller) {
-          uploadControllerRef.current = null;
-        }
+      }
 
+      setUploadProgress(0);
+    } finally {
+      uploadInProgressRef.current =
+        false;
+
+      if (
+        uploadControllerRef.current ===
+        controller
+      ) {
+        uploadControllerRef.current =
+          null;
+      }
+
+      if (
+        mountedRef.current
+      ) {
         setLoading(false);
       }
-    },
-    [
-      categories,
-      displayImage,
-      form,
-      loading,
-      navigate,
-      selectedShowcaseTermIds,
-      selectedStyle,
-      serializedCanvasState,
-      success,
-      tagInput,
-      tags,
-    ],
-  );
+    }
+  };
 
-  /*=======================================================
-  Render
-  =======================================================*/
+  /* =======================================================
+     Render
+     ======================================================= */
 
   return (
-    <div
-      className="
-        relative
-        min-h-screen
-        overflow-hidden
-        bg-slate-50
-        pb-24
-        text-slate-950
-
-        dark:bg-[#030303]
-        dark:text-white
-      "
-    >
+    <div className="relative min-h-screen overflow-hidden bg-slate-50 pb-24 text-slate-950 dark:bg-[#030303] dark:text-white">
       {/* Ambient background */}
 
       <div
         aria-hidden="true"
-        className="
-          pointer-events-none
-          fixed
-          inset-0
-          z-0
-          overflow-hidden
-        "
+        className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
       >
-        <div
-          className="
-            absolute
-            -right-64
-            -top-64
-            h-[42rem]
-            w-[42rem]
-            rounded-full
-            bg-[#D4AF37]/10
-            blur-[180px]
-          "
-        />
+        <div className="absolute -right-64 -top-64 h-[42rem] w-[42rem] rounded-full bg-[#D4AF37]/10 blur-[180px]" />
 
-        <div
-          className="
-            absolute
-            -bottom-64
-            -left-64
-            h-[36rem]
-            w-[36rem]
-            rounded-full
-            bg-violet-500/[0.05]
-            blur-[170px]
-
-            dark:bg-violet-500/[0.07]
-          "
-        />
+        <div className="absolute -bottom-64 -left-64 h-[36rem] w-[36rem] rounded-full bg-violet-500/[0.06] blur-[170px]" />
       </div>
 
-      <main
-        className="
-          relative
-          z-10
-          mx-auto
-          max-w-[1100px]
-          px-4
-          pt-9
-
-          sm:px-6
-
-          lg:px-10
-          lg:pt-12
-        "
-      >
+      <main className="relative z-10 mx-auto max-w-[1100px] px-4 pt-9 sm:px-6 lg:px-10 lg:pt-12">
         {/* Header */}
 
-        <section
-          className="
-            relative
-            mb-7
-            overflow-hidden
-            rounded-[2rem]
-            border
-            border-slate-200/80
-            bg-white/90
-            p-6
-            shadow-[0_24px_80px_rgba(15,23,42,0.06)]
-            backdrop-blur-xl
-
-            sm:p-8
-
-            lg:p-10
-
-            dark:border-white/[0.06]
-            dark:bg-[#090909]/90
-            dark:shadow-[0_30px_100px_rgba(0,0,0,0.45)]
-          "
-        >
-          <div
-            className="
-              pointer-events-none
-              absolute
-              -right-20
-              -top-20
-              h-64
-              w-64
-              rounded-full
-              bg-[#D4AF37]/12
-              blur-[80px]
-            "
-          />
-
-          <div
-            className="
-              relative
-              z-10
-              flex
-              flex-col
-              gap-7
-
-              md:flex-row
-              md:items-end
-              md:justify-between
-            "
-          >
+        <section className="relative mb-7 overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/90 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:p-8 lg:p-10 dark:border-white/[0.06] dark:bg-[#090909]/90">
+          <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div>
-              <p
-                className="
-                  inline-flex
-                  items-center
-                  gap-2
-                  text-[9px]
-                  font-black
-                  uppercase
-                  tracking-[0.24em]
-                  text-[#98751A]
-
-                  dark:text-[#D4AF37]
-                "
-              >
+              <p className="inline-flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.24em] text-[#98751A] dark:text-[#D4AF37]">
                 <Sparkles size={12} />
                 Creator Studio
               </p>
 
-              <h1
-                className="
-                  mt-4
-                  font-serif
-                  text-4xl
-                  font-light
-                  tracking-tight
-
-                  sm:text-5xl
-                "
-              >
+              <h1 className="mt-4 font-serif text-4xl font-light tracking-tight sm:text-5xl">
                 Save your{" "}
-                <span
-                  className="
-                    italic
-                    text-[#A17D1C]
-
-                    dark:text-[#D4AF37]
-                  "
-                >
+                <span className="italic text-[#A17D1C] dark:text-[#D4AF37]">
                   creative work
                 </span>
               </h1>
 
-              <p
-                className="
-                  mt-4
-                  max-w-2xl
-                  text-sm
-                  leading-7
-                  text-slate-500
-
-                  dark:text-white/40
-                "
-              >
-                Add as much or as little creative context as you want. Save it
-                privately for yourself or make it public in the Showcase.
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-500 dark:text-white/40">
+                Add up to six images to a single creation.
+                Save it privately or share it in the
+                Showcase. Creative details are optional.
               </p>
             </div>
 
             <button
               type="button"
-              onClick={() => navigate(CREATOR_HUB_ROUTE)}
-              className="
-                inline-flex
-                h-11
-                shrink-0
-                items-center
-                justify-center
-                gap-2
-                rounded-xl
-                border
-                border-slate-200
-                bg-white
-                px-5
-                text-[8px]
-                font-black
-                uppercase
-                tracking-[0.16em]
-                text-slate-500
-                transition
-
-                hover:border-[#D4AF37]/40
-                hover:text-[#98751A]
-
-                dark:border-white/10
-                dark:bg-white/[0.035]
-                dark:text-white/45
-                dark:hover:text-[#D4AF37]
-              "
+              onClick={() =>
+                navigate(CREATOR_HUB_ROUTE)
+              }
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 px-5 text-[9px] font-black uppercase tracking-wider text-slate-500 transition hover:border-[#D4AF37] dark:border-white/10 dark:text-white/45"
             >
               <ArrowLeft size={13} />
               Creator Hub
@@ -1972,58 +1625,22 @@ export default function CreatorUpload() {
 
         {/* Information */}
 
-        <section
-          className="
-            mb-7
-            flex
-            items-start
-            gap-3
-            rounded-2xl
-            border
-            border-violet-200
-            bg-violet-50/70
-            p-4
-
-            dark:border-violet-400/15
-            dark:bg-violet-500/[0.06]
-          "
-        >
+        <section className="mb-7 flex items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50/70 p-4 dark:border-violet-400/15 dark:bg-violet-500/[0.06]">
           <Layers3
             size={17}
-            className="
-              mt-0.5
-              shrink-0
-              text-violet-600
-
-              dark:text-violet-300
-            "
+            className="mt-0.5 shrink-0 text-violet-600 dark:text-violet-300"
           />
 
           <div>
-            <p
-              className="
-                text-xs
-                font-semibold
-                text-violet-800
-
-                dark:text-violet-200
-              "
-            >
-              Optional creative details
+            <p className="text-xs font-semibold text-violet-800 dark:text-violet-200">
+              One creation, multiple images
             </p>
 
-            <p
-              className="
-                mt-1
-                text-[10px]
-                leading-5
-                text-violet-700/70
-
-                dark:text-violet-200/55
-              "
-            >
-              Categories and Showcase discovery terms are optional. If you
-              choose Public, these details help people discover your work.
+            <p className="mt-1 text-[10px] leading-5 text-violet-700/70 dark:text-violet-200/55">
+              Choose several pictures at once or add them
+              individually using the same artwork area.
+              Select a cover and arrange the gallery
+              before saving.
             </p>
           </div>
         </section>
@@ -2033,49 +1650,19 @@ export default function CreatorUpload() {
         {success && (
           <div
             role="status"
-            className="
-              mb-7
-              flex
-              items-start
-              gap-3
-              rounded-2xl
-              border
-              border-emerald-200
-              bg-emerald-50
-              p-4
-              text-sm
-              text-emerald-700
-
-              dark:border-emerald-400/20
-              dark:bg-emerald-400/[0.08]
-              dark:text-emerald-200
-            "
+            className="mb-7 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/[0.08] dark:text-emerald-200"
           >
-            <CheckCircle2
-              size={18}
-              className="
-                mt-0.5
-                shrink-0
-              "
-            />
+            <CheckCircle2 size={18} />
 
             <div>
               <p className="font-semibold">
                 {form.visibility === "public"
-                  ? "Studio asset published successfully."
-                  : "Private Studio asset saved successfully."}
+                  ? "Creation published successfully."
+                  : "Private creation saved successfully."}
               </p>
 
-              <p
-                className="
-                  mt-1
-                  text-xs
-                  opacity-70
-                "
-              >
-                {form.visibility === "public"
-                  ? "Your asset can appear in the public Showcase. Returning to Creator Hub…"
-                  : "Only you can see this asset for now. Returning to Creator Hub…"}
+              <p className="mt-1 text-xs opacity-70">
+                Returning to Creator Hub…
               </p>
             </div>
           </div>
@@ -2086,30 +1673,11 @@ export default function CreatorUpload() {
         {errorMsg && (
           <div
             role="alert"
-            className="
-              mb-7
-              flex
-              items-start
-              gap-3
-              rounded-2xl
-              border
-              border-rose-200
-              bg-rose-50
-              p-4
-              text-sm
-              text-rose-700
-
-              dark:border-rose-400/20
-              dark:bg-rose-400/[0.08]
-              dark:text-rose-200
-            "
+            className="mb-7 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/[0.08] dark:text-rose-200"
           >
             <AlertCircle
               size={18}
-              className="
-                mt-0.5
-                shrink-0
-              "
+              className="shrink-0"
             />
 
             <p>{errorMsg}</p>
@@ -2119,406 +1687,384 @@ export default function CreatorUpload() {
         {/* Form */}
 
         <form
-          onSubmit={handleUploadSubmit}
-          className="
-            overflow-hidden
-            rounded-[2rem]
-            border
-            border-slate-200/80
-            bg-white/90
-            shadow-sm
-
-            dark:border-white/[0.06]
-            dark:bg-[#090909]
-          "
+          onSubmit={submit}
+          className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/90 shadow-sm dark:border-white/[0.06] dark:bg-[#090909]"
         >
-          {/* Artwork */}
+          {/* Gallery Upload Area */}
 
-          <section
-            className="
-              border-b
-              border-slate-200
-              p-6
-
-              sm:p-8
-
-              dark:border-white/[0.06]
-            "
-          >
-            <div
-              className="
-                mb-5
-                flex
-                flex-col
-                gap-3
-
-                sm:flex-row
-                sm:items-end
-                sm:justify-between
-              "
-            >
+          <section className="border-b border-slate-200 p-6 sm:p-8 dark:border-white/[0.06]">
+            <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
               <div>
-                <p
-                  className="
-                    text-[8px]
-                    font-black
-                    uppercase
-                    tracking-[0.2em]
-                    text-[#98751A]
-
-                    dark:text-[#D4AF37]
-                  "
-                >
+                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-[#98751A] dark:text-[#D4AF37]">
                   Creative Asset
                 </p>
 
-                <h2
-                  className="
-                    mt-2
-                    font-serif
-                    text-2xl
-                  "
-                >
+                <h2 className="mt-2 font-serif text-2xl">
                   Artwork preview
                 </h2>
               </div>
 
-              {displayImage && (
-                <span
-                  className="
-                    inline-flex
-                    w-fit
-                    items-center
-                    gap-1.5
-                    rounded-full
-                    border
-                    border-emerald-200
-                    bg-emerald-50
-                    px-3
-                    py-1.5
-                    text-[8px]
-                    font-black
-                    uppercase
-                    tracking-[0.14em]
-                    text-emerald-700
+              <span className="inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-[#98751A] dark:text-[#D4AF37]">
+                {gallery.length}/{MAX_IMAGES} images
 
-                    dark:border-emerald-400/20
-                    dark:bg-emerald-400/10
-                    dark:text-emerald-300
-                  "
-                >
-                  <CheckCircle2 size={10} />
-
-                  {imageSource === "studio" ? "From Studio" : "Image Ready"}
-                </span>
-              )}
+                {gallery.length > 0 && (
+                  <CheckCircle2 size={12} />
+                )}
+              </span>
             </div>
 
             <input
-              ref={imageInputRef}
+              ref={pickerRef}
               type="file"
+              multiple
               accept="image/jpeg,image/png,image/webp"
               onChange={handleFileChange}
-              disabled={loading || success}
+              disabled={
+                loading ||
+                success ||
+                gallery.length >= MAX_IMAGES
+              }
               className="hidden"
+              aria-label="Choose up to six artwork images"
             />
 
-            {previewUrl ? (
-              <div
-                className="
-                  overflow-hidden
-                  rounded-[1.75rem]
-                  border
-                  border-slate-200
-                  bg-slate-950
+            {!gallery.length ? (
+              /* Empty Upload Area */
 
-                  dark:border-white/10
-                "
-              >
-                <div
-                  className="
-                    relative
-                    min-h-[320px]
-                    overflow-hidden
-                    bg-black
-                  "
-                >
-                  <img
-                    src={previewUrl}
-                    alt="Creator Studio artwork preview"
-                    onLoad={handlePreviewLoad}
-                    className="
-                      h-full
-                      max-h-[620px]
-                      min-h-[320px]
-                      w-full
-                      object-contain
-                    "
-                  />
-
-                  {!loading && !success && (
-                    <div
-                      className="
-                        absolute
-                        right-4
-                        top-4
-                        flex
-                        gap-2
-                      "
-                    >
-                      <button
-                        type="button"
-                        onClick={openFilePicker}
-                        className="
-                          inline-flex
-                          h-10
-                          items-center
-                          justify-center
-                          gap-2
-                          rounded-xl
-                          border
-                          border-white/15
-                          bg-black/65
-                          px-4
-                          text-[8px]
-                          font-black
-                          uppercase
-                          tracking-[0.14em]
-                          text-white
-                          backdrop-blur
-                          transition
-
-                          hover:bg-white
-                          hover:text-black
-                        "
-                      >
-                        <RefreshCw size={12} />
-                        Replace
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={clearFileSlot}
-                        aria-label="Remove artwork"
-                        className="
-                          grid
-                          h-10
-                          w-10
-                          place-items-center
-                          rounded-xl
-                          border
-                          border-rose-400/20
-                          bg-black/65
-                          text-rose-300
-                          backdrop-blur
-                          transition
-
-                          hover:bg-rose-500
-                          hover:text-white
-                        "
-                      >
-                        <X size={15} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <div
-                  className="
-                    flex
-                    flex-wrap
-                    items-center
-                    gap-x-5
-                    gap-y-2
-                    border-t
-                    border-white/10
-                    bg-[#080808]
-                    px-5
-                    py-3
-                    text-[8px]
-                    font-medium
-                    uppercase
-                    tracking-[0.13em]
-                    text-white/35
-                  "
-                >
-                  <span>{displayImage.name || "Studio artwork"}</span>
-
-                  <span>{(displayImage.size / 1024 / 1024).toFixed(2)} MB</span>
-
-                  {imageDimensions && (
-                    <span>
-                      {imageDimensions.width}×{imageDimensions.height}
-                    </span>
-                  )}
-
-                  {strokeCount > 0 && (
-                    <span
-                      className="
-                        inline-flex
-                        items-center
-                        gap-1.5
-                        text-violet-300
-                      "
-                    >
-                      <Layers3 size={10} />
-                      {strokeCount} Studio{" "}
-                      {strokeCount === 1 ? "stroke" : "strokes"}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ) : (
               <button
                 type="button"
-                disabled={loading || success}
-                onClick={openFilePicker}
+                onClick={openPicker}
                 onDragEnter={handleDragEnter}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
+                disabled={loading || success}
                 className={`
-                  flex
-                  min-h-[340px]
-                  w-full
-                  flex-col
-                  items-center
-                  justify-center
-                  rounded-[1.75rem]
-                  border-2
-                  border-dashed
-                  px-6
-                  text-center
-                  transition
+                  flex min-h-[340px] w-full flex-col
+                  items-center justify-center
+                  rounded-[1.75rem] border-2 border-dashed
+                  px-6 text-center transition
 
                   ${
                     dragActive
                       ? "border-[#D4AF37] bg-[#D4AF37]/10"
-                      : "border-slate-200 bg-slate-50 hover:border-[#D4AF37]/40 hover:bg-[#D4AF37]/[0.025] dark:border-white/10 dark:bg-white/[0.02] dark:hover:border-[#D4AF37]/30"
+                      : "border-slate-200 bg-slate-50 hover:border-[#D4AF37]/40 dark:border-white/10 dark:bg-white/[0.02]"
                   }
 
-                  disabled:cursor-not-allowed
                   disabled:opacity-50
                 `}
               >
-                <div
-                  className="
-                    grid
-                    h-16
-                    w-16
-                    place-items-center
-                    rounded-2xl
-                    border
-                    border-[#D4AF37]/20
-                    bg-[#D4AF37]/10
-                    text-[#98751A]
-
-                    dark:text-[#D4AF37]
-                  "
-                >
+                <span className="grid h-16 w-16 place-items-center rounded-2xl border border-[#D4AF37]/20 bg-[#D4AF37]/10 text-[#98751A] dark:text-[#D4AF37]">
                   {dragActive ? (
                     <UploadCloud size={27} />
                   ) : (
                     <ImageIcon size={27} />
                   )}
-                </div>
+                </span>
 
-                <h3
-                  className="
-                    mt-5
-                    font-serif
-                    text-2xl
-                  "
-                >
-                  {dragActive ? "Drop your artwork" : "Add artwork (optional)"}
+                <h3 className="mt-5 font-serif text-2xl">
+                  {dragActive
+                    ? "Drop your artwork"
+                    : "Add artwork (optional)"}
                 </h3>
 
-                <p
-                  className="
-                    mt-3
-                    max-w-md
-                    text-xs
-                    leading-6
-                    text-slate-500
-
-                    dark:text-white/35
-                  "
-                >
-                  Choose an image or drag one here if you want a preview.
-                  Artwork exported from the Studio is loaded automatically when
-                  available.
+                <p className="mt-3 max-w-md text-xs leading-6 text-slate-500 dark:text-white/35">
+                  Choose several images together or add
+                  one at a time. Drag and drop also works.
+                  Artwork from Studio appears here
+                  automatically.
                 </p>
 
-                <div
-                  className="
-                    mt-5
-                    inline-flex
-                    items-center
-                    gap-2
-                    rounded-full
-                    border
-                    border-slate-200
-                    bg-white
-                    px-4
-                    py-2
-                    text-[8px]
-                    font-black
-                    uppercase
-                    tracking-[0.15em]
-                    text-slate-500
-
-                    dark:border-white/10
-                    dark:bg-white/[0.03]
-                    dark:text-white/35
-                  "
-                >
-                  <FileImage size={11} />
-                  JPG · PNG · WEBP · Max 5 MB
-                </div>
+                <span className="mt-5 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[9px] font-black uppercase tracking-wider text-slate-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-white/35">
+                  <FileImage size={12} />
+                  JPG · PNG · WEBP · 5 MB each · Up to 6
+                </span>
               </button>
+            ) : (
+              /* Gallery With Selected Images */
+
+              <div
+                className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-black dark:border-white/10"
+                onDragEnter={handleDragEnter}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                {/* Main Image Preview */}
+
+                <div
+                  className={`
+                    relative flex min-h-[320px]
+                    items-center justify-center
+                    overflow-hidden
+
+                    ${
+                      dragActive
+                        ? "ring-4 ring-inset ring-[#D4AF37]"
+                        : ""
+                    }
+                  `}
+                >
+                  <img
+                    key={activeImage?.id}
+                    src={activeImage?.url}
+                    alt="Selected Creator Studio artwork"
+                    onLoad={(event) =>
+                      setImageDimensions({
+                        width:
+                          event.currentTarget.naturalWidth,
+                        height:
+                          event.currentTarget.naturalHeight,
+                      })
+                    }
+                    className="max-h-[620px] min-h-[320px] w-full object-contain"
+                  />
+
+                  <span className="absolute left-4 top-4 rounded-full bg-black/70 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-white">
+                    {activeImage?.id === coverImage?.id
+                      ? "Cover image"
+                      : "Gallery preview"}
+                  </span>
+
+                  {!loading && !success && (
+                    <div className="absolute right-4 top-4 flex flex-wrap justify-end gap-2">
+                      {gallery.length < MAX_IMAGES && (
+                        <button
+                          type="button"
+                          onClick={openPicker}
+                          className={miniButtonClass}
+                        >
+                          <Plus size={13} />
+                          Add More
+                        </button>
+                      )}
+
+                      {activeImage?.id !== coverImage?.id && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCoverId(
+                              activeImage.id
+                            )
+                          }
+                          className={miniButtonClass}
+                        >
+                          <Star size={12} />
+                          Set Cover
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={clearAllImages}
+                        className={miniButtonClass}
+                        aria-label="Remove all artwork images"
+                      >
+                        <Trash2 size={13} />
+                        Clear All
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Preview Metadata */}
+
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/10 bg-[#080808] px-5 py-3 text-[9px] text-white/45">
+                  <span className="max-w-[18rem] truncate">
+                    {activeImage?.file?.name ||
+                      "Studio artwork"}
+                  </span>
+
+                  <span>
+                    {(
+                      Number(
+                        activeImage?.file?.size || 0
+                      ) /
+                      1024 /
+                      1024
+                    ).toFixed(2)}{" "}
+                    MB
+                  </span>
+
+                  {imageDimensions && (
+                    <span>
+                      {imageDimensions.width} ×{" "}
+                      {imageDimensions.height}
+                    </span>
+                  )}
+
+                  {strokeCount > 0 && (
+                    <span className="inline-flex items-center gap-1 text-violet-300">
+                      <Layers3 size={11} />
+
+                      {strokeCount} Studio strokes
+                    </span>
+                  )}
+                </div>
+
+                {/* Gallery Thumbnails */}
+
+                <div className="grid grid-cols-2 gap-3 bg-[#0d0d0d] p-4 sm:grid-cols-3 lg:grid-cols-4">
+                  {gallery.map(
+                    (image, index) => (
+                      <div
+                        key={image.id}
+                        className={`
+                          overflow-hidden rounded-xl border
+
+                          ${
+                            image.id === activeImage?.id
+                              ? "border-[#D4AF37]"
+                              : "border-white/10"
+                          }
+                        `}
+                      >
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveId(
+                              image.id
+                            )
+                          }
+                          className="relative block aspect-[4/3] w-full bg-black"
+                          aria-label={`Preview image ${index + 1}`}
+                        >
+                          <img
+                            src={image.url}
+                            alt={`Artwork ${index + 1}`}
+                            className="h-full w-full object-cover"
+                          />
+
+                          <span className="absolute left-2 top-2 rounded-md bg-black/75 px-2 py-1 text-[8px] text-white">
+                            {index + 1}
+                          </span>
+
+                          {coverImage?.id === image.id && (
+                            <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-md bg-[#D4AF37] px-2 py-1 text-[8px] font-bold text-black">
+                              <Star
+                                size={10}
+                                fill="currentColor"
+                              />
+
+                              Cover
+                            </span>
+                          )}
+                        </button>
+
+                        {/* Thumbnail Controls */}
+
+                        <div className="flex items-center justify-between gap-1 bg-[#151515] px-2 py-2">
+                          <button
+                            type="button"
+                            disabled={
+                              loading ||
+                              success ||
+                              index === 0
+                            }
+                            onClick={() =>
+                              moveImage(
+                                image.id,
+                                -1
+                              )
+                            }
+                            aria-label={`Move image ${index + 1} earlier`}
+                            className="rounded p-1 text-white/70 hover:text-[#D4AF37] disabled:opacity-25"
+                          >
+                            <ArrowUp size={13} />
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={
+                              loading ||
+                              success ||
+                              index === gallery.length - 1
+                            }
+                            onClick={() =>
+                              moveImage(
+                                image.id,
+                                1
+                              )
+                            }
+                            aria-label={`Move image ${index + 1} later`}
+                            className="rounded p-1 text-white/70 hover:text-[#D4AF37] disabled:opacity-25"
+                          >
+                            <ArrowDown size={13} />
+                          </button>
+
+                          {coverImage?.id !== image.id && (
+                            <button
+                              type="button"
+                              disabled={loading || success}
+                              onClick={() =>
+                                setCoverId(
+                                  image.id
+                                )
+                              }
+                              title="Set as cover"
+                              aria-label={`Set image ${index + 1} as cover`}
+                              className="rounded p-1 text-white/70 hover:text-[#D4AF37]"
+                            >
+                              <Star size={13} />
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            disabled={loading || success}
+                            onClick={() =>
+                              removeImage(
+                                image.id
+                              )
+                            }
+                            title="Remove image"
+                            aria-label={`Remove image ${index + 1}`}
+                            className="rounded p-1 text-rose-300 hover:text-rose-100"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  )}
+
+                  {/* Add More Slot */}
+
+                  {gallery.length < MAX_IMAGES && (
+                    <button
+                      type="button"
+                      onClick={openPicker}
+                      disabled={loading || success}
+                      className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/20 text-white/60 hover:border-[#D4AF37] hover:text-[#D4AF37] disabled:opacity-50"
+                    >
+                      <Plus size={19} />
+
+                      <span className="text-[9px] font-black uppercase tracking-wider">
+                        Add more
+                      </span>
+                    </button>
+                  )}
+                </div>
+
+                <p className="bg-[#0d0d0d] px-4 pb-4 text-[10px] text-white/40">
+                  Click a thumbnail to preview. Use the star
+                  to choose a cover, and arrows to change
+                  the sequence. All images save as one
+                  creation.
+                </p>
+              </div>
             )}
           </section>
 
-          {/* Details */}
+          {/* Creative Details */}
 
-          <section
-            className="
-              p-6
-
-              sm:p-8
-            "
-          >
-            <div
-              className="
-                mb-7
-                border-b
-                border-slate-200
-                pb-5
-
-                dark:border-white/[0.06]
-              "
-            >
-              <p
-                className="
-                  text-[8px]
-                  font-black
-                  uppercase
-                  tracking-[0.2em]
-                  text-[#98751A]
-
-                  dark:text-[#D4AF37]
-                "
-              >
+          <section className="p-6 sm:p-8">
+            <div className="mb-7 border-b border-slate-200 pb-5 dark:border-white/[0.06]">
+              <p className="text-[8px] font-black uppercase tracking-[0.2em] text-[#98751A] dark:text-[#D4AF37]">
                 Creative Details
               </p>
 
-              <h2
-                className="
-                  mt-2
-                  font-serif
-                  text-2xl
-                "
-              >
+              <h2 className="mt-2 font-serif text-2xl">
                 Describe your concept
               </h2>
             </div>
@@ -2527,80 +2073,66 @@ export default function CreatorUpload() {
               {/* Title */}
 
               <label className="block">
-                <FieldLabel optional>Design Title</FieldLabel>
+                <FieldLabel optional>
+                  Design Title
+                </FieldLabel>
 
                 <input
                   type="text"
                   maxLength={MAX_TITLE_LENGTH}
                   value={form.title}
-                  disabled={loading || success}
                   onChange={(event) =>
-                    handleInputChange("title", event.target.value)
+                    handleFormChange(
+                      "title",
+                      event.target.value
+                    )
                   }
+                  disabled={loading || success}
                   placeholder="e.g. Asymmetrical Silk Blazer"
-                  className="
-                    h-[52px]
-                    w-full
-                    rounded-xl
-                    border
-                    border-slate-200
-                    bg-slate-50
-                    px-4
-                    text-sm
-                    text-slate-900
-                    caret-slate-900
-                    outline-none
-                    transition
-
-                    placeholder:text-slate-400
-
-                    focus:border-[#D4AF37]/60
-                    focus:bg-slate-50
-                    focus:ring-4
-                    focus:ring-[#D4AF37]/10
-
-                    disabled:opacity-60
-
-                    dark:border-white/10
-                    dark:bg-[#111111]
-                    dark:text-white
-                    dark:caret-white
-                    dark:placeholder:text-white/25
-
-                    dark:focus:border-[#D4AF37]/60
-                    dark:focus:bg-[#111111]
-                    dark:focus:text-white
-                    dark:focus:ring-[#D4AF37]/10
-                  "
+                  className={textFieldClass}
                 />
               </label>
 
               {/* Format */}
 
-              <label className="block">
-                <FieldLabel optional>Creative Format</FieldLabel>
+              <div>
+                <FieldLabel optional>
+                  Creative Format
+                </FieldLabel>
 
                 <SelectField
                   value={form.format}
                   disabled={loading || success}
                   onChange={(event) =>
-                    handleInputChange("format", event.target.value)
+                    handleFormChange(
+                      "format",
+                      event.target.value
+                    )
                   }
                 >
-                  <option value="">Select a format (optional)</option>
+                  <option value="">
+                    Select a format (optional)
+                  </option>
 
-                  {FORMAT_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
+                  {FORMAT_OPTIONS.map(
+                    (option) => (
+                      <option
+                        key={option.value}
+                        value={option.value}
+                      >
+                        {option.label}
+                      </option>
+                    )
+                  )}
                 </SelectField>
-              </label>
+              </div>
 
               {/* Category */}
 
               <div>
-                <FieldLabel optional>Creative Category</FieldLabel>
+                <FieldLabel optional>
+                  Creative Category
+                </FieldLabel>
 
                 <SelectField
                   value={form.category_id}
@@ -2608,488 +2140,270 @@ export default function CreatorUpload() {
                     loading ||
                     success ||
                     categoriesLoading ||
-                    categories.length === 0
+                    !categories.length
                   }
                   onChange={(event) =>
-                    handleInputChange("category_id", event.target.value)
+                    handleFormChange(
+                      "category_id",
+                      event.target.value
+                    )
                   }
                 >
                   <option value="">
                     {categoriesLoading
                       ? "Loading categories…"
-                      : categories.length === 0
+                      : !categories.length
                         ? "No categories available"
                         : "Select a category (optional)"}
                   </option>
 
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
+                  {categories.map(
+                    (category) => (
+                      <option
+                        key={category.id}
+                        value={category.id}
+                      >
+                        {category.name}
+                      </option>
+                    )
+                  )}
                 </SelectField>
 
-                {categoriesLoading && (
-                  <p
-                    className="
-                      mt-2
-                      flex
-                      items-center
-                      gap-2
-                      text-[9px]
-                      text-slate-400
-
-                      dark:text-white/25
-                    "
-                  >
-                    <Loader2 size={11} className="animate-spin" />
-                    Loading active categories…
-                  </p>
-                )}
-
-                {!categoriesLoading && categoriesError && (
-                  <div
-                    className="
-                      mt-3
-                      flex
-                      items-center
-                      justify-between
-                      gap-3
-                      rounded-xl
-                      border
-                      border-rose-200
-                      bg-rose-50
-                      p-3
-
-                      dark:border-rose-400/15
-                      dark:bg-rose-500/[0.06]
-                    "
-                  >
-                    <p
-                      className="
-                        text-[10px]
-                        text-rose-700
-
-                        dark:text-rose-200
-                      "
-                    >
+                {categoriesError && (
+                  <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-rose-500">
+                    <span>
                       {categoriesError}
-                    </p>
+                    </span>
 
                     <button
                       type="button"
-                      onClick={() => void loadCategories()}
-                      className="
-                        inline-flex
-                        items-center
-                        gap-1.5
-                        text-[8px]
-                        font-black
-                        uppercase
-                        text-rose-600
-
-                        dark:text-rose-200
-                      "
+                      onClick={() =>
+                        void loadCategories()
+                      }
+                      className="inline-flex items-center gap-1 font-bold"
                     >
-                      <RefreshCw size={10} />
+                      <RefreshCw size={11} />
                       Retry
                     </button>
                   </div>
                 )}
 
-                {selectedCategory && !categoriesError && (
-                  <p
-                    className="
-                      mt-2
-                      text-[9px]
-                      text-slate-400
-
-                      dark:text-white/25
-                    "
-                  >
-                    {selectedCategory.description || selectedCategory.name}
+                {selectedCategory?.description && (
+                  <p className="mt-2 text-[10px] text-slate-400 dark:text-white/30">
+                    {selectedCategory.description}
                   </p>
                 )}
               </div>
 
-              {/* Showcase Discovery */}
+              {/* Discovery */}
 
-              <div
-                className="
-                  rounded-[1.5rem]
-                  border
-                  border-[#D4AF37]/20
-                  bg-[#D4AF37]/[0.035]
-                  p-5
-
-                  sm:p-6
-                "
-              >
-                <div
-                  className="
-                    mb-6
-                    flex
-                    items-start
-                    gap-3
-                  "
-                >
+              <div className="rounded-[1.5rem] border border-[#D4AF37]/20 bg-[#D4AF37]/[0.035] p-5 sm:p-6">
+                <div className="mb-5 flex items-start gap-3">
                   <Palette
                     size={18}
-                    className="
-                      mt-0.5
-                      shrink-0
-                      text-[#A17D1C]
-
-                      dark:text-[#D4AF37]
-                    "
+                    className="mt-1 text-[#A17D1C] dark:text-[#D4AF37]"
                   />
 
                   <div>
-                    <h3
-                      className="
-                        font-serif
-                        text-xl
-                      "
-                    >
+                    <h3 className="font-serif text-xl">
                       Showcase Discovery
                     </h3>
 
-                    <p
-                      className="
-                        mt-1
-                        text-[10px]
-                        leading-5
-                        text-slate-500
-
-                        dark:text-white/35
-                      "
-                    >
-                      Optional selections can help Public work appear in more
-                      relevant Showcase sections.
+                    <p className="mt-1 text-[10px] leading-5 text-slate-500 dark:text-white/35">
+                      Optional selections help people
+                      find public creations.
                     </p>
                   </div>
                 </div>
 
                 {discoveryLoading ? (
-                  <div
-                    className="
-                      flex
-                      min-h-[120px]
-                      items-center
-                      justify-center
-                      gap-2
-                      text-[9px]
-                      text-slate-400
+                  <div className="inline-flex items-center gap-2 text-xs text-slate-400">
+                    <Loader2
+                      size={14}
+                      className="animate-spin"
+                    />
 
-                      dark:text-white/30
-                    "
-                  >
-                    <Loader2 size={14} className="animate-spin" />
                     Loading discovery options…
                   </div>
                 ) : discoveryError ? (
-                  <div
-                    className="
-                      rounded-xl
-                      border
-                      border-rose-200
-                      bg-rose-50
-                      p-4
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-[10px] text-rose-700 dark:border-rose-400/15 dark:bg-rose-400/[0.06] dark:text-rose-200">
+                    <span>
+                      {discoveryError}
+                    </span>
 
-                      dark:border-rose-400/15
-                      dark:bg-rose-500/[0.06]
-                    "
-                  >
-                    <div
-                      className="
-                        flex
-                        items-start
-                        gap-2
-                      "
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void loadDiscovery()
+                      }
+                      className="inline-flex items-center gap-1 font-bold"
                     >
-                      <AlertCircle
-                        size={14}
-                        className="
-                          mt-0.5
-                          text-rose-500
-                        "
-                      />
-
-                      <p
-                        className="
-                          flex-1
-                          text-[10px]
-                          leading-5
-                          text-rose-700
-
-                          dark:text-rose-200
-                        "
-                      >
-                        {discoveryError}
-                      </p>
-
-                      <button
-                        type="button"
-                        onClick={() => void loadDiscovery()}
-                        className="
-                          inline-flex
-                          items-center
-                          gap-1.5
-                          text-[8px]
-                          font-black
-                          uppercase
-                          text-rose-600
-
-                          dark:text-rose-200
-                        "
-                      >
-                        <RefreshCw size={10} />
-                        Retry
-                      </button>
-                    </div>
+                      <RefreshCw size={12} />
+                      Retry
+                    </button>
                   </div>
                 ) : (
-                  <div className="space-y-6">
-                    {/* Style + garment */}
+                  <div className="space-y-5">
+                    {/* Style and Garment */}
 
-                    <div
-                      className="
-                        grid
-                        gap-5
-
-                        md:grid-cols-2
-                      "
-                    >
-                      <label className="block">
-                        <FieldLabel optional>Style</FieldLabel>
+                    <div className="grid gap-5 md:grid-cols-2">
+                      <div>
+                        <FieldLabel optional>
+                          Style
+                        </FieldLabel>
 
                         <SelectField
-                          value={form.style_term_id}
+                          value={
+                            form.style_term_id
+                          }
                           disabled={loading || success}
                           onChange={(event) =>
-                            handleInputChange(
+                            handleFormChange(
                               "style_term_id",
-                              event.target.value,
+                              event.target.value
                             )
                           }
                         >
-                          <option value="">Select a style (optional)</option>
+                          <option value="">
+                            Select a style (optional)
+                          </option>
 
-                          {discovery.styles.map((style) => (
-                            <option key={style.id} value={style.id}>
-                              {style.name}
-                            </option>
-                          ))}
+                          {discovery.styles.map(
+                            (style) => (
+                              <option
+                                key={style.id}
+                                value={style.id}
+                              >
+                                {style.name}
+                              </option>
+                            )
+                          )}
                         </SelectField>
-                      </label>
+                      </div>
 
-                      <label className="block">
-                        <FieldLabel optional>Garment</FieldLabel>
+                      <div>
+                        <FieldLabel optional>
+                          Garment
+                        </FieldLabel>
 
                         <SelectField
-                          value={form.garment_term_id}
+                          value={
+                            form.garment_term_id
+                          }
                           disabled={loading || success}
                           onChange={(event) =>
-                            handleInputChange(
+                            handleFormChange(
                               "garment_term_id",
-                              event.target.value,
+                              event.target.value
                             )
                           }
                         >
-                          <option value="">Select a garment (optional)</option>
+                          <option value="">
+                            Select a garment (optional)
+                          </option>
 
-                          {discovery.garments.map((garment) => (
-                            <option key={garment.id} value={garment.id}>
-                              {garment.emoji ? `${garment.emoji} ` : ""}
-
-                              {garment.name}
-                            </option>
-                          ))}
+                          {discovery.garments.map(
+                            (garment) => (
+                              <option
+                                key={garment.id}
+                                value={garment.id}
+                              >
+                                {garment.emoji
+                                  ? `${garment.emoji} `
+                                  : ""}
+                                {garment.name}
+                              </option>
+                            )
+                          )}
                         </SelectField>
-                      </label>
+                      </div>
                     </div>
 
                     {/* Occasions */}
 
                     <div>
-                      <FieldLabel optional>Occasion</FieldLabel>
+                      <FieldLabel optional>
+                        Occasion
+                      </FieldLabel>
 
-                      <p
-                        className="
-                          mb-3
-                          text-[9px]
-                          leading-5
-                          text-slate-400
-
-                          dark:text-white/25
-                        "
-                      >
-                        Select any occasions this design fits. Multiple
-                        selections are allowed.
+                      <p className="mb-3 text-[10px] text-slate-400 dark:text-white/30">
+                        Select any occasions this design
+                        fits; multiple selections are allowed.
                       </p>
 
-                      <div
-                        className="
-                          grid
-                          grid-cols-2
-                          gap-2
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {discovery.occasions.map(
+                          (occasion) => {
+                            const chosen =
+                              form.occasion_term_ids.includes(
+                                occasion.id
+                              );
 
-                          sm:grid-cols-4
-                        "
-                      >
-                        {discovery.occasions.map((occasion) => {
-                          const selected = form.occasion_term_ids.includes(
-                            occasion.id,
-                          );
-
-                          return (
-                            <button
-                              key={occasion.id}
-                              type="button"
-                              disabled={loading || success}
-                              aria-pressed={selected}
-                              onClick={() => toggleOccasion(occasion.id)}
-                              className={`
-                                relative
-                                min-h-[76px]
-                                rounded-xl
-                                border
-                                p-3
-                                text-left
-                                transition
-
-                                ${
-                                  selected
-                                    ? "border-[#D4AF37]/60 bg-[#D4AF37]/10 text-[#8A6814] dark:text-[#E4C65D]"
-                                    : "border-slate-200 bg-white text-slate-500 hover:border-[#D4AF37]/35 dark:border-white/10 dark:bg-white/[0.025] dark:text-white/40"
+                            return (
+                              <button
+                                type="button"
+                                key={occasion.id}
+                                onClick={() =>
+                                  toggleOccasion(
+                                    occasion.id
+                                  )
                                 }
+                                disabled={loading || success}
+                                aria-pressed={chosen}
+                                className={`
+                                  min-h-[76px]
+                                  rounded-xl border
+                                  p-3 text-left
+                                  transition
 
-                                disabled:cursor-not-allowed
-                                disabled:opacity-50
-                              `}
-                            >
-                              <div
-                                className="
-                                  flex
-                                  items-start
-                                  justify-between
-                                  gap-2
-                                "
+                                  ${
+                                    chosen
+                                      ? "border-[#D4AF37]/60 bg-[#D4AF37]/10 text-[#8A6814] dark:text-[#E4C65D]"
+                                      : "border-slate-200 bg-white text-slate-500 dark:border-white/10 dark:bg-white/[0.025] dark:text-white/40"
+                                  }
+                                `}
                               >
-                                <span className="text-xl">
-                                  {occasion.emoji || "✦"}
-                                </span>
-
-                                {selected && (
-                                  <span
-                                    className="
-                                      grid
-                                      h-5
-                                      w-5
-                                      place-items-center
-                                      rounded-full
-                                      bg-[#D4AF37]
-                                      text-black
-                                    "
-                                  >
-                                    <Check size={11} />
+                                <div className="flex items-start justify-between">
+                                  <span className="text-xl">
+                                    {occasion.emoji || "✦"}
                                   </span>
-                                )}
-                              </div>
 
-                              <p
-                                className="
-                                  mt-2
-                                  text-[9px]
-                                  font-black
-                                  uppercase
-                                  tracking-[0.1em]
-                                "
-                              >
-                                {occasion.name}
-                              </p>
-                            </button>
-                          );
-                        })}
+                                  {chosen && (
+                                    <Check size={16} />
+                                  )}
+                                </div>
+
+                                <p className="mt-2 text-[9px] font-black uppercase tracking-wider">
+                                  {occasion.name}
+                                </p>
+                              </button>
+                            );
+                          }
+                        )}
                       </div>
                     </div>
 
-                    {/* Summary */}
+                    {/* Selected Terms */}
 
-                    {(selectedStyle ||
-                      selectedGarment ||
-                      selectedOccasions.length > 0) && (
-                      <div
-                        className="
-                          flex
-                          flex-wrap
-                          gap-2
-                          border-t
-                          border-[#D4AF37]/15
-                          pt-4
-                        "
-                      >
-                        {selectedStyle && (
-                          <span
-                            className="
-                              rounded-full
-                              bg-[#D4AF37]/10
-                              px-3
-                              py-1.5
-                              text-[8px]
-                              font-black
-                              uppercase
-                              tracking-[0.12em]
-                              text-[#8A6814]
-
-                              dark:text-[#D4AF37]
-                            "
-                          >
-                            Style · {selectedStyle.name}
-                          </span>
-                        )}
-
-                        {selectedGarment && (
-                          <span
-                            className="
-                              rounded-full
-                              bg-violet-500/10
-                              px-3
-                              py-1.5
-                              text-[8px]
-                              font-black
-                              uppercase
-                              tracking-[0.12em]
-                              text-violet-600
-
-                              dark:text-violet-300
-                            "
-                          >
-                            Garment · {selectedGarment.name}
-                          </span>
-                        )}
-
-                        {selectedOccasions.map((occasion) => (
-                          <span
-                            key={occasion.id}
-                            className="
-                              rounded-full
-                              bg-slate-100
-                              px-3
-                              py-1.5
-                              text-[8px]
-                              font-black
-                              uppercase
-                              tracking-[0.1em]
-                              text-slate-500
-
-                              dark:bg-white/[0.05]
-                              dark:text-white/40
-                            "
-                          >
-                            {occasion.emoji} {occasion.name}
-                          </span>
-                        ))}
+                    {!!selectedTermIds.length && (
+                      <div className="flex flex-wrap gap-2 border-t border-[#D4AF37]/15 pt-4">
+                        {[
+                          selectedStyle,
+                          selectedGarment,
+                          ...selectedOccasions,
+                        ]
+                          .filter(Boolean)
+                          .map((term) => (
+                            <span
+                              key={term.id}
+                              className="rounded-full bg-[#D4AF37]/10 px-3 py-1.5 text-[9px] font-bold text-[#8A6814] dark:text-[#D4AF37]"
+                            >
+                              {term.emoji
+                                ? `${term.emoji} `
+                                : ""}
+                              {term.name}
+                            </span>
+                          ))}
                       </div>
                     )}
                   </div>
@@ -3099,114 +2413,76 @@ export default function CreatorUpload() {
               {/* Tags */}
 
               <div>
-                <FieldLabel optional>Tags</FieldLabel>
+                <FieldLabel optional>
+                  Tags
+                </FieldLabel>
 
-                <div
-                  className="
-                    flex
-                    min-h-[52px]
-                    items-center
-                    gap-2
-                    rounded-xl
-                    border
-                    border-slate-200
-                    bg-slate-50
-                    px-3
-                    transition
-
-                    focus-within:border-[#D4AF37]/60
-                    focus-within:ring-4
-                    focus-within:ring-[#D4AF37]/10
-
-                    dark:border-white/10
-                    dark:bg-[#111111]
-                    dark:focus-within:border-[#D4AF37]/60
-                    dark:focus-within:bg-[#111111]
-                  "
-                >
+                <div className="flex min-h-[52px] items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 focus-within:border-[#D4AF37]/60 dark:border-white/10 dark:bg-[#111111]">
                   <Tag
                     size={14}
-                    className="
-                      shrink-0
-                      text-slate-400
-
-                      dark:text-white/35
-                    "
+                    className="shrink-0 text-slate-400"
                   />
 
                   <input
+                    value={tagInput}
                     type="text"
                     maxLength={MAX_TAG_LENGTH}
-                    value={tagInput}
-                    disabled={loading || success || tags.length >= MAX_TAGS}
+                    disabled={
+                      loading ||
+                      success ||
+                      tags.length >= MAX_TAGS
+                    }
                     onChange={(event) => {
-                      setTagInput(event.target.value);
+                      setTagInput(
+                        event.target.value
+                      );
 
                       setErrorMsg("");
                     }}
-                    onKeyDown={handleTagKeyDown}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === "Enter" ||
+                        event.key === ","
+                      ) {
+                        event.preventDefault();
+                        addTag();
+                      } else if (
+                        event.key === "Backspace" &&
+                        !tagInput &&
+                        tags.length
+                      ) {
+                        setTags(
+                          (old) =>
+                            old.slice(
+                              0,
+                              -1
+                            )
+                        );
+                      }
+                    }}
                     placeholder="silk, layered, modern…"
-                    className="
-                      h-12
-                      min-w-0
-                      flex-1
-                      bg-transparent
-                      text-sm
-                      text-slate-900
-                      caret-slate-900
-                      outline-none
-
-                      placeholder:text-slate-400
-
-                      disabled:cursor-not-allowed
-
-                      dark:text-white
-                      dark:caret-white
-                      dark:placeholder:text-white/25
-                    "
+                    className="h-12 min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none dark:text-white"
                   />
 
                   <button
                     type="button"
-                    onClick={addCurrentTag}
+                    onClick={addTag}
                     disabled={
-                      !normalizeTag(tagInput) ||
-                      tags.length >= MAX_TAGS ||
                       loading ||
-                      success
+                      success ||
+                      !normalizeTag(tagInput)
                     }
                     aria-label="Add tag"
-                    className="
-                      grid
-                      h-8
-                      w-8
-                      place-items-center
-                      rounded-lg
-                      bg-slate-200
-                      text-slate-600
-
-                      disabled:opacity-30
-
-                      dark:bg-white/10
-                      dark:text-white/60
-                    "
+                    className="rounded-lg bg-slate-200 p-2 text-slate-600 disabled:opacity-40 dark:bg-white/10 dark:text-white"
                   >
                     <Plus size={13} />
                   </button>
                 </div>
 
-                <div
-                  className="
-                    mt-2
-                    flex
-                    justify-between
-                    text-[9px]
-                    text-slate-400
-
-                    dark:text-white/25
-                  "
-                >
-                  <span>Press Enter or comma to add</span>
+                <div className="mt-2 flex justify-between text-[9px] text-slate-400">
+                  <span>
+                    Press Enter or comma to add
+                  </span>
 
                   <span>
                     {tags.length}/{MAX_TAGS}
@@ -3214,61 +2490,28 @@ export default function CreatorUpload() {
                 </div>
 
                 {tags.length > 0 && (
-                  <div
-                    className="
-                      mt-3
-                      flex
-                      flex-wrap
-                      gap-2
-                    "
-                  >
+                  <div className="mt-3 flex flex-wrap gap-2">
                     {tags.map((tag) => (
                       <span
                         key={tag}
-                        className="
-                          inline-flex
-                          items-center
-                          gap-1
-                          rounded-full
-                          border
-                          border-slate-200
-                          bg-slate-50
-                          py-1.5
-                          pl-3
-                          pr-1.5
-                          text-[9px]
-                          text-slate-500
-
-                          dark:border-white/10
-                          dark:bg-white/[0.03]
-                          dark:text-white/40
-                        "
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] text-slate-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-white/50"
                       >
                         #{tag}
+
                         <button
                           type="button"
-                          onClick={() => removeTag(tag)}
+                          onClick={() =>
+                            setTags(
+                              (old) =>
+                                old.filter(
+                                  (item) => item !== tag
+                                )
+                            )
+                          }
                           disabled={loading || success}
                           aria-label={`Remove ${tag} tag`}
-                          className="
-                            grid
-                            h-6
-                            w-6
-                            place-items-center
-                            rounded-full
-
-                            text-slate-400
-                            transition
-
-                            hover:bg-slate-200
-                            hover:text-slate-700
-
-                            dark:text-white/40
-                            dark:hover:bg-white/10
-                            dark:hover:text-white
-                          "
                         >
-                          <X size={11} />
+                          <X size={12} />
                         </button>
                       </span>
                     ))}
@@ -3279,249 +2522,119 @@ export default function CreatorUpload() {
               {/* Description */}
 
               <label className="block">
-                <FieldLabel optional>Description</FieldLabel>
+                <FieldLabel optional>
+                  Description
+                </FieldLabel>
 
                 <textarea
-                  maxLength={MAX_DESCRIPTION_LENGTH}
                   rows={7}
+                  maxLength={MAX_DESCRIPTION_LENGTH}
                   value={form.description}
-                  disabled={loading || success}
                   onChange={(event) =>
-                    handleInputChange("description", event.target.value)
+                    handleFormChange(
+                      "description",
+                      event.target.value
+                    )
                   }
-                  placeholder="Describe the silhouette, materials, inspiration, mood, construction ideas, visual direction, or anything useful about this concept..."
-                  className="
-                    w-full
-                    resize-y
-                    rounded-xl
-                    border
-                    border-slate-200
-                    bg-slate-50
-                    p-4
-                    text-sm
-                    leading-7
-                    text-slate-900
-                    caret-slate-900
-                    outline-none
-                    transition
-
-                    placeholder:text-slate-400
-
-                    focus:border-[#D4AF37]/60
-                    focus:bg-slate-50
-                    focus:ring-4
-                    focus:ring-[#D4AF37]/10
-
-                    disabled:cursor-not-allowed
-                    disabled:opacity-60
-
-                    dark:border-white/10
-                    dark:bg-[#111111]
-                    dark:text-white
-                    dark:caret-white
-                    dark:placeholder:text-white/25
-
-                    dark:focus:border-[#D4AF37]/60
-                    dark:focus:bg-[#111111]
-                    dark:focus:text-white
-                    dark:focus:ring-[#D4AF37]/10
-                  "
+                  disabled={loading || success}
+                  placeholder="Describe the silhouette, materials, inspiration, mood, construction ideas, or visual direction…"
+                  className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-7 text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-[#111111] dark:text-white dark:placeholder:text-white/25"
                 />
 
-                <div
-                  className="
-                    mt-2
-                    flex
-                    justify-end
-                    text-[8px]
-                    font-mono
-                    text-slate-400
-
-                    dark:text-white/25
-                  "
-                >
-                  {form.description.length}/{MAX_DESCRIPTION_LENGTH}
-                </div>
+                <p className="mt-2 text-right text-[9px] text-slate-400">
+                  {form.description.length}/
+                  {MAX_DESCRIPTION_LENGTH}
+                </p>
               </label>
 
               {/* Visibility */}
 
               <div>
-                <FieldLabel>Visibility</FieldLabel>
+                <FieldLabel>
+                  Visibility
+                </FieldLabel>
 
-                <p
-                  className="
-                    mb-3
-                    text-[10px]
-                    leading-5
-                    text-slate-500
-
-                    dark:text-white/35
-                  "
-                >
-                  Choose who can see this asset. Private is the default. You
-                  will be able to change it later from your Creator profile.
+                <p className="mb-3 text-[10px] leading-5 text-slate-500 dark:text-white/35">
+                  Private is the default. You can change
+                  visibility later from your Creator profile.
                 </p>
 
-                <div
-                  className="
-                    grid
-                    gap-3
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {VISIBILITY_OPTIONS.map(
+                    ({
+                      value,
+                      label,
+                      description,
+                      Icon,
+                    }) => {
+                      const chosen =
+                        form.visibility === value;
 
-                    sm:grid-cols-2
-                  "
-                >
-                  {VISIBILITY_OPTIONS.map((option) => {
-                    const selected = form.visibility === option.value;
-
-                    const Icon = option.value === "private" ? Lock : Globe2;
-
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        disabled={loading || success}
-                        aria-pressed={selected}
-                        onClick={() =>
-                          handleInputChange("visibility", option.value)
-                        }
-                        className={`
-                          relative
-                          overflow-hidden
-                          rounded-2xl
-                          border
-                          p-5
-                          text-left
-                          transition
-
-                          ${
-                            selected
-                              ? "border-[#D4AF37]/60 bg-[#D4AF37]/10 shadow-[0_12px_30px_rgba(212,175,55,0.08)]"
-                              : "border-slate-200 bg-slate-50 hover:border-[#D4AF37]/35 hover:bg-[#D4AF37]/[0.025] dark:border-white/10 dark:bg-white/[0.025]"
+                      return (
+                        <button
+                          type="button"
+                          key={value}
+                          onClick={() =>
+                            handleFormChange(
+                              "visibility",
+                              value
+                            )
                           }
+                          disabled={loading || success}
+                          aria-pressed={chosen}
+                          className={`
+                            rounded-2xl border
+                            p-5 text-left
+                            transition
 
-                          disabled:cursor-not-allowed
-                          disabled:opacity-60
-                        `}
-                      >
-                        <div
-                          className="
-                            flex
-                            items-start
-                            justify-between
-                            gap-4
-                          "
+                            ${
+                              chosen
+                                ? "border-[#D4AF37]/60 bg-[#D4AF37]/10"
+                                : "border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.025]"
+                            }
+                          `}
                         >
-                          <span
-                            className={`
-                              grid
-                              h-11
-                              w-11
-                              shrink-0
-                              place-items-center
-                              rounded-xl
-                              border
-
-                              ${
-                                selected
-                                  ? "border-[#D4AF37]/30 bg-[#D4AF37]/15 text-[#8A6814] dark:text-[#E4C65D]"
-                                  : "border-slate-200 bg-white text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/40"
-                              }
-                            `}
-                          >
-                            <Icon size={18} />
-                          </span>
-
-                          {selected && (
-                            <span
-                              className="
-                                grid
-                                h-6
-                                w-6
-                                shrink-0
-                                place-items-center
-                                rounded-full
-                                bg-[#D4AF37]
-                                text-black
-                              "
-                            >
-                              <Check size={13} />
+                          <div className="flex justify-between">
+                            <span className="grid h-11 w-11 place-items-center rounded-xl border border-[#D4AF37]/20 text-[#98751A] dark:text-[#D4AF37]">
+                              <Icon size={18} />
                             </span>
-                          )}
-                        </div>
 
-                        <p
-                          className="
-                            mt-4
-                            text-sm
-                            font-bold
-                            text-slate-900
+                            {chosen && (
+                              <span className="grid h-6 w-6 place-items-center rounded-full bg-[#D4AF37] text-black">
+                                <Check size={13} />
+                              </span>
+                            )}
+                          </div>
 
-                            dark:text-white
-                          "
-                        >
-                          {option.label}
-                        </p>
+                          <p className="mt-4 text-sm font-bold">
+                            {label}
+                          </p>
 
-                        <p
-                          className="
-                            mt-1.5
-                            text-[10px]
-                            leading-5
-                            text-slate-500
-
-                            dark:text-white/35
-                          "
-                        >
-                          {option.description}
-                        </p>
-                      </button>
-                    );
-                  })}
+                          <p className="mt-1.5 text-[10px] leading-5 text-slate-500 dark:text-white/35">
+                            {description}
+                          </p>
+                        </button>
+                      );
+                    }
+                  )}
                 </div>
 
-                <div
-                  className={`
-                    mt-3
-                    flex
-                    items-start
-                    gap-2.5
-                    rounded-xl
-                    border
-                    p-3.5
-                    text-[10px]
-                    leading-5
-
-                    ${
-                      form.visibility === "public"
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/15 dark:bg-emerald-400/[0.06] dark:text-emerald-200"
-                        : "border-slate-200 bg-slate-50 text-slate-500 dark:border-white/10 dark:bg-white/[0.025] dark:text-white/40"
-                    }
-                  `}
-                >
+                <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-[10px] leading-5 text-slate-500 dark:border-white/10 dark:bg-white/[0.025] dark:text-white/40">
                   {form.visibility === "public" ? (
                     <Globe2
                       size={14}
-                      className="
-                        mt-0.5
-                        shrink-0
-                      "
+                      className="mt-0.5 shrink-0"
                     />
                   ) : (
                     <Lock
                       size={14}
-                      className="
-                        mt-0.5
-                        shrink-0
-                      "
+                      className="mt-0.5 shrink-0"
                     />
                   )}
 
-                  <span>
-                    {form.visibility === "public"
-                      ? "Public assets can be viewed by other users and can appear in Showcase discovery."
-                      : "Private assets stay saved to your account and are hidden from the public Showcase."}
-                  </span>
+                  {form.visibility === "public"
+                    ? "Public creations can appear in Showcase discovery."
+                    : "Private creations remain hidden from the public Showcase. Files uploaded to public Cloudinary storage may still be accessible through their direct URLs."}
                 </div>
               </div>
             </div>
@@ -3529,59 +2642,22 @@ export default function CreatorUpload() {
 
           {/* Footer */}
 
-          <footer
-            className="
-              border-t
-              border-slate-200
-              bg-slate-50/70
-              p-5
-
-              sm:p-6
-
-              dark:border-white/[0.06]
-              dark:bg-white/[0.015]
-            "
-          >
+          <footer className="border-t border-slate-200 bg-slate-50/70 p-5 sm:p-6 dark:border-white/[0.06] dark:bg-white/[0.015]">
             {loading && (
               <div className="mb-5">
-                <div
-                  className="
-                    mb-2
-                    flex
-                    justify-between
-                    text-[8px]
-                    font-black
-                    uppercase
-                    tracking-[0.15em]
-                    text-slate-400
+                <div className="mb-2 flex justify-between text-[9px] font-bold uppercase text-slate-400">
+                  <span>
+                    Saving Creator Studio creation
+                  </span>
 
-                    dark:text-white/25
-                  "
-                >
-                  <span>Saving Studio Asset</span>
-
-                  <span>{uploadProgress}%</span>
+                  <span>
+                    {uploadProgress}%
+                  </span>
                 </div>
 
-                <div
-                  className="
-                    h-1.5
-                    overflow-hidden
-                    rounded-full
-                    bg-slate-200
-
-                    dark:bg-white/[0.06]
-                  "
-                >
+                <div className="h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-white/[0.06]">
                   <div
-                    className="
-                      h-full
-                      rounded-full
-                      bg-gradient-to-r
-                      from-[#A98520]
-                      to-[#D4AF37]
-                      transition-all
-                    "
+                    className="h-full rounded-full bg-gradient-to-r from-[#A98520] to-[#D4AF37] transition-all"
                     style={{
                       width: `${uploadProgress}%`,
                     }}
@@ -3590,82 +2666,35 @@ export default function CreatorUpload() {
               </div>
             )}
 
-            <div
-              className="
-                flex
-                flex-col
-                gap-4
-
-                sm:flex-row
-                sm:items-center
-                sm:justify-between
-              "
-            >
-              <div
-                className="
-                  flex
-                  items-start
-                  gap-2
-                  text-[9px]
-                  leading-5
-                  text-slate-400
-
-                  dark:text-white/25
-                "
-              >
+            <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+              <p className="inline-flex items-start gap-2 text-[10px] leading-5 text-slate-400 dark:text-white/30">
                 <Layers3
                   size={13}
-                  className="
-                    mt-0.5
-                    shrink-0
-                  "
+                  className="mt-0.5 shrink-0"
                 />
 
                 <span>
-                  {strokeCount > 0
-                    ? `${strokeCount} editable Studio stroke${
-                        strokeCount === 1 ? "" : "s"
-                      } will be stored with this asset.`
-                    : "No editable Studio vector state is attached to this asset."}
+                  {strokeCount
+                    ? `${strokeCount} Studio stroke${strokeCount === 1 ? "" : "s"} will be stored.`
+                    : "No editable Studio vector state is attached."}{" "}
+
+                  {gallery.length
+                    ? `${gallery.length} image${gallery.length === 1 ? "" : "s"} will be saved together.`
+                    : "Artwork is optional."}
                 </span>
-              </div>
+              </p>
 
               <button
                 type="submit"
                 disabled={loading || success}
-                className="
-                  inline-flex
-                  h-12
-                  shrink-0
-                  items-center
-                  justify-center
-                  gap-2
-                  rounded-xl
-                  bg-[#D4AF37]
-                  px-7
-                  text-[9px]
-                  font-black
-                  uppercase
-                  tracking-[0.18em]
-                  text-black
-                  shadow-[0_14px_35px_rgba(212,175,55,0.2)]
-                  transition
-
-                  hover:-translate-y-0.5
-                  hover:bg-[#E4C65D]
-
-                  disabled:cursor-not-allowed
-                  disabled:bg-slate-200
-                  disabled:text-slate-400
-                  disabled:shadow-none
-
-                  dark:disabled:bg-white/5
-                  dark:disabled:text-white/25
-                "
+                className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-7 text-[9px] font-black uppercase tracking-[0.18em] text-black shadow-[0_14px_35px_rgba(212,175,55,0.2)] transition hover:bg-[#E4C65D] disabled:opacity-50"
               >
                 {loading ? (
                   <>
-                    <Loader2 size={14} className="animate-spin" />
+                    <Loader2
+                      size={14}
+                      className="animate-spin"
+                    />
                     Saving
                   </>
                 ) : success ? (

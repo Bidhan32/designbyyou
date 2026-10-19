@@ -5,7 +5,7 @@
 DesignByYou / FashionVision
 Creator Controller
 Creator Studio Assets + Fashion Editor Projects
-Version 5.3 — Public Showcase → Fashion Editor
+Version 5.6 — Multi-Image Showcase Import + Image-Specific Gallery
 =========================================================
 
 CREATOR STUDIO MODEL
@@ -107,13 +107,12 @@ designs.style_category
 SHOWCASE VISIBILITY
 =========================================================
 
-Creator Studio assets are intended to appear in the
-Creator Showcase.
+Creator Studio assets may be public or private.
 
-Therefore new Creator Studio assets are saved as:
-
-is_public    = TRUE
-is_published = TRUE
+Manual Creator Studio uploads default to:
+  is_public = FALSE; is_published = TRUE
+New Fashion Editor shares default to public unless specified;
+existing Fashion Editor shares preserve visibility when omitted.
 
 These flags mean Showcase visibility/readiness.
 
@@ -170,6 +169,7 @@ term assignments are rolled back together.
 */
 
 const crypto = require("crypto");
+const cloudinary = require("cloudinary").v2;
 
 const db = require("../../config/db");
 
@@ -731,6 +731,131 @@ function createShowcaseImageEditorProject({
 
     exportedAt: timestamp,
   };
+}
+
+/*=========================================================
+Multiple Showcase Images -> One Fashion Editor Canvas
+
+Every image becomes its own editable image object and layer.
+The ordered image sources are database-authorized, never client URLs.
+=========================================================*/
+function createShowcaseMultiImageEditorProject({
+  title,
+  images,
+  sourceDesignId,
+}) {
+  if (!Array.isArray(images) || images.length < 2 || images.length > 6) {
+    throw new Error("A multi-image project requires 2 to 6 images.");
+  }
+
+  const safeTitle = cleanText(title, MAX_TITLE_LENGTH) || "Showcase Gallery";
+  const timestamp = new Date().toISOString();
+  const documentWidth = 1200;
+  const margin = 60;
+  const gutter = 40;
+  const columns = 2;
+  const rows = Math.ceil(images.length / columns);
+  const imageWidth = (documentWidth - margin * 2 - gutter) / columns;
+  const imageHeight = 650;
+  const documentHeight = margin * 2 + rows * imageHeight + (rows - 1) * gutter;
+
+  // Start from the established schema-v2 document, including symmetry options.
+  const project = createShowcaseImageEditorProject({
+    title: safeTitle,
+    previewUrl: null,
+    sourceDesignId,
+  });
+  project.document.name = safeTitle;
+  project.document.width = documentWidth;
+  project.document.height = documentHeight;
+  project.document.updatedAt = timestamp;
+  project.layers = [];
+  project.objects = {};
+  project.symmetry.axisX = documentWidth / 2;
+  project.symmetry.axisY = documentHeight / 2;
+  project.exportedAt = timestamp;
+
+  images.forEach((image, index) => {
+    const sourceImageId = cleanText(image?.id, 100);
+    const url = normalizeEditorImageUrl(image?.image_url);
+    if (!isUuid(sourceImageId) || !url) {
+      throw new Error("The selected Showcase image is invalid.");
+    }
+
+    const imageTitle = `Showcase Image ${index + 1}`;
+    const single = createShowcaseImageEditorProject({
+      title: imageTitle,
+      previewUrl: url,
+      sourceDesignId,
+    });
+    const layer = single.layers[0];
+    const objectId = layer?.objectIds?.[0];
+    const object = objectId ? single.objects[objectId] : null;
+    if (!layer || !object) {
+      throw new Error(
+        "A selected Showcase image could not be added to the canvas.",
+      );
+    }
+
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    const x = margin + column * (imageWidth + gutter);
+    const y = margin + row * (imageHeight + gutter);
+
+    layer.name = imageTitle;
+    layer.objectIds = [objectId];
+    layer.updatedAt = timestamp;
+    object.name = imageTitle;
+    object.x = x;
+    object.y = y;
+    object.width = imageWidth;
+    object.height = imageHeight;
+    object.naturalWidth = imageWidth;
+    object.naturalHeight = imageHeight;
+    object.aspectRatio = imageWidth / imageHeight;
+    object.fileName = `showcase-${sourceDesignId || "design"}-${sourceImageId}`;
+    object.geometry = {
+      ...object.geometry,
+      x,
+      y,
+      width: imageWidth,
+      height: imageHeight,
+      left: x,
+      top: y,
+      right: x + imageWidth,
+      bottom: y + imageHeight,
+      center: {
+        x: x + imageWidth / 2,
+        y: y + imageHeight / 2,
+      },
+      aspectRatio: imageWidth / imageHeight,
+      boundingBox: {
+        x,
+        y,
+        width: imageWidth,
+        height: imageHeight,
+        minX: x,
+        minY: y,
+        maxX: x + imageWidth,
+        maxY: y + imageHeight,
+      },
+    };
+    object.metadata = {
+      ...object.metadata,
+      sourceDesignId: sourceDesignId || null,
+      sourceImageId,
+      originalWidth: imageWidth,
+      originalHeight: imageHeight,
+      importedAt: timestamp,
+    };
+    object.updatedAt = timestamp;
+    project.layers.push(layer);
+    project.objects[objectId] = object;
+  });
+
+  // Each layer/object is individually editable; no objects overlap initially.
+  project.activeLayerId = project.layers[0].id;
+  return project;
 }
 
 /*=========================================================
@@ -1473,6 +1598,96 @@ exports.updateEditorProject = async (req, res) => {
 };
 
 /*=========================================================
+  Creator Studio Gallery Cloudinary Cleanup
+=========================================================*/
+const MAX_CREATOR_GALLERY_IMAGES = 6;
+const CREATOR_GALLERY_IMAGE_BYTES = 5 * 1024 * 1024;
+const CREATOR_GALLERY_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+async function cleanupCreatorGalleryCloudinaryFiles(files) {
+  if (!Array.isArray(files) || files.length === 0) return;
+  const identifiers = [
+    ...new Set(
+      files
+        .map((file) => file?.filename)
+        .filter(
+          (value) =>
+            typeof value === "string" &&
+            value.startsWith("designbyyou_previews/"),
+        ),
+    ),
+  ];
+
+  const results = await Promise.allSettled(
+    identifiers.map((publicId) =>
+      cloudinary.uploader.destroy(publicId, {
+        resource_type: "image",
+        invalidate: true,
+      }),
+    ),
+  );
+  results.forEach((result, index) => {
+    if (result.status === "rejected" || result.value?.result === "error") {
+      console.error("Creator gallery Cloudinary cleanup failed", {
+        publicId: identifiers[index],
+        reason:
+          result.status === "rejected"
+            ? result.reason?.message
+            : result.value?.result,
+      });
+    }
+  });
+}
+
+function validateCreatorGalleryFiles(files, rawCoverIndex) {
+  if (!Array.isArray(files) || files.length > MAX_CREATOR_GALLERY_IMAGES) {
+    return { error: "A creation supports no more than six images." };
+  }
+  const ids = new Set();
+  for (const file of files) {
+    const size = Number(file?.size);
+    const mime = String(file?.mimetype || "").toLowerCase();
+    const url = String(file?.path || "");
+    const publicId = String(file?.filename || "");
+    if (
+      !CREATOR_GALLERY_MIME.has(mime) ||
+      !Number.isFinite(size) ||
+      size <= 0 ||
+      size > CREATOR_GALLERY_IMAGE_BYTES ||
+      !url.startsWith("https://") ||
+      url.length > 2048 ||
+      !publicId.startsWith("designbyyou_previews/") ||
+      publicId.length > 1024 ||
+      ids.has(publicId)
+    ) {
+      return { error: "One or more gallery images are invalid." };
+    }
+    ids.add(publicId);
+  }
+  let coverIndex = 0;
+  if (
+    rawCoverIndex !== undefined &&
+    rawCoverIndex !== null &&
+    rawCoverIndex !== ""
+  ) {
+    const raw = String(rawCoverIndex);
+    if (!/^(0|[1-5])$/.test(raw) || Number(raw) >= files.length) {
+      return {
+        error:
+          "cover_image_index must refer to a selected image, starting at zero.",
+      };
+    }
+    coverIndex = Number(raw);
+  }
+  // Move chosen cover to display_order 1. Other images preserve upload order.
+  const ordered = [
+    files[coverIndex],
+    ...files.filter((_, index) => index !== coverIndex),
+  ].filter(Boolean);
+  return { files: ordered };
+}
+
+/*=========================================================
 UPLOAD CREATOR STUDIO ASSET / SHARE FASHION EDITOR PROJECT
 
 POST
@@ -1515,49 +1730,58 @@ The browser cannot publish another Creator's project.
 =========================================================*/
 
 exports.uploadCreatorStudioAsset = async (req, res) => {
-  const creatorId = getAuthenticatedCreatorId(req);
+  // This mode can only be enabled by the dedicated Creator Studio route.
+  const galleryMode = req.creatorGalleryUpload === true;
+  const uploadedCloudinaryFiles =
+    galleryMode && Array.isArray(req.files) ? [...req.files] : [];
+  let galleryDatabaseCommitted = false;
+  let galleryImages = [];
+  let galleryFiles = [];
+  try {
+    const creatorId = getAuthenticatedCreatorId(req);
 
-  const MAX_PREVIEW_BYTES = 5 * 1024 * 1024;
-  const MAX_CANVAS_STATE_BYTES = 2 * 1024 * 1024;
+    const MAX_PREVIEW_BYTES = 5 * 1024 * 1024;
+    const MAX_CANVAS_STATE_BYTES = 2 * 1024 * 1024;
 
-  const ALLOWED_PREVIEW_TYPES = new Set([
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-  ]);
+    const ALLOWED_PREVIEW_TYPES = new Set([
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ]);
 
-  /*
-   * These are the only multipart/text fields
-   * accepted by this endpoint.
-   *
-   * Clients may send:
-   *
-   * visibility = "private" | "public"
-   *
-   * Clients may NOT directly control:
-   *
-   * is_public
-   * is_published
-   */
-  const ALLOWED_BODY_FIELDS = new Set([
-    "title",
-    "description",
-    "format",
-    "product_type",
-    "category_id",
-    "style_category",
-    "showcase_term_ids",
-    "tags",
-    "canvas_state",
-    "editor_project_id",
-    "allow_remix",
-    "visibility",
-    "preview",
-  ]);
+    /*
+     * These are the only multipart/text fields
+     * accepted by this endpoint.
+     *
+     * Clients may send:
+     *
+     * visibility = "private" | "public"
+     *
+     * Clients may NOT directly control:
+     *
+     * is_public
+     * is_published
+     */
+    const ALLOWED_BODY_FIELDS = new Set([
+      "title",
+      "description",
+      "format",
+      "product_type",
+      "category_id",
+      "style_category",
+      "showcase_term_ids",
+      "tags",
+      "canvas_state",
+      "editor_project_id",
+      "allow_remix",
+      "visibility",
+      "preview",
+      ...(galleryMode ? ["cover_image_index"] : []),
+    ]);
 
-  const body = req.body || {};
+    const body = req.body || {};
 
-  /*=====================================================
+    /*=====================================================
     Field Presence Helper
 
     This is important for Fashion Editor re-share.
@@ -1569,261 +1793,295 @@ exports.uploadCreatorStudioAsset = async (req, res) => {
       update / clear existing value
   =====================================================*/
 
-  const hasBodyField = (fieldName) =>
-    Object.prototype.hasOwnProperty.call(body, fieldName);
+    const hasBodyField = (fieldName) =>
+      Object.prototype.hasOwnProperty.call(body, fieldName);
 
-  /*=====================================================
+    /*=====================================================
     Preview Helpers
   =====================================================*/
 
-  const getPreviewFile = () => {
-    if (req.file) {
-      return req.file;
-    }
+    const getPreviewFile = () => {
+      if (req.file) {
+        return req.file;
+      }
 
-    if (Array.isArray(req.files)) {
-      return req.files[0] || null;
-    }
+      if (Array.isArray(req.files)) {
+        return req.files[0] || null;
+      }
 
-    if (req.files && Array.isArray(req.files.preview)) {
-      return req.files.preview[0] || null;
-    }
+      if (req.files && Array.isArray(req.files.preview)) {
+        return req.files.preview[0] || null;
+      }
 
-    return null;
-  };
+      return null;
+    };
 
-  const matchesImageSignature = (buffer, mimeType) => {
-    /*
-     * CloudinaryStorage normally does not expose
-     * an in-memory file buffer.
-     *
-     * upload.js / Cloudinary handle image validation
-     * in that case.
-     */
-    if (!Buffer.isBuffer(buffer)) {
-      return true;
-    }
+    const matchesImageSignature = (buffer, mimeType) => {
+      /*
+       * CloudinaryStorage normally does not expose
+       * an in-memory file buffer.
+       *
+       * upload.js / Cloudinary handle image validation
+       * in that case.
+       */
+      if (!Buffer.isBuffer(buffer)) {
+        return true;
+      }
 
-    if (buffer.length < 12) {
+      if (buffer.length < 12) {
+        return false;
+      }
+
+      if (mimeType === "image/jpeg") {
+        return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+      }
+
+      if (mimeType === "image/png") {
+        return (
+          buffer[0] === 0x89 &&
+          buffer[1] === 0x50 &&
+          buffer[2] === 0x4e &&
+          buffer[3] === 0x47 &&
+          buffer[4] === 0x0d &&
+          buffer[5] === 0x0a &&
+          buffer[6] === 0x1a &&
+          buffer[7] === 0x0a
+        );
+      }
+
+      if (mimeType === "image/webp") {
+        return (
+          buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+          buffer.subarray(8, 12).toString("ascii") === "WEBP"
+        );
+      }
+
       return false;
-    }
+    };
 
-    if (mimeType === "image/jpeg") {
-      return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
-    }
+    const getJsonByteLength = (value) => {
+      if (value === undefined || value === null || value === "") {
+        return 0;
+      }
 
-    if (mimeType === "image/png") {
-      return (
-        buffer[0] === 0x89 &&
-        buffer[1] === 0x50 &&
-        buffer[2] === 0x4e &&
-        buffer[3] === 0x47 &&
-        buffer[4] === 0x0d &&
-        buffer[5] === 0x0a &&
-        buffer[6] === 0x1a &&
-        buffer[7] === 0x0a
-      );
-    }
+      try {
+        const serialized =
+          typeof value === "string" ? value : JSON.stringify(value);
 
-    if (mimeType === "image/webp") {
-      return (
-        buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
-        buffer.subarray(8, 12).toString("ascii") === "WEBP"
-      );
-    }
+        return Buffer.byteLength(serialized, "utf8");
+      } catch {
+        return Number.POSITIVE_INFINITY;
+      }
+    };
 
-    return false;
-  };
-
-  const getJsonByteLength = (value) => {
-    if (value === undefined || value === null || value === "") {
-      return 0;
-    }
-
-    try {
-      const serialized =
-        typeof value === "string" ? value : JSON.stringify(value);
-
-      return Buffer.byteLength(serialized, "utf8");
-    } catch {
-      return Number.POSITIVE_INFINITY;
-    }
-  };
-
-  /*=====================================================
+    /*=====================================================
     Format Mapping
   =====================================================*/
 
-  const PRODUCT_TYPE_TO_FORMAT = Object.freeze({
-    sketch: "sketch",
+    const PRODUCT_TYPE_TO_FORMAT = Object.freeze({
+      sketch: "sketch",
 
-    tech_pack: "tech_pack",
+      tech_pack: "tech_pack",
 
-    "3d_model": "3d_garment",
-  });
+      "3d_model": "3d_garment",
+    });
 
-  const FORMAT_TO_PRODUCT_TYPE = Object.freeze({
-    sketch: "sketch",
+    const FORMAT_TO_PRODUCT_TYPE = Object.freeze({
+      sketch: "sketch",
 
-    tech_pack: "tech_pack",
+      tech_pack: "tech_pack",
 
-    "3d_garment": "3d_model",
-  });
+      "3d_garment": "3d_model",
+    });
 
-  /*=====================================================
+    /*=====================================================
     Internal / User Tag Helpers
   =====================================================*/
 
-  const getUserTagsFromStoredTags = (storedTags) => {
-    if (!Array.isArray(storedTags)) {
-      return [];
-    }
+    const getUserTagsFromStoredTags = (storedTags) => {
+      if (!Array.isArray(storedTags)) {
+        return [];
+      }
 
-    const result = [];
-    const seen = new Set();
+      const result = [];
+      const seen = new Set();
 
-    for (const rawTag of storedTags) {
-      const tag = normalizeTag(rawTag);
+      for (const rawTag of storedTags) {
+        const tag = normalizeTag(rawTag);
 
-      if (!tag) {
-        continue;
+        if (!tag) {
+          continue;
+        }
+
+        /*
+         * Hide server-controlled implementation tags
+         * from the Creator-facing response.
+         */
+        if (
+          tag === "creator-studio" ||
+          tag === "fashion-editor" ||
+          tag.startsWith("format-")
+        ) {
+          continue;
+        }
+
+        if (seen.has(tag)) {
+          continue;
+        }
+
+        seen.add(tag);
+
+        result.push(tag);
+
+        if (result.length >= MAX_TAGS) {
+          break;
+        }
+      }
+
+      return result;
+    };
+
+    const buildStoredTags = ({
+      userTags,
+      creatorFormat,
+      fashionEditorShare,
+    }) => {
+      const storedTags = [];
+
+      const seen = new Set();
+
+      const pushTag = (rawTag) => {
+        const tag = normalizeTag(rawTag);
+
+        if (!tag || seen.has(tag) || storedTags.length >= MAX_TAGS) {
+          return;
+        }
+
+        seen.add(tag);
+
+        storedTags.push(tag);
+      };
+
+      /*
+       * Server-controlled tag.
+       */
+      pushTag("creator-studio");
+
+      /*
+       * Keep format tag synchronized with
+       * the effective product_type.
+       */
+      if (creatorFormat) {
+        pushTag(`format-${creatorFormat}`);
       }
 
       /*
-       * Hide server-controlled implementation tags
-       * from the Creator-facing response.
+       * Fashion Editor server-controlled tag.
        */
-      if (
-        tag === "creator-studio" ||
-        tag === "fashion-editor" ||
-        tag.startsWith("format-")
-      ) {
-        continue;
+      if (fashionEditorShare) {
+        pushTag("fashion-editor");
       }
 
-      if (seen.has(tag)) {
-        continue;
+      for (const tag of userTags || []) {
+        pushTag(tag);
       }
 
-      seen.add(tag);
-
-      result.push(tag);
-
-      if (result.length >= MAX_TAGS) {
-        break;
-      }
-    }
-
-    return result;
-  };
-
-  const buildStoredTags = ({ userTags, creatorFormat, fashionEditorShare }) => {
-    const storedTags = [];
-
-    const seen = new Set();
-
-    const pushTag = (rawTag) => {
-      const tag = normalizeTag(rawTag);
-
-      if (!tag || seen.has(tag) || storedTags.length >= MAX_TAGS) {
-        return;
-      }
-
-      seen.add(tag);
-
-      storedTags.push(tag);
+      return storedTags;
     };
 
-    /*
-     * Server-controlled tag.
-     */
-    pushTag("creator-studio");
-
-    /*
-     * Keep format tag synchronized with
-     * the effective product_type.
-     */
-    if (creatorFormat) {
-      pushTag(`format-${creatorFormat}`);
-    }
-
-    /*
-     * Fashion Editor server-controlled tag.
-     */
-    if (fashionEditorShare) {
-      pushTag("fashion-editor");
-    }
-
-    for (const tag of userTags || []) {
-      pushTag(tag);
-    }
-
-    return storedTags;
-  };
-
-  /*=====================================================
+    /*=====================================================
     Authentication Defense
   =====================================================*/
 
-  if (!creatorId) {
-    return sendError(
-      res,
-      401,
-      "Authentication is required.",
-      "AUTHENTICATION_REQUIRED",
-    );
-  }
+    if (!creatorId) {
+      return sendError(
+        res,
+        401,
+        "Authentication is required.",
+        "AUTHENTICATION_REQUIRED",
+      );
+    }
 
-  /*
-   * authorize("creator") also exists at route level.
-   *
-   * This remains defense-in-depth.
-   */
-  if (normalizeToken(req?.user?.role) !== "creator") {
-    return sendError(
-      res,
-      403,
-      "Only Creator accounts can save Creator Studio assets.",
-      "CREATOR_REQUIRED",
-    );
-  }
+    /*
+     * authorize("creator") also exists at route level.
+     *
+     * This remains defense-in-depth.
+     */
+    if (normalizeToken(req?.user?.role) !== "creator") {
+      return sendError(
+        res,
+        403,
+        "Only Creator accounts can save Creator Studio assets.",
+        "CREATOR_REQUIRED",
+      );
+    }
 
-  /*=====================================================
+    /*=====================================================
+    Validate Gallery Before Any Database Write
+  =====================================================*/
+    if (galleryMode) {
+      const galleryValidation = validateCreatorGalleryFiles(
+        uploadedCloudinaryFiles,
+        body.cover_image_index,
+      );
+      if (galleryValidation.error) {
+        return sendError(
+          res,
+          400,
+          galleryValidation.error,
+          "INVALID_CREATOR_GALLERY",
+        );
+      }
+      galleryFiles = galleryValidation.files;
+      // The existing save handler uses req.file as its cover preview.
+      req.file = galleryFiles[0] || null;
+      // Never allow manual Studio uploads to masquerade as an editor share.
+      if (Object.prototype.hasOwnProperty.call(body, "editor_project_id")) {
+        return sendError(
+          res,
+          400,
+          "A manual gallery cannot specify an editor project.",
+          "INVALID_GALLERY_SOURCE",
+        );
+      }
+    }
+
+    /*=====================================================
     Reject Unexpected Body Fields
   =====================================================*/
 
-  for (const fieldName of Object.keys(body)) {
-    if (!ALLOWED_BODY_FIELDS.has(fieldName)) {
-      return sendError(
-        res,
-        400,
-        `Unsupported Creator Studio field: ${fieldName}.`,
-        "UNSUPPORTED_STUDIO_FIELD",
-      );
+    for (const fieldName of Object.keys(body)) {
+      if (!ALLOWED_BODY_FIELDS.has(fieldName)) {
+        return sendError(
+          res,
+          400,
+          `Unsupported Creator Studio field: ${fieldName}.`,
+          "UNSUPPORTED_STUDIO_FIELD",
+        );
+      }
     }
-  }
 
-  /*=====================================================
+    /*=====================================================
     Fashion Editor Source
   =====================================================*/
 
-  const editorProjectId = cleanText(
-    req.params?.projectId || body.editor_project_id,
-    100,
-  );
-
-  const isFashionEditorShare = Boolean(editorProjectId);
-
-  if (isFashionEditorShare && !isPositiveBigIntId(editorProjectId)) {
-    return sendError(
-      res,
-      400,
-      "A valid Fashion Editor project ID is required.",
-      "INVALID_EDITOR_PROJECT_ID",
+    const editorProjectId = cleanText(
+      req.params?.projectId || body.editor_project_id,
+      100,
     );
-  }
 
-  /*=====================================================
+    const isFashionEditorShare = Boolean(editorProjectId);
+
+    if (isFashionEditorShare && !isPositiveBigIntId(editorProjectId)) {
+      return sendError(
+        res,
+        400,
+        "A valid Fashion Editor project ID is required.",
+        "INVALID_EDITOR_PROJECT_ID",
+      );
+    }
+
+    /*=====================================================
     Visibility Intent
 
     IMPORTANT:
@@ -1848,33 +2106,33 @@ exports.uploadCreatorStudioAsset = async (req, res) => {
       → private
   =====================================================*/
 
-  const hasVisibilityField = hasBodyField("visibility");
+    const hasVisibilityField = hasBodyField("visibility");
 
-  let requestedVisibility = null;
+    let requestedVisibility = null;
 
-  if (hasVisibilityField) {
-    if (typeof body.visibility !== "string") {
-      return sendError(
-        res,
-        400,
-        "Visibility must be private or public.",
-        "INVALID_VISIBILITY",
-      );
+    if (hasVisibilityField) {
+      if (typeof body.visibility !== "string") {
+        return sendError(
+          res,
+          400,
+          "Visibility must be private or public.",
+          "INVALID_VISIBILITY",
+        );
+      }
+
+      requestedVisibility = normalizeToken(body.visibility);
+
+      if (!new Set(["private", "public"]).has(requestedVisibility)) {
+        return sendError(
+          res,
+          400,
+          "Visibility must be private or public.",
+          "INVALID_VISIBILITY",
+        );
+      }
     }
 
-    requestedVisibility = normalizeToken(body.visibility);
-
-    if (!new Set(["private", "public"]).has(requestedVisibility)) {
-      return sendError(
-        res,
-        400,
-        "Visibility must be private or public.",
-        "INVALID_VISIBILITY",
-      );
-    }
-  }
-
-  /*=====================================================
+    /*=====================================================
     Remix Intent
 
     Omitted on existing Fashion Editor item:
@@ -1884,347 +2142,352 @@ exports.uploadCreatorStudioAsset = async (req, res) => {
       update value
   =====================================================*/
 
-  const hasAllowRemixField = hasBodyField("allow_remix");
+    const hasAllowRemixField = hasBodyField("allow_remix");
 
-  /*
-   * Preserve the existing endpoint's boolean parsing
-   * compatibility for multipart form values.
-   */
-  const requestedAllowRemix = hasAllowRemixField
-    ? parseBoolean(body.allow_remix, false)
-    : null;
+    /*
+     * Preserve the existing endpoint's boolean parsing
+     * compatibility for multipart form values.
+     */
+    const requestedAllowRemix = hasAllowRemixField
+      ? parseBoolean(body.allow_remix, false)
+      : null;
 
-  /*=====================================================
+    /*=====================================================
     Optional Preview Security
   =====================================================*/
 
-  const uploadedPreview = getPreviewFile();
+    const uploadedPreview = getPreviewFile();
 
-  if (uploadedPreview) {
-    const previewMimeType = String(
-      uploadedPreview.mimetype || "",
-    ).toLowerCase();
+    if (uploadedPreview) {
+      const previewMimeType = String(
+        uploadedPreview.mimetype || "",
+      ).toLowerCase();
 
-    const previewSize = Number(uploadedPreview.size || 0);
+      const previewSize = Number(uploadedPreview.size || 0);
 
-    if (!ALLOWED_PREVIEW_TYPES.has(previewMimeType)) {
-      return sendError(
-        res,
-        400,
-        "Only JPG, PNG, and WEBP preview images are supported.",
-        "INVALID_PREVIEW_TYPE",
-      );
+      if (!ALLOWED_PREVIEW_TYPES.has(previewMimeType)) {
+        return sendError(
+          res,
+          400,
+          "Only JPG, PNG, and WEBP preview images are supported.",
+          "INVALID_PREVIEW_TYPE",
+        );
+      }
+
+      if (!Number.isFinite(previewSize) || previewSize <= 0) {
+        return sendError(
+          res,
+          400,
+          "The uploaded preview image is empty or invalid.",
+          "INVALID_PREVIEW_FILE",
+        );
+      }
+
+      if (previewSize > MAX_PREVIEW_BYTES) {
+        return sendError(
+          res,
+          413,
+          "The preview image must be 5 MB or smaller.",
+          "PREVIEW_TOO_LARGE",
+        );
+      }
+
+      if (
+        Buffer.isBuffer(uploadedPreview.buffer) &&
+        !matchesImageSignature(uploadedPreview.buffer, previewMimeType)
+      ) {
+        return sendError(
+          res,
+          400,
+          "The preview file contents do not match its declared image type.",
+          "INVALID_PREVIEW_SIGNATURE",
+        );
+      }
     }
 
-    if (!Number.isFinite(previewSize) || previewSize <= 0) {
-      return sendError(
-        res,
-        400,
-        "The uploaded preview image is empty or invalid.",
-        "INVALID_PREVIEW_FILE",
-      );
-    }
+    const submittedPreviewUrl =
+      cleanText(getUploadedPreviewUrl(req), 2048) || null;
 
-    if (previewSize > MAX_PREVIEW_BYTES) {
-      return sendError(
-        res,
-        413,
-        "The preview image must be 5 MB or smaller.",
-        "PREVIEW_TOO_LARGE",
-      );
-    }
+    /*=====================================================
+    Optional Title
+  =====================================================*/
+
+    const hasTitleField = hasBodyField("title");
 
     if (
-      Buffer.isBuffer(uploadedPreview.buffer) &&
-      !matchesImageSignature(uploadedPreview.buffer, previewMimeType)
+      hasTitleField &&
+      body.title !== null &&
+      typeof body.title !== "string"
+    ) {
+      return sendError(res, 400, "Title must be text.", "INVALID_TITLE");
+    }
+
+    const rawTitle = String(body.title ?? "");
+
+    if (rawTitle.length > MAX_TITLE_LENGTH) {
+      return sendError(
+        res,
+        400,
+        `Title must not exceed ${MAX_TITLE_LENGTH} characters.`,
+        "INVALID_TITLE",
+      );
+    }
+
+    const title = cleanText(rawTitle, MAX_TITLE_LENGTH) || null;
+
+    /*=====================================================
+    Optional Description
+  =====================================================*/
+
+    const hasDescriptionField = hasBodyField("description");
+
+    if (
+      hasDescriptionField &&
+      body.description !== null &&
+      typeof body.description !== "string"
     ) {
       return sendError(
         res,
         400,
-        "The preview file contents do not match its declared image type.",
-        "INVALID_PREVIEW_SIGNATURE",
+        "Description must be text.",
+        "INVALID_DESCRIPTION",
       );
     }
-  }
 
-  const submittedPreviewUrl =
-    cleanText(getUploadedPreviewUrl(req), 2048) || null;
+    const rawDescription = String(body.description ?? "");
 
-  /*=====================================================
-    Optional Title
-  =====================================================*/
+    if (rawDescription.length > MAX_DESCRIPTION_LENGTH) {
+      return sendError(
+        res,
+        400,
+        `Description must not exceed ${MAX_DESCRIPTION_LENGTH} characters.`,
+        "INVALID_DESCRIPTION",
+      );
+    }
 
-  const hasTitleField = hasBodyField("title");
+    const description =
+      cleanMultiline(rawDescription, MAX_DESCRIPTION_LENGTH) || null;
 
-  if (hasTitleField && body.title !== null && typeof body.title !== "string") {
-    return sendError(res, 400, "Title must be text.", "INVALID_TITLE");
-  }
-
-  const rawTitle = String(body.title ?? "");
-
-  if (rawTitle.length > MAX_TITLE_LENGTH) {
-    return sendError(
-      res,
-      400,
-      `Title must not exceed ${MAX_TITLE_LENGTH} characters.`,
-      "INVALID_TITLE",
-    );
-  }
-
-  const title = cleanText(rawTitle, MAX_TITLE_LENGTH) || null;
-
-  /*=====================================================
-    Optional Description
-  =====================================================*/
-
-  const hasDescriptionField = hasBodyField("description");
-
-  if (
-    hasDescriptionField &&
-    body.description !== null &&
-    typeof body.description !== "string"
-  ) {
-    return sendError(
-      res,
-      400,
-      "Description must be text.",
-      "INVALID_DESCRIPTION",
-    );
-  }
-
-  const rawDescription = String(body.description ?? "");
-
-  if (rawDescription.length > MAX_DESCRIPTION_LENGTH) {
-    return sendError(
-      res,
-      400,
-      `Description must not exceed ${MAX_DESCRIPTION_LENGTH} characters.`,
-      "INVALID_DESCRIPTION",
-    );
-  }
-
-  const description =
-    cleanMultiline(rawDescription, MAX_DESCRIPTION_LENGTH) || null;
-
-  /*=====================================================
+    /*=====================================================
     Optional General Category
   =====================================================*/
 
-  const hasCategoryField = hasBodyField("category_id");
+    const hasCategoryField = hasBodyField("category_id");
 
-  if (
-    hasCategoryField &&
-    body.category_id !== null &&
-    typeof body.category_id !== "string"
-  ) {
-    return sendError(
-      res,
-      400,
-      "Creative category must be a valid identifier.",
-      "INVALID_CATEGORY",
-    );
-  }
+    if (
+      hasCategoryField &&
+      body.category_id !== null &&
+      typeof body.category_id !== "string"
+    ) {
+      return sendError(
+        res,
+        400,
+        "Creative category must be a valid identifier.",
+        "INVALID_CATEGORY",
+      );
+    }
 
-  const categoryId = cleanText(body.category_id, 100);
+    const categoryId = cleanText(body.category_id, 100);
 
-  if (categoryId && !isUuid(categoryId)) {
-    return sendError(
-      res,
-      400,
-      "The selected creative category is invalid.",
-      "INVALID_CATEGORY",
-    );
-  }
+    if (categoryId && !isUuid(categoryId)) {
+      return sendError(
+        res,
+        400,
+        "The selected creative category is invalid.",
+        "INVALID_CATEGORY",
+      );
+    }
 
-  /*=====================================================
+    /*=====================================================
     Optional Showcase Discovery Terms
   =====================================================*/
 
-  const hasShowcaseTermsField = hasBodyField("showcase_term_ids");
+    const hasShowcaseTermsField = hasBodyField("showcase_term_ids");
 
-  const rawShowcaseTermIds = body.showcase_term_ids;
+    const rawShowcaseTermIds = body.showcase_term_ids;
 
-  const showcaseTermResult =
-    rawShowcaseTermIds === undefined ||
-    rawShowcaseTermIds === null ||
-    rawShowcaseTermIds === ""
-      ? {
-          valid: true,
-          ids: [],
-        }
-      : parseShowcaseTermIds(rawShowcaseTermIds);
+    const showcaseTermResult =
+      rawShowcaseTermIds === undefined ||
+      rawShowcaseTermIds === null ||
+      rawShowcaseTermIds === ""
+        ? {
+            valid: true,
+            ids: [],
+          }
+        : parseShowcaseTermIds(rawShowcaseTermIds);
 
-  if (!showcaseTermResult.valid) {
-    return sendError(
-      res,
-      400,
-      "Showcase discovery selections are invalid.",
-      "INVALID_SHOWCASE_TERMS",
+    if (!showcaseTermResult.valid) {
+      return sendError(
+        res,
+        400,
+        "Showcase discovery selections are invalid.",
+        "INVALID_SHOWCASE_TERMS",
+      );
+    }
+
+    const showcaseTermIds = Array.from(
+      new Set(
+        Array.isArray(showcaseTermResult.ids) ? showcaseTermResult.ids : [],
+      ),
     );
-  }
 
-  const showcaseTermIds = Array.from(
-    new Set(
-      Array.isArray(showcaseTermResult.ids) ? showcaseTermResult.ids : [],
-    ),
-  );
+    if (showcaseTermIds.some((id) => !isUuid(id))) {
+      return sendError(
+        res,
+        400,
+        "One or more Showcase discovery selections are invalid.",
+        "INVALID_SHOWCASE_TERMS",
+      );
+    }
 
-  if (showcaseTermIds.some((id) => !isUuid(id))) {
-    return sendError(
-      res,
-      400,
-      "One or more Showcase discovery selections are invalid.",
-      "INVALID_SHOWCASE_TERMS",
-    );
-  }
-
-  /*=====================================================
+    /*=====================================================
     Optional Creative Format
   =====================================================*/
 
-  const hasFormatField = hasBodyField("format") || hasBodyField("product_type");
+    const hasFormatField =
+      hasBodyField("format") || hasBodyField("product_type");
 
-  const rawRequestedFormat =
-    body.format !== undefined && body.format !== null
-      ? body.format
-      : body.product_type;
+    const rawRequestedFormat =
+      body.format !== undefined && body.format !== null
+        ? body.format
+        : body.product_type;
 
-  if (
-    hasFormatField &&
-    rawRequestedFormat !== null &&
-    typeof rawRequestedFormat !== "string"
-  ) {
-    return sendError(
-      res,
-      400,
-      "Creative format must be text.",
-      "INVALID_FORMAT",
-    );
-  }
+    if (
+      hasFormatField &&
+      rawRequestedFormat !== null &&
+      typeof rawRequestedFormat !== "string"
+    ) {
+      return sendError(
+        res,
+        400,
+        "Creative format must be text.",
+        "INVALID_FORMAT",
+      );
+    }
 
-  const requestedFormat = normalizeToken(rawRequestedFormat || "");
+    const requestedFormat = normalizeToken(rawRequestedFormat || "");
 
-  const ALLOWED_CREATOR_FORMATS = new Set([
-    "sketch",
-    "tech_pack",
-    "3d_garment",
-  ]);
+    const ALLOWED_CREATOR_FORMATS = new Set([
+      "sketch",
+      "tech_pack",
+      "3d_garment",
+    ]);
 
-  if (requestedFormat && !ALLOWED_CREATOR_FORMATS.has(requestedFormat)) {
-    return sendError(
-      res,
-      400,
-      "The selected creative format is not supported.",
-      "INVALID_FORMAT",
-    );
-  }
+    if (requestedFormat && !ALLOWED_CREATOR_FORMATS.has(requestedFormat)) {
+      return sendError(
+        res,
+        400,
+        "The selected creative format is not supported.",
+        "INVALID_FORMAT",
+      );
+    }
 
-  const storedProductType = requestedFormat
-    ? FORMAT_TO_PRODUCT_TYPE[requestedFormat]
-    : null;
+    const storedProductType = requestedFormat
+      ? FORMAT_TO_PRODUCT_TYPE[requestedFormat]
+      : null;
 
-  if (requestedFormat && !storedProductType) {
-    return sendError(
-      res,
-      400,
-      "The selected creative format cannot be stored.",
-      "INVALID_FORMAT",
-    );
-  }
+    if (requestedFormat && !storedProductType) {
+      return sendError(
+        res,
+        400,
+        "The selected creative format cannot be stored.",
+        "INVALID_FORMAT",
+      );
+    }
 
-  /*=====================================================
+    /*=====================================================
     Optional User Tags
   =====================================================*/
 
-  const hasTagsField = hasBodyField("tags");
+    const hasTagsField = hasBodyField("tags");
 
-  const rawTags = body.tags;
+    const rawTags = body.tags;
 
-  const parsedTags =
-    rawTags === undefined || rawTags === null || rawTags === ""
-      ? {
-          valid: true,
-          tags: [],
-        }
-      : parseTags(rawTags);
+    const parsedTags =
+      rawTags === undefined || rawTags === null || rawTags === ""
+        ? {
+            valid: true,
+            tags: [],
+          }
+        : parseTags(rawTags);
 
-  if (!parsedTags.valid) {
-    return sendError(
-      res,
-      400,
-      "Tags must be supplied as a valid JSON array.",
-      "INVALID_TAGS",
-    );
-  }
+    if (!parsedTags.valid) {
+      return sendError(
+        res,
+        400,
+        "Tags must be supplied as a valid JSON array.",
+        "INVALID_TAGS",
+      );
+    }
 
-  /*=====================================================
+    /*=====================================================
     Optional Canvas State
   =====================================================*/
 
-  const rawCanvasState = body.canvas_state;
+    const rawCanvasState = body.canvas_state;
 
-  if (getJsonByteLength(rawCanvasState) > MAX_CANVAS_STATE_BYTES) {
-    return sendError(
-      res,
-      413,
-      "Canvas state is too large.",
-      "CANVAS_STATE_TOO_LARGE",
-    );
-  }
+    if (getJsonByteLength(rawCanvasState) > MAX_CANVAS_STATE_BYTES) {
+      return sendError(
+        res,
+        413,
+        "Canvas state is too large.",
+        "CANVAS_STATE_TOO_LARGE",
+      );
+    }
 
-  const canvasStateResult =
-    rawCanvasState === undefined ||
-    rawCanvasState === null ||
-    rawCanvasState === ""
-      ? {
-          valid: true,
-          value: [],
-        }
-      : parseCanvasState(rawCanvasState);
+    const canvasStateResult =
+      rawCanvasState === undefined ||
+      rawCanvasState === null ||
+      rawCanvasState === ""
+        ? {
+            valid: true,
+            value: [],
+          }
+        : parseCanvasState(rawCanvasState);
 
-  if (!canvasStateResult.valid) {
-    return sendError(
-      res,
-      400,
-      "Canvas state must contain valid JSON.",
-      "INVALID_CANVAS_STATE",
-    );
-  }
+    if (!canvasStateResult.valid) {
+      return sendError(
+        res,
+        400,
+        "Canvas state must contain valid JSON.",
+        "INVALID_CANVAS_STATE",
+      );
+    }
 
-  const submittedCanvasState = canvasStateResult.value ?? [];
+    const submittedCanvasState = canvasStateResult.value ?? [];
 
-  /*=====================================================
+    /*=====================================================
     Internal Identifiers
   =====================================================*/
 
-  const internalAssetCode = createInternalAssetCode();
+    const internalAssetCode = createInternalAssetCode();
 
-  const slug = makeSlug(title || `creator-studio-${internalAssetCode}`);
+    const slug = makeSlug(title || `creator-studio-${internalAssetCode}`);
 
-  /*=====================================================
+    /*=====================================================
     Database Transaction
   =====================================================*/
 
-  let client;
+    let client;
 
-  let transactionActive = false;
+    let transactionActive = false;
 
-  try {
-    client = await db.connect();
+    try {
+      client = await db.connect();
 
-    await client.query("BEGIN");
+      await client.query("BEGIN");
 
-    transactionActive = true;
+      transactionActive = true;
 
-    /*---------------------------------------------------
+      /*---------------------------------------------------
       Validate Optional Category
     ---------------------------------------------------*/
 
-    let category = null;
+      let category = null;
 
-    if (categoryId) {
-      const categoryResult = await client.query(
-        `
+      if (categoryId) {
+        const categoryResult = await client.query(
+          `
             SELECT
               id,
               name,
@@ -2240,34 +2503,34 @@ exports.uploadCreatorStudioAsset = async (req, res) => {
 
             FOR SHARE
           `,
-        [categoryId],
-      );
-
-      if (categoryResult.rows.length === 0) {
-        await client.query("ROLLBACK");
-
-        transactionActive = false;
-
-        return sendError(
-          res,
-          400,
-          "The selected category is no longer available.",
-          "INVALID_CATEGORY",
+          [categoryId],
         );
+
+        if (categoryResult.rows.length === 0) {
+          await client.query("ROLLBACK");
+
+          transactionActive = false;
+
+          return sendError(
+            res,
+            400,
+            "The selected category is no longer available.",
+            "INVALID_CATEGORY",
+          );
+        }
+
+        category = categoryResult.rows[0];
       }
 
-      category = categoryResult.rows[0];
-    }
-
-    /*---------------------------------------------------
+      /*---------------------------------------------------
       Validate Showcase Discovery Terms
     ---------------------------------------------------*/
 
-    let discoveryRows = [];
+      let discoveryRows = [];
 
-    if (showcaseTermIds.length > 0) {
-      const discoveryResult = await client.query(
-        `
+      if (showcaseTermIds.length > 0) {
+        const discoveryResult = await client.query(
+          `
             SELECT
               id,
               group_type,
@@ -2295,10 +2558,33 @@ exports.uploadCreatorStudioAsset = async (req, res) => {
 
             FOR SHARE
           `,
-        [showcaseTermIds],
+          [showcaseTermIds],
+        );
+
+        if (discoveryResult.rows.length !== showcaseTermIds.length) {
+          await client.query("ROLLBACK");
+
+          transactionActive = false;
+
+          return sendError(
+            res,
+            400,
+            "One or more Showcase discovery selections are no longer available.",
+            "INVALID_SHOWCASE_TERMS",
+          );
+        }
+
+        discoveryRows = discoveryResult.rows;
+      }
+
+      const unsupportedDiscoveryTerms = discoveryRows.filter(
+        (row) =>
+          row.group_type !== "style" &&
+          row.group_type !== "garment" &&
+          row.group_type !== "occasion",
       );
 
-      if (discoveryResult.rows.length !== showcaseTermIds.length) {
+      if (unsupportedDiscoveryTerms.length > 0) {
         await client.query("ROLLBACK");
 
         transactionActive = false;
@@ -2306,98 +2592,75 @@ exports.uploadCreatorStudioAsset = async (req, res) => {
         return sendError(
           res,
           400,
-          "One or more Showcase discovery selections are no longer available.",
+          "One or more Showcase discovery selections use an unsupported classification.",
           "INVALID_SHOWCASE_TERMS",
         );
       }
 
-      discoveryRows = discoveryResult.rows;
-    }
-
-    const unsupportedDiscoveryTerms = discoveryRows.filter(
-      (row) =>
-        row.group_type !== "style" &&
-        row.group_type !== "garment" &&
-        row.group_type !== "occasion",
-    );
-
-    if (unsupportedDiscoveryTerms.length > 0) {
-      await client.query("ROLLBACK");
-
-      transactionActive = false;
-
-      return sendError(
-        res,
-        400,
-        "One or more Showcase discovery selections use an unsupported classification.",
-        "INVALID_SHOWCASE_TERMS",
+      const styleTerms = discoveryRows.filter(
+        (row) => row.group_type === "style",
       );
-    }
 
-    const styleTerms = discoveryRows.filter(
-      (row) => row.group_type === "style",
-    );
-
-    const garmentTerms = discoveryRows.filter(
-      (row) => row.group_type === "garment",
-    );
-
-    const occasionTerms = discoveryRows.filter(
-      (row) => row.group_type === "occasion",
-    );
-
-    if (styleTerms.length > 1) {
-      await client.query("ROLLBACK");
-
-      transactionActive = false;
-
-      return sendError(
-        res,
-        400,
-        "Only one Showcase style may be selected.",
-        "INVALID_SHOWCASE_STYLE",
+      const garmentTerms = discoveryRows.filter(
+        (row) => row.group_type === "garment",
       );
-    }
 
-    if (garmentTerms.length > 1) {
-      await client.query("ROLLBACK");
-
-      transactionActive = false;
-
-      return sendError(
-        res,
-        400,
-        "Only one garment type may be selected.",
-        "INVALID_SHOWCASE_GARMENT",
+      const occasionTerms = discoveryRows.filter(
+        (row) => row.group_type === "occasion",
       );
-    }
 
-    const submittedStyleTerm = styleTerms[0] || null;
+      if (styleTerms.length > 1) {
+        await client.query("ROLLBACK");
 
-    /*
-     * Browser style_category is NOT trusted.
-     *
-     * It is derived from the validated style term.
-     */
-    const submittedStyleCategory = submittedStyleTerm
-      ? cleanText(submittedStyleTerm.name, 120) || null
-      : null;
+        transactionActive = false;
 
-    /*---------------------------------------------------
+        return sendError(
+          res,
+          400,
+          "Only one Showcase style may be selected.",
+          "INVALID_SHOWCASE_STYLE",
+        );
+      }
+
+      if (garmentTerms.length > 1) {
+        await client.query("ROLLBACK");
+
+        transactionActive = false;
+
+        return sendError(
+          res,
+          400,
+          "Only one garment type may be selected.",
+          "INVALID_SHOWCASE_GARMENT",
+        );
+      }
+
+      const submittedStyleTerm = styleTerms[0] || null;
+
+      /*
+       * Browser style_category is NOT trusted.
+       *
+       * It is derived from the validated style term.
+       */
+      const submittedStyleCategory = submittedStyleTerm
+        ? cleanText(submittedStyleTerm.name, 120) || null
+        : null;
+
+      /*---------------------------------------------------
       Resolve Fashion Editor Project
     ---------------------------------------------------*/
 
-    let editorProject = null;
+      let editorProject = null;
 
-    let resolvedCanvasState = submittedCanvasState;
+      let resolvedCanvasState = submittedCanvasState;
 
-    let resolvedPreviewUrl = submittedPreviewUrl;
+      let resolvedPreviewUrl = submittedPreviewUrl;
 
-    let originalDesignId = null;
+      let originalDesignId = null;
 
-    if (isFashionEditorShare) {
-      const editorProjectResult = await client.query(
-        `
+      if (isFashionEditorShare) {
+        const editorProjectResult = await client.query(
+          `
             SELECT
               id,
               owner_id,
@@ -2407,6 +2670,8 @@ exports.uploadCreatorStudioAsset = async (req, res) => {
               preview_url,
               source_project_id,
               source_design_id,
+              source_image_id,
+              source_image_ids,
               version,
               created_at,
               updated_at
@@ -2420,55 +2685,56 @@ exports.uploadCreatorStudioAsset = async (req, res) => {
 
             FOR SHARE
           `,
-        [editorProjectId, creatorId],
-      );
-
-      if (editorProjectResult.rows.length === 0) {
-        await client.query("ROLLBACK");
-
-        transactionActive = false;
-
-        return sendError(
-          res,
-          404,
-          "Creator Fashion Editor project not found.",
-          "EDITOR_PROJECT_NOT_FOUND",
+          [editorProjectId, creatorId],
         );
-      }
 
-      editorProject = editorProjectResult.rows[0];
+        if (editorProjectResult.rows.length === 0) {
+          await client.query("ROLLBACK");
 
-      /*
-       * Fashion Editor DB project_data is authoritative.
-       */
-      const projectValidation = validateEditorProjectPayload(
-        editorProject.project_data,
-      );
+          transactionActive = false;
 
-      if (projectValidation.error) {
-        await client.query("ROLLBACK");
+          return sendError(
+            res,
+            404,
+            "Creator Fashion Editor project not found.",
+            "EDITOR_PROJECT_NOT_FOUND",
+          );
+        }
 
-        transactionActive = false;
+        editorProject = editorProjectResult.rows[0];
 
-        return sendError(
-          res,
-          400,
-          "The Fashion Editor project cannot be shared because its editable state is invalid.",
-          "INVALID_EDITOR_PROJECT",
+        /*
+         * Fashion Editor DB project_data is authoritative.
+         */
+        const projectValidation = validateEditorProjectPayload(
+          editorProject.project_data,
         );
-      }
 
-      resolvedCanvasState = projectValidation.projectData;
+        if (projectValidation.error) {
+          await client.query("ROLLBACK");
 
-      /*
-       * Preserve project preview when no new preview
-       * was supplied.
-       */
-      if (!resolvedPreviewUrl && editorProject.preview_url) {
-        resolvedPreviewUrl = cleanText(editorProject.preview_url, 2048) || null;
-      }
+          transactionActive = false;
 
-      /*-------------------------------------------------
+          return sendError(
+            res,
+            400,
+            "The Fashion Editor project cannot be shared because its editable state is invalid.",
+            "INVALID_EDITOR_PROJECT",
+          );
+        }
+
+        resolvedCanvasState = projectValidation.projectData;
+
+        /*
+         * Preserve project preview when no new preview
+         * was supplied.
+         */
+        if (!resolvedPreviewUrl && editorProject.preview_url) {
+          resolvedPreviewUrl =
+            cleanText(editorProject.preview_url, 2048) || null;
+        }
+
+        /*-------------------------------------------------
         Showcase / Remix Lineage
 
         New public Showcase -> Fashion Editor projects use
@@ -2478,9 +2744,9 @@ exports.uploadCreatorStudioAsset = async (req, res) => {
         source_project_id, so preserve that fallback.
       -------------------------------------------------*/
 
-      if (editorProject.source_design_id) {
-        const sourceDesignResult = await client.query(
-          `
+        if (editorProject.source_design_id) {
+          const sourceDesignResult = await client.query(
+            `
               SELECT
                 id,
                 original_design_id
@@ -2493,21 +2759,83 @@ exports.uploadCreatorStudioAsset = async (req, res) => {
 
               FOR SHARE
             `,
-          [editorProject.source_design_id],
-        );
+            [editorProject.source_design_id],
+          );
 
-        if (sourceDesignResult.rows.length > 0) {
-          const sourceDesign = sourceDesignResult.rows[0];
+          if (sourceDesignResult.rows.length > 0) {
+            const sourceDesign = sourceDesignResult.rows[0];
 
-          originalDesignId = sourceDesign.original_design_id || sourceDesign.id;
-        }
-      } else if (editorProject.source_project_id) {
-        /*
-         * Backward compatibility for projects created by
-         * the older Remix / Redesign flow.
-         */
-        const sourceDesignResult = await client.query(
-          `
+            originalDesignId =
+              sourceDesign.original_design_id || sourceDesign.id;
+          }
+        } else if (editorProject.source_image_id) {
+          /*
+           * A gallery-image import has source_design_id = NULL to avoid
+           * the historical one-project-per-design unique index. Resolve
+           * the parent design through its selected gallery image so a
+           * later Share to Showcase retains the correct source lineage.
+           * The image URL and private project state are not returned.
+           */
+          const sourceDesignResult = await client.query(
+            `
+              SELECT
+                d.id,
+                d.original_design_id
+
+              FROM public.design_images img
+
+              INNER JOIN designs d
+                ON d.id = img.design_id
+
+              WHERE img.id = $1::uuid
+
+              LIMIT 1
+
+              FOR SHARE OF img, d
+            `,
+            [editorProject.source_image_id],
+          );
+
+          if (sourceDesignResult.rows.length > 0) {
+            const sourceDesign = sourceDesignResult.rows[0];
+            originalDesignId =
+              sourceDesign.original_design_id || sourceDesign.id;
+          }
+        } else if (
+          Array.isArray(editorProject.source_image_ids) &&
+          editorProject.source_image_ids.length > 1
+        ) {
+          /*
+           * A multi-image gallery import has both single-source keys NULL.
+           * Resolve lineage using a verified member of the imported gallery.
+           * This remains separate from the owner's editable project state.
+           */
+          const sourceDesignResult = await client.query(
+            `
+              SELECT
+                d.id,
+                d.original_design_id
+              FROM public.design_images img
+              INNER JOIN designs d
+                ON d.id = img.design_id
+              WHERE img.id = ($1::uuid[])[1]
+              LIMIT 1
+              FOR SHARE OF img, d
+            `,
+            [editorProject.source_image_ids],
+          );
+          if (sourceDesignResult.rows.length > 0) {
+            const sourceDesign = sourceDesignResult.rows[0];
+            originalDesignId =
+              sourceDesign.original_design_id || sourceDesign.id;
+          }
+        } else if (editorProject.source_project_id) {
+          /*
+           * Backward compatibility for projects created by
+           * the older Remix / Redesign flow.
+           */
+          const sourceDesignResult = await client.query(
+            `
               SELECT
                 id,
                 original_design_id
@@ -2525,26 +2853,27 @@ exports.uploadCreatorStudioAsset = async (req, res) => {
 
               FOR SHARE
             `,
-          [editorProject.source_project_id],
-        );
+            [editorProject.source_project_id],
+          );
 
-        if (sourceDesignResult.rows.length > 0) {
-          const sourceDesign = sourceDesignResult.rows[0];
+          if (sourceDesignResult.rows.length > 0) {
+            const sourceDesign = sourceDesignResult.rows[0];
 
-          originalDesignId = sourceDesign.original_design_id || sourceDesign.id;
+            originalDesignId =
+              sourceDesign.original_design_id || sourceDesign.id;
+          }
         }
       }
-    }
 
-    /*---------------------------------------------------
+      /*---------------------------------------------------
       Find Existing Fashion Editor Publication
     ---------------------------------------------------*/
 
-    let existingDesign = null;
+      let existingDesign = null;
 
-    if (isFashionEditorShare) {
-      const existingDesignResult = await client.query(
-        `
+      if (isFashionEditorShare) {
+        const existingDesignResult = await client.query(
+          `
             SELECT
               id,
               original_design_id,
@@ -2565,17 +2894,17 @@ exports.uploadCreatorStudioAsset = async (req, res) => {
 
             FOR UPDATE
           `,
-        [creatorId, editorProjectId],
-      );
+          [creatorId, editorProjectId],
+        );
 
-      existingDesign = existingDesignResult.rows[0] || null;
+        existingDesign = existingDesignResult.rows[0] || null;
 
-      if (!originalDesignId && existingDesign?.original_design_id) {
-        originalDesignId = existingDesign.original_design_id;
+        if (!originalDesignId && existingDesign?.original_design_id) {
+          originalDesignId = existingDesign.original_design_id;
+        }
       }
-    }
 
-    /*=====================================================
+      /*=====================================================
       Resolve Effective Visibility
 
       NEW manual upload:
@@ -2591,25 +2920,25 @@ exports.uploadCreatorStudioAsset = async (req, res) => {
         use submitted value
     =====================================================*/
 
-    const effectiveIsPublic = requestedVisibility
-      ? requestedVisibility === "public"
-      : existingDesign
-        ? Boolean(existingDesign.is_public)
-        : isFashionEditorShare;
+      const effectiveIsPublic = requestedVisibility
+        ? requestedVisibility === "public"
+        : existingDesign
+          ? Boolean(existingDesign.is_public)
+          : isFashionEditorShare;
 
-    /*=====================================================
+      /*=====================================================
       Resolve Effective Remix Permission
     =====================================================*/
 
-    const effectiveAllowRemix = isFashionEditorShare
-      ? hasAllowRemixField
-        ? Boolean(requestedAllowRemix)
-        : existingDesign
-          ? Boolean(existingDesign.allow_remix)
-          : false
-      : false;
+      const effectiveAllowRemix = isFashionEditorShare
+        ? hasAllowRemixField
+          ? Boolean(requestedAllowRemix)
+          : existingDesign
+            ? Boolean(existingDesign.allow_remix)
+            : false
+        : false;
 
-    /*=====================================================
+      /*=====================================================
       Resolve Effective Format
 
       Existing + omitted:
@@ -2622,15 +2951,15 @@ exports.uploadCreatorStudioAsset = async (req, res) => {
         replace
     =====================================================*/
 
-    const effectiveProductType = hasFormatField
-      ? storedProductType
-      : existingDesign?.product_type || null;
+      const effectiveProductType = hasFormatField
+        ? storedProductType
+        : existingDesign?.product_type || null;
 
-    const effectiveCreatorFormat = effectiveProductType
-      ? PRODUCT_TYPE_TO_FORMAT[String(effectiveProductType)] || null
-      : null;
+      const effectiveCreatorFormat = effectiveProductType
+        ? PRODUCT_TYPE_TO_FORMAT[String(effectiveProductType)] || null
+        : null;
 
-    /*=====================================================
+      /*=====================================================
       Resolve Effective User Tags
 
       Existing + omitted:
@@ -2640,41 +2969,41 @@ exports.uploadCreatorStudioAsset = async (req, res) => {
         replace user tags
     =====================================================*/
 
-    const effectiveUserTags = hasTagsField
-      ? parsedTags.tags || []
-      : existingDesign
-        ? getUserTagsFromStoredTags(existingDesign.tags)
-        : parsedTags.tags || [];
+      const effectiveUserTags = hasTagsField
+        ? parsedTags.tags || []
+        : existingDesign
+          ? getUserTagsFromStoredTags(existingDesign.tags)
+          : parsedTags.tags || [];
 
-    /*
-     * Rebuild internal tags so a changed format cannot
-     * leave an obsolete format-* tag behind.
-     */
-    const effectiveStoredTags = buildStoredTags({
-      userTags: effectiveUserTags,
+      /*
+       * Rebuild internal tags so a changed format cannot
+       * leave an obsolete format-* tag behind.
+       */
+      const effectiveStoredTags = buildStoredTags({
+        userTags: effectiveUserTags,
 
-      creatorFormat: effectiveCreatorFormat,
+        creatorFormat: effectiveCreatorFormat,
 
-      fashionEditorShare: isFashionEditorShare,
-    });
+        fashionEditorShare: isFashionEditorShare,
+      });
 
-    /*=====================================================
+      /*=====================================================
       Create / Update Design
     =====================================================*/
 
-    let designResult;
+      let designResult;
 
-    if (existingDesign) {
-      /*
-       * Existing Fashion Editor publication.
-       *
-       * Presence booleans ensure omitted optional
-       * metadata is preserved.
-       *
-       * Explicit empty values can still clear fields.
-       */
-      designResult = await client.query(
-        `
+      if (existingDesign) {
+        /*
+         * Existing Fashion Editor publication.
+         *
+         * Presence booleans ensure omitted optional
+         * metadata is preserved.
+         *
+         * Explicit empty values can still clear fields.
+         */
+        designResult = await client.query(
+          `
             UPDATE designs
 
             SET
@@ -2799,155 +3128,155 @@ exports.uploadCreatorStudioAsset = async (req, res) => {
               created_at,
               updated_at
           `,
-        [
-          /*
-           * $1
-           */
-          hasTitleField,
+          [
+            /*
+             * $1
+             */
+            hasTitleField,
 
-          /*
-           * $2
-           *
-           * Explicit blank -> NULL.
-           */
-          title,
+            /*
+             * $2
+             *
+             * Explicit blank -> NULL.
+             */
+            title,
 
-          /*
-           * $3
-           */
-          hasDescriptionField,
+            /*
+             * $3
+             */
+            hasDescriptionField,
 
-          /*
-           * $4
-           */
-          description,
+            /*
+             * $4
+             */
+            description,
 
-          /*
-           * $5
-           */
-          JSON.stringify(resolvedCanvasState),
+            /*
+             * $5
+             */
+            JSON.stringify(resolvedCanvasState),
 
-          /*
-           * $6
-           *
-           * Discovery terms supplied?
-           */
-          hasShowcaseTermsField,
+            /*
+             * $6
+             *
+             * Discovery terms supplied?
+             */
+            hasShowcaseTermsField,
 
-          /*
-           * $7
-           *
-           * Derived validated style.
-           */
-          submittedStyleCategory,
+            /*
+             * $7
+             *
+             * Derived validated style.
+             */
+            submittedStyleCategory,
 
-          /*
-           * $8
-           */
-          effectiveStoredTags,
+            /*
+             * $8
+             */
+            effectiveStoredTags,
 
-          /*
-           * $9
-           *
-           * Format supplied?
-           */
-          hasFormatField,
+            /*
+             * $9
+             *
+             * Format supplied?
+             */
+            hasFormatField,
 
-          /*
-           * $10
-           *
-           * Explicit blank can clear to NULL.
-           */
-          storedProductType,
+            /*
+             * $10
+             *
+             * Explicit blank can clear to NULL.
+             */
+            storedProductType,
 
-          /*
-           * $11
-           *
-           * Category supplied?
-           */
-          hasCategoryField,
+            /*
+             * $11
+             *
+             * Category supplied?
+             */
+            hasCategoryField,
 
-          /*
-           * $12
-           */
-          category?.id || null,
+            /*
+             * $12
+             */
+            category?.id || null,
 
-          /*
-           * $13
-           */
-          resolvedPreviewUrl,
+            /*
+             * $13
+             */
+            resolvedPreviewUrl,
 
-          /*
-           * $14
-           *
-           * Explicit visibility OR preserved value.
-           */
-          effectiveIsPublic,
+            /*
+             * $14
+             *
+             * Explicit visibility OR preserved value.
+             */
+            effectiveIsPublic,
 
-          /*
-           * $15
-           */
-          editorProjectId,
+            /*
+             * $15
+             */
+            editorProjectId,
 
-          /*
-           * $16
-           *
-           * Explicit remix setting OR preserved value.
-           */
-          effectiveAllowRemix,
+            /*
+             * $16
+             *
+             * Explicit remix setting OR preserved value.
+             */
+            effectiveAllowRemix,
 
-          /*
-           * $17
-           */
-          originalDesignId,
+            /*
+             * $17
+             */
+            originalDesignId,
 
-          /*
-           * $18
-           */
-          existingDesign.id,
+            /*
+             * $18
+             */
+            existingDesign.id,
 
-          /*
-           * $19
-           *
-           * Ownership defense.
-           */
-          creatorId,
-        ],
-      );
+            /*
+             * $19
+             *
+             * Ownership defense.
+             */
+            creatorId,
+          ],
+        );
 
-      /*
-       * IMPORTANT:
-       *
-       * Only replace discovery relationships when the
-       * client actually supplied showcase_term_ids.
-       *
-       * Omitted:
-       *   preserve existing discovery relationships
-       *
-       * Explicit []:
-       *   clear them
-       *
-       * Explicit IDs:
-       *   replace them
-       */
-      if (hasShowcaseTermsField) {
-        await client.query(
-          `
+        /*
+         * IMPORTANT:
+         *
+         * Only replace discovery relationships when the
+         * client actually supplied showcase_term_ids.
+         *
+         * Omitted:
+         *   preserve existing discovery relationships
+         *
+         * Explicit []:
+         *   clear them
+         *
+         * Explicit IDs:
+         *   replace them
+         */
+        if (hasShowcaseTermsField) {
+          await client.query(
+            `
             DELETE FROM
               design_showcase_terms
 
             WHERE design_id = $1
           `,
-          [existingDesign.id],
-        );
-      }
-    } else {
-      /*-------------------------------------------------
+            [existingDesign.id],
+          );
+        }
+      } else {
+        /*-------------------------------------------------
         New Manual Upload / New Fashion Editor Publication
       -------------------------------------------------*/
 
-      designResult = await client.query(
-        `
+        designResult = await client.query(
+          `
             INSERT INTO designs (
               id,
               owner_id,
@@ -3024,140 +3353,161 @@ exports.uploadCreatorStudioAsset = async (req, res) => {
               created_at,
               updated_at
           `,
-        [
-          /*
-           * $1
-           */
-          creatorId,
+          [
+            /*
+             * $1
+             */
+            creatorId,
 
-          /*
-           * $2
-           */
-          title,
+            /*
+             * $2
+             */
+            title,
 
-          /*
-           * $3
-           */
-          internalAssetCode,
+            /*
+             * $3
+             */
+            internalAssetCode,
 
-          /*
-           * $4
-           */
-          slug,
+            /*
+             * $4
+             */
+            slug,
 
-          /*
-           * $5
-           */
-          description,
+            /*
+             * $5
+             */
+            description,
 
-          /*
-           * $6
-           *
-           * Legacy schema compatibility only.
-           */
-          LEGACY_BASE_PRICE,
+            /*
+             * $6
+             *
+             * Legacy schema compatibility only.
+             */
+            LEGACY_BASE_PRICE,
 
-          /*
-           * $7
-           */
-          JSON.stringify(resolvedCanvasState),
+            /*
+             * $7
+             */
+            JSON.stringify(resolvedCanvasState),
 
-          /*
-           * $8
-           */
-          submittedStyleCategory,
+            /*
+             * $8
+             */
+            submittedStyleCategory,
 
-          /*
-           * $9
-           */
-          effectiveStoredTags,
+            /*
+             * $9
+             */
+            effectiveStoredTags,
 
-          /*
-           * $10
-           */
-          storedProductType,
+            /*
+             * $10
+             */
+            storedProductType,
 
-          /*
-           * $11
-           *
-           * Legacy DB compatibility only.
-           */
-          LEGACY_LICENSE_TYPE,
+            /*
+             * $11
+             *
+             * Legacy DB compatibility only.
+             */
+            LEGACY_LICENSE_TYPE,
 
-          /*
-           * $12
-           */
-          category?.id || null,
+            /*
+             * $12
+             */
+            category?.id || null,
 
-          /*
-           * $13
-           */
-          resolvedPreviewUrl,
+            /*
+             * $13
+             */
+            resolvedPreviewUrl,
 
-          /*
-           * $14
-           *
-           * New manual upload:
-           * default private.
-           *
-           * New Fashion Editor share:
-           * default public.
-           *
-           * Explicit visibility:
-           * respected.
-           */
-          effectiveIsPublic,
+            /*
+             * $14
+             *
+             * New manual upload:
+             * default private.
+             *
+             * New Fashion Editor share:
+             * default public.
+             *
+             * Explicit visibility:
+             * respected.
+             */
+            effectiveIsPublic,
 
-          /*
-           * $15
-           */
-          isFashionEditorShare ? "fashion_editor" : "upload",
+            /*
+             * $15
+             */
+            isFashionEditorShare ? "fashion_editor" : "upload",
 
-          /*
-           * $16
-           */
-          isFashionEditorShare ? editorProjectId : null,
+            /*
+             * $16
+             */
+            isFashionEditorShare ? editorProjectId : null,
 
-          /*
-           * $17
-           */
-          isFashionEditorShare,
+            /*
+             * $17
+             */
+            isFashionEditorShare,
 
-          /*
-           * $18
-           */
-          effectiveAllowRemix,
+            /*
+             * $18
+             */
+            effectiveAllowRemix,
 
-          /*
-           * $19
-           */
-          isFashionEditorShare ? originalDesignId : null,
-        ],
-      );
-    }
+            /*
+             * $19
+             */
+            isFashionEditorShare ? originalDesignId : null,
+          ],
+        );
+      }
 
-    const design = designResult.rows[0];
+      const design = designResult.rows[0];
 
-    /*=====================================================
+      /*=====================================================
+      Gallery Images — committed atomically with the design
+    =====================================================*/
+      if (galleryMode && galleryFiles.length) {
+        for (
+          let imageIndex = 0;
+          imageIndex < galleryFiles.length;
+          imageIndex += 1
+        ) {
+          const file = galleryFiles[imageIndex];
+          const imageResult = await client.query(
+            `INSERT INTO public.design_images
+             (design_id, image_url, cloudinary_public_id, display_order)
+           VALUES ($1::uuid, $2, $3, $4)
+           RETURNING id, image_url, display_order`,
+            [design.id, file.path, file.filename, imageIndex + 1],
+          );
+          galleryImages.push(imageResult.rows[0]);
+        }
+      }
+
+      /*=====================================================
       Showcase Discovery Relationships
     =====================================================*/
 
-    /*
-     * New design:
-     *   insert supplied terms.
-     *
-     * Existing design + supplied terms:
-     *   old terms were deleted above, insert replacements.
-     *
-     * Existing design + omitted terms:
-     *   do nothing, preserving previous relationships.
-     */
-    if (
-      showcaseTermIds.length > 0 &&
-      (!existingDesign || hasShowcaseTermsField)
-    ) {
-      await client.query(
-        `
+      /*
+       * New design:
+       *   insert supplied terms.
+       *
+       * Existing design + supplied terms:
+       *   old terms were deleted above, insert replacements.
+       *
+       * Existing design + omitted terms:
+       *   do nothing, preserving previous relationships.
+       */
+      if (
+        showcaseTermIds.length > 0 &&
+        (!existingDesign || hasShowcaseTermsField)
+      ) {
+        await client.query(
+          `
           INSERT INTO
             design_showcase_terms (
               design_id,
@@ -3181,17 +3531,17 @@ exports.uploadCreatorStudioAsset = async (req, res) => {
 
           DO NOTHING
         `,
-        [design.id, showcaseTermIds],
-      );
-    }
+          [design.id, showcaseTermIds],
+        );
+      }
 
-    /*=====================================================
+      /*=====================================================
       Keep Fashion Editor Preview Current
     =====================================================*/
 
-    if (isFashionEditorShare && resolvedPreviewUrl) {
-      await client.query(
-        `
+      if (isFashionEditorShare && resolvedPreviewUrl) {
+        await client.query(
+          `
           UPDATE editor_projects
 
           SET
@@ -3201,22 +3551,22 @@ exports.uploadCreatorStudioAsset = async (req, res) => {
           WHERE id = $2
             AND owner_id = $3
         `,
-        [resolvedPreviewUrl, editorProjectId, creatorId],
-      );
-    }
+          [resolvedPreviewUrl, editorProjectId, creatorId],
+        );
+      }
 
-    /*=====================================================
+      /*=====================================================
       Resolve Final Effective Category
 
       Response must represent what is actually stored,
       including preserved existing metadata.
     =====================================================*/
 
-    let finalCategory = null;
+      let finalCategory = null;
 
-    if (design.category_id) {
-      const finalCategoryResult = await client.query(
-        `
+      if (design.category_id) {
+        const finalCategoryResult = await client.query(
+          `
             SELECT
               id,
               name,
@@ -3229,18 +3579,18 @@ exports.uploadCreatorStudioAsset = async (req, res) => {
 
             LIMIT 1
           `,
-        [design.category_id],
-      );
+          [design.category_id],
+        );
 
-      finalCategory = finalCategoryResult.rows[0] || null;
-    }
+        finalCategory = finalCategoryResult.rows[0] || null;
+      }
 
-    /*=====================================================
+      /*=====================================================
       Resolve Final Effective Discovery Terms
     =====================================================*/
 
-    const finalDiscoveryResult = await client.query(
-      `
+      const finalDiscoveryResult = await client.query(
+        `
           SELECT
             sdt.id,
             sdt.group_type,
@@ -3270,214 +3620,236 @@ exports.uploadCreatorStudioAsset = async (req, res) => {
             sdt.sort_order ASC,
             sdt.name ASC
         `,
-      [design.id],
-    );
+        [design.id],
+      );
 
-    const finalDiscoveryRows = finalDiscoveryResult.rows;
+      const finalDiscoveryRows = finalDiscoveryResult.rows;
 
-    const finalStyleTerm =
-      finalDiscoveryRows.find((row) => row.group_type === "style") || null;
+      const finalStyleTerm =
+        finalDiscoveryRows.find((row) => row.group_type === "style") || null;
 
-    const finalGarmentTerm =
-      finalDiscoveryRows.find((row) => row.group_type === "garment") || null;
+      const finalGarmentTerm =
+        finalDiscoveryRows.find((row) => row.group_type === "garment") || null;
 
-    const finalOccasionTerms = finalDiscoveryRows.filter(
-      (row) => row.group_type === "occasion",
-    );
+      const finalOccasionTerms = finalDiscoveryRows.filter(
+        (row) => row.group_type === "occasion",
+      );
 
-    const finalShowcaseTermIds = finalDiscoveryRows.map((row) => row.id);
+      const finalShowcaseTermIds = finalDiscoveryRows.map((row) => row.id);
 
-    /*=====================================================
+      /*=====================================================
       Resolve Final Format / User Tags
     =====================================================*/
 
-    const finalFormat = design.product_type
-      ? PRODUCT_TYPE_TO_FORMAT[String(design.product_type)] || null
-      : null;
+      const finalFormat = design.product_type
+        ? PRODUCT_TYPE_TO_FORMAT[String(design.product_type)] || null
+        : null;
 
-    const finalUserTags = getUserTagsFromStoredTags(design.tags);
+      const finalUserTags = getUserTagsFromStoredTags(design.tags);
 
-    /*=====================================================
+      /*=====================================================
       Commit
     =====================================================*/
 
-    await client.query("COMMIT");
+      await client.query("COMMIT");
 
-    transactionActive = false;
+      transactionActive = false;
+      if (galleryMode) galleryDatabaseCommitted = true;
 
-    /*=====================================================
+      /*=====================================================
       Success
     =====================================================*/
 
-    return res.status(existingDesign ? 200 : 201).json({
-      status: "success",
+      return res.status(existingDesign ? 200 : 201).json({
+        status: "success",
 
-      message: isFashionEditorShare
-        ? design.is_public
-          ? existingDesign
-            ? "Fashion Editor Showcase item updated successfully."
-            : "Fashion Editor project shared to the Creator Showcase successfully."
-          : existingDesign
-            ? "Fashion Editor item updated and kept private successfully."
-            : "Fashion Editor item saved privately successfully."
-        : design.is_public
-          ? "Creator Studio asset published to the Showcase successfully."
-          : "Private Creator Studio asset saved successfully.",
+        message: isFashionEditorShare
+          ? design.is_public
+            ? existingDesign
+              ? "Fashion Editor Showcase item updated successfully."
+              : "Fashion Editor project shared to the Creator Showcase successfully."
+            : existingDesign
+              ? "Fashion Editor item updated and kept private successfully."
+              : "Fashion Editor item saved privately successfully."
+          : design.is_public
+            ? "Creator Studio asset published to the Showcase successfully."
+            : "Private Creator Studio asset saved successfully.",
 
-      data: {
-        id: design.id,
+        data: {
+          id: design.id,
 
-        owner_id: design.owner_id,
+          owner_id: design.owner_id,
 
-        title: design.title || null,
+          title: design.title || null,
 
-        slug: design.slug,
+          slug: design.slug,
 
-        description: design.description || null,
+          description: design.description || null,
 
-        preview_url: design.watermarked_preview_url || null,
+          preview_url: design.watermarked_preview_url || null,
+          ...(galleryMode
+            ? {
+                images: galleryImages,
+                image_count: galleryImages.length,
+              }
+            : {}),
 
-        style_category: design.style_category || null,
+          style_category: design.style_category || null,
 
-        /*
-         * Always return the effective stored
-         * Creator-facing format.
-         */
-        format: finalFormat,
+          /*
+           * Always return the effective stored
+           * Creator-facing format.
+           */
+          format: finalFormat,
 
-        category: finalCategory
-          ? {
-              id: finalCategory.id,
+          category: finalCategory
+            ? {
+                id: finalCategory.id,
 
-              name: finalCategory.name,
+                name: finalCategory.name,
 
-              slug: finalCategory.slug,
+                slug: finalCategory.slug,
 
-              description: finalCategory.description || null,
-            }
-          : null,
-
-        showcase_discovery: {
-          style: finalStyleTerm ? serializeDiscoveryTerm(finalStyleTerm) : null,
-
-          garment: finalGarmentTerm
-            ? serializeDiscoveryTerm(finalGarmentTerm)
+                description: finalCategory.description || null,
+              }
             : null,
 
-          occasions: finalOccasionTerms.map(serializeDiscoveryTerm),
+          showcase_discovery: {
+            style: finalStyleTerm
+              ? serializeDiscoveryTerm(finalStyleTerm)
+              : null,
+
+            garment: finalGarmentTerm
+              ? serializeDiscoveryTerm(finalGarmentTerm)
+              : null,
+
+            occasions: finalOccasionTerms.map(serializeDiscoveryTerm),
+          },
+
+          showcase_term_ids: finalShowcaseTermIds,
+
+          /*
+           * Server-only internal tags stay hidden.
+           */
+          tags: finalUserTags,
+
+          canvas_state: design.canvas_state,
+
+          visibility: design.is_public ? "public" : "private",
+
+          is_public: design.is_public,
+
+          is_published: design.is_published,
+
+          source_type: design.source_type,
+
+          editor_project_id: design.editor_project_id,
+
+          is_editable: design.is_editable,
+
+          allow_remix: design.allow_remix,
+
+          original_design_id: design.original_design_id,
+
+          created_at: design.created_at,
+
+          updated_at: design.updated_at,
         },
-
-        showcase_term_ids: finalShowcaseTermIds,
-
-        /*
-         * Server-only internal tags stay hidden.
-         */
-        tags: finalUserTags,
-
-        canvas_state: design.canvas_state,
-
-        visibility: design.is_public ? "public" : "private",
-
-        is_public: design.is_public,
-
-        is_published: design.is_published,
-
-        source_type: design.source_type,
-
-        editor_project_id: design.editor_project_id,
-
-        is_editable: design.is_editable,
-
-        allow_remix: design.allow_remix,
-
-        original_design_id: design.original_design_id,
-
-        created_at: design.created_at,
-
-        updated_at: design.updated_at,
-      },
-    });
-  } catch (error) {
-    /*=====================================================
+      });
+    } catch (error) {
+      /*=====================================================
       Rollback
     =====================================================*/
 
-    if (client && transactionActive) {
-      try {
-        await client.query("ROLLBACK");
+      if (client && transactionActive) {
+        try {
+          await client.query("ROLLBACK");
 
-        transactionActive = false;
-      } catch (rollbackError) {
-        console.error("Creator Studio rollback failed:", rollbackError);
+          transactionActive = false;
+        } catch (rollbackError) {
+          console.error("Creator Studio rollback failed:", rollbackError);
+        }
       }
-    }
 
-    console.error("Creator Studio asset save failed:", error);
+      console.error("Creator Studio asset save failed:", error);
 
-    /*=====================================================
+      /*=====================================================
       PostgreSQL Errors
     =====================================================*/
 
-    if (error.code === "23505") {
-      return sendError(
-        res,
-        409,
-        "The asset could not be assigned a unique identifier. Please try again.",
-        "ASSET_CONFLICT",
-      );
-    }
+      if (error.code === "23505") {
+        return sendError(
+          res,
+          409,
+          "The asset could not be assigned a unique identifier. Please try again.",
+          "ASSET_CONFLICT",
+        );
+      }
 
-    if (error.code === "23503") {
-      return sendError(
-        res,
-        400,
-        "One or more selected creative classifications are no longer available.",
-        "ASSET_REFERENCE_UNAVAILABLE",
-      );
-    }
+      if (error.code === "23503") {
+        return sendError(
+          res,
+          400,
+          "One or more selected creative classifications are no longer available.",
+          "ASSET_REFERENCE_UNAVAILABLE",
+        );
+      }
 
-    if (error.code === "22P02") {
-      return sendError(
-        res,
-        400,
-        "One or more asset values are incompatible with the current database configuration.",
-        "INVALID_DATABASE_VALUE",
-      );
-    }
+      if (error.code === "22P02") {
+        return sendError(
+          res,
+          400,
+          "One or more asset values are incompatible with the current database configuration.",
+          "INVALID_DATABASE_VALUE",
+        );
+      }
 
-    if (error.code === "23514") {
-      return sendError(
-        res,
-        400,
-        "One or more asset values violate a database constraint.",
-        "DATABASE_CONSTRAINT_FAILED",
-      );
-    }
+      if (error.code === "23514") {
+        return sendError(
+          res,
+          400,
+          "One or more asset values violate a database constraint.",
+          "DATABASE_CONSTRAINT_FAILED",
+        );
+      }
 
-    if (error.code === "23502") {
+      if (error.code === "23502") {
+        return sendError(
+          res,
+          500,
+          "The database schema still requires a Creator Studio field that is now optional.",
+          "OPTIONAL_FIELD_SCHEMA_MISMATCH",
+        );
+      }
+
       return sendError(
         res,
         500,
-        "The database schema still requires a Creator Studio field that is now optional.",
-        "OPTIONAL_FIELD_SCHEMA_MISMATCH",
+        "The Creator Studio asset could not be saved.",
+        "CREATOR_STUDIO_SAVE_FAILED",
       );
-    }
-
-    return sendError(
-      res,
-      500,
-      "The Creator Studio asset could not be saved.",
-      "CREATOR_STUDIO_SAVE_FAILED",
-    );
-  } finally {
-    /*=====================================================
+    } finally {
+      /*=====================================================
       Release Connection
     =====================================================*/
 
-    if (client) {
-      client.release();
+      if (client) {
+        client.release();
+      }
+    }
+  } finally {
+    // Every early return, failed validation and rolled-back DB transaction
+    // cleans up successfully uploaded Cloudinary files for gallery requests.
+    if (galleryMode && !galleryDatabaseCommitted) {
+      await cleanupCreatorGalleryCloudinaryFiles(uploadedCloudinaryFiles);
     }
   }
+};
+
+// This separate export activates six-file middleware in creatorRoutes.js.
+exports.uploadCreatorStudioGalleryAsset = async (req, res) => {
+  req.creatorGalleryUpload = true;
+  return exports.uploadCreatorStudioAsset(req, res);
 };
 
 exports.updateCreatorStudioAssetVisibility = async (req, res) => {
@@ -4061,6 +4433,22 @@ exports.getMyCreatorStudioAssets = async (req, res) => {
   =====================================================*/
 
   try {
+    const galleryTableCheck = await db.query(
+      "SELECT to_regclass('public.design_images') IS NOT NULL AS gallery_available",
+    );
+    const galleryTableExists = Boolean(
+      galleryTableCheck.rows[0]?.gallery_available,
+    );
+    const gallerySelectSql = galleryTableExists
+      ? `COALESCE(
+           (SELECT jsonb_agg(
+             jsonb_build_object('id', img.id, 'image_url', img.image_url,
+                                'display_order', img.display_order)
+             ORDER BY img.display_order)
+            FROM public.design_images img WHERE img.design_id = d.id),
+           '[]'::jsonb
+         ) AS gallery_images,`
+      : `'[]'::jsonb AS gallery_images,`;
     /*
      * Three queries are independent:
      *
@@ -4096,6 +4484,8 @@ exports.getMyCreatorStudioAssets = async (req, res) => {
             d.original_design_id,
             d.created_at,
             d.updated_at,
+
+            ${gallerySelectSql}
 
             dc.name
               AS category_name,
@@ -4296,6 +4686,24 @@ exports.getMyCreatorStudioAssets = async (req, res) => {
         description: row.description || null,
 
         preview_url: row.watermarked_preview_url || null,
+        images:
+          Array.isArray(row.gallery_images) && row.gallery_images.length
+            ? row.gallery_images
+            : row.watermarked_preview_url
+              ? [
+                  {
+                    id: null,
+                    image_url: row.watermarked_preview_url,
+                    display_order: 1,
+                  },
+                ]
+              : [],
+        image_count:
+          Array.isArray(row.gallery_images) && row.gallery_images.length
+            ? row.gallery_images.length
+            : row.watermarked_preview_url
+              ? 1
+              : 0,
 
         style_category: row.style_category || null,
 
@@ -4427,56 +4835,41 @@ exports.getMyCreatorStudioAssets = async (req, res) => {
 };
 
 /*=========================================================
-OPEN PUBLIC SHOWCASE DESIGN IN FASHION EDITOR
+OPEN PUBLIC SHOWCASE DESIGN / SELECTED GALLERY IMAGE(S) IN EDITOR
 
-POST
-/api/v1/creators/showcase/:designId/open-in-editor
+POST /api/v1/creators/showcase/:designId/open-in-editor
 
-PUBLIC SHOWCASE RULE
----------------------------------------------------------
+Optional JSON body:
+  { "image_id": "<design_images.id UUID>" }
+  { "image_ids": ["<UUID>", "<UUID>", "... up to six"] }
 
-Any authenticated Creator may open a currently eligible
-public + published Showcase design in Fashion Editor.
+Compatibility alias: source_image_id (do not send both).
 
-This includes:
+No image ID: preserves the Version 5.4 design-level behavior.
+Valid image ID: uses image-specific project reuse and always imports
+that exact public Showcase gallery image, not the cover image.
 
-- Creator Fashion Editor designs
-- Creator manual uploads
-- approved Designer public designs
+Privacy:
+  - Creator authentication is required.
+  - The source design must still be public/published.
+  - Designer-owned sources must still be approved.
+  - The requested image ID must belong to that exact design.
+  - Source image URLs are read from the database, NEVER the client.
+  - The original design and original Editor project are untouched.
 
-ORIGINAL SOURCE GUARANTEE
----------------------------------------------------------
+Indexes (both preserved):
+  UNIQUE(owner_id, source_design_id) WHERE source_design_id IS NOT NULL
+  UNIQUE(owner_id, source_image_id) WHERE source_image_id IS NOT NULL
 
-The source Showcase design is NEVER modified.
-
-Fashion Editor source:
-
-- source owner opening own design
-    -> return existing original editor project
-
-- another Creator
-    -> create/reuse private project copy
-
-Uploaded/image source:
-
-- create/reuse private Fashion Editor project
-- public preview becomes an IMAGE object
-
-IDEMPOTENCY
----------------------------------------------------------
-
-editor_projects has:
-
-UNIQUE (owner_id, source_design_id)
-WHERE source_design_id IS NOT NULL
-
-Therefore repeated Open in Fashion Editor clicks reuse the
-same generated private project.
+Single-image imports keep source_image_id and source_design_id = NULL.
+Multi-image imports use source_image_ids UUID[] (2 to 6 sorted IDs),
+with source_design_id and source_image_id both NULL.
+This preserves all existing single-image projects and supports one
+private editable canvas per distinct image combination. Earlier projects remain reusable.
 =========================================================*/
 
 exports.openShowcaseDesignInEditor = async (req, res) => {
   const creatorId = getAuthenticatedCreatorId(req);
-
   const designId = cleanText(
     req.params?.designId || req.params?.showcaseId || req.body?.design_id,
     100,
@@ -4509,34 +4902,108 @@ exports.openShowcaseDesignInEditor = async (req, res) => {
     );
   }
 
+  const body = req.body && isPlainObject(req.body) ? req.body : {};
+  const hasImageId = Object.prototype.hasOwnProperty.call(body, "image_id");
+  const hasSourceImageId = Object.prototype.hasOwnProperty.call(
+    body,
+    "source_image_id",
+  );
+
+  // Do not permit conflicting interpretations of the selected image.
+  if (hasImageId && hasSourceImageId) {
+    return sendError(
+      res,
+      400,
+      "Supply image_id only; do not include both image ID fields.",
+      "AMBIGUOUS_SHOWCASE_IMAGE_ID",
+    );
+  }
+
+  const rawImageId = hasImageId
+    ? body.image_id
+    : hasSourceImageId
+      ? body.source_image_id
+      : null;
+
+  if (
+    (hasImageId || hasSourceImageId) &&
+    (typeof rawImageId !== "string" || !isUuid(rawImageId.trim()))
+  ) {
+    return sendError(
+      res,
+      400,
+      "A valid selected Showcase image ID is required.",
+      "INVALID_SHOWCASE_IMAGE_ID",
+    );
+  }
+
+  const requestedImageId =
+    typeof rawImageId === "string" ? rawImageId.trim() : null;
+
+  // Version 5.6: optional image_ids array for a combined private canvas.
+  // A length-one array is accepted as the existing single-image operation.
+  // Never combine image_ids with the older single-image keys.
+  const hasImageIds = Object.prototype.hasOwnProperty.call(body, "image_ids");
+  if (hasImageIds && (hasImageId || hasSourceImageId)) {
+    return sendError(
+      res,
+      400,
+      "Supply either image_ids or image_id, not both.",
+      "AMBIGUOUS_SHOWCASE_IMAGE_SELECTION",
+    );
+  }
+
+  let requestedImageIds = [];
+  if (hasImageIds) {
+    if (
+      !Array.isArray(body.image_ids) ||
+      body.image_ids.length < 1 ||
+      body.image_ids.length > MAX_CREATOR_GALLERY_IMAGES
+    ) {
+      return sendError(
+        res,
+        400,
+        "Select between one and six Showcase images.",
+        "INVALID_SHOWCASE_IMAGE_SELECTION",
+      );
+    }
+    requestedImageIds = body.image_ids.map((id) =>
+      typeof id === "string" ? id.trim().toLowerCase() : "",
+    );
+    if (
+      requestedImageIds.some((id) => !isUuid(id)) ||
+      new Set(requestedImageIds).size !== requestedImageIds.length
+    ) {
+      return sendError(
+        res,
+        400,
+        "Selected image IDs must be valid and distinct.",
+        "INVALID_SHOWCASE_IMAGE_SELECTION",
+      );
+    }
+  }
+
+  const effectiveImageId =
+    requestedImageId ||
+    (requestedImageIds.length === 1 ? requestedImageIds[0] : null);
+  const isMultiImageRequest = requestedImageIds.length > 1;
+  // Stable sorted key: selecting 1+2 and 2+1 reopens the same project.
+  const canonicalMultiImageIds = isMultiImageRequest
+    ? [...requestedImageIds].sort()
+    : null;
+
   let client;
   let transactionActive = false;
 
   try {
     client = await db.connect();
-
     await client.query("BEGIN");
     transactionActive = true;
 
-    /*---------------------------------------------------
-      Resolve Currently Eligible Public Showcase Design
-
-      This intentionally matches the public Showcase role
-      policy:
-
-      Creator:
-      - no admin approval requirement
-
-      Designer:
-      - must remain approved
-
-      The route does NOT trust:
-      - image URL from browser
-      - owner ID from browser
-      - editor project ID from browser
-      - source type from browser
-    ---------------------------------------------------*/
-
+    /* ----------------------------------------------------
+       Validate the public Showcase design before considering
+       any image or source Editor project.
+       ---------------------------------------------------- */
     const sourceResult = await client.query(
       `
         SELECT
@@ -4551,7 +5018,6 @@ exports.openShowcaseDesignInEditor = async (req, res) => {
           d.is_editable,
           d.allow_remix,
           d.original_design_id,
-
           u.role AS owner_role,
           u.approval_status AS owner_approval_status
 
@@ -4560,12 +5026,11 @@ exports.openShowcaseDesignInEditor = async (req, res) => {
         INNER JOIN users u
           ON u.id = d.owner_id
 
-        WHERE d.id = $1
+        WHERE d.id = $1::uuid
           AND d.is_public = TRUE
           AND d.is_published = TRUE
           AND (
             u.role = 'creator'
-
             OR (
               u.role = 'designer'
               AND u.approval_status = 'approved'
@@ -4573,7 +5038,6 @@ exports.openShowcaseDesignInEditor = async (req, res) => {
           )
 
         LIMIT 1
-
         FOR SHARE OF d
       `,
       [designId],
@@ -4582,7 +5046,6 @@ exports.openShowcaseDesignInEditor = async (req, res) => {
     if (sourceResult.rows.length === 0) {
       await client.query("ROLLBACK");
       transactionActive = false;
-
       return sendError(
         res,
         404,
@@ -4592,216 +5055,291 @@ exports.openShowcaseDesignInEditor = async (req, res) => {
     }
 
     const source = sourceResult.rows[0];
-
     const sourceOwnerId = cleanText(source.owner_id, 100);
-
     const sourceType = normalizeToken(source.source_type);
-
     const sourceTitle =
       cleanText(source.title, MAX_TITLE_LENGTH) || "Showcase Design";
-
     const sourcePreviewUrl =
       cleanText(source.watermarked_preview_url, 2048) || null;
-
     const sourceIsOwnedByCreator =
       sourceOwnerId && String(sourceOwnerId) === String(creatorId);
 
-    /*---------------------------------------------------
-      Resolve Original Project Identity
+    /* ----------------------------------------------------
+       An image-specific request MUST resolve an image belonging
+       to this exact eligible Showcase design. Other designs'
+       images, removed images, and fabricated IDs return 404.
+       ---------------------------------------------------- */
+    let selectedImage = null;
+    let selectedImages = [];
 
-      The live editor project is used only to:
-      - reopen an owner's own project
-      - establish source lineage for a valid published copy
+    if (isMultiImageRequest) {
+      // All IDs must belong to THIS public Showcase design.
+      const imagesResult = await client.query(
+        `
+          SELECT
+            img.id,
+            img.design_id,
+            img.image_url,
+            img.display_order
+          FROM public.design_images img
+          WHERE img.id = ANY($1::uuid[])
+            AND img.design_id = $2::uuid
+          ORDER BY img.display_order ASC, img.id ASC
+          FOR SHARE OF img
+        `,
+        [canonicalMultiImageIds, source.id],
+      );
+      if (imagesResult.rows.length !== canonicalMultiImageIds.length) {
+        await client.query("ROLLBACK");
+        transactionActive = false;
+        return sendError(
+          res,
+          404,
+          "One or more selected images are unavailable in this public Showcase design.",
+          "SHOWCASE_IMAGES_NOT_AVAILABLE",
+        );
+      }
+      selectedImages = imagesResult.rows;
+      if (
+        selectedImages.some(
+          (image) => !normalizeEditorImageUrl(image.image_url),
+        )
+      ) {
+        await client.query("ROLLBACK");
+        transactionActive = false;
+        return sendError(
+          res,
+          409,
+          "One or more selected Showcase images cannot be imported.",
+          "SHOWCASE_IMAGE_SOURCE_INVALID",
+        );
+      }
+    }
 
-      Other Creators never receive its live project_data.
-      Their copy uses designs.canvas_state, the snapshot
-      saved when the source was publicly shared.
-    ---------------------------------------------------*/
+    if (effectiveImageId) {
+      const imageResult = await client.query(
+        `
+          SELECT
+            img.id,
+            img.design_id,
+            img.image_url,
+            img.display_order
 
+          FROM public.design_images img
+
+          WHERE img.id = $1::uuid
+            AND img.design_id = $2::uuid
+
+          LIMIT 1
+          FOR SHARE OF img
+        `,
+        [effectiveImageId, source.id],
+      );
+
+      if (imageResult.rows.length === 0) {
+        await client.query("ROLLBACK");
+        transactionActive = false;
+        return sendError(
+          res,
+          404,
+          "That image is not available in this public Showcase design.",
+          "SHOWCASE_IMAGE_NOT_AVAILABLE",
+        );
+      }
+
+      selectedImage = imageResult.rows[0];
+
+      if (!normalizeEditorImageUrl(selectedImage.image_url)) {
+        await client.query("ROLLBACK");
+        transactionActive = false;
+        return sendError(
+          res,
+          409,
+          "The selected Showcase image is not available for import.",
+          "SHOWCASE_IMAGE_SOURCE_INVALID",
+        );
+      }
+    }
+
+    /* ----------------------------------------------------
+       Owner's original native Fashion Editor project is reused
+       ONLY when no individual gallery image was requested.
+       Source project data is never exposed to other Creators.
+       ---------------------------------------------------- */
     let sourceEditorProject = null;
 
     if (
+      !selectedImage &&
+      !isMultiImageRequest &&
       sourceType === "fashion_editor" &&
       isPositiveBigIntId(source.editor_project_id)
     ) {
       const sourceProjectResult = await client.query(
         `
-            SELECT
-              id,
-              owner_id,
-              title,
-              preview_url
+          SELECT
+            id,
+            owner_id,
+            title,
+            preview_url
 
-            FROM editor_projects
+          FROM editor_projects
 
-            WHERE id = $1
-              AND owner_id = $2
+          WHERE id = $1
+            AND owner_id = $2
 
-            LIMIT 1
-
-            FOR SHARE
-          `,
+          LIMIT 1
+          FOR SHARE
+        `,
         [source.editor_project_id, source.owner_id],
       );
 
       sourceEditorProject = sourceProjectResult.rows[0] || null;
     }
 
-    /*---------------------------------------------------
-      Owner Opening Own Fashion Editor Design
-
-      Do NOT clone.
-
-      Return the Creator's existing project.
-
-      Ownership is checked again through editor_projects.
-    ---------------------------------------------------*/
-
     if (
+      !selectedImage &&
+      !isMultiImageRequest &&
       sourceIsOwnedByCreator &&
       sourceEditorProject &&
       String(sourceEditorProject.owner_id) === String(creatorId)
     ) {
       await client.query("COMMIT");
       transactionActive = false;
-
       return res.status(200).json({
         status: "success",
-
         message: "The existing Fashion Editor project is ready.",
-
         data: {
           project_id: sourceEditorProject.id,
           title: sourceEditorProject.title,
           mode: "original",
           reused: true,
+          source_image_id: null,
           source_showcase_design_id: source.id,
           original_design_id: source.original_design_id || source.id,
         },
       });
     }
 
-    /*---------------------------------------------------
-      Existing Generated Project
-
-      Manual upload owner:
-          reuses imported project
-
-      Another Creator:
-          reuses private copy/import
-
-      Designer public item:
-          reuses private Creator import
-    ---------------------------------------------------*/
-
-    const existingProjectResult = await client.query(
-      `
+    /* ----------------------------------------------------
+       Find an existing private project using the appropriate
+       unique index, avoiding any cross-image reuse.
+       ---------------------------------------------------- */
+    const existingProjectSql = isMultiImageRequest
+      ? `
           SELECT
-            id,
-            owner_id,
-            title,
-            schema_version,
-            preview_url,
-            source_project_id,
-            source_design_id,
-            version,
-            created_at,
-            updated_at
-
+            id, owner_id, title, schema_version, preview_url,
+            source_project_id, source_design_id, source_image_id,
+            source_image_ids, version, created_at, updated_at
           FROM editor_projects
-
           WHERE owner_id = $1
-            AND source_design_id = $2
-
+            AND source_image_ids = $2::uuid[]
           LIMIT 1
-
           FOR SHARE
-        `,
-      [creatorId, source.id],
-    );
+        `
+      : selectedImage
+        ? `
+          SELECT
+            id, owner_id, title, schema_version, preview_url,
+            source_project_id, source_design_id, source_image_id,
+            version, created_at, updated_at
+          FROM editor_projects
+          WHERE owner_id = $1
+            AND source_image_id = $2::uuid
+          LIMIT 1
+          FOR SHARE
+        `
+        : `
+          SELECT
+            id, owner_id, title, schema_version, preview_url,
+            source_project_id, source_design_id, source_image_id,
+            version, created_at, updated_at
+          FROM editor_projects
+          WHERE owner_id = $1
+            AND source_design_id = $2::uuid
+          LIMIT 1
+          FOR SHARE
+        `;
+
+    const existingLookupId = isMultiImageRequest
+      ? canonicalMultiImageIds
+      : selectedImage
+        ? selectedImage.id
+        : source.id;
+    const existingProjectResult = await client.query(existingProjectSql, [
+      creatorId,
+      existingLookupId,
+    ]);
 
     if (existingProjectResult.rows.length > 0) {
-      const existingProject = existingProjectResult.rows[0];
-
+      const existing = existingProjectResult.rows[0];
       await client.query("COMMIT");
       transactionActive = false;
-
       return res.status(200).json({
         status: "success",
-
         message: "Your existing private Fashion Editor project is ready.",
-
         data: {
-          ...existingProject,
-          project_id: existingProject.id,
-          mode: existingProject.source_project_id
-            ? "project_copy"
-            : sourcePreviewUrl
+          ...existing,
+          project_id: existing.id,
+          mode: isMultiImageRequest
+            ? "multi_image_import"
+            : selectedImage
               ? "image_import"
-              : "blank_import",
+              : existing.source_project_id
+                ? "project_copy"
+                : sourcePreviewUrl
+                  ? "image_import"
+                  : "blank_import",
           reused: true,
+          source_image_id: selectedImage?.id || null,
+          source_image_ids: canonicalMultiImageIds || null,
           source_showcase_design_id: source.id,
           original_design_id: source.original_design_id || source.id,
         },
       });
     }
 
-    /*---------------------------------------------------
-      Resolve New Project Title
-    ---------------------------------------------------*/
-
+    /* ----------------------------------------------------
+       Build a private project. An explicit image always takes
+       precedence over the original source design's cover or
+       published Editor snapshot. No client URL is accepted.
+       ---------------------------------------------------- */
     const requestedTitle = cleanText(req.body?.title, MAX_TITLE_LENGTH);
-
+    const imageSuffix = isMultiImageRequest
+      ? ` — ${selectedImages.length} Images`
+      : selectedImage
+        ? ` — Image ${Number(selectedImage.display_order) || 1}`
+        : "";
     const derivedTitle = sourceIsOwnedByCreator
-      ? sourceTitle
-      : `${sourceTitle} Editor Copy`;
-
+      ? `${sourceTitle}${imageSuffix}`
+      : `${sourceTitle}${imageSuffix} Editor Copy`;
     const projectTitle =
       requestedTitle ||
       cleanText(derivedTitle, MAX_TITLE_LENGTH) ||
       "Showcase Design";
 
-    /*---------------------------------------------------
-      Build Project
-
-      Preferred:
-          clone valid Fashion Editor project_data
-
-      Fallback:
-          import public Showcase preview as IMAGE object
-
-      This fallback also supports:
-          - manual Creator uploads
-          - Designer Showcase items
-          - legacy public designs
-    ---------------------------------------------------*/
+    const resolvedPreviewUrl = isMultiImageRequest
+      ? normalizeEditorImageUrl(selectedImages[0]?.image_url)
+      : selectedImage
+        ? normalizeEditorImageUrl(selectedImage.image_url)
+        : sourcePreviewUrl ||
+          (sourceIsOwnedByCreator
+            ? cleanText(sourceEditorProject?.preview_url, 2048)
+            : null) ||
+          null;
 
     let projectValidation = null;
     let sourceProjectId = null;
     let projectMode = null;
 
-    // Public preview only for other users: never fall back to the
-    // original owner's potentially unpublished project preview.
-    const resolvedPreviewUrl =
-      sourcePreviewUrl ||
-      (sourceIsOwnedByCreator
-        ? cleanText(sourceEditorProject?.preview_url, 2048)
-        : null) ||
-      null;
-
-    /*---------------------------------------------------
-      Clone the PUBLISHED Fashion Editor snapshot.
-
-      designs.canvas_state is written when the design is
-      shared to Showcase. Reading live project_data for a
-      different Creator could reveal unpublished changes.
-
-      A missing or invalid snapshot falls back to the
-      public preview, without disclosing private state.
-    ---------------------------------------------------*/
-    if (sourceType === "fashion_editor" && source.canvas_state) {
+    // Only legacy/design-level opening may copy the PUBLISHED snapshot.
+    // Do not clone the owner's live project_data for another user.
+    if (
+      !selectedImage &&
+      !isMultiImageRequest &&
+      sourceType === "fashion_editor" &&
+      source.canvas_state
+    ) {
       let publishedProjectData = null;
-
       try {
         publishedProjectData = JSON.parse(JSON.stringify(source.canvas_state));
       } catch {
@@ -4835,24 +5373,24 @@ exports.openShowcaseDesignInEditor = async (req, res) => {
       }
     }
 
-    /*---------------------------------------------------
-      Preview / Blank Project Fallback
-    ---------------------------------------------------*/
-
     if (!projectValidation) {
-      const generatedProject = createShowcaseImageEditorProject({
-        title: projectTitle,
-        previewUrl: resolvedPreviewUrl,
-        sourceDesignId: source.id,
-      });
-
+      const generatedProject = isMultiImageRequest
+        ? createShowcaseMultiImageEditorProject({
+            title: projectTitle,
+            images: selectedImages,
+            sourceDesignId: source.id,
+          })
+        : createShowcaseImageEditorProject({
+            title: projectTitle,
+            previewUrl: resolvedPreviewUrl,
+            sourceDesignId: source.id,
+          });
       const generatedValidation =
         validateEditorProjectPayload(generatedProject);
 
       if (generatedValidation.error) {
         await client.query("ROLLBACK");
         transactionActive = false;
-
         return sendError(
           res,
           500,
@@ -4863,22 +5401,26 @@ exports.openShowcaseDesignInEditor = async (req, res) => {
 
       projectValidation = generatedValidation;
       sourceProjectId = null;
-      projectMode = normalizeEditorImageUrl(resolvedPreviewUrl)
-        ? "image_import"
-        : "blank_import";
+      projectMode = isMultiImageRequest
+        ? "multi_image_import"
+        : normalizeEditorImageUrl(resolvedPreviewUrl)
+          ? "image_import"
+          : "blank_import";
     }
 
-    /*---------------------------------------------------
-      Create Private Creator Project
-
-      source_design_id gives idempotency + lineage.
-
-      source_project_id is populated only when the source
-      has a valid Fashion Editor project.
-
-      ON CONFLICT protects concurrent double-clicks in
-      addition to the earlier lookup.
-    ---------------------------------------------------*/
+    /* ----------------------------------------------------
+       Insert with BOTH source identifiers, leaving the unused
+       one NULL. Each conflict target uses its own partial unique
+       index to prevent duplicate projects on concurrent clicks.
+       ---------------------------------------------------- */
+    const conflictSql = isMultiImageRequest
+      ? `ON CONFLICT (owner_id, source_image_ids)
+         WHERE source_image_ids IS NOT NULL DO NOTHING`
+      : selectedImage
+        ? `ON CONFLICT (owner_id, source_image_id)
+         WHERE source_image_id IS NOT NULL DO NOTHING`
+        : `ON CONFLICT (owner_id, source_design_id)
+         WHERE source_design_id IS NOT NULL DO NOTHING`;
 
     const insertResult = await client.query(
       `
@@ -4890,11 +5432,12 @@ exports.openShowcaseDesignInEditor = async (req, res) => {
           preview_url,
           source_project_id,
           source_design_id,
+          source_image_id,
+          source_image_ids,
           version,
           created_at,
           updated_at
         )
-
         VALUES (
           $1,
           $2,
@@ -4902,32 +5445,18 @@ exports.openShowcaseDesignInEditor = async (req, res) => {
           $4,
           $5,
           $6,
-          $7,
+          $7::uuid,
+          $8::uuid,
+          $9::uuid[],
           1,
           NOW(),
           NOW()
         )
-
-        ON CONFLICT (
-          owner_id,
-          source_design_id
-        )
-        WHERE source_design_id IS NOT NULL
-
-        DO NOTHING
-
+        ${conflictSql}
         RETURNING
-          id,
-          owner_id,
-          title,
-          project_data,
-          schema_version,
-          preview_url,
-          source_project_id,
-          source_design_id,
-          version,
-          created_at,
-          updated_at
+          id, owner_id, title, project_data, schema_version,
+          preview_url, source_project_id, source_design_id,
+          source_image_id, source_image_ids, version, created_at, updated_at
       `,
       [
         creatorId,
@@ -4936,94 +5465,52 @@ exports.openShowcaseDesignInEditor = async (req, res) => {
         projectValidation.schemaVersion,
         resolvedPreviewUrl,
         sourceProjectId,
-        source.id,
+        selectedImage || isMultiImageRequest ? null : source.id,
+        selectedImage?.id || null,
+        canonicalMultiImageIds || null,
       ],
     );
 
-    /*---------------------------------------------------
-      Concurrent Request Reuse
+    // The uniqueness constraint can produce no RETURNING row when a
+    // concurrent request already created this very image/design project.
+    let returnedProject = insertResult.rows[0] || null;
+    const reused = !returnedProject;
 
-      If another identical request created the project
-      between our SELECT and INSERT, ON CONFLICT returns
-      no row. Load the winner and return it.
-    ---------------------------------------------------*/
-
-    if (insertResult.rows.length === 0) {
-      const concurrentResult = await client.query(
-        `
-            SELECT
-              id,
-              owner_id,
-              title,
-              schema_version,
-              preview_url,
-              source_project_id,
-              source_design_id,
-              version,
-              created_at,
-              updated_at
-
-            FROM editor_projects
-
-            WHERE owner_id = $1
-              AND source_design_id = $2
-
-            LIMIT 1
-          `,
-        [creatorId, source.id],
-      );
+    if (!returnedProject) {
+      const concurrentResult = await client.query(existingProjectSql, [
+        creatorId,
+        existingLookupId,
+      ]);
 
       if (concurrentResult.rows.length === 0) {
         throw new Error(
-          "The Showcase editor project conflict could not be reconciled.",
+          "The Showcase Editor project conflict could not be reconciled.",
         );
       }
-
-      const concurrentProject = concurrentResult.rows[0];
-
-      await client.query("COMMIT");
-      transactionActive = false;
-
-      return res.status(200).json({
-        status: "success",
-
-        message: "Your existing private Fashion Editor project is ready.",
-
-        data: {
-          ...concurrentProject,
-          project_id: concurrentProject.id,
-          mode: concurrentProject.source_project_id
-            ? "project_copy"
-            : resolvedPreviewUrl
-              ? "image_import"
-              : "blank_import",
-          reused: true,
-          source_showcase_design_id: source.id,
-          original_design_id: source.original_design_id || source.id,
-        },
-      });
+      returnedProject = concurrentResult.rows[0];
     }
-
-    const createdProject = insertResult.rows[0];
 
     await client.query("COMMIT");
     transactionActive = false;
 
-    return res.status(201).json({
+    return res.status(reused ? 200 : 201).json({
       status: "success",
-
-      message:
-        projectMode === "project_copy"
-          ? "A private Fashion Editor copy was created successfully. The original design was not changed."
-          : projectMode === "image_import"
-            ? "The Showcase design was opened in a new private Fashion Editor project."
-            : "A new private Fashion Editor project was created from this Showcase item.",
-
+      message: reused
+        ? "Your existing private Fashion Editor project is ready."
+        : projectMode === "project_copy"
+          ? "A private Fashion Editor copy was created. The original design was not changed."
+          : projectMode === "multi_image_import"
+            ? "The selected Showcase images were opened together as editable layers in a private Fashion Editor project."
+            : projectMode === "image_import"
+              ? "The selected Showcase image was opened in its own private Fashion Editor project."
+              : "A new private Fashion Editor project was created from this Showcase item.",
       data: {
-        ...createdProject,
-        project_id: createdProject.id,
+        ...returnedProject,
+        project_id: returnedProject.id,
         mode: projectMode,
-        reused: false,
+        reused,
+        source_image_id: selectedImage?.id || null,
+        source_image_ids: canonicalMultiImageIds || null,
         source_showcase_design_id: source.id,
         original_design_id: source.original_design_id || source.id,
       },
@@ -5052,9 +5539,7 @@ exports.openShowcaseDesignInEditor = async (req, res) => {
       "SHOWCASE_OPEN_IN_EDITOR_FAILED",
     );
   } finally {
-    if (client) {
-      client.release();
-    }
+    if (client) client.release();
   }
 };
 
