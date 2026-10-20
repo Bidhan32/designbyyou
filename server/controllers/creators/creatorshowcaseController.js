@@ -1235,16 +1235,35 @@ private.
  a public, published Fashion Editor garment. Never expose the
  underlying canvas_state, editing layers, project IDs or raw SVG.
 =========================================================*/
-const SHOWCASE_3D_REGIONS = Object.freeze([
-  "frontBody",
-  "backBody",
-  "frontLeftSleeve",
-  "frontRightSleeve",
-  "backLeftSleeve",
-  "backRightSleeve",
-  "frontCollar",
-  "backCollar",
-]);
+const SHOWCASE_3D_REGIONS_BY_MODEL = Object.freeze({
+  tshirt: Object.freeze([
+    "frontBody",
+    "backBody",
+    "frontLeftSleeve",
+    "frontRightSleeve",
+    "backLeftSleeve",
+    "backRightSleeve",
+    "frontCollar",
+    "backCollar",
+  ]),
+  hoodie: Object.freeze([
+    "frontBody",
+    "backBody",
+    "frontLeftSleeve",
+    "frontRightSleeve",
+    "backLeftSleeve",
+    "backRightSleeve",
+    "frontHood",
+    "backHood",
+    "frontPocket",
+    "frontHem",
+    "backHem",
+    "frontLeftCuff",
+    "frontRightCuff",
+    "backLeftCuff",
+    "backRightCuff",
+  ]),
+});
 const SHOWCASE_3D_HEX = /^#[0-9a-f]{6}$/i;
 const SHOWCASE_3D_IMAGE =
   /^data:image\/(png|jpeg|jpg|webp);base64,([A-Za-z0-9+/=]+)$/i;
@@ -1304,6 +1323,7 @@ async function getPublicGarment3DPreview(designId) {
   const result = await db.query(
     `
       SELECT
+        region.value #>> '{metadata,clothingTemplateId}' AS model,
         region.value #> '{metadata,clothingColours}' AS colours,
         region.value #> '{metadata,clothingArtwork}' AS artwork
       FROM public.designs d
@@ -1323,7 +1343,7 @@ async function getPublicGarment3DPreview(designId) {
           u.role = 'creator'
           OR (u.role = 'designer' AND u.approval_status = 'approved')
         )
-        AND region.value #>> '{metadata,clothingTemplateId}' = 'tshirt'
+        AND region.value #>> '{metadata,clothingTemplateId}' IN ('tshirt', 'hoodie')
         AND region.value->>'visible' IS DISTINCT FROM 'false'
       ORDER BY region.value #>> '{metadata,clothingUpdatedAt}' DESC NULLS LAST
       LIMIT 1
@@ -1332,6 +1352,11 @@ async function getPublicGarment3DPreview(designId) {
   );
   const garment = result.rows[0];
   if (!garment) return null;
+
+  // Only known garment types are allowed; model paths are never user supplied.
+  const model = String(garment.model || "");
+  const regionIds = SHOWCASE_3D_REGIONS_BY_MODEL[model];
+  if (!regionIds) return null;
 
   const colours = {};
   const artwork = {};
@@ -1344,7 +1369,7 @@ async function getPublicGarment3DPreview(designId) {
       ? garment.artwork
       : {};
 
-  for (const id of SHOWCASE_3D_REGIONS) {
+  for (const id of regionIds) {
     const colour = rawColours[id];
     colours[id] =
       typeof colour === "string" && SHOWCASE_3D_HEX.test(colour)
@@ -1366,7 +1391,7 @@ async function getPublicGarment3DPreview(designId) {
       };
     }
   }
-  return { model: "tshirt", version: 1, colours, artwork };
+  return { model, version: 1, colours, artwork };
 }
 
 exports.getShowcaseItem = async (req, res) => {

@@ -5128,7 +5128,7 @@ function FashionEditor() {
           currentStack ? null : selectedClothingArtwork[regionId],
         );
         const flattened = await flattenRegionArtworkStack(
-          "tshirt",
+          selectedClothingTemplate?.id || "tshirt",
           regionId,
           normalized,
         );
@@ -5167,6 +5167,7 @@ function FashionEditor() {
       selectedClothingArtworkEditable,
       selectedImageLocked,
       selectedClothingArtworkRegions,
+      selectedClothingTemplate?.id,
       selectedClothingArtworkLayers,
       selectedClothingArtwork,
       applySelectedClothingArtwork,
@@ -5239,7 +5240,7 @@ function FashionEditor() {
           ? { ...stack, pattern: entry }
           : { ...stack, logos: [...stack.logos, entry] };
         const flattened = await flattenRegionArtworkStack(
-          "tshirt",
+          selectedClothingTemplate?.id || "tshirt",
           regionId,
           nextStack,
         );
@@ -5275,6 +5276,7 @@ function FashionEditor() {
       selectedClothingArtworkEditable,
       selectedImageLocked,
       selectedClothingArtworkRegions,
+      selectedClothingTemplate?.id,
       applySelectedClothingArtwork,
       showToast,
     ],

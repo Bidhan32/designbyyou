@@ -12,12 +12,27 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { Html, OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
-const MODEL_URL = "/models/garments/DBY_Realistic_TShirt_8Regions.glb";
-const REGION_IDS = Object.freeze([
-  "frontBody", "backBody", "frontLeftSleeve", "frontRightSleeve",
-  "backLeftSleeve", "backRightSleeve", "frontCollar", "backCollar",
-]);
-const REGION_SET = new Set(REGION_IDS);
+const GARMENT_MODELS = Object.freeze({
+  tshirt: Object.freeze({
+    label: "T-Shirt",
+    url: "/models/garments/DBY_Realistic_TShirt_8Regions.glb",
+    regions: Object.freeze([
+      "frontBody", "backBody", "frontLeftSleeve", "frontRightSleeve",
+      "backLeftSleeve", "backRightSleeve", "frontCollar", "backCollar",
+    ]),
+  }),
+  hoodie: Object.freeze({
+    label: "Hoodie",
+    url: "/models/garments/DBY_Hoodie_Sketchfab_15Regions_BETA.glb",
+    regions: Object.freeze([
+      "frontBody", "backBody", "frontLeftSleeve", "frontRightSleeve",
+      "backLeftSleeve", "backRightSleeve", "frontHood", "backHood",
+      "frontPocket", "frontHem", "backHem", "frontLeftCuff",
+      "frontRightCuff", "backLeftCuff", "backRightCuff",
+    ]),
+  }),
+});
+
 const CAMERA_POSITIONS = Object.freeze({
   perspective: [3.3, 1.5, 5.1],
   front: [0, 0, 5.4],
@@ -89,8 +104,8 @@ async function makeTexture(source, colour) {
   return texture;
 }
 
-function PublishedTshirt({ preview }) {
-  const { scene } = useGLTF(MODEL_URL);
+function PublishedGarment({ preview, configuration }) {
+  const { scene } = useGLTF(configuration.url);
   const { invalidate } = useThree();
 
   const prepared = useMemo(() => {
@@ -102,7 +117,7 @@ function PublishedTshirt({ preview }) {
     const textures = new Map();
 
     function visit(node, parentRegion = null) {
-      const id = REGION_SET.has(node.name) ? node.name : parentRegion;
+      const id = configuration.regions.includes(node.name) ? node.name : parentRegion;
       if (node.isMesh) {
         if (id) {
           const meshes = regions.get(id) || [];
@@ -139,12 +154,12 @@ function PublishedTshirt({ preview }) {
     instance.position.sub(center);
     const scale = 2.65 / Math.max(size.x, size.y, size.z, 0.001);
     return { instance, scale, materials, materialsOwned, geometriesOwned, textures };
-  }, [scene]);
+  }, [scene, configuration]);
 
   useEffect(() => {
     let active = true;
     // Preview data never contains editing layers: only final flattened artwork.
-    const tasks = REGION_IDS.map(async (id) => {
+    const tasks = configuration.regions.map(async (id) => {
       const mats = prepared.materials.get(id) || [];
       if (!mats.length) return;
       const colour = safeColour(preview.colours?.[id]);
@@ -174,7 +189,7 @@ function PublishedTshirt({ preview }) {
     });
     void Promise.all(tasks);
     return () => { active = false; };
-  }, [prepared, preview, invalidate]);
+  }, [prepared, preview, configuration, invalidate]);
 
   useEffect(() => () => {
     prepared.textures.forEach((texture) => texture.dispose());
@@ -227,11 +242,14 @@ export default function ShowcaseGarment3D({ preview }) {
     { id: "back", label: "Back" }, { id: "left", label: "Left" },
     { id: "right", label: "Right" },
   ];
-  if (!preview || preview.model !== "tshirt") return null;
+  const model = typeof preview?.model === "string" ? preview.model : "";
+  const configuration = Object.hasOwn(GARMENT_MODELS, model)
+    ? GARMENT_MODELS[model] : null;
+  if (!configuration) return null;
   return (
-    <section className="flex h-full min-h-0 w-full flex-col bg-gradient-to-b from-slate-200 via-slate-100 to-slate-300 dark:from-slate-700 dark:via-slate-800 dark:to-slate-950" aria-label="Read-only interactive 3D garment preview">
+    <section className="flex h-full min-h-0 w-full flex-col bg-gradient-to-b from-slate-200 via-slate-100 to-slate-300 dark:from-slate-700 dark:via-slate-800 dark:to-slate-950" aria-label={`Read-only interactive 3D ${configuration.label} preview`}>
       <div className="relative min-h-0 flex-1">
-        <PreviewErrorBoundary>
+        <PreviewErrorBoundary key={configuration.url}>
           <Canvas
             dpr={[1, 1.5]} frameloop="demand"
             camera={{ position: CAMERA_POSITIONS.perspective, fov: 35, near: 0.1, far: 80 }}
@@ -242,13 +260,13 @@ export default function ShowcaseGarment3D({ preview }) {
             <hemisphereLight args={["#ffffff", "#475569", 1.4]}/>
             <directionalLight position={[4, 6, 6]} intensity={2.5}/>
             <directionalLight position={[-5, 2, -4]} intensity={1.5}/>
-            <Suspense fallback={<Html center><div className="rounded-md bg-black/80 px-4 py-2 text-xs text-white">Loading 3D T-shirt…</div></Html>}>
-              <PublishedTshirt preview={preview}/>
+            <Suspense fallback={<Html center><div className="rounded-md bg-black/80 px-4 py-2 text-xs text-white">Loading 3D {configuration.label}…</div></Html>}>
+              <PublishedGarment key={configuration.url} preview={preview} configuration={configuration}/>
             </Suspense>
             <ReadonlyCamera view={view} resetKey={resetKey}/>
           </Canvas>
         </PreviewErrorBoundary>
-        <span className="pointer-events-none absolute bottom-3 left-3 rounded-lg bg-black/70 px-3 py-1.5 text-[11px] text-white">Drag to rotate · Scroll to zoom · Preview only</span>
+        <span className="pointer-events-none absolute bottom-3 left-3 rounded-lg bg-black/70 px-3 py-1.5 text-[11px] text-white">{configuration.label} · Drag to rotate · Scroll to zoom · Preview only</span>
       </div>
       <nav className="flex shrink-0 flex-wrap items-center justify-center gap-2 border-t border-black/10 bg-slate-950/95 p-3" aria-label="3D garment camera controls">
         {options.map(({ id, label }) => (
@@ -259,6 +277,26 @@ export default function ShowcaseGarment3D({ preview }) {
           </button>
         ))}
       </nav>
+      {preview.model === "hoodie" && (
+        <p className="shrink-0 bg-slate-950 px-3 pb-2 text-center text-[10px] text-slate-400">
+          Modified 3D hoodie model by{" "}
+          <a
+            href="https://sketchfab.com/3d-models/hoodie-97611a53e3b846f69e0655b210f72b2f"
+            target="_blank" rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-white"
+          >
+            Virtual Pandora (Sketchfab)
+          </a>
+          {" · "}
+          <a
+            href="https://creativecommons.org/licenses/by/4.0/"
+            target="_blank" rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-white"
+          >
+            CC BY 4.0
+          </a>
+        </p>
+      )}
     </section>
   );
 }

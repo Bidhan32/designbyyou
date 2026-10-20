@@ -1,5 +1,5 @@
 /*
- * DesignByYou — Realistic T-Shirt Studio | 2D -> 3D Artwork V1
+ * DesignByYou — T-Shirt + Hoodie Studio | 2D / 3D Artwork V2 (Hoodie beta)
  * Reuses metadata.clothingColours and metadata.clothingArtwork from FashionEditor.
  * The 3D model is loaded only when the editor opens 3D mode.
  */
@@ -9,6 +9,7 @@ import React, {
 import { Canvas, useThree } from "@react-three/fiber";
 import { Html, OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import { getClothingTemplateColourRegions } from "../templates/ClothingTemplates";
 import {
   collectRegionLocalBounds, createRegionTexture, createTextArtwork,
   isGarmentRegion, projectRegionUv, normalizeRegionArtworkStack,
@@ -16,16 +17,11 @@ import {
 
 const MODEL_URL = "/models/garments/DBY_Realistic_TShirt_8Regions.glb";
 const DEFAULT_COLOUR = "#ffffff";
-const REGIONS = Object.freeze([
-  { id: "frontBody", label: "Front body" },
-  { id: "backBody", label: "Back body" },
-  { id: "frontLeftSleeve", label: "Front left sleeve" },
-  { id: "frontRightSleeve", label: "Front right sleeve" },
-  { id: "backLeftSleeve", label: "Back left sleeve" },
-  { id: "backRightSleeve", label: "Back right sleeve" },
-  { id: "frontCollar", label: "Front collar" },
-  { id: "backCollar", label: "Back collar" },
-]);
+const GARMENT_MODEL_URLS = Object.freeze({
+  tshirt: MODEL_URL,
+  hoodie: "/models/garments/DBY_Hoodie_Sketchfab_15Regions_BETA.glb",
+});
+
 const VIEWS = Object.freeze([
   { id: "perspective", label: "3/4" }, { id: "front", label: "Front" },
   { id: "back", label: "Back" }, { id: "left", label: "Left" },
@@ -39,7 +35,7 @@ const HEX_COLOUR = /^#[\da-f]{6}$/i;
 const safeColour = (value) => HEX_COLOUR.test(String(value || "")) ? value : DEFAULT_COLOUR;
 const clamp = (v, min, max) => Math.max(min, Math.min(max, Number(v) || 0));
 
-function Model({ modelUrl, colours, artwork, wireframe, onError }) {
+function Model({ modelUrl, templateId, regions, colours, artwork, wireframe, onError }) {
   const { scene } = useGLTF(modelUrl);
   const { invalidate } = useThree();
   const onErrorRef = useRef(onError);
@@ -56,7 +52,7 @@ function Model({ modelUrl, colours, artwork, wireframe, onError }) {
     const appliedConfig = new Map();
 
     const visit = (node, inheritedRegion = null) => {
-      const regionId = isGarmentRegion(node.name) ? node.name : inheritedRegion;
+      const regionId = isGarmentRegion(node.name, templateId) ? node.name : inheritedRegion;
       if (node.isMesh) {
         if (regionId) {
           const meshes = meshesByRegion.get(regionId) || [];
@@ -102,11 +98,11 @@ function Model({ modelUrl, colours, artwork, wireframe, onError }) {
     const scale = 2.65 / Math.max(size.x, size.y, size.z, 0.001);
     instance.position.sub(center);
     return { instance, scale, materialsByRegion, ownedGeometries, ownedMaterials, activeTextures, appliedConfig };
-  }, [scene]);
+  }, [scene, templateId]);
 
   useEffect(() => {
     let cancelled = false;
-    const tasks = REGIONS.map(async ({ id }) => {
+    const tasks = regions.map(async ({ id }) => {
       const materials = prepared.materialsByRegion.get(id) || [];
       if (!materials.length) return;
       const colour = safeColour(colours?.[id]);
@@ -124,7 +120,7 @@ function Model({ modelUrl, colours, artwork, wireframe, onError }) {
       let nextMap = null;
       if (entry?.source) {
         try {
-          nextMap = await createRegionTexture("tshirt", id, colour, entry);
+          nextMap = await createRegionTexture(templateId, id, colour, entry);
         } catch (error) {
           // A malformed image should not crash the 3D studio.
           onErrorRef.current?.(error);
@@ -148,7 +144,7 @@ function Model({ modelUrl, colours, artwork, wireframe, onError }) {
     });
     void Promise.all(tasks);
     return () => { cancelled = true; };
-  }, [prepared, colours, artwork, invalidate]);
+  }, [prepared, colours, artwork, invalidate, regions, templateId]);
 
   useEffect(() => {
     prepared.ownedMaterials.forEach((material) => {
@@ -192,7 +188,7 @@ class ViewerErrorBoundary extends Component {
     if (!this.state.error) return this.props.children;
     return <div role="alert" className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-red-200">
       <strong>3D model could not be loaded.</strong>
-      <span className="text-xs">Check that DBY_Realistic_TShirt_8Regions.glb is in public/models/garments.</span>
+      <span className="text-xs">Check the garment GLB under public/models/garments.</span>
       <span className="break-all text-xs">{String(this.state.error?.message || "Unknown error")}</span>
     </div>;
   }
@@ -211,9 +207,13 @@ const FIELD = "min-w-0 w-full rounded-lg border border-slate-600 bg-slate-900 px
 export default function Garment3DViewer({
   templateId = "tshirt", colours = {}, artwork = {}, artworkLayers = {}, onColourChange = null,
   onArtworkChange = null, onArtworkUpload = null, disabled = false,
-  modelUrl = MODEL_URL, className = "", onError = null,
+  modelUrl = null, className = "", onError = null,
 }) {
-  const supported = templateId === "tshirt";
+  const supported = Object.hasOwn(GARMENT_MODEL_URLS, templateId);
+  const resolvedModelUrl = modelUrl || GARMENT_MODEL_URLS[templateId] || MODEL_URL;
+  const regions = useMemo(() =>
+    supported ? getClothingTemplateColourRegions(templateId) : [], [templateId, supported]);
+  const garmentLabel = templateId === "hoodie" ? "Hoodie" : "T-Shirt";
   const [view, setView] = useState("perspective");
   const [revision, setRevision] = useState(0);
   const [wireframe, setWireframe] = useState(false);
@@ -253,23 +253,23 @@ export default function Garment3DViewer({
   const hasUploadBridge = typeof onArtworkUpload === "function";
   const editable = supported && !disabled && hasArtworkBridge;
   // Distinguish a locked garment from an editor still using the older
-  // 2D/3D integration. Previously both cases simply said "Select a T-shirt".
+  // 2D/3D integration. Previously both cases simply said "Select a garment".
   const artworkUnavailableReason = !supported
-    ? "Select the T-shirt template in 2D first."
+    ? "Select a supported T-Shirt or Hoodie template in 2D first."
     : disabled
-      ? "This T-shirt or its layer is locked, hidden, or not editable. Unlock it in Layers."
+      ? "This garment or its layer is locked, hidden, or not editable. Unlock it in Layers."
       : !hasArtworkBridge || !hasUploadBridge
         ? "3D artwork isn't connected to FashionEditor.jsx. Install the updated FashionEditor.jsx from this package."
         : "";
-  useEffect(() => { setTemporaryColours({}); setSelectedRegion("frontBody"); }, [templateId]);
+  useEffect(() => { setTemporaryColours({}); setSelectedRegion(regions[0]?.id || "frontBody"); }, [templateId, regions]);
   useEffect(() => { setSelectedLayerId(""); }, [selectedRegion]);
 
   const changeColour = useCallback((regionId, hex) => {
-    if (!supported || disabled || !isGarmentRegion(regionId)) return;
+    if (!supported || disabled || !isGarmentRegion(regionId, templateId)) return;
     const value = safeColour(hex);
     if (typeof onColourChange === "function") onColourChange(regionId, value);
     else setTemporaryColours((old) => ({ ...old, [regionId]: value }));
-  }, [supported, disabled, onColourChange]);
+  }, [supported, disabled, onColourChange, templateId]);
 
   const chooseView = (id) => { setView(id); setRevision((n) => n + 1); };
   const updateArtwork = (nextStack, label) => {
@@ -324,7 +324,7 @@ export default function Garment3DViewer({
       <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-700 bg-slate-950 px-3 py-2">
         <div>
           <strong className="text-xs">3D Garment Studio</strong>
-          <p className="text-[11px] text-slate-400">{supported ? "Realistic T-Shirt · synchronized graphics and prints" : "Select your 2D T-Shirt to preview it here"}</p>
+          <p className="text-[11px] text-slate-400">{supported ? `${garmentLabel} · synchronized graphics and prints` : "Select a supported 2D garment to preview it here"}</p>
         </div>
         {supported && <div className="flex flex-wrap items-center gap-2">
           <button type="button" className={BTN} onClick={scrollToArtwork} title="Jump to logo upload, text and fabric pattern controls">
@@ -336,16 +336,16 @@ export default function Garment3DViewer({
         </div>}
       </header>
       {!supported ? <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center text-sm text-slate-300">
-        Switch to 2D, add a T-Shirt template, select it, then return to 3D.
+        Switch to 2D, select a T-Shirt or Hoodie template, then return to 3D.
       </div> : <>
         <div className="relative h-[clamp(165px,30dvh,300px)] shrink-0 bg-gradient-to-b from-slate-700 via-slate-800 to-slate-950">
-          <ViewerErrorBoundary key={modelUrl} onError={onError}>
+          <ViewerErrorBoundary key={resolvedModelUrl} onError={onError}>
             <Canvas dpr={[1, 1.5]} frameloop="demand" camera={{ position: CAMERAS.perspective, fov: 35, near: 0.1, far: 80 }} gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }} style={{ height: "100%", width: "100%" }}>
               <ambientLight intensity={1.4}/><hemisphereLight args={["#ffffff", "#475569", 1.4]} />
               <directionalLight position={[4, 6, 6]} intensity={2.5}/>
               <directionalLight position={[-5, 2, -4]} intensity={1.5}/>
               <Suspense fallback={<Html center><div className="rounded bg-slate-950 px-4 py-3 text-xs">Loading garment…</div></Html>}>
-                <Model modelUrl={modelUrl} colours={resolvedColours} artwork={artwork} wireframe={wireframe} onError={onError} />
+                <Model modelUrl={resolvedModelUrl} templateId={templateId} regions={regions} colours={resolvedColours} artwork={artwork} wireframe={wireframe} onError={onError} />
               </Suspense>
               <CameraControls view={view} revision={revision}/>
             </Canvas>
@@ -369,7 +369,7 @@ export default function Garment3DViewer({
               <span className="text-[10px] text-slate-500">{onColourChange ? "Synced with 2D" : "Preview-only colors"}</span>
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {REGIONS.map(({ id, label }) => <label key={id} className="flex min-w-0 items-center gap-2 text-[10px] text-slate-300">
+              {regions.map(({ id, label }) => <label key={id} className="flex min-w-0 items-center gap-2 text-[10px] text-slate-300">
                 <input type="color" value={safeColour(resolvedColours?.[id])} onChange={(e) => changeColour(id, e.target.value)} disabled={disabled} aria-label={`Color of ${label}`} className="h-7 w-8 shrink-0 cursor-pointer rounded border border-slate-600 bg-transparent disabled:opacity-40" />
                 <span className="min-w-0 truncate" title={label}>{label}</span>
               </label>)}
@@ -384,7 +384,7 @@ export default function Garment3DViewer({
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,180px)_minmax(0,1fr)]">
               <label className="space-y-1 text-[10px] text-slate-400">Garment region
                 <select className={FIELD} value={selectedRegion} onChange={(e) => setSelectedRegion(e.target.value)}>
-                  {REGIONS.map(({ id, label }) => <option value={id} key={id}>{label}</option>)}
+                  {regions.map(({ id, label }) => <option value={id} key={id}>{label}</option>)}
                 </select>
               </label>
               <div className="flex flex-wrap items-end gap-1.5" role="group" aria-label="Artwork type">

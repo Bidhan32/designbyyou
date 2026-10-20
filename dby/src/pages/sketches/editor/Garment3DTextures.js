@@ -1,6 +1,6 @@
 /*
  * DesignByYou | Garment3DTextures.js
- * 2D template artwork -> fabric texture for DBY_Realistic_TShirt_8Regions.glb
+ * 2D template artwork -> fabric textures for T-shirt and Hoodie (beta)
  *
  * This model uses separated front/back meshes. For V1 we generate stable
  * planar UV coordinates on cloned geometry (never on useGLTF's cache).
@@ -8,23 +8,31 @@
  */
 
 import * as THREE from "three";
-import { getClothingTemplateArtworkBox } from "../templates/ClothingTemplates";
+import { getClothingTemplateArtworkBox, getClothingTemplateColourRegions } from "../templates/ClothingTemplates";
 
 const MAX_CANVAS_EDGE = 1024;
 const MAX_LAYERS = 24;
-const REGION_IDS = [
-  "frontBody", "backBody", "frontLeftSleeve", "frontRightSleeve",
-  "backLeftSleeve", "backRightSleeve", "frontCollar", "backCollar",
-];
-const REGION_SET = new Set(REGION_IDS);
+// Region IDs are sourced from the 2D template; keep them as the source of truth.
+// Calling isGarmentRegion(id) without a template retains legacy T-shirt behavior.
+const REGION_IDS_BY_TEMPLATE = new Map();
+function regionIdsFor(templateId) {
+  const id = String(templateId || "tshirt");
+  if (id !== "tshirt" && id !== "hoodie") return new Set();
+  if (!REGION_IDS_BY_TEMPLATE.has(id)) {
+    REGION_IDS_BY_TEMPLATE.set(id, new Set(
+      getClothingTemplateColourRegions(id).map((region) => region.id),
+    ));
+  }
+  return REGION_IDS_BY_TEMPLATE.get(id);
+}
 
 const clamp = (value, low, high, fallback = low) => {
   const n = Number(value);
   return Number.isFinite(n) ? Math.max(low, Math.min(high, n)) : fallback;
 };
 
-export function isGarmentRegion(value) {
-  return REGION_SET.has(value);
+export function isGarmentRegion(value, templateId = "tshirt") {
+  return regionIdsFor(templateId).has(value);
 }
 
 function isBackRegion(regionId) {
@@ -165,7 +173,7 @@ function paintPattern(ctx, image, entry, canvas, unitW, unitH) {
  * `artwork` uses the same metadata.clothingArtwork entries as the 2D SVG.
  */
 export async function createRegionTexture(templateId, regionId, clothColour, entry) {
-  if (!isGarmentRegion(regionId) || !entry?.source) return null;
+  if (!isGarmentRegion(regionId, templateId) || !entry?.source) return null;
   const box = getClothingTemplateArtworkBox(templateId, regionId);
   if (!box) return null;
   const image = await loadLocalImage(entry.source);
@@ -244,7 +252,7 @@ export function normalizeRegionArtworkStack(value, legacyEntry = null) {
  * No base color is baked in, so recoloring remains independent of artwork.
  */
 export async function flattenRegionArtworkStack(templateId, regionId, input) {
-  if (!isGarmentRegion(regionId)) return null;
+  if (!isGarmentRegion(regionId, templateId)) return null;
   const box = getClothingTemplateArtworkBox(templateId, regionId);
   if (!box) return null;
   const stack = normalizeRegionArtworkStack(input);
