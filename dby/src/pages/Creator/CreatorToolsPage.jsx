@@ -1,15 +1,16 @@
 "use strict";
 
-/*
+/**
  * =========================================================
  * DesignByYou — Creator Creative Hub
- * Version 4.1 — Compact Detailed Tool Cards
+ * Version 4.2 — Compact Detailed Tool Cards
  * =========================================================
  *
  * FEATURES
  * ---------------------------------------------------------
- * - Compact responsive cards: 1 / 2 / 3 / 4 columns
+ * - Responsive cards: 1 / 2 / 3 / 4 columns
  * - Optimized local WebP thumbnails
+ * - Thumbnail fallback for missing images
  * - Search and category filters
  * - Light and dark themes
  * - Existing Creator navigation preserved
@@ -19,14 +20,15 @@
  * 1. Fashion Editor
  * 2. Upload Your Creation
  * 3. AI Background Remover
- * 4. AI Costume Extractor — NEW
+ * 4. AI Costume Extractor
+ * 5. AI Text to Image
+ * 6. AI Sketch to Image
+ * 7. AI Virtual Try-On
+ * 8. AI Front, Side & Back Views — NEW
  *
- * UPCOMING TOOLS
+ * UPCOMING
  * ---------------------------------------------------------
- * - AI Text to Image
- * - AI Sketch to Image
- * - AI Virtual Try-On
- * - AI Image Editor
+ * 9. AI Image Editor
  *
  * =========================================================
  */
@@ -41,6 +43,7 @@ import {
   ArrowUpRight,
   ImageOff,
   ImagePlus,
+  Images,
   PencilRuler,
   Search,
   Scissors,
@@ -51,17 +54,9 @@ import {
   X,
 } from "lucide-react";
 
-/*
- * =========================================================
- * Local Image Assets
- *
- * Vite serves public/ files from the site root.
- *
- * Directory:
- * public/images/creator-tools/
- *
- * =========================================================
- */
+// =========================================================
+// Local Image Assets
+// =========================================================
 
 const IMAGE_ROOT = "/images/creator-tools";
 
@@ -78,31 +73,24 @@ const PHOTOS = Object.freeze({
 
   remove: `${IMAGE_ROOT}/background-remover.webp`,
 
-   costume: `${IMAGE_ROOT}/costume-extraction.webp`,
+  costume: `${IMAGE_ROOT}/costume-extraction.webp`,
 
   tryon: `${IMAGE_ROOT}/virtual-tryon.webp`,
 
+  // NEW: Multi-View Generator
+  multiView: `${IMAGE_ROOT}/multi-view-generator.webp`,
+
   edit: `${IMAGE_ROOT}/image-editor.webp`,
-
-
 });
 
-/*
- * =========================================================
- * Creative Tools Registry
- *
- * Important:
- * Mark a tool as available only when its route exists.
- *
- * =========================================================
- */
+// =========================================================
+// Creative Tools Registry
+// =========================================================
 
 const TOOLS = Object.freeze([
-  /*
-   * =======================================================
-   * 1. Fashion Editor
-   * =======================================================
-   */
+  // =======================================================
+  // 1. Fashion Editor
+  // =======================================================
 
   {
     id: "fashion-editor",
@@ -129,11 +117,9 @@ const TOOLS = Object.freeze([
     available: true,
   },
 
-  /*
-   * =======================================================
-   * 2. Creator Upload
-   * =======================================================
-   */
+  // =======================================================
+  // 2. Creator Upload
+  // =======================================================
 
   {
     id: "creator-upload",
@@ -160,11 +146,9 @@ const TOOLS = Object.freeze([
     available: true,
   },
 
-  /*
-   * =======================================================
-   * 3. AI Background Remover
-   * =======================================================
-   */
+  // =======================================================
+  // 3. AI Background Remover
+  // =======================================================
 
   {
     id: "background-remover",
@@ -191,32 +175,9 @@ const TOOLS = Object.freeze([
     available: true,
   },
 
-  /*
-   * =======================================================
-   * 4. AI Costume Extractor — NEW
-   * =======================================================
-   *
-   * Features:
-   * - Costume image upload
-   * - Garment-only extraction
-   * - Front view generation
-   * - Back view generation
-   * - Left side generation
-   * - Right side generation
-   * - Download generated PNG images
-   *
-   * FASHN Model:
-   * edit
-   *
-   * Backend:
-   * /api/v1/creator-tools/costume-extractor
-   *
-   * Frontend:
-   * /creator/tools/costume-extractor
-   *
-   * Uses the existing sketch image temporarily.
-   * =======================================================
-   */
+  // =======================================================
+  // 4. AI Costume Extractor
+  // =======================================================
 
   {
     id: "costume-extractor",
@@ -243,11 +204,9 @@ const TOOLS = Object.freeze([
     available: true,
   },
 
-  /*
-   * =======================================================
-   * 5. AI Text to Image
-   * =======================================================
-   */
+  // =======================================================
+  // 5. AI Text to Image
+  // =======================================================
 
   {
     id: "text-to-image",
@@ -267,18 +226,16 @@ const TOOLS = Object.freeze([
 
     image: PHOTOS.text,
 
-    imageAlt: "AI costume extraction showing front, back, left and right garment views",
+    imageAlt: "AI-generated fashion concept based on a written prompt",
 
     path: "/creator/tools/text-to-image",
 
     available: true,
   },
 
-  /*
-   * =======================================================
-   * 6. AI Sketch to Image
-   * =======================================================
-   */
+  // =======================================================
+  // 6. AI Sketch to Image
+  // =======================================================
 
   {
     id: "sketch-to-image",
@@ -305,11 +262,9 @@ const TOOLS = Object.freeze([
     available: true,
   },
 
-  /*
-   * =======================================================
-   * 7. AI Virtual Try-On
-   * =======================================================
-   */
+  // =======================================================
+  // 7. AI Virtual Try-On
+  // =======================================================
 
   {
     id: "virtual-tryon",
@@ -336,11 +291,62 @@ const TOOLS = Object.freeze([
     available: true,
   },
 
-  /*
-   * =======================================================
-   * 8. AI Image Editor
-   * =======================================================
+  // =======================================================
+  // 8. NEW: AI Front, Side & Back Views
+  // =======================================================
+  /**
+   * FASHN AI Multi-View Generator
+   *
+   * Generates alternate garment perspectives
+   * using the original fashion design as reference.
+   *
+   * FRONT:
+   * Original uploaded garment reference.
+   *
+   * SIDE:
+   * AI-generated right-side garment view.
+   *
+   * BACK:
+   * AI-generated rear garment view.
+   *
+   * Backend:
+   * /api/v1/creators/ai/multi-view
+   *
+   * Frontend:
+   * /creator/tools/multi-view-generator
+   *
+   * FASHN Model:
+   * edit
    */
+
+  {
+    id: "multi-view-generator",
+
+    title: "AI Front, Side & Back Views",
+
+    eyebrow: "AI MULTI-VIEW GENERATION",
+
+    description:
+      "Generate matching front, side and back fashion views from one garment image while preserving design details as closely as possible.",
+
+    outcome: "One Design → Three Views",
+
+    categories: ["ai", "image"],
+
+    icon: Images,
+
+    image: PHOTOS.multiView,
+
+    imageAlt: "Fashion garment displayed in front, side and back views",
+
+    path: "/creator/tools/multi-view-generator",
+
+    available: true,
+  },
+
+  // =======================================================
+  // 9. AI Image Editor — Upcoming
+  // =======================================================
 
   {
     id: "image-editor",
@@ -366,42 +372,32 @@ const TOOLS = Object.freeze([
   },
 ]);
 
-/*
- * =========================================================
- * Tool Category Filters
- * =========================================================
- */
+// =========================================================
+// Tool Category Filters
+// =========================================================
 
 const FILTERS = Object.freeze([
   {
     id: "all",
     label: "All Tools",
   },
-
   {
     id: "design",
     label: "Design & Upload",
   },
-
   {
     id: "ai",
     label: "AI Tools",
   },
-
   {
     id: "image",
     label: "Image Tools",
   },
 ]);
 
-/*
- * =========================================================
- * Tool Thumbnail
- *
- * Compact image layout.
- * Includes fallback if the local WebP image is unavailable.
- * =========================================================
- */
+// =========================================================
+// Tool Thumbnail
+// =========================================================
 
 function ToolThumbnail({ tool }) {
   const [failed, setFailed] = useState(false);
@@ -410,13 +406,17 @@ function ToolThumbnail({ tool }) {
 
   return (
     <div className="relative aspect-[16/9] w-full overflow-hidden bg-gradient-to-br from-[#25221d] via-[#181818] to-[#0c0c0c]">
+      {/* Fallback */}
+
       <div className="absolute inset-0 flex items-center justify-center gap-2 text-white/45">
         <Icon size={27} strokeWidth={1.5} aria-hidden="true" />
 
         <span className="text-xs font-medium">{tool.title}</span>
       </div>
 
-      {!failed && (
+      {/* Thumbnail */}
+
+      {!failed && tool.image && (
         <img
           src={tool.image}
           alt={tool.imageAlt}
@@ -433,6 +433,8 @@ function ToolThumbnail({ tool }) {
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/25 to-transparent" />
 
+      {/* Availability Badge */}
+
       <span
         className={`absolute right-2.5 top-2.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold backdrop-blur-md ${
           tool.available
@@ -446,23 +448,9 @@ function ToolThumbnail({ tool }) {
   );
 }
 
-/*
- * =========================================================
- * Tool Card
- *
- * Maintains the compact layout approved for Version 4.0.
- *
- * Displays:
- * - Image
- * - Icon
- * - Category
- * - Title
- * - Description
- * - Outcome
- * - Availability
- * - Action button
- * =========================================================
- */
+// =========================================================
+// Tool Card
+// =========================================================
 
 function ToolCard({ tool }) {
   const Icon = tool.icon;
@@ -471,6 +459,8 @@ function ToolCard({ tool }) {
 
   return (
     <article className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_3px_16px_rgba(0,0,0,0.035)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#d7b66b]/70 hover:shadow-[0_14px_32px_rgba(0,0,0,0.075)] dark:border-white/10 dark:bg-[#151515] dark:shadow-none dark:hover:border-[#d7b66b]/45">
+      {/* Tool Image */}
+
       {ready ? (
         <Link
           to={tool.path}
@@ -483,7 +473,11 @@ function ToolCard({ tool }) {
         <ToolThumbnail tool={tool} />
       )}
 
+      {/* Tool Details */}
+
       <div className="flex flex-1 flex-col px-4 pb-4 pt-3.5">
+        {/* Icon and Category */}
+
         <div className="flex items-center gap-2.5">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#e5c67d]/15 text-[#ab802c] dark:text-[#e5c67d]">
             <Icon size={17} strokeWidth={1.8} aria-hidden="true" />
@@ -494,13 +488,19 @@ function ToolCard({ tool }) {
           </span>
         </div>
 
+        {/* Tool Title */}
+
         <h3 className="mt-3 font-serif text-[19px] font-semibold leading-6 tracking-tight text-slate-900 dark:text-white">
           {tool.title}
         </h3>
 
+        {/* Description */}
+
         <p className="mt-2 flex-1 text-[12px] leading-[1.65] text-slate-600 dark:text-white/55">
           {tool.description}
         </p>
+
+        {/* Outcome */}
 
         <div className="mt-3 flex items-start gap-1.5 text-[11px] font-medium leading-4 text-slate-500 dark:text-white/50">
           <Sparkles
@@ -511,6 +511,8 @@ function ToolCard({ tool }) {
 
           <span>{tool.outcome}</span>
         </div>
+
+        {/* Action */}
 
         <div className="mt-3 border-t border-slate-100 pt-3 dark:border-white/10">
           {ready ? (
@@ -535,11 +537,9 @@ function ToolCard({ tool }) {
   );
 }
 
-/*
- * =========================================================
- * Section Heading
- * =========================================================
- */
+// =========================================================
+// Section Heading
+// =========================================================
 
 function SectionHeading({ eyebrow, title, description, count }) {
   return (
@@ -565,11 +565,9 @@ function SectionHeading({ eyebrow, title, description, count }) {
   );
 }
 
-/*
- * =========================================================
- * Creator Creative Hub
- * =========================================================
- */
+// =========================================================
+// Creator Creative Hub
+// =========================================================
 
 export default function CreatorToolsPage() {
   const [search, setSearch] = useState("");
@@ -578,11 +576,9 @@ export default function CreatorToolsPage() {
 
   const [heroImageFailed, setHeroImageFailed] = useState(false);
 
-  /*
-   * =======================================================
-   * Search and Filter
-   * =======================================================
-   */
+  // =======================================================
+  // Search and Filter
+  // =======================================================
 
   const filteredTools = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -613,17 +609,15 @@ export default function CreatorToolsPage() {
 
   const upcomingTools = filteredTools.filter((tool) => !tool.available);
 
-  /*
-   * =======================================================
-   * Render
-   * =======================================================
-   */
+  // =======================================================
+  // Render
+  // =======================================================
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-slate-50 pb-16 text-slate-900 dark:bg-[#090909] dark:text-white">
-      {/* ===============================================
+      {/* ===================================================
           HERO
-          =============================================== */}
+          =================================================== */}
 
       <section className="relative isolate min-h-[350px] overflow-hidden bg-[#0b0b0b] text-white sm:min-h-[390px]">
         {!heroImageFailed && (
@@ -671,6 +665,8 @@ export default function CreatorToolsPage() {
           </p>
 
           <div className="mt-6 flex flex-wrap gap-2.5">
+            {/* Explore Tools */}
+
             <a
               href="#explore-tools"
               className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#e5c67d] px-5 text-xs font-bold text-black transition hover:bg-[#f4d995] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
@@ -678,6 +674,8 @@ export default function CreatorToolsPage() {
               Explore Tools
               <ArrowRight size={15} aria-hidden="true" />
             </a>
+
+            {/* Fashion Editor */}
 
             <Link
               to="/creator/fashion-editor"
@@ -690,9 +688,9 @@ export default function CreatorToolsPage() {
         </div>
       </section>
 
-      {/* ===============================================
+      {/* ===================================================
           SEARCH AND FILTERS
-          =============================================== */}
+          =================================================== */}
 
       <section
         id="explore-tools"
@@ -712,6 +710,8 @@ export default function CreatorToolsPage() {
               Compact previews. Clear details. Find the right tool faster.
             </p>
           </div>
+
+          {/* Search */}
 
           <div className="relative w-full md:max-w-[290px]">
             <Search
@@ -742,9 +742,9 @@ export default function CreatorToolsPage() {
           </div>
         </div>
 
-        {/* ===========================================
+        {/* ===============================================
             CATEGORY FILTERS
-            =========================================== */}
+            =============================================== */}
 
         <div
           className="flex flex-wrap gap-2"
@@ -772,6 +772,8 @@ export default function CreatorToolsPage() {
           })}
         </div>
 
+        {/* Search Results Count */}
+
         <p
           className="mt-3 text-[11px] text-slate-400 dark:text-white/40"
           aria-live="polite"
@@ -779,9 +781,9 @@ export default function CreatorToolsPage() {
           Showing {filteredTools.length} of {TOOLS.length} tools
         </p>
 
-        {/* ===========================================
+        {/* ===============================================
             AVAILABLE TOOLS
-            =========================================== */}
+            =============================================== */}
 
         {readyTools.length > 0 && (
           <section className="mt-8" aria-label="Available creative tools">
@@ -800,9 +802,9 @@ export default function CreatorToolsPage() {
           </section>
         )}
 
-        {/* ===========================================
+        {/* ===============================================
             UPCOMING AI TOOLS
-            =========================================== */}
+            =============================================== */}
 
         {upcomingTools.length > 0 && (
           <section className="mt-10" aria-label="Upcoming AI tools">
@@ -821,9 +823,9 @@ export default function CreatorToolsPage() {
           </section>
         )}
 
-        {/* ===========================================
+        {/* ===============================================
             EMPTY STATE
-            =========================================== */}
+            =============================================== */}
 
         {filteredTools.length === 0 && (
           <div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center dark:border-white/10 dark:bg-[#151515]">
@@ -853,9 +855,9 @@ export default function CreatorToolsPage() {
         )}
       </section>
 
-      {/* ===============================================
-          COMPACT CLOSING CTA
-          =============================================== */}
+      {/* ===================================================
+          CLOSING CTA
+          =================================================== */}
 
       <section className="mx-auto mt-12 max-w-7xl px-5 sm:px-8 lg:px-10">
         <div className="flex flex-col gap-5 rounded-2xl border border-[#e5c67d]/30 bg-white p-5 dark:bg-[#151515] sm:flex-row sm:items-center sm:justify-between sm:p-7">
@@ -874,6 +876,8 @@ export default function CreatorToolsPage() {
           </div>
 
           <div className="flex flex-wrap gap-2">
+            {/* Open Fashion Editor */}
+
             <Link
               to="/creator/fashion-editor"
               className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-[#e5c67d] px-4 text-[12px] font-bold text-black hover:bg-[#f4d995]"
@@ -882,6 +886,8 @@ export default function CreatorToolsPage() {
               Open Editor
               <ArrowRight size={14} aria-hidden="true" />
             </Link>
+
+            {/* Upload Creation */}
 
             <Link
               to="/creator/upload"

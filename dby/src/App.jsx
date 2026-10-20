@@ -189,6 +189,7 @@ import CreatorCostumeExtractor from "./pages/Creator/CreatorCostumeExtractor";
 import CreatorTextToImage from "./pages/Creator/CreatorTextToImage";
 import CreatorSketchToImage from "./pages/Creator/CreatorSketchToImage";
 import CreatorVirtualTryOn from "./pages/Creator/CreatorVirtualTryOn";
+import CreatorMultiViewGenerator from "./pages/Creator/CreatorMultiViewGenerator";
 
 
 /*=========================================================
@@ -670,6 +671,11 @@ Normal admins, creators and designers cannot enter.
 <Route
   path="tools/virtual-try-on"
   element={<CreatorVirtualTryOn />}
+/>
+
+<Route
+  path="tools/multi-view-generator"
+  element={<CreatorMultiViewGenerator />}
 />
 
                   <Route

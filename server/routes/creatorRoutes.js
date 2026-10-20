@@ -3,7 +3,7 @@
 /**
  * =========================================================
  * DesignByYou / FashionVision
- * Creator Routes — Version 6.0
+ * Creator Routes — Version 6.1
  * =========================================================
  *
  * Creator Studio, Fashion Editor, Showcase, Text to Image,
@@ -21,6 +21,7 @@ const creatorController = require("../controllers/creators/creatorController");
 const textToImageController = require("../controllers/creators/textToImageController");
 const sketchToImageController = require("../controllers/creators/sketchToImageController");
 const creatorVirtualTryOnController = require("../controllers/creators/creatorVirtualTryOnController");
+const creatorMultiViewController = require("../controllers/creators/creatorMultiViewController");
 const { protect, authorize } = require("../middlewares/authMiddleware");
 const { uploadPreview, uploadCreatorGallery } = require("../middlewares/upload");
 
@@ -276,6 +277,50 @@ function safeCreatorTryOnUpload(req, res, next) {
 }
 
 // =========================================================
+// AI Multi-View: two images (source required, context optional)
+// plus six text settings. Kept separate from all existing tools.
+// =========================================================
+const multiViewUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 8 * 1024 * 1024,
+    files: 2,
+    fields: 6,
+    fieldSize: 1600,
+    parts: 10, // headroom avoids the exact-limit multipart rejection
+  },
+  fileFilter: (req, file, cb) => {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) {
+      const error = new Error("Multi-view images must be JPG, PNG or WebP.");
+      error.code = "INVALID_MULTIVIEW_IMAGE";
+      return cb(error);
+    }
+    return cb(null, true);
+  },
+}).fields([
+  { name: "source_image", maxCount: 1 },
+  { name: "context_image", maxCount: 1 },
+]);
+
+function safeMultiViewUpload(req, res, next) {
+  multiViewUpload(req, res, (err) => {
+    if (!err) return next();
+    console.error("[MultiView] Upload rejected:", {
+      code: err.code || "UNKNOWN",
+      field: err.field || null,
+    });
+    const message = err.code === "LIMIT_FILE_SIZE"
+      ? "Each image must be 8 MB or smaller."
+      : err.code === "INVALID_MULTIVIEW_IMAGE"
+        ? "Only JPG, PNG and WebP images are accepted."
+        : "Upload one source_image and an optional context_image with valid settings.";
+    return res.status(err.code === "LIMIT_FILE_SIZE" ? 413 : 400).json({
+      status: "error", code: err.code || "INVALID_MULTIVIEW_UPLOAD", message,
+    });
+  });
+}
+
+// =========================================================
 // Global Creator-only authentication (BEFORE all uploads)
 // =========================================================
 
@@ -444,6 +489,28 @@ router.get(
 router.delete(
   "/ai/virtual-try-on/:jobId",
   requireHandler("creatorVirtualTryOnController.remove", creatorVirtualTryOnController.remove),
+);
+
+// =========================================================
+// Creator Front, Side & Back Multi-View (FASHN Edit)
+// The existing Sketch, Text, Try-On, Studio and Booking endpoints are unchanged.
+// =========================================================
+router.post(
+  "/ai/multi-view",
+  safeMultiViewUpload,
+  requireHandler("creatorMultiViewController.start", creatorMultiViewController.start),
+);
+router.get(
+  "/ai/multi-view/history",
+  requireHandler("creatorMultiViewController.history", creatorMultiViewController.history),
+);
+router.get(
+  "/ai/multi-view/:jobId",
+  requireHandler("creatorMultiViewController.status", creatorMultiViewController.status),
+);
+router.delete(
+  "/ai/multi-view/:jobId",
+  requireHandler("creatorMultiViewController.remove", creatorMultiViewController.remove),
 );
 
 module.exports = router;
