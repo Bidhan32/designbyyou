@@ -78,7 +78,7 @@ const PHOTOS = Object.freeze({
   tryon: `${IMAGE_ROOT}/virtual-tryon.webp`,
 
   // NEW: Multi-View Generator
-  multiView: `${IMAGE_ROOT}/multi-view-generator.webp`,
+  multiView: `${IMAGE_ROOT}/multi-view-generator.webp?v=20261020`,
 
   edit: `${IMAGE_ROOT}/image-editor.webp`,
 });
