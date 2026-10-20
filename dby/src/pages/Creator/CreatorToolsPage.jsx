@@ -331,7 +331,9 @@ const TOOLS = Object.freeze([
 
     imageAlt: "Outfit preview on a virtual model",
 
-    available: false,
+    path: "/creator/tools/virtual-try-on",
+
+    available: true,
   },
 
   /*

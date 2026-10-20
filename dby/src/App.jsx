@@ -188,6 +188,7 @@ import CreatorBackgroundRemover from "./pages/Creator/CreatorBackgroundRemover";
 import CreatorCostumeExtractor from "./pages/Creator/CreatorCostumeExtractor";
 import CreatorTextToImage from "./pages/Creator/CreatorTextToImage";
 import CreatorSketchToImage from "./pages/Creator/CreatorSketchToImage";
+import CreatorVirtualTryOn from "./pages/Creator/CreatorVirtualTryOn";
 
 
 /*=========================================================
@@ -664,6 +665,11 @@ Normal admins, creators and designers cannot enter.
 <Route
   path="tools/sketch-to-image"
   element={<CreatorSketchToImage />}
+/>
+
+<Route
+  path="tools/virtual-try-on"
+  element={<CreatorVirtualTryOn />}
 />
 
                   <Route

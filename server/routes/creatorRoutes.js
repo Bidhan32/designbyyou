@@ -3,7 +3,7 @@
 /**
  * =========================================================
  * DesignByYou / FashionVision
- * Creator Routes — Version 5.9
+ * Creator Routes — Version 6.0
  * =========================================================
  *
  * Creator Studio, Fashion Editor, Showcase, Text to Image,
@@ -20,16 +20,11 @@ const multer = require("multer");
 const creatorController = require("../controllers/creators/creatorController");
 const textToImageController = require("../controllers/creators/textToImageController");
 const sketchToImageController = require("../controllers/creators/sketchToImageController");
-
+const creatorVirtualTryOnController = require("../controllers/creators/creatorVirtualTryOnController");
 const { protect, authorize } = require("../middlewares/authMiddleware");
-
-const {
-  uploadPreview,
-  uploadCreatorGallery,
-} = require("../middlewares/upload");
+const { uploadPreview, uploadCreatorGallery } = require("../middlewares/upload");
 
 const router = express.Router();
-
 const MAX_CREATOR_GALLERY_FILES = 6;
 
 // =========================================================
@@ -39,34 +34,28 @@ const MAX_CREATOR_GALLERY_FILES = 6;
 function requireHandler(name, handler) {
   if (typeof handler !== "function") {
     throw new TypeError(
-      `Creator route handler "${name}" is missing or is not a function.`,
+      `Creator route handler "${name}" is missing or is not a function.`
     );
   }
-
   return handler;
 }
 
 if (!uploadPreview || typeof uploadPreview.single !== "function") {
   throw new TypeError(
-    'Creator upload middleware "uploadPreview" is missing or invalid.',
+    'Creator upload middleware "uploadPreview" is missing or invalid.'
   );
 }
 
 if (!uploadCreatorGallery || typeof uploadCreatorGallery.array !== "function") {
   throw new TypeError(
-    'Creator upload middleware "uploadCreatorGallery" is missing or invalid. Update middlewares/upload.js first.',
+    'Creator upload middleware "uploadCreatorGallery" is missing or invalid. Update middlewares/upload.js first.'
   );
 }
 
-// =========================================================
-// Existing Creator Upload Handlers
-// =========================================================
-
 const singlePreviewUpload = uploadPreview.single("preview");
-
 const creatorGalleryUpload = uploadCreatorGallery.array(
   "preview",
-  MAX_CREATOR_GALLERY_FILES,
+  MAX_CREATOR_GALLERY_FILES
 );
 
 // =========================================================
@@ -74,12 +63,9 @@ const creatorGalleryUpload = uploadCreatorGallery.array(
 // =========================================================
 
 function sendUploadError(error, res, kind) {
-  if (res.headersSent) {
-    return;
-  }
+  if (res.headersSent) return;
 
   const gallery = kind === "gallery";
-
   const noun = gallery ? "gallery image" : "preview image";
 
   switch (error?.code) {
@@ -130,7 +116,6 @@ function sendUploadError(error, res, kind) {
         code: error?.code || null,
         message: error?.message || "Unknown upload error",
       });
-
       return res.status(400).json({
         status: "error",
         code: "PREVIEW_UPLOAD_FAILED",
@@ -141,30 +126,16 @@ function sendUploadError(error, res, kind) {
   }
 }
 
-// =========================================================
-// Safe Single Preview Upload
-// =========================================================
-
 function safePreviewUpload(req, res, next) {
   singlePreviewUpload(req, res, (error) => {
-    if (error) {
-      return sendUploadError(error, res, "preview");
-    }
-
+    if (error) return sendUploadError(error, res, "preview");
     return next();
   });
 }
 
-// =========================================================
-// Safe Creator Gallery Upload
-// =========================================================
-
 function safeCreatorGalleryUpload(req, res, next) {
   creatorGalleryUpload(req, res, (error) => {
-    if (error) {
-      return sendUploadError(error, res, "gallery");
-    }
-
+    if (error) return sendUploadError(error, res, "gallery");
     if (!Array.isArray(req.files)) {
       return res.status(400).json({
         status: "error",
@@ -172,88 +143,56 @@ function safeCreatorGalleryUpload(req, res, next) {
         message: "Invalid image gallery upload.",
       });
     }
-
     return next();
   });
 }
 
-// =========================================================
-// Creator Studio Gallery Compatibility
-// =========================================================
-
-// Keep existing single-upload fallback when the gallery
-// controller is unavailable.
-
+// Preserve existing single-upload fallback until the gallery
+// controller exists in the deployed creatorController.js.
 const galleryReady =
   typeof creatorController.uploadCreatorStudioGalleryAsset === "function";
 
 // =========================================================
-// AI Sketch to Image Upload Middleware
+// Sketch to Image: isolated Multer memory upload
 // =========================================================
 
 /**
- * Expected multipart request:
+ * Expected multipart request from CreatorSketchToImage.jsx:
+ *   sketch          = 1 image (JPG/PNG/WebP; <= 6 MB)
+ *   instruction     = text
+ *   fabric          = text
+ *   generation_mode = text
+ *   request_key     = text
  *
- * sketch          = 1 image
- * instruction     = text
- * fabric          = text
- * generation_mode = text
- * request_key     = text
- *
- * Accepted image formats:
- * - JPG
- * - PNG
- * - WebP
- *
- * Maximum image size: 6 MB
- * Maximum file count: 1
- * Maximum text fields: 4
- *
- * Important:
- * The controller must validate the actual image bytes,
- * not just the client-supplied MIME type.
+ * That is 1 file + 4 fields. Set parts to 6 to leave a small
+ * buffer for multipart boundary/limit implementation behavior;
+ * the strict file and field limits remain unchanged.
+ * The controller must still validate actual image bytes.
  */
-
 const sketchUpload = multer({
   storage: multer.memoryStorage(),
-
   limits: {
     fileSize: 6 * 1024 * 1024,
     files: 1,
     fields: 4,
     fieldSize: 2000,
-
-    // FIX: previously 5
-    parts: 6,
+    parts: 6, // Increased from 5
   },
-
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
-
-    if (!allowedTypes.includes(file.mimetype)) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) {
       const error = new Error("Only JPG, PNG, and WebP sketches are accepted.");
-
       error.code = "INVALID_SKETCH_TYPE";
-
       return cb(error);
     }
-
     return cb(null, true);
   },
 }).single("sketch");
 
-// =========================================================
-// Safe Sketch Upload — Improved Error Handling
-// =========================================================
-
 function safeSketchUpload(req, res, next) {
   sketchUpload(req, res, (error) => {
-    if (!error) {
-      return next();
-    }
+    if (!error) return next();
 
-    // Log rejection metadata only.
-    // Never log image content, prompts or API secrets.
+    // Log only metadata; do not log the prompt, image, or secrets.
     console.error("[SketchToImage] Upload rejected:", {
       code: error.code || "UNKNOWN",
       field: error.field || null,
@@ -261,7 +200,6 @@ function safeSketchUpload(req, res, next) {
     });
 
     let statusCode = 400;
-
     let message =
       "Invalid sketch upload. Supply one JPG, PNG, or WebP image and four or fewer settings.";
 
@@ -270,29 +208,23 @@ function safeSketchUpload(req, res, next) {
         statusCode = 413;
         message = "Sketch must be 6 MB or smaller.";
         break;
-
       case "INVALID_SKETCH_TYPE":
         message = "Only JPG, PNG, and WebP sketches are accepted.";
         break;
-
       case "LIMIT_UNEXPECTED_FILE":
       case "LIMIT_FILE_COUNT":
         message = 'Upload exactly one image in the field named "sketch".';
         break;
-
       case "LIMIT_FIELD_COUNT":
         message = "Too many form fields. Up to four settings are accepted.";
         break;
-
       case "LIMIT_PART_COUNT":
         message = "Too many multipart sections in the sketch upload.";
         break;
-
       case "LIMIT_FIELD_VALUE":
       case "LIMIT_FIELD_KEY":
         message = "A sketch setting exceeds the allowed size.";
         break;
-
       default:
         break;
     }
@@ -306,241 +238,212 @@ function safeSketchUpload(req, res, next) {
 }
 
 // =========================================================
-// Global Creator Authentication
+// Creator Virtual Try-On memory uploads, kept isolated from booking uploads.
+// Two images + five fields (category, mode, garment_photo_type, request_key, consent).
+const creatorTryOnUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 12 * 1024 * 1024, files: 2, fields: 5, fieldSize: 1000, parts: 8 },
+  fileFilter: (req, file, cb) => {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) {
+      const err = new Error("Only JPG, PNG or WebP photos are supported.");
+      err.code = "INVALID_TRYON_IMAGE";
+      return cb(err);
+    }
+    return cb(null, true);
+  },
+}).fields([
+  { name: "person_image", maxCount: 1 },
+  { name: "garment_image", maxCount: 1 },
+]);
+
+function safeCreatorTryOnUpload(req, res, next) {
+  creatorTryOnUpload(req, res, (err) => {
+    if (!err) return next();
+    console.error("[CreatorTryOn] Upload rejected:", {
+      code: err.code || "UNKNOWN",
+      field: err.field || null,
+    });
+    return res.status(err.code === "LIMIT_FILE_SIZE" ? 413 : 400).json({
+      status: "error",
+      code: err.code || "INVALID_TRYON_UPLOAD",
+      message: err.code === "LIMIT_FILE_SIZE"
+        ? "Each photo must be 12 MB or smaller."
+        : err.code === "INVALID_TRYON_IMAGE"
+          ? "Only JPG, PNG or WebP photos are accepted."
+          : "Upload one person_image and one garment_image with valid try-on settings.",
+    });
+  });
+}
+
+// =========================================================
+// Global Creator-only authentication (BEFORE all uploads)
 // =========================================================
 
-// Authentication MUST execute before uploads.
-
 router.use(requireHandler("protect", protect));
-
 router.use(requireHandler("authorize('creator')", authorize("creator")));
 
 // =========================================================
-// Creator Studio Categories
+// Creator Studio
 // =========================================================
-// GET /api/v1/creators/studio/categories
 
 router.get(
   "/studio/categories",
-
   requireHandler(
     "creatorController.getCreatorStudioCategories",
-    creatorController.getCreatorStudioCategories,
-  ),
+    creatorController.getCreatorStudioCategories
+  )
 );
-
-// =========================================================
-// Creator Studio Asset Library
-// =========================================================
-// GET /api/v1/creators/studio/assets
 
 router.get(
   "/studio/assets",
-
   requireHandler(
     "creatorController.getMyCreatorStudioAssets",
-    creatorController.getMyCreatorStudioAssets,
-  ),
+    creatorController.getMyCreatorStudioAssets
+  )
 );
-
-// =========================================================
-// Creator Studio Upload
-// =========================================================
-// POST /api/v1/creators/studio/upload
 
 router.post(
   "/studio/upload",
-
   galleryReady ? safeCreatorGalleryUpload : safePreviewUpload,
-
   requireHandler(
     galleryReady
       ? "creatorController.uploadCreatorStudioGalleryAsset"
       : "creatorController.uploadCreatorStudioAsset",
-
     galleryReady
       ? creatorController.uploadCreatorStudioGalleryAsset
-      : creatorController.uploadCreatorStudioAsset,
-  ),
+      : creatorController.uploadCreatorStudioAsset
+  )
 );
-
-// =========================================================
-// Creator Studio Asset Visibility
-// =========================================================
-// PATCH /api/v1/creators/studio/assets/:designId/visibility
 
 router.patch(
   "/studio/assets/:designId/visibility",
-
   requireHandler(
     "creatorController.updateCreatorStudioAssetVisibility",
-    creatorController.updateCreatorStudioAssetVisibility,
-  ),
+    creatorController.updateCreatorStudioAssetVisibility
+  )
 );
 
 // =========================================================
-// Fashion Editor Cloud Projects
+// Fashion Editor cloud projects and publishing
 // =========================================================
-// GET  /editor-projects
-// POST /editor-projects
 
 router
   .route("/editor-projects")
-
   .get(
     requireHandler(
       "creatorController.getMyEditorProjects",
-      creatorController.getMyEditorProjects,
-    ),
+      creatorController.getMyEditorProjects
+    )
   )
-
   .post(
     requireHandler(
       "creatorController.createEditorProject",
-      creatorController.createEditorProject,
-    ),
+      creatorController.createEditorProject
+    )
   );
-
-// =========================================================
-// Fashion Editor → Showcase Share
-// =========================================================
-// POST /editor-projects/:projectId/share
 
 router.post(
   "/editor-projects/:projectId/share",
-
   safePreviewUpload,
-
   requireHandler(
     "creatorController.uploadCreatorStudioAsset",
-    creatorController.uploadCreatorStudioAsset,
-  ),
+    creatorController.uploadCreatorStudioAsset
+  )
 );
-
-// =========================================================
-// Fashion Editor Project Detail
-// =========================================================
-// GET /editor-projects/:projectId
-// PUT /editor-projects/:projectId
 
 router
   .route("/editor-projects/:projectId")
-
   .get(
     requireHandler(
       "creatorController.getEditorProject",
-      creatorController.getEditorProject,
-    ),
+      creatorController.getEditorProject
+    )
   )
-
   .put(
     requireHandler(
       "creatorController.updateEditorProject",
-      creatorController.updateEditorProject,
-    ),
+      creatorController.updateEditorProject
+    )
   );
 
 // =========================================================
-// Public Showcase → Fashion Editor
+// Showcase → Fashion Editor and legacy Remix
 // =========================================================
-// POST /showcase/:designId/open-in-editor
 
 router.post(
   "/showcase/:designId/open-in-editor",
-
   requireHandler(
     "creatorController.openShowcaseDesignInEditor",
-    creatorController.openShowcaseDesignInEditor,
-  ),
+    creatorController.openShowcaseDesignInEditor
+  )
 );
-
-// =========================================================
-// Legacy Showcase Remix
-// =========================================================
-// POST /showcase/:designId/remix
 
 router.post(
   "/showcase/:designId/remix",
-
   requireHandler(
     "creatorController.remixCreatorShowcaseDesign",
-    creatorController.remixCreatorShowcaseDesign,
-  ),
+    creatorController.remixCreatorShowcaseDesign
+  )
 );
 
 // =========================================================
 // AI Text to Image — FASHN model-create
 // =========================================================
-// Existing Text to Image routes remain unchanged.
-
-// POST /api/v1/creators/ai/text-to-image
 
 router.post(
   "/ai/text-to-image",
-
-  requireHandler("textToImageController.start", textToImageController.start),
+  requireHandler("textToImageController.start", textToImageController.start)
 );
-
-// GET /api/v1/creators/ai/text-to-image/history
 
 router.get(
   "/ai/text-to-image/history",
-
-  requireHandler(
-    "textToImageController.history",
-    textToImageController.history,
-  ),
+  requireHandler("textToImageController.history", textToImageController.history)
 );
-
-// GET /api/v1/creators/ai/text-to-image/:jobId
 
 router.get(
   "/ai/text-to-image/:jobId",
-
-  requireHandler("textToImageController.status", textToImageController.status),
+  requireHandler("textToImageController.status", textToImageController.status)
 );
 
 // =========================================================
 // AI Sketch to Image — FASHN edit
 // =========================================================
 
-// POST /api/v1/creators/ai/sketch-to-image
-
 router.post(
   "/ai/sketch-to-image",
-
   safeSketchUpload,
-
-  requireHandler(
-    "sketchToImageController.start",
-    sketchToImageController.start,
-  ),
+  requireHandler("sketchToImageController.start", sketchToImageController.start)
 );
-
-// GET /api/v1/creators/ai/sketch-to-image/history
 
 router.get(
   "/ai/sketch-to-image/history",
-
-  requireHandler(
-    "sketchToImageController.history",
-    sketchToImageController.history,
-  ),
+  requireHandler("sketchToImageController.history", sketchToImageController.history)
 );
-
-// GET /api/v1/creators/ai/sketch-to-image/:jobId
 
 router.get(
   "/ai/sketch-to-image/:jobId",
-
-  requireHandler(
-    "sketchToImageController.status",
-    sketchToImageController.status,
-  ),
+  requireHandler("sketchToImageController.status", sketchToImageController.status)
 );
 
 // =========================================================
-// Export Creator Router
+// Standalone Creator Virtual Try-On (bookings controller untouched)
 // =========================================================
+router.post(
+  "/ai/virtual-try-on",
+  safeCreatorTryOnUpload,
+  requireHandler("creatorVirtualTryOnController.start", creatorVirtualTryOnController.start),
+);
+router.get(
+  "/ai/virtual-try-on/history",
+  requireHandler("creatorVirtualTryOnController.history", creatorVirtualTryOnController.history),
+);
+router.get(
+  "/ai/virtual-try-on/:jobId",
+  requireHandler("creatorVirtualTryOnController.status", creatorVirtualTryOnController.status),
+);
+router.delete(
+  "/ai/virtual-try-on/:jobId",
+  requireHandler("creatorVirtualTryOnController.remove", creatorVirtualTryOnController.remove),
+);
 
 module.exports = router;
