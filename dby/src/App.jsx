@@ -186,6 +186,7 @@ import FashionEditor from "./pages/sketches/editor/FashionEditor";
 import CreatorToolsPage from "./pages/Creator/CreatorToolsPage";
 import CreatorBackgroundRemover from "./pages/Creator/CreatorBackgroundRemover";
 import CreatorCostumeExtractor from "./pages/Creator/CreatorCostumeExtractor";
+import CreatorTextToImage from "./pages/Creator/CreatorTextToImage";
 
 
 /*=========================================================
@@ -652,6 +653,11 @@ Normal admins, creators and designers cannot enter.
                 <Route
   path="tools/costume-extractor"
   element={<CreatorCostumeExtractor />}
+/>
+
+<Route
+  path="tools/text-to-image"
+  element={<CreatorTextToImage />}
 />
                   <Route
                     path="showcase/:slug"

@@ -74,6 +74,9 @@
 const express = require("express");
 
 const creatorController = require("../controllers/creators/creatorController");
+const textToImageController = require(
+  "../controllers/creators/textToImageController"
+);
 
 const { protect, authorize } = require("../middlewares/authMiddleware");
 
@@ -607,6 +610,22 @@ router.post(
     "creatorController.remixCreatorShowcaseDesign",
     creatorController.remixCreatorShowcaseDesign,
   ),
+);
+
+
+router.post(
+  "/ai/text-to-image",
+  textToImageController.start
+);
+
+router.get(
+  "/ai/text-to-image/history",
+  textToImageController.history
+);
+
+router.get(
+  "/ai/text-to-image/:jobId",
+  textToImageController.status
 );
 
 /* =========================================================

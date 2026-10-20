@@ -269,7 +269,9 @@ const TOOLS = Object.freeze([
 
     imageAlt: "AI costume extraction showing front, back, left and right garment views",
 
-    available: false,
+    path: "/creator/tools/text-to-image",
+
+    available: true,
   },
 
   /*
