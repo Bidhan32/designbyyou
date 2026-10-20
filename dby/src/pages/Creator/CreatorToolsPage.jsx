@@ -300,7 +300,9 @@ const TOOLS = Object.freeze([
 
     imageAlt: "Pencil garment sketch turning into a fashion visualization",
 
-    available: false,
+    path: "/creator/tools/sketch-to-image",
+
+    available: true,
   },
 
   /*

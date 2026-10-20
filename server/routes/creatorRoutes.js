@@ -3,80 +3,23 @@
 /**
  * =========================================================
  * DesignByYou / FashionVision
- * Creator Routes — Version 5.7
- * Creator Studio Multi-Image Gallery
+ * Creator Routes — Version 5.9
  * =========================================================
  *
- * CREATOR STUDIO
+ * Creator Studio, Fashion Editor, Showcase, Text to Image,
+ * and Sketch to Image (FASHN edit).
  *
- * GET   /studio/categories
- * GET   /studio/assets
- * POST  /studio/upload
- * PATCH /studio/assets/:designId/visibility
- *
- * FASHION EDITOR
- *
- * GET   /editor-projects
- * POST  /editor-projects
- * GET   /editor-projects/:projectId
- * PUT   /editor-projects/:projectId
- * POST  /editor-projects/:projectId/share
- *
- * SHOWCASE → FASHION EDITOR
- *
- * POST  /showcase/:designId/open-in-editor
- * POST  /showcase/:designId/remix
- *
- * =========================================================
- * CREATOR STUDIO GALLERY
- * =========================================================
- *
- * Manual Creator Studio uploads will support:
- *
- * - 0 to 6 images
- * - JPG, PNG and WebP
- * - 5 MB per image
- * - One creation containing all selected images
- * - Existing Public / Private visibility
- * - Optional creative metadata
- *
- * The multipart field remains named "preview".
- *
- * Example:
- *
- * preview = image1.jpg
- * preview = image2.jpg
- * preview = image3.jpg
- *
- * Fashion Editor sharing continues to use one preview.
- *
- * IMPORTANT:
- * Until the gallery-aware controller is available,
- * the route preserves the existing single-file flow.
- *
- * =========================================================
- * SECURITY
- * =========================================================
- *
- * Every route requires:
- *
- * 1. Valid authentication
- * 2. Creator role
- *
- * Authentication happens before any file upload.
- *
- * These are creative/discovery routes, not ecommerce,
- * checkout, product-sales or financial endpoints.
- *
+ * Authentication and Creator authorization are applied
+ * before any upload middleware or route handlers.
  * =========================================================
  */
 
 const express = require("express");
+const multer = require("multer");
 
 const creatorController = require("../controllers/creators/creatorController");
-const textToImageController = require(
-  "../controllers/creators/textToImageController"
-);
+const textToImageController = require("../controllers/creators/textToImageController");
+const sketchToImageController = require("../controllers/creators/sketchToImageController");
 
 const { protect, authorize } = require("../middlewares/authMiddleware");
 
@@ -89,9 +32,9 @@ const router = express.Router();
 
 const MAX_CREATOR_GALLERY_FILES = 6;
 
-/* =========================================================
-   Validate Controller Handlers
-   ========================================================= */
+// =========================================================
+// Validate handlers and existing upload middleware
+// =========================================================
 
 function requireHandler(name, handler) {
   if (typeof handler !== "function") {
@@ -102,10 +45,6 @@ function requireHandler(name, handler) {
 
   return handler;
 }
-
-/* =========================================================
-   Validate Upload Middleware
-   ========================================================= */
 
 if (!uploadPreview || typeof uploadPreview.single !== "function") {
   throw new TypeError(
@@ -119,19 +58,9 @@ if (!uploadCreatorGallery || typeof uploadCreatorGallery.array !== "function") {
   );
 }
 
-/* =========================================================
-   Configure Upload Handlers
-   =========================================================
- *
- * Single preview:
- * - Zero or one image
- * - Fashion Editor and legacy uploads
- *
- * Creator gallery:
- * - Zero to six images
- * - Manual Creator Studio only
- *
- * ========================================================= */
+// =========================================================
+// Existing Creator Upload Handlers
+// =========================================================
 
 const singlePreviewUpload = uploadPreview.single("preview");
 
@@ -140,9 +69,9 @@ const creatorGalleryUpload = uploadCreatorGallery.array(
   MAX_CREATOR_GALLERY_FILES,
 );
 
-/* =========================================================
-   Shared Upload Error Handler
-   ========================================================= */
+// =========================================================
+// Existing Creator Studio upload error handling
+// =========================================================
 
 function sendUploadError(error, res, kind) {
   if (res.headersSent) {
@@ -154,20 +83,12 @@ function sendUploadError(error, res, kind) {
   const noun = gallery ? "gallery image" : "preview image";
 
   switch (error?.code) {
-    /* -----------------------------------------------------
-       File Exceeds 5 MB
-       ----------------------------------------------------- */
-
     case "LIMIT_FILE_SIZE":
       return res.status(413).json({
         status: "error",
         code: "PREVIEW_TOO_LARGE",
         message: `Each ${noun} must be 5 MB or smaller.`,
       });
-
-    /* -----------------------------------------------------
-       Unexpected Field or Excess Images
-       ----------------------------------------------------- */
 
     case "LIMIT_UNEXPECTED_FILE":
       return res.status(400).json({
@@ -178,10 +99,6 @@ function sendUploadError(error, res, kind) {
           : 'Only one optional image field named "preview" is accepted.',
       });
 
-    /* -----------------------------------------------------
-       File and Multipart Limits
-       ----------------------------------------------------- */
-
     case "LIMIT_FILE_COUNT":
     case "LIMIT_PART_COUNT":
       return res.status(400).json({
@@ -189,10 +106,6 @@ function sendUploadError(error, res, kind) {
         code: "UPLOAD_LIMIT_EXCEEDED",
         message: "The upload contains too many files or multipart parts.",
       });
-
-    /* -----------------------------------------------------
-       Multipart Field Limits
-       ----------------------------------------------------- */
 
     case "LIMIT_FIELD_COUNT":
     case "LIMIT_FIELD_KEY":
@@ -203,10 +116,6 @@ function sendUploadError(error, res, kind) {
         message: "One or more multipart fields exceed the allowed limits.",
       });
 
-    /* -----------------------------------------------------
-       Image Validation
-       ----------------------------------------------------- */
-
     case "INVALID_IMAGE_TYPE":
     case "INVALID_IMAGE_FILE":
     case "INVALID_FILE_NAME":
@@ -215,10 +124,6 @@ function sendUploadError(error, res, kind) {
         code: error.code,
         message: error.message || "The uploaded image is invalid.",
       });
-
-    /* -----------------------------------------------------
-       Unknown Upload or Cloudinary Error
-       ----------------------------------------------------- */
 
     default:
       console.error(`[Creator Routes] ${kind} upload failed:`, {
@@ -236,13 +141,9 @@ function sendUploadError(error, res, kind) {
   }
 }
 
-/* =========================================================
-   Safe Single Preview Upload
-   =========================================================
- *
- * Retained for existing single-preview workflows.
- *
- * ========================================================= */
+// =========================================================
+// Safe Single Preview Upload
+// =========================================================
 
 function safePreviewUpload(req, res, next) {
   singlePreviewUpload(req, res, (error) => {
@@ -254,31 +155,9 @@ function safePreviewUpload(req, res, next) {
   });
 }
 
-/* =========================================================
-   NEW: Safe Creator Gallery Upload
-   =========================================================
- *
- * Accepts 0 to 6 uploaded images.
- *
- * Successful upload:
- *
- * req.files = [
- *   { path, filename, mimetype, size, ... },
- *   ...
- * ]
- *
- * The gallery controller must:
- *
- * - Validate all files
- * - Save ordered design_images records
- * - Preserve the cover image
- * - Remove orphaned Cloudinary assets if DB work fails
- *
- * On Multer parser failures, Multer attempts cleanup
- * through the storage adapter. Adapter cleanup must
- * be verified during integration testing.
- *
- * ========================================================= */
+// =========================================================
+// Safe Creator Gallery Upload
+// =========================================================
 
 function safeCreatorGalleryUpload(req, res, next) {
   creatorGalleryUpload(req, res, (error) => {
@@ -298,57 +177,148 @@ function safeCreatorGalleryUpload(req, res, next) {
   });
 }
 
-/* =========================================================
-   Gallery Controller Compatibility
-   =========================================================
- *
- * Existing creatorController.uploadCreatorStudioAsset
- * currently handles the single-image workflow.
- *
- * To avoid silently discarding additional uploaded files,
- * we will activate six-image uploads only when the
- * controller exports:
- *
- * uploadCreatorStudioGalleryAsset
- *
- * Until then:
- *
- * - Single-image uploads keep working.
- * - Metadata-only uploads keep working.
- * - Multiple-image requests remain rejected.
- *
- * After the controller update:
- *
- * - The gallery middleware accepts up to six images.
- * - The new controller saves all selected files.
- * - Fashion Editor continues using the old handler.
- *
- * This compatibility decision is made at server startup.
- *
- * ========================================================= */
+// =========================================================
+// Creator Studio Gallery Compatibility
+// =========================================================
+
+// Keep existing single-upload fallback when the gallery
+// controller is unavailable.
 
 const galleryReady =
   typeof creatorController.uploadCreatorStudioGalleryAsset === "function";
 
-/* =========================================================
-   Global Creator Authentication
-   =========================================================
+// =========================================================
+// AI Sketch to Image Upload Middleware
+// =========================================================
+
+/**
+ * Expected multipart request:
  *
- * Must run before all Creator routes and upload middleware.
+ * sketch          = 1 image
+ * instruction     = text
+ * fabric          = text
+ * generation_mode = text
+ * request_key     = text
  *
- * ========================================================= */
+ * Accepted image formats:
+ * - JPG
+ * - PNG
+ * - WebP
+ *
+ * Maximum image size: 6 MB
+ * Maximum file count: 1
+ * Maximum text fields: 4
+ *
+ * Important:
+ * The controller must validate the actual image bytes,
+ * not just the client-supplied MIME type.
+ */
+
+const sketchUpload = multer({
+  storage: multer.memoryStorage(),
+
+  limits: {
+    fileSize: 6 * 1024 * 1024,
+    files: 1,
+    fields: 4,
+    fieldSize: 2000,
+
+    // FIX: previously 5
+    parts: 6,
+  },
+
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+    if (!allowedTypes.includes(file.mimetype)) {
+      const error = new Error("Only JPG, PNG, and WebP sketches are accepted.");
+
+      error.code = "INVALID_SKETCH_TYPE";
+
+      return cb(error);
+    }
+
+    return cb(null, true);
+  },
+}).single("sketch");
+
+// =========================================================
+// Safe Sketch Upload — Improved Error Handling
+// =========================================================
+
+function safeSketchUpload(req, res, next) {
+  sketchUpload(req, res, (error) => {
+    if (!error) {
+      return next();
+    }
+
+    // Log rejection metadata only.
+    // Never log image content, prompts or API secrets.
+    console.error("[SketchToImage] Upload rejected:", {
+      code: error.code || "UNKNOWN",
+      field: error.field || null,
+      message: error.message || "Unknown upload failure",
+    });
+
+    let statusCode = 400;
+
+    let message =
+      "Invalid sketch upload. Supply one JPG, PNG, or WebP image and four or fewer settings.";
+
+    switch (error.code) {
+      case "LIMIT_FILE_SIZE":
+        statusCode = 413;
+        message = "Sketch must be 6 MB or smaller.";
+        break;
+
+      case "INVALID_SKETCH_TYPE":
+        message = "Only JPG, PNG, and WebP sketches are accepted.";
+        break;
+
+      case "LIMIT_UNEXPECTED_FILE":
+      case "LIMIT_FILE_COUNT":
+        message = 'Upload exactly one image in the field named "sketch".';
+        break;
+
+      case "LIMIT_FIELD_COUNT":
+        message = "Too many form fields. Up to four settings are accepted.";
+        break;
+
+      case "LIMIT_PART_COUNT":
+        message = "Too many multipart sections in the sketch upload.";
+        break;
+
+      case "LIMIT_FIELD_VALUE":
+      case "LIMIT_FIELD_KEY":
+        message = "A sketch setting exceeds the allowed size.";
+        break;
+
+      default:
+        break;
+    }
+
+    return res.status(statusCode).json({
+      status: "error",
+      code: error.code || "INVALID_SKETCH_UPLOAD",
+      message,
+    });
+  });
+}
+
+// =========================================================
+// Global Creator Authentication
+// =========================================================
+
+// Authentication MUST execute before uploads.
 
 router.use(requireHandler("protect", protect));
 
 router.use(requireHandler("authorize('creator')", authorize("creator")));
 
-/* =========================================================
-   Creator Studio Categories
-   =========================================================
- *
- * GET /api/v1/creators/studio/categories
- *
- * ========================================================= */
+// =========================================================
+// Creator Studio Categories
+// =========================================================
+// GET /api/v1/creators/studio/categories
 
 router.get(
   "/studio/categories",
@@ -359,22 +329,10 @@ router.get(
   ),
 );
 
-/* =========================================================
-   Creator Studio Asset Library
-   =========================================================
- *
- * GET /api/v1/creators/studio/assets
- *
- * Owner-only.
- *
- * Includes:
- *
- * - Private creations
- * - Public creations
- * - Manual uploads
- * - Fashion Editor publications
- *
- * ========================================================= */
+// =========================================================
+// Creator Studio Asset Library
+// =========================================================
+// GET /api/v1/creators/studio/assets
 
 router.get(
   "/studio/assets",
@@ -385,32 +343,10 @@ router.get(
   ),
 );
 
-/* =========================================================
-   Creator Studio Upload — Version 5.7
-   =========================================================
- *
- * POST /api/v1/creators/studio/upload
- *
- * MANUAL CREATOR STUDIO ONLY
- *
- * New gallery behavior:
- *
- * - 0 to 6 optional image files
- * - Same multipart field: preview
- * - Optional title, description and metadata
- * - One parent designs record
- * - Up to six design_images records
- * - One Public/Private visibility setting
- *
- * Private remains the default.
- *
- * SECURITY:
- *
- * The gallery controller must enforce server-side
- * validation, transactional database writes and
- * Cloudinary cleanup.
- *
- * ========================================================= */
+// =========================================================
+// Creator Studio Upload
+// =========================================================
+// POST /api/v1/creators/studio/upload
 
 router.post(
   "/studio/upload",
@@ -428,38 +364,10 @@ router.post(
   ),
 );
 
-/* =========================================================
-   Creator Studio Asset Visibility
-   =========================================================
- *
- * PATCH
- * /api/v1/creators/studio/assets/:designId/visibility
- *
- * Request:
- *
- * {
- *   "visibility": "public"
- * }
- *
- * or:
- *
- * {
- *   "visibility": "private"
- * }
- *
- * Only the owner may change visibility.
- *
- * Never trust browser-submitted:
- *
- * - is_public
- * - is_published
- * - owner_id
- * - source_type
- *
- * Changing visibility must preserve images,
- * creation metadata and ownership.
- *
- * ========================================================= */
+// =========================================================
+// Creator Studio Asset Visibility
+// =========================================================
+// PATCH /api/v1/creators/studio/assets/:designId/visibility
 
 router.patch(
   "/studio/assets/:designId/visibility",
@@ -470,16 +378,11 @@ router.patch(
   ),
 );
 
-/* =========================================================
-   Creator Fashion Editor Projects
-   =========================================================
- *
- * GET /api/v1/creators/editor-projects
- * POST /api/v1/creators/editor-projects
- *
- * Creating a project never automatically publishes it.
- *
- * ========================================================= */
+// =========================================================
+// Fashion Editor Cloud Projects
+// =========================================================
+// GET  /editor-projects
+// POST /editor-projects
 
 router
   .route("/editor-projects")
@@ -498,30 +401,10 @@ router
     ),
   );
 
-/* =========================================================
-   Fashion Editor → Showcase Share
-   =========================================================
- *
- * POST
- * /api/v1/creators/editor-projects/:projectId/share
- *
- * IMPORTANT:
- *
- * Fashion Editor sharing continues to accept
- * at most ONE optional preview image.
- *
- * It is not switched to the six-image gallery flow.
- *
- * Existing behavior preserved:
- *
- * - Editor project ownership
- * - New publication visibility policy
- * - Re-share metadata preservation
- * - Allow Remix
- * - Showcase discovery metadata
- * - Existing publication updates
- *
- * ========================================================= */
+// =========================================================
+// Fashion Editor → Showcase Share
+// =========================================================
+// POST /editor-projects/:projectId/share
 
 router.post(
   "/editor-projects/:projectId/share",
@@ -534,16 +417,11 @@ router.post(
   ),
 );
 
-/* =========================================================
-   Creator Fashion Editor Project Detail
-   =========================================================
- *
- * GET /api/v1/creators/editor-projects/:projectId
- * PUT /api/v1/creators/editor-projects/:projectId
- *
- * Ownership enforced by the controller.
- *
- * ========================================================= */
+// =========================================================
+// Fashion Editor Project Detail
+// =========================================================
+// GET /editor-projects/:projectId
+// PUT /editor-projects/:projectId
 
 router
   .route("/editor-projects/:projectId")
@@ -562,23 +440,10 @@ router
     ),
   );
 
-/* =========================================================
-   Public Showcase → Fashion Editor
-   =========================================================
- *
- * POST
- * /api/v1/creators/showcase/:designId/open-in-editor
- *
- * Eligible public + published Showcase designs can be
- * opened by any authenticated Creator.
- *
- * Source designs can belong to Creators or Designers.
- *
- * The original source must remain unchanged.
- *
- * No preview upload middleware is required.
- *
- * ========================================================= */
+// =========================================================
+// Public Showcase → Fashion Editor
+// =========================================================
+// POST /showcase/:designId/open-in-editor
 
 router.post(
   "/showcase/:designId/open-in-editor",
@@ -589,19 +454,10 @@ router.post(
   ),
 );
 
-/* =========================================================
-   Legacy Creator Showcase Remix
-   =========================================================
- *
- * POST
- * /api/v1/creators/showcase/:designId/remix
- *
- * Preserve backward compatibility.
- *
- * The controller still applies the existing public,
- * published, editable and remix eligibility rules.
- *
- * ========================================================= */
+// =========================================================
+// Legacy Showcase Remix
+// =========================================================
+// POST /showcase/:designId/remix
 
 router.post(
   "/showcase/:designId/remix",
@@ -612,24 +468,79 @@ router.post(
   ),
 );
 
+// =========================================================
+// AI Text to Image — FASHN model-create
+// =========================================================
+// Existing Text to Image routes remain unchanged.
+
+// POST /api/v1/creators/ai/text-to-image
 
 router.post(
   "/ai/text-to-image",
-  textToImageController.start
+
+  requireHandler("textToImageController.start", textToImageController.start),
 );
+
+// GET /api/v1/creators/ai/text-to-image/history
 
 router.get(
   "/ai/text-to-image/history",
-  textToImageController.history
+
+  requireHandler(
+    "textToImageController.history",
+    textToImageController.history,
+  ),
 );
+
+// GET /api/v1/creators/ai/text-to-image/:jobId
 
 router.get(
   "/ai/text-to-image/:jobId",
-  textToImageController.status
+
+  requireHandler("textToImageController.status", textToImageController.status),
 );
 
-/* =========================================================
-   Export
-   ========================================================= */
+// =========================================================
+// AI Sketch to Image — FASHN edit
+// =========================================================
+
+// POST /api/v1/creators/ai/sketch-to-image
+
+router.post(
+  "/ai/sketch-to-image",
+
+  safeSketchUpload,
+
+  requireHandler(
+    "sketchToImageController.start",
+    sketchToImageController.start,
+  ),
+);
+
+// GET /api/v1/creators/ai/sketch-to-image/history
+
+router.get(
+  "/ai/sketch-to-image/history",
+
+  requireHandler(
+    "sketchToImageController.history",
+    sketchToImageController.history,
+  ),
+);
+
+// GET /api/v1/creators/ai/sketch-to-image/:jobId
+
+router.get(
+  "/ai/sketch-to-image/:jobId",
+
+  requireHandler(
+    "sketchToImageController.status",
+    sketchToImageController.status,
+  ),
+);
+
+// =========================================================
+// Export Creator Router
+// =========================================================
 
 module.exports = router;

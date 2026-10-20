@@ -187,6 +187,7 @@ import CreatorToolsPage from "./pages/Creator/CreatorToolsPage";
 import CreatorBackgroundRemover from "./pages/Creator/CreatorBackgroundRemover";
 import CreatorCostumeExtractor from "./pages/Creator/CreatorCostumeExtractor";
 import CreatorTextToImage from "./pages/Creator/CreatorTextToImage";
+import CreatorSketchToImage from "./pages/Creator/CreatorSketchToImage";
 
 
 /*=========================================================
@@ -659,6 +660,12 @@ Normal admins, creators and designers cannot enter.
   path="tools/text-to-image"
   element={<CreatorTextToImage />}
 />
+
+<Route
+  path="tools/sketch-to-image"
+  element={<CreatorSketchToImage />}
+/>
+
                   <Route
                     path="showcase/:slug"
                     element={<CreatorShowcaseDetail />}
