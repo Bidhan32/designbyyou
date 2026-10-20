@@ -1,7 +1,9 @@
 "use strict";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+
 import { Link } from "react-router-dom";
+
 import {
   ArrowLeft,
   CheckCircle2,
@@ -16,16 +18,30 @@ import {
   WandSparkles,
   X,
 } from "lucide-react";
+
 import API from "../../api/axios";
+
+// ========================================================
+// Configuration
+// ========================================================
 
 const ENDPOINT = "/creators/ai/text-to-image";
 
 const RATIOS = ["1:1", "3:4", "4:5", "2:3", "9:16", "16:9"];
 
 const MODES = [
-  { value: "fast", label: "Fast · 1 credit" },
-  { value: "balanced", label: "Balanced · 2 credits" },
-  { value: "quality", label: "Quality · 3 credits" },
+  {
+    value: "fast",
+    label: "Fast · 1 credit",
+  },
+  {
+    value: "balanced",
+    label: "Balanced · 2 credits",
+  },
+  {
+    value: "quality",
+    label: "Quality · 3 credits",
+  },
 ];
 
 const ACTIVE_STATUSES = new Set(["submitting", "processing", "saving"]);
@@ -48,6 +64,10 @@ const EXAMPLES = [
   },
 ];
 
+// ========================================================
+// Helpers
+// ========================================================
+
 function getErrorMessage(error, fallback) {
   return error?.response?.data?.message || error?.message || fallback;
 }
@@ -59,10 +79,13 @@ function isActive(job) {
 function getResultUrl(job) {
   const url = job?.status === "completed" ? job?.result_urls?.[0] : null;
 
-  if (typeof url !== "string") return "";
+  if (typeof url !== "string") {
+    return "";
+  }
 
   try {
     const parsed = new URL(url);
+
     return parsed.protocol === "https:" ? parsed.toString() : "";
   } catch {
     return "";
@@ -74,24 +97,26 @@ function formatDate(value) {
 
   const date = new Date(value);
 
-  return Number.isNaN(date.getTime())
-    ? ""
-    : date.toLocaleString(undefined, {
-        dateStyle: "medium",
-        timeStyle: "short",
-      });
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 }
 
 function getStatusLabel(status) {
-  return (
-    {
-      submitting: "Submitting to FASHN",
-      processing: "Generating your image",
-      saving: "Saving your image",
-      completed: "Ready to download",
-      failed: "Generation failed",
-    }[status] || "Preparing"
-  );
+  const labels = {
+    submitting: "Submitting to FASHN",
+    processing: "Generating your image",
+    saving: "Saving your image",
+    completed: "Ready to download",
+    failed: "Generation failed",
+  };
+
+  return labels[status] || "Preparing";
 }
 
 function getDownloadFilename(job, extension = "png") {
@@ -99,16 +124,13 @@ function getDownloadFilename(job, extension = "png") {
     .replace(/[^a-zA-Z0-9-]/g, "")
     .slice(0, 8);
 
-  return `designbyyou-text-to-image-${shortId || "image"}.${extension}`;
+  return `designbyyou-text-to-image-` + `${shortId || "image"}.${extension}`;
 }
 
-/*
- * Cloudinary's fl_attachment transformation asks the
- * image CDN to send Content-Disposition: attachment.
- *
- * This avoids relying on the HTML download attribute
- * for cross-origin images.
- */
+// ========================================================
+// Cloudinary Download URL
+// ========================================================
+
 function getCloudinaryAttachmentUrl(rawUrl, job) {
   try {
     const url = new URL(rawUrl);
@@ -118,6 +140,7 @@ function getCloudinaryAttachmentUrl(rawUrl, job) {
     }
 
     const marker = "/image/upload/";
+
     const position = url.pathname.indexOf(marker);
 
     if (position === -1 || url.pathname.includes("/s--")) {
@@ -128,7 +151,9 @@ function getCloudinaryAttachmentUrl(rawUrl, job) {
 
     const after = url.pathname.slice(position + marker.length);
 
-    if (!after) return null;
+    if (!after) {
+      return null;
+    }
 
     const basename = getDownloadFilename(job).replace(/\.png$/, "");
 
@@ -140,29 +165,59 @@ function getCloudinaryAttachmentUrl(rawUrl, job) {
   }
 }
 
+// ========================================================
+// Creator Text to Image
+// ========================================================
+
 export default function CreatorTextToImage() {
+  // ------------------------------------------------------
+  // Generator State
+  // ------------------------------------------------------
+
   const [prompt, setPrompt] = useState("");
+
   const [aspectRatio, setAspectRatio] = useState("3:4");
+
   const [generationMode, setGenerationMode] = useState("fast");
 
   const [generating, setGenerating] = useState(false);
+
   const [job, setJob] = useState(null);
+
+  // ------------------------------------------------------
+  // Generation History
+  // ------------------------------------------------------
+
   const [history, setHistory] = useState([]);
+
   const [historyLoading, setHistoryLoading] = useState(true);
+
   const [historyError, setHistoryError] = useState("");
 
+  // ------------------------------------------------------
+  // Feedback and Downloads
+  // ------------------------------------------------------
+
   const [error, setError] = useState("");
+
   const [progressError, setProgressError] = useState("");
+
   const [downloadError, setDownloadError] = useState("");
+
   const [downloadingId, setDownloadingId] = useState(null);
+
+  // ------------------------------------------------------
+  // Refs
+  // ------------------------------------------------------
 
   const requestKey = useRef(null);
 
-  /*
-   * ========================================================
-   * Load generation history
-   * ========================================================
-   */
+  const promptInputRef = useRef(null);
+
+  // ======================================================
+  // Refresh Generation History
+  // ======================================================
+
   const refreshHistory = useCallback(async () => {
     const response = await API.get(`${ENDPOINT}/history`);
 
@@ -173,6 +228,10 @@ export default function CreatorTextToImage() {
 
     return list;
   }, []);
+
+  // ======================================================
+  // Initial History Load
+  // ======================================================
 
   useEffect(() => {
     let mounted = true;
@@ -187,15 +246,15 @@ export default function CreatorTextToImage() {
 
         setHistory(list);
 
-        // Resume an unfinished job, otherwise show latest.
+        // Resume unfinished work, or show the newest job.
         setJob(list.find(isActive) || list[0] || null);
       })
       .catch((err) => {
-        if (mounted) {
-          setHistoryError(
-            getErrorMessage(err, "Could not load generation history."),
-          );
-        }
+        if (!mounted) return;
+
+        setHistoryError(
+          getErrorMessage(err, "Could not load generation history."),
+        );
       })
       .finally(() => {
         if (mounted) {
@@ -208,20 +267,22 @@ export default function CreatorTextToImage() {
     };
   }, []);
 
-  /*
-   * ========================================================
-   * Track active generation
-   *
-   * A Creator can view an older completed image while
-   * a newer generation is still processing.
-   * ========================================================
-   */
+  // ======================================================
+  // Active Generation
+  // ======================================================
+
   const activeJob = history.find(isActive) || (isActive(job) ? job : null);
 
   const activeJobId = activeJob?.id || null;
 
+  // ======================================================
+  // Poll Generation Status
+  // ======================================================
+
   useEffect(() => {
-    if (!activeJobId) return undefined;
+    if (!activeJobId) {
+      return undefined;
+    }
 
     let alive = true;
     let timer;
@@ -239,9 +300,13 @@ export default function CreatorTextToImage() {
         setHistory((previous) => {
           const found = previous.some((item) => item.id === current.id);
 
-          return found
-            ? previous.map((item) => (item.id === current.id ? current : item))
-            : [current, ...previous];
+          if (found) {
+            return previous.map((item) =>
+              item.id === current.id ? current : item,
+            );
+          }
+
+          return [current, ...previous];
         });
 
         setJob((previous) =>
@@ -254,7 +319,7 @@ export default function CreatorTextToImage() {
           try {
             await refreshHistory();
           } catch {
-            // Status response already contains current job.
+            // Current status is already available.
           }
 
           return;
@@ -280,35 +345,39 @@ export default function CreatorTextToImage() {
     };
   }, [activeJobId, refreshHistory]);
 
-  /*
-   * ========================================================
-   * Prompt changes
-   * ========================================================
-   */
+  // ======================================================
+  // Update Prompt
+  // ======================================================
+
   const updatePrompt = (value) => {
     setPrompt(value);
+
     requestKey.current = null;
+
     setError("");
   };
 
-  /*
-   * ========================================================
-   * Submit generation
-   * ========================================================
-   */
+  // ======================================================
+  // Submit Image Generation
+  // ======================================================
+
   const submit = async (event) => {
     event.preventDefault();
 
-    if (generating || activeJobId) return;
+    if (generating || activeJobId) {
+      return;
+    }
 
     const cleaned = prompt.trim();
 
     if (cleaned.length < 12 || cleaned.length > 1200) {
       setError("Enter a fashion prompt between 12 and 1,200 characters.");
+
       return;
     }
 
     setGenerating(true);
+
     setError("");
     setDownloadError("");
     setProgressError("");
@@ -361,23 +430,16 @@ export default function CreatorTextToImage() {
     }
   };
 
-  /*
-   * ========================================================
-   * DOWNLOAD IMAGE
-   *
-   * Cloudinary images:
-   *   Use fl_attachment to force browser download.
-   *
-   * Other HTTPS images:
-   *   Fetch image bytes and save through Blob URL,
-   *   subject to the image host's CORS permissions.
-   * ========================================================
-   */
+  // ======================================================
+  // Download Generated Image
+  // ======================================================
+
   const downloadImage = async (selectedJob) => {
     const imageUrl = getResultUrl(selectedJob);
 
     if (!imageUrl) {
       setDownloadError("This generation does not have a downloadable image.");
+
       return;
     }
 
@@ -387,21 +449,25 @@ export default function CreatorTextToImage() {
     try {
       const attachmentUrl = getCloudinaryAttachmentUrl(imageUrl, selectedJob);
 
+      // Cloudinary attachment download.
       if (attachmentUrl) {
         const link = document.createElement("a");
 
         link.href = attachmentUrl;
+
         link.download = getDownloadFilename(selectedJob);
+
         link.rel = "noopener noreferrer";
 
         document.body.appendChild(link);
+
         link.click();
         link.remove();
 
         return;
       }
 
-      // Fallback: download via image Blob.
+      // Fallback for other HTTPS image URLs.
       const response = await fetch(imageUrl, {
         mode: "cors",
         credentials: "omit",
@@ -437,9 +503,11 @@ export default function CreatorTextToImage() {
         const link = document.createElement("a");
 
         link.href = objectUrl;
+
         link.download = getDownloadFilename(selectedJob, extensions[type]);
 
         document.body.appendChild(link);
+
         link.click();
         link.remove();
       } finally {
@@ -457,20 +525,55 @@ export default function CreatorTextToImage() {
     }
   };
 
+  // ======================================================
+  // Current Result State
+  // ======================================================
+
   const resultUrl = getResultUrl(job);
+
   const selectedStatus = job?.status;
 
   const busy = Boolean(activeJobId || generating);
 
-  /*
-   * ========================================================
-   * UI
-   * ========================================================
-   */
+  // ======================================================
+  // NEW: Clear Result & Create New
+  // ======================================================
+
+  const clearAndCreateNew = () => {
+    // Never interrupt an active FASHN generation.
+    if (busy) {
+      return;
+    }
+
+    // Clear the currently selected image.
+    setJob(null);
+
+    // Clear the written prompt.
+    setPrompt("");
+
+    // Reset feedback messages.
+    setError("");
+    setProgressError("");
+    setDownloadError("");
+
+    // A new generation must use a fresh request key.
+    requestKey.current = null;
+
+    // Keep saved generation history unchanged.
+
+    // Focus the prompt field for the next idea.
+    promptInputRef.current?.focus();
+  };
+
+  // ======================================================
+  // Render
+  // ======================================================
+
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 dark:bg-[#090909] dark:text-white sm:px-8">
       <div className="mx-auto max-w-6xl">
-        {/* Back navigation */}
+        {/* Back Navigation */}
+
         <Link
           to="/creator/tools"
           className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 transition hover:text-[#ae852e] dark:text-white/60"
@@ -479,7 +582,8 @@ export default function CreatorTextToImage() {
           Back to Creative Hub
         </Link>
 
-        {/* Page header */}
+        {/* Header */}
+
         <header className="mt-7 flex flex-wrap items-start gap-4">
           <div className="rounded-2xl bg-[#e5c67d]/20 p-3 text-[#ab802c]">
             <WandSparkles size={27} aria-hidden="true" />
@@ -501,9 +605,11 @@ export default function CreatorTextToImage() {
           </div>
         </header>
 
-        {/* Generator and result */}
+        {/* Generator and Result */}
+
         <div className="mt-8 grid items-start gap-6 lg:grid-cols-2">
-          {/* Generator */}
+          {/* Generator Form */}
+
           <form
             onSubmit={submit}
             className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#151515] sm:p-7"
@@ -518,6 +624,8 @@ export default function CreatorTextToImage() {
               <h2 className="font-serif text-xl">Create your image</h2>
             </div>
 
+            {/* Prompt */}
+
             <label
               htmlFor="t2i-prompt"
               className="mt-6 block text-xs font-bold uppercase tracking-wider"
@@ -526,6 +634,7 @@ export default function CreatorTextToImage() {
             </label>
 
             <textarea
+              ref={promptInputRef}
               id="t2i-prompt"
               value={prompt}
               onChange={(event) => updatePrompt(event.target.value)}
@@ -543,7 +652,8 @@ export default function CreatorTextToImage() {
               <span className="shrink-0 pl-2">{prompt.length} / 1200</span>
             </div>
 
-            {/* Example prompts */}
+            {/* Example Prompts */}
+
             <p className="mt-5 text-xs font-bold uppercase tracking-wider">
               Try an example
             </p>
@@ -561,8 +671,11 @@ export default function CreatorTextToImage() {
               ))}
             </div>
 
-            {/* Generation settings */}
+            {/* Generation Settings */}
+
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              {/* Aspect Ratio */}
+
               <div>
                 <label
                   htmlFor="t2i-ratio"
@@ -576,17 +689,20 @@ export default function CreatorTextToImage() {
                   value={aspectRatio}
                   onChange={(event) => {
                     setAspectRatio(event.target.value);
+
                     requestKey.current = null;
                   }}
                   className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm dark:border-white/10 dark:bg-[#202020]"
                 >
                   {RATIOS.map((ratio) => (
-                    <option value={ratio} key={ratio}>
+                    <option key={ratio} value={ratio}>
                       {ratio}
                     </option>
                   ))}
                 </select>
               </div>
+
+              {/* Generation Quality */}
 
               <div>
                 <label
@@ -601,12 +717,13 @@ export default function CreatorTextToImage() {
                   value={generationMode}
                   onChange={(event) => {
                     setGenerationMode(event.target.value);
+
                     requestKey.current = null;
                   }}
                   className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm dark:border-white/10 dark:bg-[#202020]"
                 >
                   {MODES.map((mode) => (
-                    <option value={mode.value} key={mode.value}>
+                    <option key={mode.value} value={mode.value}>
                       {mode.label}
                     </option>
                   ))}
@@ -614,13 +731,16 @@ export default function CreatorTextToImage() {
               </div>
             </div>
 
+            {/* Information */}
+
             <p className="mt-4 text-xs leading-5 text-slate-500 dark:text-white/50">
               One image per generation. Testing limit: five requests per Creator
               per rolling 24 hours (unless changed on the server). Images are
               not automatically published to Showcase.
             </p>
 
-            {/* Submission errors */}
+            {/* Submission Error */}
+
             {error && (
               <div
                 role="alert"
@@ -630,7 +750,8 @@ export default function CreatorTextToImage() {
               </div>
             )}
 
-            {/* Generate */}
+            {/* Generate Button */}
+
             <button
               type="submit"
               disabled={busy || prompt.trim().length < 12}
@@ -660,30 +781,53 @@ export default function CreatorTextToImage() {
             )}
           </form>
 
-          {/* Result */}
+          {/* ==================================================
+              Result Panel
+              ================================================== */}
+
           <section
             aria-label="AI image result"
             className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#151515] sm:p-7"
           >
+            {/* Result Header */}
+
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="font-serif text-xl">Your Result</h2>
 
               {job && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:bg-white/10 dark:text-white/75">
-                  {selectedStatus === "completed" ? (
-                    <CheckCircle2 size={14} className="text-emerald-600" />
-                  ) : selectedStatus === "failed" ? (
-                    <X size={14} className="text-red-500" />
-                  ) : (
-                    <Clock3 size={14} />
-                  )}
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* NEW: Clear & Create New */}
 
-                  {getStatusLabel(selectedStatus)}
-                </span>
+                  <button
+                    type="button"
+                    onClick={clearAndCreateNew}
+                    disabled={busy}
+                    title="Clear preview and start a new generation"
+                    className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#e5c67d]/60 bg-[#e5c67d]/10 px-3 text-xs font-semibold text-[#9b7424] transition hover:bg-[#e5c67d]/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b58a32] disabled:cursor-not-allowed disabled:opacity-50 dark:text-[#e5c67d]"
+                  >
+                    <RefreshCw size={15} aria-hidden="true" />
+                    Clear &amp; Create New
+                  </button>
+
+                  {/* Status */}
+
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:bg-white/10 dark:text-white/75">
+                    {selectedStatus === "completed" ? (
+                      <CheckCircle2 size={14} className="text-emerald-600" />
+                    ) : selectedStatus === "failed" ? (
+                      <X size={14} className="text-red-500" />
+                    ) : (
+                      <Clock3 size={14} />
+                    )}
+
+                    {getStatusLabel(selectedStatus)}
+                  </span>
+                </div>
               )}
             </div>
 
-            {/* Image preview */}
+            {/* Image Preview */}
+
             <div className="mt-4 flex min-h-[380px] items-center justify-center overflow-hidden rounded-xl bg-slate-100 dark:bg-[#0b0b0b]">
               {resultUrl ? (
                 <img
@@ -727,7 +871,8 @@ export default function CreatorTextToImage() {
               )}
             </div>
 
-            {/* Generation metadata */}
+            {/* Generation Metadata */}
+
             {job?.created_at && (
               <p className="mt-3 text-xs text-slate-400">
                 {formatDate(job.created_at)}
@@ -742,7 +887,8 @@ export default function CreatorTextToImage() {
               </p>
             )}
 
-            {/* DOWNLOAD AND VIEW */}
+            {/* Download and View Buttons */}
+
             {resultUrl && (
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <button
@@ -771,6 +917,8 @@ export default function CreatorTextToImage() {
               </div>
             )}
 
+            {/* Download Error */}
+
             {downloadError && (
               <p
                 role="alert"
@@ -779,6 +927,8 @@ export default function CreatorTextToImage() {
                 {downloadError}
               </p>
             )}
+
+            {/* Progress Error */}
 
             {progressError && activeJobId && (
               <p
@@ -789,6 +939,8 @@ export default function CreatorTextToImage() {
               </p>
             )}
 
+            {/* Privacy Notice */}
+
             <p className="mt-4 text-xs leading-5 text-slate-400">
               Generated images are saved to your history and are not published
               to Showcase automatically. Anyone with a direct image link may be
@@ -797,7 +949,10 @@ export default function CreatorTextToImage() {
           </section>
         </div>
 
-        {/* History */}
+        {/* ==================================================
+            Generation History
+            ================================================== */}
+
         <section className="mt-9" aria-label="Previous AI generations">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
@@ -809,6 +964,8 @@ export default function CreatorTextToImage() {
 
               <h2 className="font-serif text-2xl">Recent Generations</h2>
             </div>
+
+            {/* Refresh History */}
 
             <button
               type="button"
@@ -837,11 +994,15 @@ export default function CreatorTextToImage() {
             </button>
           </div>
 
+          {/* History Error */}
+
           {historyError && (
             <p role="alert" className="mt-3 text-sm text-red-600">
               {historyError}
             </p>
           )}
+
+          {/* History Content */}
 
           {historyLoading && history.length === 0 ? (
             <p className="mt-4 text-sm text-slate-500">
@@ -867,6 +1028,8 @@ export default function CreatorTextToImage() {
                         : "border-slate-200 dark:border-white/10"
                     }`}
                   >
+                    {/* Select Historical Result */}
+
                     <button
                       type="button"
                       onClick={() => {
@@ -906,7 +1069,8 @@ export default function CreatorTextToImage() {
                       </div>
                     </button>
 
-                    {/* Download previous images */}
+                    {/* Download Historical Image */}
+
                     {imageUrl && (
                       <div className="border-t border-slate-100 p-3 dark:border-white/10">
                         <button
