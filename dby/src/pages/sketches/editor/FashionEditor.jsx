@@ -20,6 +20,10 @@ import { useNavigate, useParams } from "react-router-dom";
 import API from "/src/api/axios";
 
 import EditorCanvas from "./EditorCanvas";
+import GarmentTextControls, { GarmentTextStyleFields } from "./GarmentTextControls";
+import GarmentPatternControls from "./GarmentPatternControls";
+import { cleanGarmentRegionStack, summarizeGarmentArtwork } from "./GarmentArtworkCleanup";
+import { DEFAULT_GARMENT_TEXT_STYLE, restyleGarmentTextLayer } from "./GarmentTextArtwork";
 
 import ImageTool, {
   IMAGE_FILE_ACCEPT,
@@ -68,6 +72,8 @@ import {
   OBJECT_TYPES,
   useFashionEditorStore,
 } from "../useFashionEditorStore";
+
+import { createGarmentArtworkClipboard, applyGarmentArtworkTransfer, getGarmentMirrorPartner } from "./GarmentArtworkTransfer";
 
 // Load the WebGL renderer only when a creator clicks 3D.
 const Garment3DViewer = React.lazy(() => import("./Garment3DViewer"));
@@ -1451,24 +1457,43 @@ function DocumentNameField({ documentData, setDocumentName }) {
  * Selection is view state only; colors persist through FashionEditor's existing bridge.
  */
 function ClothingMultiRegionColourPanel({
-  templateId = "",
-  garmentObjectId = "",
-  regions = [],
-  disabled = false,
-  onApply = null,
+  templateId = "", garmentObjectId = "", regions = [], disabled = false,
+  onApply = null, onApplyArtwork = null, onTransferArtwork = null,
+  onEditText = null, onEditPattern = null, onManageArtwork = null, artwork = {}, artworkLayers = {},
 }) {
   const [selectedIds, setSelectedIds] = useState([]);
+  const [artworkType, setArtworkType] = useState("image");
+  const [artworkText, setArtworkText] = useState("DesignByYou");
+  const [artworkTextColour, setArtworkTextColour] = useState("#111111");
+  const [newTextStyle, setNewTextStyle] = useState(DEFAULT_GARMENT_TEXT_STYLE);
+  const [editingTextRegion, setEditingTextRegion] = useState("");
+  const [editingPatternRegion, setEditingPatternRegion] = useState("");
+  const [patternBusy, setPatternBusy] = useState(false);
+  const [editingTextId, setEditingTextId] = useState("");
+  const [applyingArtwork, setApplyingArtwork] = useState(false);
+  const batchInputRef = useRef(null);
   const [paintColour, setPaintColour] = useState("#111111");
+  const [transferSource, setTransferSource] = useState("");
+  const [transferLayer, setTransferLayer] = useState("all");
+  const [artworkClipboard, setArtworkClipboard] = useState(null);
+  const [transferBusy, setTransferBusy] = useState(false);
+  const [cleanupBusy, setCleanupBusy] = useState(false);
+  const [cleanupRegion, setCleanupRegion] = useState("");
+  const [cleanupLayerId, setCleanupLayerId] = useState("");
 
   // A newly selected garment starts without stale selections from the previous garment.
   useEffect(() => {
     setSelectedIds([]);
     setPaintColour("#111111");
+    setTransferSource("");
+    setTransferLayer("all");
+    setArtworkClipboard(null);
+    setCleanupRegion("");
+    setCleanupLayerId("");
   }, [templateId, garmentObjectId]);
 
   const validRegionIds = useMemo(
-    () => new Set(regions.map((region) => region.id)),
-    [regions],
+    () => new Set(regions.map((region) => region.id)), [regions],
   );
   const selected = selectedIds.filter((id) => validRegionIds.has(id));
   const selectedSet = new Set(selected);
@@ -1484,181 +1509,341 @@ function ClothingMultiRegionColourPanel({
       .map(([id, ids]) => ({ id, ids, label: getClothingGroupLabel(id) }));
   }, [regions]);
 
-  const choose = (ids) =>
-    setSelectedIds([...new Set(ids)].filter((id) => validRegionIds.has(id)));
+  const choose = (ids) => setSelectedIds(
+    [...new Set(ids)].filter((id) => validRegionIds.has(id)),
+  );
   const toggle = (id) => {
     if (!validRegionIds.has(id)) return;
-    setSelectedIds((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id],
-    );
+    setSelectedIds((current) => current.includes(id)
+      ? current.filter((item) => item !== id)
+      : [...current, id]);
   };
+  const doBatchArtwork = async (kind, payload) => {
+    if (applyingArtwork || disabled || !selected.length || typeof onApplyArtwork !== "function") return;
+    setApplyingArtwork(true);
+    try { await onApplyArtwork(selected, kind, payload); }
+    finally { setApplyingArtwork(false); }
+  };
+  const handleBatchFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (file) await doBatchArtwork(artworkType, file);
+  };
+  const resolvedSource = validRegionIds.has(transferSource) ? transferSource : (regions[0]?.id || "");
+  const sourceRawStack = artworkLayers[resolvedSource];
+  const currentSourceStack = sourceRawStack && typeof sourceRawStack === "object"
+    ? sourceRawStack : null;
+  const availableSourceLayers = [
+    ...(currentSourceStack?.pattern ? [{ id: currentSourceStack.pattern.id, name: "Fabric pattern" }] : []),
+    ...(currentSourceStack?.logos || []).map((item, i) => ({ id: item.id, name: `Logo ${i + 1}` })),
+    ...(currentSourceStack?.texts || []).map((item, i) => ({ id: item.id, name: `Text ${i + 1}${item.text ? `: ${item.text}` : ""}` })),
+  ].filter((item) => item.id);
+  const editRegion = validRegionIds.has(editingTextRegion) ? editingTextRegion : (regions[0]?.id || "");
+  const editableTexts = (artworkLayers?.[editRegion]?.texts || []).filter((item) =>
+    item && typeof item.text === "string" && item.text.trim());
+  const currentText = editableTexts.find((item) => item.id === editingTextId) || editableTexts[0] || null;
+  const saveExisting2DText = async (changes) => {
+    if (!currentText || disabled || applyingArtwork || transferBusy ||
+        typeof onEditText !== "function") return false;
+    return onEditText(editRegion, currentText.id, changes);
+  };
+  const patternRegion = validRegionIds.has(editingPatternRegion) ? editingPatternRegion : (regions[0]?.id || "");
+  const savedPattern = artworkLayers?.[patternRegion]?.pattern ||
+    (artwork?.[patternRegion]?.type === "pattern"
+      ? { id: "legacy-pattern", ...artwork[patternRegion] } : null);
+  const patternTargets = selected.filter((id) => id !== patternRegion);
+  const saveExisting2DPattern = async (settings) => {
+    if (!savedPattern || disabled || applyingArtwork || transferBusy || patternBusy ||
+        typeof onEditPattern !== "function") return false;
+    setPatternBusy(true);
+    try { return await onEditPattern(patternRegion, settings); }
+    finally { setPatternBusy(false); }
+  };
+  const syncPattern2D = async () => {
+    if (disabled || patternBusy || transferBusy || applyingArtwork ||
+        !savedPattern || !patternTargets.length || !onTransferArtwork) return false;
+    const sourceStack = artworkLayers[patternRegion] || {
+      pattern: savedPattern, logos: [], texts: [],
+    };
+    const clipboard = createGarmentArtworkClipboard({
+      templateId, garmentObjectId, sourceRegionId: patternRegion,
+      stack: sourceStack, layerId: savedPattern.id,
+    });
+    if (!clipboard) return false;
+    setPatternBusy(true);
+    try { return await onTransferArtwork({clipboard, targetRegionIds: patternTargets,
+      operation: "paste", mirrorX: false}); }
+    finally { setPatternBusy(false); }
+  };
+  const canCopySource = Boolean(currentSourceStack?.pattern || currentSourceStack?.logos?.length ||
+    currentSourceStack?.texts?.length || artwork[resolvedSource]?.source);
+  const targetIds = selected.filter((id) => id !== artworkClipboard?.sourceRegionId);
+  const mirrorPartner = getGarmentMirrorPartner(
+    artworkClipboard?.sourceRegionId || resolvedSource, regions.map((r) => r.id));
+
+  // Phase 3.5: on-screen summaries only. A saved empty stack suppresses legacy artwork.
+  const cleanupRegionId = validRegionIds.has(cleanupRegion) ? cleanupRegion : (regions[0]?.id || "");
+  const cleanupHasStack = Object.prototype.hasOwnProperty.call(artworkLayers || {}, cleanupRegionId);
+  const cleanupSourceSummary = summarizeGarmentArtwork(artworkLayers?.[cleanupRegionId],
+    cleanupHasStack ? null : artwork?.[cleanupRegionId]);
+  const cleanupLayer = cleanupSourceSummary.layers.find((item) => item.id === cleanupLayerId)
+    || cleanupSourceSummary.layers[0] || null;
+  const selectionSummary = selected.reduce((sum, id) => {
+    const saved = Object.prototype.hasOwnProperty.call(artworkLayers || {}, id);
+    const current = summarizeGarmentArtwork(artworkLayers?.[id], saved ? null : artwork?.[id]);
+    return { pattern: sum.pattern + current.pattern, logos: sum.logos + current.logos,
+      texts: sum.texts + current.texts, total: sum.total + current.total };
+  }, { pattern: 0, logos: 0, texts: 0, total: 0 });
+  const allArtworkCount = regions.reduce((total, region) => {
+    const saved = Object.prototype.hasOwnProperty.call(artworkLayers || {}, region.id);
+    return total + summarizeGarmentArtwork(artworkLayers?.[region.id],
+      saved ? null : artwork?.[region.id]).total;
+  }, 0);
+  const canManageArtwork = !disabled && !applyingArtwork && !transferBusy && !patternBusy &&
+    !cleanupBusy && typeof onManageArtwork === "function";
+  const runCleanup = async (operation, ids = selected, layerId = "") => {
+    if (!canManageArtwork || !ids.length) return false;
+    if (operation === "remove-layer" && !layerId) return false;
+    const label = operation === "clear-patterns" ? "all fabric patterns"
+      : operation === "clear-logos" ? "all logos" : operation === "clear-text" ? "all text layers"
+      : operation === "remove-layer" ? "the selected artwork layer" : "all artwork";
+    if (!window.confirm(`Remove ${label} from ${ids.length} garment region(s)? Garment colors stay unchanged. Undo is available.`)) return false;
+    setCleanupBusy(true);
+    try {
+      const saved = await onManageArtwork({ operation, regionIds: ids, layerId });
+      if (saved) setCleanupLayerId("");
+      return saved;
+    } catch (error) {
+      console.error("Unable to manage 2D garment artwork:", error);
+      return false;
+    } finally { setCleanupBusy(false); }
+  };
+
+  const copyRegionArtwork = async () => {
+    if (disabled || transferBusy || !canCopySource || !resolvedSource) return;
+    setTransferBusy(true);
+    try {
+      const { normalizeRegionArtworkStack } = await import("./Garment3DTextures");
+      const hasStack = Object.prototype.hasOwnProperty.call(artworkLayers, resolvedSource);
+      const sourceStack = normalizeRegionArtworkStack(artworkLayers[resolvedSource],
+        hasStack ? null : artwork[resolvedSource]);
+      const clipboard = createGarmentArtworkClipboard({
+        templateId, garmentObjectId, sourceRegionId: resolvedSource,
+        stack: sourceStack, layerId: transferLayer,
+      });
+      if (clipboard) setArtworkClipboard(clipboard);
+    } finally { setTransferBusy(false); }
+  };
+  const transferArtwork = async (operation, mirrorX) => {
+    if (disabled || applyingArtwork || transferBusy || !artworkClipboard || !targetIds.length ||
+        typeof onTransferArtwork !== "function") return;
+    if (operation === "sync" && !window.confirm(
+      `Replace ALL artwork on ${targetIds.length} selected target region(s)? You can Undo this.`)) return;
+    setTransferBusy(true);
+    try { await onTransferArtwork({ clipboard: artworkClipboard, targetRegionIds: targetIds, operation, mirrorX }); }
+    finally { setTransferBusy(false); }
+  };
+
   const hexValid = /^#[0-9a-f]{6}$/i.test(paintColour);
   const presets = [
-    "#ffffff",
-    "#111111",
-    "#475569",
-    "#ef4444",
-    "#f97316",
-    "#eab308",
-    "#22c55e",
-    "#06b6d4",
-    "#3b82f6",
-    "#8b5cf6",
-    "#ec4899",
-    "#a16207",
+    "#ffffff", "#111111", "#475569", "#ef4444", "#f97316", "#eab308",
+    "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899", "#a16207",
   ];
 
   return (
-    <details
-      open
-      className="mt-4 rounded-xl border border-violet-500/40 bg-slate-950/80 p-3"
-    >
+    <details open className="mt-4 rounded-xl border border-violet-500/40 bg-slate-950/80 p-3">
       <summary className="cursor-pointer text-xs font-semibold text-violet-200">
-        Multi-region color editor{" "}
-        <span className="text-[10px] font-normal text-slate-400">
-          ({selected.length} selected)
-        </span>
+        Multi-region color editor <span className="text-[10px] font-normal text-slate-400">({selected.length} selected)</span>
       </summary>
       <p className="mb-3 mt-2 text-[10px] leading-relaxed text-slate-400">
-        Select any combination of parts, then apply one color. One Apply action
-        equals one Undo step.
+        Select any combination of parts, then apply one color. One Apply action equals one Undo step.
       </p>
-      <div
-        className="mb-3 flex flex-wrap gap-1.5"
-        role="group"
-        aria-label="Quick 2D garment selections"
-      >
-        <button
-          type="button"
-          className="rounded-md border border-slate-600 bg-slate-800 px-2 py-1.5 text-[10px] text-slate-100"
-          onClick={() => choose(regions.map((r) => r.id))}
-        >
-          All
-        </button>
-        <button
-          type="button"
-          className="rounded-md border border-slate-600 bg-slate-800 px-2 py-1.5 text-[10px] text-slate-100"
-          onClick={() =>
-            choose(
-              regions
-                .filter((r) => getClothingRegionView(r) === "front")
-                .map((r) => r.id),
-            )
-          }
-        >
-          Front
-        </button>
-        <button
-          type="button"
-          className="rounded-md border border-slate-600 bg-slate-800 px-2 py-1.5 text-[10px] text-slate-100"
-          onClick={() =>
-            choose(
-              regions
-                .filter((r) => getClothingRegionView(r) === "back")
-                .map((r) => r.id),
-            )
-          }
-        >
-          Back
-        </button>
-        <button
-          type="button"
-          className="rounded-md border border-slate-600 bg-slate-800 px-2 py-1.5 text-[10px] text-slate-100"
-          onClick={() => choose([])}
-        >
-          Clear selection
-        </button>
+      <div className="mb-3 flex flex-wrap gap-1.5" role="group" aria-label="Quick 2D garment selections">
+        <button type="button" className="rounded-md border border-slate-600 bg-slate-800 px-2 py-1.5 text-[10px] text-slate-100" onClick={() => choose(regions.map((r) => r.id))}>All</button>
+        <button type="button" className="rounded-md border border-slate-600 bg-slate-800 px-2 py-1.5 text-[10px] text-slate-100" onClick={() => choose(regions.filter((r) => getClothingRegionView(r) === "front").map((r) => r.id))}>Front</button>
+        <button type="button" className="rounded-md border border-slate-600 bg-slate-800 px-2 py-1.5 text-[10px] text-slate-100" onClick={() => choose(regions.filter((r) => getClothingRegionView(r) === "back").map((r) => r.id))}>Back</button>
+        <button type="button" className="rounded-md border border-slate-600 bg-slate-800 px-2 py-1.5 text-[10px] text-slate-100" onClick={() => choose([])}>Clear selection</button>
         {groups.map((group) => (
-          <button
-            key={group.id}
-            type="button"
-            className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-[10px] text-slate-300 hover:bg-slate-800"
-            onClick={() => choose(group.ids)}
-          >
-            {group.label}
-          </button>
+          <button key={group.id} type="button" className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-[10px] text-slate-300 hover:bg-slate-800"
+            onClick={() => choose(group.ids)}>{group.label}</button>
         ))}
       </div>
-      <div
-        className="grid grid-cols-1 gap-1.5"
-        role="group"
-        aria-label="Select 2D clothing regions"
-      >
+      <div className="grid grid-cols-1 gap-1.5" role="group" aria-label="Select 2D clothing regions">
         {regions.map((region) => (
-          <label
-            key={region.id}
-            className={`flex cursor-pointer items-center gap-2 rounded-md border px-2 py-1.5 text-[10px] ${selectedSet.has(region.id) ? "border-violet-500 bg-violet-950/50 text-slate-100" : "border-slate-800 bg-slate-900 text-slate-300"}`}
-          >
-            <input
-              type="checkbox"
-              checked={selectedSet.has(region.id)}
-              onChange={() => toggle(region.id)}
-              aria-label={`Select ${region.label}`}
-              className="shrink-0 accent-violet-500"
-            />
+          <label key={region.id} className={`flex cursor-pointer items-center gap-2 rounded-md border px-2 py-1.5 text-[10px] ${selectedSet.has(region.id) ? "border-violet-500 bg-violet-950/50 text-slate-100" : "border-slate-800 bg-slate-900 text-slate-300"}`}>
+            <input type="checkbox" checked={selectedSet.has(region.id)} onChange={() => toggle(region.id)}
+              aria-label={`Select ${region.label}`} className="shrink-0 accent-violet-500" />
             <span className="min-w-0 flex-1 truncate">{region.label}</span>
-            <span className="text-[9px] text-slate-500">
-              {CLOTHING_VIEW_LABELS[getClothingRegionView(region)] || "Other"}
-            </span>
+            <span className="text-[9px] text-slate-500">{CLOTHING_VIEW_LABELS[getClothingRegionView(region)] || "Other"}</span>
           </label>
         ))}
       </div>
       <div className="mt-3 border-t border-slate-800 pt-3">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-          Apply color to selected parts
-        </p>
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Apply color to selected parts</p>
         <div className="mb-3 grid grid-cols-6 gap-1.5">
           {presets.map((swatch) => (
-            <button
-              key={swatch}
-              type="button"
-              title={swatch}
-              aria-label={`Select ${swatch}`}
+            <button key={swatch} type="button" title={swatch} aria-label={`Select ${swatch}`}
               aria-pressed={paintColour.toLowerCase() === swatch}
               onClick={() => setPaintColour(swatch)}
               className={`h-7 rounded-md border-2 ${paintColour.toLowerCase() === swatch ? "border-violet-400 ring-1 ring-violet-400" : "border-slate-600"}`}
-              style={{ backgroundColor: swatch }}
-            />
+              style={{ backgroundColor: swatch }}/>
           ))}
         </div>
         <div className="mb-3 flex items-center gap-2">
-          <input
-            type="color"
-            aria-label="Choose custom 2D garment color"
-            value={hexValid ? paintColour : "#111111"}
+          <input type="color" aria-label="Choose custom 2D garment color" value={hexValid ? paintColour : "#111111"}
+            onChange={(event) => setPaintColour(event.target.value)} className="h-9 w-11 shrink-0 cursor-pointer rounded border border-slate-600 bg-slate-950"/>
+          <input type="text" aria-label="2D garment color hex" maxLength={7} value={paintColour}
             onChange={(event) => setPaintColour(event.target.value)}
-            className="h-9 w-11 shrink-0 cursor-pointer rounded border border-slate-600 bg-slate-950"
-          />
-          <input
-            type="text"
-            aria-label="2D garment color hex"
-            maxLength={7}
-            value={paintColour}
-            onChange={(event) => setPaintColour(event.target.value)}
-            className="min-w-0 flex-1 rounded-lg border border-slate-600 bg-slate-900 px-2 py-1.5 font-mono text-xs text-slate-100"
-          />
+            className="min-w-0 flex-1 rounded-lg border border-slate-600 bg-slate-900 px-2 py-1.5 font-mono text-xs text-slate-100"/>
         </div>
-        <button
-          type="button"
-          disabled={
-            disabled ||
-            !selected.length ||
-            !hexValid ||
-            typeof onApply !== "function"
-          }
+        <button type="button" disabled={disabled || !selected.length || !hexValid || typeof onApply !== "function"}
           onClick={() => onApply(selected, paintColour)}
-          className="min-h-10 w-full rounded-lg border border-violet-500 bg-violet-700 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-600 disabled:cursor-not-allowed disabled:opacity-40"
-        >
+          className="min-h-10 w-full rounded-lg border border-violet-500 bg-violet-700 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-600 disabled:cursor-not-allowed disabled:opacity-40">
           Apply to {selected.length} region{selected.length === 1 ? "" : "s"}
         </button>
-        {disabled && (
-          <p className="mt-2 text-[10px] text-amber-300">
-            Unlock the garment and its layer to edit colors.
-          </p>
-        )}
+        {disabled && <p className="mt-2 text-[10px] text-amber-300">Unlock the garment and its layer to edit colors.</p>}
       </div>
+      <div className="mt-4 space-y-2 border-t border-slate-700 pt-3">
+        <strong className="block text-[11px] uppercase tracking-wide text-violet-200">Apply artwork to selected regions</strong>
+        <p className="text-[10px] text-slate-400">Add a separate editable logo, text, or pattern layer to each selected garment part. Existing artwork stays intact (patterns replace the pattern on each selected part). One Apply = one Undo.</p>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Batch 2D artwork type">
+          {[{ id: "image", label: "Logo" }, { id: "pattern", label: "Pattern" }, { id: "text", label: "Text" }].map(({id, label}) =>
+            <button type="button" key={id} aria-pressed={artworkType === id}
+              onClick={() => setArtworkType(id)}
+              className={`rounded-md border px-2.5 py-1.5 text-xs ${artworkType === id ? "border-violet-400 bg-violet-700 text-white" : "border-slate-700 bg-slate-900 text-slate-300"}`}>{label}</button>)}
+        </div>
+        {artworkType === "text" ? <>
+          <input aria-label="2D batch garment text" className="w-full rounded-md border border-slate-600 bg-slate-900 px-2 py-2 text-xs text-slate-100" maxLength={60} value={artworkText} onChange={(event) => setArtworkText(event.target.value)} />
+          <label className="flex items-center gap-2 text-[10px] text-slate-300">Text color
+            <input type="color" value={artworkTextColour} onChange={(event) => setArtworkTextColour(event.target.value)} className="h-8 w-10 rounded" />
+          </label>
+          <GarmentTextStyleFields value={{ ...newTextStyle, color: artworkTextColour }}
+            onChange={(value) => { setNewTextStyle(value); setArtworkTextColour(value.color); }}
+            disabled={disabled || applyingArtwork}/>
+          <button type="button" disabled={disabled || applyingArtwork || !selected.length || !artworkText.trim() || !onApplyArtwork}
+            className="min-h-10 w-full rounded-lg border border-violet-500 bg-violet-700 px-2 py-2 text-xs font-semibold text-white disabled:opacity-40"
+            onClick={() => void doBatchArtwork("text", {text: artworkText,
+              color: artworkTextColour, textStyle: { ...newTextStyle, color: artworkTextColour }})}>
+            {applyingArtwork ? "Applying…" : `Add text to ${selected.length} regions`}
+          </button>
+        </> : <>
+          <input ref={batchInputRef} type="file" className="hidden" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={(event) => void handleBatchFile(event)} />
+          <button type="button" disabled={disabled || applyingArtwork || !selected.length || !onApplyArtwork}
+            className="min-h-10 w-full rounded-lg border border-violet-500 bg-violet-700 px-2 py-2 text-xs font-semibold text-white disabled:opacity-40"
+            onClick={() => batchInputRef.current?.click()}>
+            {applyingArtwork ? "Applying…" : `Upload ${artworkType === "pattern" ? "pattern" : "logo"} to ${selected.length} regions`}
+          </button>
+        </>}
+        <p className="text-[10px] text-slate-500">New artwork remains editable per region in 3D Studio. Existing single-region 2D artwork controls are unchanged.</p>
+      </div>
+      <div className="mt-4 space-y-2 border-t border-cyan-800/70 pt-3" aria-label="Edit existing 2D garment text">
+        <strong className="block text-xs text-cyan-200">Phase 3.3 · Existing text layers</strong>
+        <p className="text-[10px] text-slate-400">Choose a region and one of its saved text layers. Update its content or typography without affecting other layers.</p>
+        <label className="block space-y-1 text-[10px] text-slate-300">Region
+          <select className="w-full rounded-md border border-slate-600 bg-slate-900 p-2 text-xs" value={editRegion}
+            onChange={(event) => { setEditingTextRegion(event.target.value); setEditingTextId(""); }}>
+            {regions.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+          </select>
+        </label>
+        {editableTexts.length ? <>
+          <label className="block space-y-1 text-[10px] text-slate-300">Text layer
+            <select className="w-full rounded-md border border-slate-600 bg-slate-900 p-2 text-xs"
+              value={currentText?.id || ""} onChange={(event) => setEditingTextId(event.target.value)}>
+              {editableTexts.map((item) => <option key={item.id} value={item.id}>{item.text}</option>)}
+            </select>
+          </label>
+          {currentText && <GarmentTextControls key={`${editRegion}:${currentText.id}`}
+            entry={currentText} disabled={disabled || applyingArtwork || transferBusy}
+            onSave={saveExisting2DText}/>}
+        </> : <p className="rounded-md border border-slate-800 bg-slate-900 p-2 text-[10px] text-slate-400">No editable text on this region. Add text using the artwork controls above first.</p>}
+      </div>
+      <div className="mt-4 space-y-2 border-t border-emerald-800/70 pt-3" aria-label="Edit existing 2D fabric patterns">
+        <strong className="block text-xs text-emerald-200">Phase 3.4 · Fabric Pattern Studio</strong>
+        <p className="text-[10px] text-slate-400">Edit the pattern in one region or copy its saved repeat design to your selected panels above. Text and logos are retained.</p>
+        <label className="block space-y-1 text-[10px] text-slate-300">Pattern source region
+          <select className="w-full rounded-md border border-slate-600 bg-slate-900 p-2 text-xs" value={patternRegion}
+            onChange={(event) => setEditingPatternRegion(event.target.value)}>
+            {regions.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+          </select>
+        </label>
+        {savedPattern ? <GarmentPatternControls key={`${patternRegion}:${savedPattern.id}`}
+          entry={savedPattern} disabled={disabled || applyingArtwork || transferBusy || patternBusy}
+          onSave={saveExisting2DPattern} onSync={syncPattern2D}
+          syncTargets={patternTargets.length}/>
+          : <p className="rounded border border-slate-800 bg-slate-900 p-2 text-[10px] text-slate-400">This region has no fabric pattern yet. Upload one using the multi-region artwork tools above.</p>}
+      </div>
+      <div className="mt-4 space-y-2 border-t border-slate-700 pt-3" aria-label="2D copy mirror and synchronize garment artwork">
+        <strong className="block text-[11px] uppercase tracking-wide text-cyan-200">Phase 3.2 · Copy / Mirror / Sync artwork</strong>
+        <p className="text-[10px] text-slate-400">Choose the source region and layer, copy it, then use the region checkboxes above to select destinations. Paste appends; Sync replaces every destination's full artwork stack.</p>
+        <label className="block space-y-1 text-[10px] text-slate-300">Copy from region
+          <select className="w-full rounded border border-slate-600 bg-slate-900 p-2 text-xs" value={resolvedSource}
+            onChange={(event) => { setTransferSource(event.target.value); setTransferLayer("all"); }}>
+            {regions.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+          </select>
+        </label>
+        <label className="block space-y-1 text-[10px] text-slate-300">Artwork to copy
+          <select className="w-full rounded border border-slate-600 bg-slate-900 p-2 text-xs" value={availableSourceLayers.some((item) => item.id === transferLayer) ? transferLayer : "all"}
+            onChange={(event) => setTransferLayer(event.target.value)}>
+            <option value="all">All artwork in source region</option>
+            {availableSourceLayers.map((layer) => <option key={layer.id} value={layer.id}>{layer.name}</option>)}
+          </select>
+        </label>
+        <button type="button" disabled={disabled || transferBusy || !canCopySource}
+          onClick={() => void copyRegionArtwork()}
+          className="w-full rounded border border-cyan-700 bg-cyan-900/40 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">Copy artwork</button>
+        {artworkClipboard && <p className="text-[10px] text-cyan-200">Copied: {artworkClipboard.label} from {artworkClipboard.sourceRegionId}. {targetIds.length} destination(s) selected.</p>}
+        {mirrorPartner && <button type="button" className="w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-xs text-slate-100"
+          onClick={() => choose([mirrorPartner])}>Select opposite left/right region ({regions.find((r) => r.id === mirrorPartner)?.label})</button>}
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" disabled={disabled || transferBusy || !targetIds.length || !artworkClipboard || !onTransferArtwork} onClick={() => void transferArtwork("paste", false)}
+            className="rounded border border-slate-600 bg-slate-800 px-2 py-2 text-xs text-white disabled:opacity-40">Paste to selected</button>
+          <button type="button" disabled={disabled || transferBusy || !targetIds.length || !artworkClipboard || !onTransferArtwork} onClick={() => void transferArtwork("paste", true)}
+            className="rounded border border-slate-600 bg-slate-800 px-2 py-2 text-xs text-white disabled:opacity-40">Mirror placement</button>
+          <button type="button" disabled={disabled || transferBusy || !targetIds.length || artworkClipboard?.scope !== "region" || !onTransferArtwork} onClick={() => void transferArtwork("sync", false)}
+            className="col-span-2 rounded border border-amber-700 bg-amber-950/40 px-2 py-2 text-xs text-amber-100 disabled:opacity-40">Sync now (replace target artwork)</button>
+        </div>
+        <p className="text-[10px] text-slate-500">Mirroring reverses horizontal position and rotation, not logo pixels or readable text. Sync is a one-time copy, not a permanent link. The source region is never overwritten.</p>
+      </div>
+      <section className="mt-4 space-y-3 border-t border-rose-800/60 pt-3" aria-label="Phase 3.5 2D artwork layer management">
+        <strong className="block text-xs text-rose-200">Phase 3.5 · Manage &amp; clear artwork</strong>
+        <p className="text-[10px] text-slate-400">Delete logos, text, or patterns in the selected regions above. Artwork resets never change garment colors; each confirmed change is one Undo step.</p>
+        <p className="text-[10px] text-slate-400">Selected: {selected.length} region(s) · {selectionSummary.logos} logos · {selectionSummary.texts} text · {selectionSummary.pattern} patterns</p>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            ["clear-logos", "Clear logos", selectionSummary.logos],
+            ["clear-text", "Clear text", selectionSummary.texts],
+            ["clear-patterns", "Clear patterns", selectionSummary.pattern],
+            ["clear-all", "Clear selected regions", selectionSummary.total],
+          ].map(([operation, label, count]) =>
+            <button key={operation} type="button" disabled={!canManageArtwork || !selected.length || !count}
+              className="rounded border border-rose-800/70 bg-rose-950/30 px-2 py-2 text-xs text-rose-100 disabled:opacity-40"
+              onClick={() => void runCleanup(operation)}>{label}</button>)}
+        </div>
+        <label className="block space-y-1 text-[10px] text-slate-300">Region for individual layer removal
+          <select className="w-full rounded border border-slate-600 bg-slate-900 p-2 text-xs" value={cleanupRegionId}
+            onChange={(event) => { setCleanupRegion(event.target.value); setCleanupLayerId(""); }}>
+            {regions.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+          </select>
+        </label>
+        <label className="block space-y-1 text-[10px] text-slate-300">Artwork layer
+          <select className="w-full rounded border border-slate-600 bg-slate-900 p-2 text-xs" value={cleanupLayer?.id || ""}
+            disabled={!cleanupSourceSummary.total} onChange={(event) => setCleanupLayerId(event.target.value)}>
+            {!cleanupSourceSummary.total && <option value="">No artwork on this region</option>}
+            {cleanupSourceSummary.layers.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+          </select>
+        </label>
+        <button type="button" disabled={!canManageArtwork || !cleanupLayer}
+          className="w-full rounded border border-rose-800 bg-rose-950/40 px-3 py-2 text-xs font-semibold text-rose-100 disabled:opacity-40"
+          onClick={() => void runCleanup("remove-layer", [cleanupRegionId], cleanupLayer?.id)}>
+          Remove selected artwork layer
+        </button>
+        <button type="button" disabled={!canManageArtwork || !allArtworkCount}
+          className="w-full rounded border border-rose-600 bg-rose-900/40 px-3 py-2 text-xs font-bold text-white disabled:opacity-40"
+          onClick={() => void runCleanup("reset-garment", regions.map((r) => r.id))}>
+          Reset all garment artwork ({allArtworkCount} layer{allArtworkCount === 1 ? "" : "s"})
+        </button>
+        {!onManageArtwork && <p className="text-[10px] text-amber-300">Install the updated FashionEditor artwork management bridge.</p>}
+      </section>
     </details>
   );
 }
@@ -4971,9 +5156,7 @@ function FashionEditor() {
   // Reuses the existing 2D preview and metadata persistence bridge.
   const handleMultiRegionClothingColourChange = useCallback(
     (regionIds, colour) => {
-      const hex = String(colour || "")
-        .trim()
-        .toLowerCase();
+      const hex = String(colour || "").trim().toLowerCase();
       if (
         !selectedClothingEditable ||
         selectedImageLocked ||
@@ -4983,9 +5166,7 @@ function FashionEditor() {
         return false;
       }
 
-      const allowed = new Set(
-        selectedClothingColourRegions.map((region) => region.id),
-      );
+      const allowed = new Set(selectedClothingColourRegions.map((region) => region.id));
       const updates = {};
       for (const regionId of new Set(regionIds)) {
         if (typeof regionId === "string" && allowed.has(regionId)) {
@@ -5002,13 +5183,8 @@ function FashionEditor() {
       if (changed) setPrimaryColor(hex);
       return changed;
     },
-    [
-      selectedClothingEditable,
-      selectedImageLocked,
-      selectedClothingColourRegions,
-      applySelectedClothingColours,
-      setPrimaryColor,
-    ],
+    [selectedClothingEditable, selectedImageLocked, selectedClothingColourRegions,
+      applySelectedClothingColours, setPrimaryColor],
   );
 
   const handleMatchSelectedClothingGroup = useCallback(
@@ -5435,6 +5611,434 @@ function FashionEditor() {
       applySelectedClothingArtwork,
       showToast,
     ],
+  );
+
+  /* Phase 3.3 — update one existing saved text layer without changing its ID
+     or the other region artwork. Uses the same 2D+3D flatten/save bridge. */
+  const handleEditGarmentText = useCallback(async (regionId, textLayerId, changes) => {
+    if (!selectedImageObject?.id || selectedImageLocked || !selectedClothingArtworkEditable ||
+        !selectedClothingArtworkRegions.some((region) => region.id === regionId)) return false;
+    const { normalizeRegionArtworkStack, createTextArtwork } = await import("./Garment3DTextures");
+    const previous = selectedClothingArtworkLayers[regionId];
+    const hasStack = Object.prototype.hasOwnProperty.call(selectedClothingArtworkLayers, regionId);
+    const stack = normalizeRegionArtworkStack(previous,
+      hasStack ? null : selectedClothingArtwork[regionId]);
+    const entry = stack.texts.find((item) => item.id === textLayerId);
+    if (!entry || typeof entry.text !== "string") return false;
+    const updated = restyleGarmentTextLayer(entry, changes, createTextArtwork);
+    if (!updated) return false;
+    return handle3DArtworkChange(regionId, {
+      ...stack, texts: stack.texts.map((item) =>
+        item.id === textLayerId ? updated : item),
+    }, "Edit existing 2D garment text typography");
+  }, [selectedImageObject?.id, selectedImageLocked, selectedClothingArtworkEditable,
+    selectedClothingArtworkRegions, selectedClothingArtworkLayers,
+    selectedClothingArtwork, handle3DArtworkChange]);
+
+  /*=====================================================
+    Phase 3.1 — Apply an image, pattern or text to several regions
+    in a SINGLE history action, for both 2D and 3D templates.
+
+    Every target gets a separate editable layer ID. The source image
+    is imported/sanitized once with our existing secure image loader.
+    We do not mutate cached stacks or overwrite unrelated regions.
+    =====================================================*/
+  const handleMultiRegionArtworkApply = useCallback(
+    async (requestedIds, kind, payload) => {
+      if (
+        !selectedImageObject?.id ||
+        selectedImageLocked ||
+        !selectedClothingArtworkEditable ||
+        !selectedClothingTemplate ||
+        !Array.isArray(requestedIds) ||
+        !["image", "pattern", "text"].includes(kind)
+      ) return false;
+
+      const validIds = new Set(selectedClothingArtworkRegions.map((item) => item.id));
+      const regionIds = [...new Set(requestedIds)].filter((id) => validIds.has(id));
+      if (!regionIds.length) return false;
+      const originalId = selectedImageObject.id;
+      const templateId = selectedClothingTemplate.id;
+
+      // Reserve a revision of every region before any asynchronous work.
+      // This prevents an older batch from replacing a more recent single edit.
+      const revisions = regionIds.map((regionId) => {
+        const key = `${originalId}:${regionId}`;
+        const version = (garmentLayerRevisionRef.current.get(key) || 0) + 1;
+        garmentLayerRevisionRef.current.set(key, version);
+        return [key, version];
+      });
+      const isCurrent = () => revisions.every(([key, version]) =>
+        garmentLayerRevisionRef.current.get(key) === version);
+
+      try {
+        const { normalizeRegionArtworkStack, flattenRegionArtworkStack, createTextArtwork } =
+          await import("./Garment3DTextures");
+        let source = "";
+        let textContent = undefined;
+        if (kind === "text") {
+          textContent = String(payload?.text || "").replace(/[\r\n\t]+/g, " ")
+            .replace(/\s+/g, " ").trim().slice(0, 60);
+          if (!textContent) return false;
+          source = createTextArtwork(textContent,
+            { ...(payload?.textStyle || {}), color: payload?.color || payload?.textStyle?.color || "#111111" });
+          if (!source) throw new Error("Unable to generate the garment text image.");
+        } else {
+          if (!payload) return false;
+          const asset = await loadImageAsset(payload);
+          source = asset.dataUrl;
+        }
+
+        // The user could change garment or edit another region during import.
+        const liveState = useFashionEditorStore.getState();
+        if (!isCurrent() ||
+            liveState.selectedObjectIds.length !== 1 ||
+            liveState.selectedObjectIds[0] !== originalId) return false;
+        const liveObject = liveState.objects[originalId];
+        const layer = liveState.layers.find((item) => item.id === liveObject?.layerId);
+        if (!liveObject || liveObject.locked || liveObject.visible === false ||
+            !layer || layer.locked || layer.visible === false ||
+            (liveObject.metadata?.clothingTemplateId &&
+             liveObject.metadata.clothingTemplateId !== templateId)) return false;
+
+        const metadata = liveObject.metadata || {};
+        const existingLayers = metadata.clothingArtworkLayers || {};
+        const existingArtwork = normaliseClothingTemplateArtwork(
+          selectedClothingTemplate, metadata.clothingArtwork || {});
+        const nextLayers = { ...existingLayers };
+        const updates = [];
+        for (const regionId of regionIds) {
+          const hasExistingStack = Object.prototype.hasOwnProperty.call(existingLayers, regionId);
+          const stack = normalizeRegionArtworkStack(existingLayers[regionId],
+            hasExistingStack ? null : existingArtwork[regionId]);
+          if (kind === "image" && stack.logos.length >= 24) {
+            throw new Error(`The ${regionId} region already has 24 logos.`);
+          }
+          if (kind === "text" && stack.texts.length >= 24) {
+            throw new Error(`The ${regionId} region already has 24 text layers.`);
+          }
+          const newEntry = {
+            id: globalThis.crypto?.randomUUID?.() ||
+              `art-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            type: kind === "pattern" ? "pattern" : "image",
+            source,
+            ...(kind === "text" ? { text: textContent, textStyle: {
+              ...DEFAULT_GARMENT_TEXT_STYLE, ...(payload?.textStyle || {}),
+              color: payload?.color || payload?.textStyle?.color || "#111111",
+            } } : {}),
+            scale: kind === "pattern" ? 1 : 0.45,
+            rotation: 0, offsetX: 0, offsetY: 0, opacity: 1,
+            fit: kind === "pattern" ? "cover" : "contain",
+          };
+          const next = kind === "pattern"
+            ? { ...stack, pattern: newEntry }
+            : kind === "image"
+              ? { ...stack, logos: [...stack.logos, newEntry] }
+              : { ...stack, texts: [...stack.texts, newEntry] };
+          nextLayers[regionId] = next;
+          updates.push([regionId, next]);
+        }
+
+        const flattenedEntries = await Promise.all(updates.map(async ([regionId, stack]) =>
+          [regionId, await flattenRegionArtworkStack(templateId, regionId, stack)]));
+        if (!isCurrent()) return false;
+        const beforeCommit = useFashionEditorStore.getState();
+        if (beforeCommit.selectedObjectIds.length !== 1 ||
+            beforeCommit.selectedObjectIds[0] !== originalId ||
+            beforeCommit.objects[originalId] !== liveObject) return false;
+
+        const nextArtwork = { ...existingArtwork };
+        for (const [regionId, flattened] of flattenedEntries) {
+          if (flattened) nextArtwork[regionId] = flattened;
+          else delete nextArtwork[regionId];
+        }
+        const safeColours = {
+          ...selectedClothingColours,
+          ...(metadata.clothingColours || {}),
+        };
+        const nextDataUrl = createClothingTemplatePreview(
+          selectedClothingTemplate, safeColours, nextArtwork);
+        if (!nextDataUrl) throw new Error("Unable to update the garment preview.");
+        const clothingMetadata = createClothingTemplateMetadata(
+          selectedClothingTemplate, safeColours, nextArtwork) || {};
+        const saved = updateSelectedImage({
+          src: nextDataUrl, source: nextDataUrl, dataUrl: nextDataUrl,
+          imageSource: nextDataUrl,
+          fileName: selectedClothingTemplate.fileName,
+          mimeType: "image/svg+xml",
+          metadata: {
+            ...metadata, ...clothingMetadata,
+            clothingColours: safeColours,
+            clothingArtwork: nextArtwork,
+            clothingArtworkLayers: nextLayers,
+            clothingDualView: selectedClothingTemplate.dualView === true,
+            clothingViews: selectedClothingViews,
+            clothingUpdatedAt: new Date().toISOString(),
+          },
+        }, `Apply ${kind === "image" ? "logo" : kind} to ${regionIds.length} garment regions`);
+        if (saved) showToast(`${kind === "image" ? "Logo" : kind === "text" ? "Text" : "Pattern"} applied to ${regionIds.length} regions. You can edit each one separately.`);
+        return saved;
+      } catch (error) {
+        console.error("Multi-region garment artwork failed:", error);
+        showToast(error?.message || "Unable to apply artwork to selected regions.", "error");
+        return false;
+      }
+    },
+    [selectedImageObject?.id, selectedImageLocked, selectedClothingArtworkEditable,
+      selectedClothingArtworkRegions, selectedClothingTemplate,
+      selectedClothingColours, selectedClothingViews, updateSelectedImage, showToast],
+  );
+
+  /*=====================================================
+    Phase 3.4 — Update one saved fabric pattern without changing its source,
+    layer ID, graphic/text neighbors, or the existing project schema.
+    The Phase 3.3 artwork callback owns the single Undo/Redo history entry.
+    =====================================================*/
+  const handleEditGarmentPattern = useCallback(async (regionId, settings) => {
+    if (!selectedImageObject?.id || selectedImageLocked ||
+        !selectedClothingArtworkEditable ||
+        !selectedClothingArtworkRegions.some((region) => region.id === regionId)) return false;
+    const { normalizeRegionArtworkStack } = await import("./Garment3DTextures");
+    const liveObject = useFashionEditorStore.getState().objects[selectedImageObject.id];
+    if (!liveObject) return false;
+    const layerMap = liveObject.metadata?.clothingArtworkLayers || {};
+    const artMap = liveObject.metadata?.clothingArtwork || {};
+    const hasStack = Object.prototype.hasOwnProperty.call(layerMap, regionId);
+    const current = normalizeRegionArtworkStack(layerMap[regionId],
+      hasStack ? null : artMap[regionId]);
+    if (!current.pattern) return false;
+    return handle3DArtworkChange(regionId,
+      { ...current, pattern: { ...current.pattern, ...settings } },
+      "Edit garment fabric pattern settings");
+  }, [selectedImageObject?.id, selectedImageLocked,
+    selectedClothingArtworkEditable, selectedClothingArtworkRegions, handle3DArtworkChange]);
+
+  /*=====================================================
+    Phase 3.5 — Atomic artwork cleanup for both 2D and 3D.
+    Only the affected region artwork stacks and their flattened images change.
+    No metadata.clothingColours changes, no project schema changes.
+    =====================================================*/
+  const handleManageGarmentArtwork = useCallback(async (
+    { operation, regionIds, layerId = "" } = {},
+  ) => {
+    const accepted = new Set(["remove-layer", "clear-logos", "clear-text",
+      "clear-patterns", "clear-all", "reset-garment"]);
+    if (!accepted.has(operation) || !selectedImageObject?.id || selectedImageLocked ||
+        !selectedClothingArtworkEditable || !selectedClothingTemplate) return false;
+    const allowed = new Set(selectedClothingArtworkRegions.map((r) => r.id));
+    if (!Array.isArray(regionIds)) return false;
+    const ids = operation === "reset-garment" ? [...allowed]
+      : [...new Set(regionIds)].filter((id) => allowed.has(id));
+    if (!ids.length || (operation === "remove-layer" &&
+        (ids.length !== 1 || typeof layerId !== "string" || !layerId))) return false;
+
+    const objectId = selectedImageObject.id;
+    const templateId = selectedClothingTemplate.id;
+    const versions = ids.map((id) => {
+      const key = `${objectId}:${id}`;
+      const version = (garmentLayerRevisionRef.current.get(key) || 0) + 1;
+      garmentLayerRevisionRef.current.set(key, version);
+      return [key, version];
+    });
+    const isCurrent = () => versions.every(([key, version]) =>
+      garmentLayerRevisionRef.current.get(key) === version);
+    try {
+      const { normalizeRegionArtworkStack, flattenRegionArtworkStack } =
+        await import("./Garment3DTextures");
+      const currentState = useFashionEditorStore.getState();
+      if (!isCurrent() || currentState.selectedObjectIds.length !== 1 ||
+          currentState.selectedObjectIds[0] !== objectId) return false;
+      const liveObject = currentState.objects[objectId];
+      const liveLayer = currentState.layers.find((item) => item.id === liveObject?.layerId);
+      if (!liveObject || liveObject.type !== OBJECT_TYPES.IMAGE ||
+          liveObject.locked || liveObject.visible === false ||
+          !liveLayer || liveLayer.locked || liveLayer.visible === false ||
+          liveObject.metadata?.clothingTemplateId !== templateId) return false;
+      const metadata = liveObject.metadata || {};
+      const oldLayers = metadata.clothingArtworkLayers &&
+        typeof metadata.clothingArtworkLayers === "object" &&
+        !Array.isArray(metadata.clothingArtworkLayers)
+          ? metadata.clothingArtworkLayers : {};
+      const oldArtwork = normaliseClothingTemplateArtwork(
+        selectedClothingTemplate, metadata.clothingArtwork || {});
+      const nextLayers = { ...oldLayers };
+      const prepared = [];
+      let removedCount = 0;
+      for (const id of ids) {
+        const hadSavedStack = Object.prototype.hasOwnProperty.call(oldLayers, id);
+        const oldStack = normalizeRegionArtworkStack(oldLayers[id],
+          hadSavedStack ? null : oldArtwork[id]);
+        const result = cleanGarmentRegionStack(oldStack, operation, layerId);
+        if (!result.changed) continue;
+        nextLayers[id] = result.stack;
+        removedCount += result.removed;
+        prepared.push([id, result.stack]);
+      }
+      if (!removedCount) {
+        showToast("No matching artwork was found in the selected region(s).");
+        return false;
+      }
+      const flattened = await Promise.all(prepared.map(async ([id, stack]) =>
+        [id, await flattenRegionArtworkStack(templateId, id, stack)]));
+      if (!isCurrent()) return false;
+      const latest = useFashionEditorStore.getState();
+      if (latest.selectedObjectIds.length !== 1 || latest.selectedObjectIds[0] !== objectId ||
+          latest.objects[objectId] !== liveObject) return false;
+      const nextArtwork = { ...oldArtwork };
+      for (const [id, result] of flattened) {
+        if (result) nextArtwork[id] = result;
+        else delete nextArtwork[id];
+      }
+      const safeColours = {
+        ...selectedClothingColours,
+        ...(metadata.clothingColours || {}),
+      };
+      const preview = createClothingTemplatePreview(selectedClothingTemplate,
+        safeColours, nextArtwork);
+      if (!preview) throw new Error("Could not rebuild the cleaned garment preview.");
+      const clothingMetadata = createClothingTemplateMetadata(
+        selectedClothingTemplate, safeColours, nextArtwork) || {};
+      const description = operation === "remove-layer" ? "Remove artwork layer"
+        : operation === "clear-logos" ? "Clear garment logos"
+        : operation === "clear-text" ? "Clear garment text"
+        : operation === "clear-patterns" ? "Clear garment patterns"
+        : operation === "reset-garment" ? "Reset all garment artwork"
+        : "Clear selected garment artwork";
+      const saved = updateSelectedImage({
+        src: preview, source: preview, dataUrl: preview, imageSource: preview,
+        fileName: selectedClothingTemplate.fileName, mimeType: "image/svg+xml",
+        metadata: {
+          ...metadata, ...clothingMetadata,
+          clothingColours: safeColours,
+          clothingArtwork: nextArtwork,
+          clothingArtworkLayers: nextLayers,
+          clothingDualView: selectedClothingTemplate.dualView === true,
+          clothingViews: selectedClothingViews,
+          clothingUpdatedAt: new Date().toISOString(),
+        },
+      }, `${description} (${removedCount} layer${removedCount === 1 ? "" : "s"})`);
+      if (saved) showToast(`Removed ${removedCount} artwork layer${removedCount === 1 ? "" : "s"}. Garment colors were preserved. Undo once to restore.`);
+      return saved;
+    } catch (error) {
+      console.error("Phase 3.5 garment cleanup failed:", error);
+      showToast(error?.message || "Unable to clear garment artwork.", "error");
+      return false;
+    }
+  }, [selectedImageObject?.id, selectedImageLocked, selectedClothingArtworkEditable,
+    selectedClothingTemplate, selectedClothingArtworkRegions,
+    selectedClothingColours, selectedClothingViews, updateSelectedImage, showToast]);
+
+  /*=====================================================
+    Phase 3.2 — Atomic region-to-region artwork transfer.
+    Copy snapshots are validated against the selected garment; all targets
+    render first, then one updateSelectedImage records ONE Undo entry.
+    =====================================================*/
+  const handleRegionArtworkTransfer = useCallback(
+    async ({ clipboard, targetRegionIds, operation = "paste", mirrorX = false } = {}) => {
+      if (!clipboard || !selectedImageObject?.id || selectedImageLocked ||
+          !selectedClothingArtworkEditable || !selectedClothingTemplate ||
+          clipboard.templateId !== selectedClothingTemplate.id ||
+          clipboard.garmentObjectId !== selectedImageObject.id ||
+          !Array.isArray(targetRegionIds) ||
+          !["paste", "sync"].includes(operation)) return false;
+
+      const validRegions = new Set(selectedClothingArtworkRegions.map((region) => region.id));
+      if (!validRegions.has(clipboard.sourceRegionId)) return false;
+      const destinations = [...new Set(targetRegionIds)]
+        .filter((id) => validRegions.has(id) && id !== clipboard.sourceRegionId);
+      if (!destinations.length) return false;
+      const originalId = selectedImageObject.id;
+      const templateId = selectedClothingTemplate.id;
+      const revisions = destinations.map((regionId) => {
+        const key = `${originalId}:${regionId}`;
+        const version = (garmentLayerRevisionRef.current.get(key) || 0) + 1;
+        garmentLayerRevisionRef.current.set(key, version);
+        return [key, version];
+      });
+      const current = () => revisions.every(([key, version]) =>
+        garmentLayerRevisionRef.current.get(key) === version);
+      try {
+        const { normalizeRegionArtworkStack, flattenRegionArtworkStack } =
+          await import("./Garment3DTextures");
+        // Never rely on clipboard data as already sanitized.
+        const safeClipboard = {
+          ...clipboard,
+          stack: normalizeRegionArtworkStack(clipboard.stack),
+        };
+        const state = useFashionEditorStore.getState();
+        if (!current() || state.selectedObjectIds.length !== 1 ||
+            state.selectedObjectIds[0] !== originalId) return false;
+        const liveObject = state.objects[originalId];
+        const layer = state.layers.find((item) => item.id === liveObject?.layerId);
+        if (!liveObject || liveObject.locked || liveObject.visible === false ||
+            !layer || layer.locked || layer.visible === false ||
+            liveObject.metadata?.clothingTemplateId !== templateId) return false;
+        const metadata = liveObject.metadata || {};
+        const oldLayers = metadata.clothingArtworkLayers || {};
+        const oldArtwork = normaliseClothingTemplateArtwork(
+          selectedClothingTemplate, metadata.clothingArtwork || {});
+        const sourceBox = selectedClothingArtworkRegions.find((r) =>
+          r.id === clipboard.sourceRegionId)?.artworkBox;
+        if (!sourceBox) throw new Error("The source region has no artwork box.");
+        const nextLayers = { ...oldLayers };
+        const prepared = [];
+        // Validate every target (including layer limits) BEFORE any saved update.
+        for (const regionId of destinations) {
+          const hasStack = Object.prototype.hasOwnProperty.call(oldLayers, regionId);
+          const base = normalizeRegionArtworkStack(oldLayers[regionId],
+            hasStack ? null : oldArtwork[regionId]);
+          const box = selectedClothingArtworkRegions.find((r) => r.id === regionId)?.artworkBox;
+          if (!box) throw new Error(`Missing artwork bounds for ${regionId}.`);
+          const next = applyGarmentArtworkTransfer({
+            clipboard: safeClipboard, targetStack: base,
+            sourceBox, targetBox: box, operation, mirrorX,
+          });
+          nextLayers[regionId] = next;
+          prepared.push([regionId, next]);
+        }
+        const flattened = await Promise.all(prepared.map(async ([id, stack]) =>
+          [id, await flattenRegionArtworkStack(templateId, id, stack)]));
+        if (!current()) return false;
+        const latest = useFashionEditorStore.getState();
+        if (latest.selectedObjectIds.length !== 1 ||
+            latest.selectedObjectIds[0] !== originalId ||
+            latest.objects[originalId] !== liveObject) return false;
+        const nextArtwork = { ...oldArtwork };
+        for (const [id, result] of flattened) {
+          if (result) nextArtwork[id] = result;
+          else delete nextArtwork[id];
+        }
+        const safeColours = {
+          ...selectedClothingColours,
+          ...(metadata.clothingColours || {}),
+        };
+        const preview = createClothingTemplatePreview(selectedClothingTemplate,
+          safeColours, nextArtwork);
+        if (!preview) throw new Error("Unable to update the garment preview.");
+        const clothingMetadata = createClothingTemplateMetadata(
+          selectedClothingTemplate, safeColours, nextArtwork) || {};
+        const saved = updateSelectedImage({
+          src: preview, source: preview, dataUrl: preview, imageSource: preview,
+          fileName: selectedClothingTemplate.fileName, mimeType: "image/svg+xml",
+          metadata: {
+            ...metadata, ...clothingMetadata, clothingColours: safeColours,
+            clothingArtwork: nextArtwork, clothingArtworkLayers: nextLayers,
+            clothingDualView: selectedClothingTemplate.dualView === true,
+            clothingViews: selectedClothingViews,
+            clothingUpdatedAt: new Date().toISOString(),
+          },
+        }, `${operation === "sync" ? "Sync" : mirrorX ? "Mirror paste" : "Paste"} garment artwork to ${destinations.length} regions`);
+        if (saved) showToast(`${operation === "sync" ? "Synced" : "Pasted"} artwork to ${destinations.length} regions. Undo once to revert.`);
+        return saved;
+      } catch (error) {
+        console.error("Garment artwork transfer failed:", error);
+        showToast(error?.message || "Cannot transfer artwork to the selected regions.", "error");
+        return false;
+      }
+    },
+    [selectedImageObject?.id, selectedImageLocked, selectedClothingArtworkEditable,
+      selectedClothingTemplate, selectedClothingArtworkRegions, selectedClothingColours,
+      selectedClothingViews, updateSelectedImage, showToast],
   );
 
   const handle3DArtworkUpload = useCallback(
@@ -9029,15 +9633,19 @@ function FashionEditor() {
                             )}
 
                             <ClothingMultiRegionColourPanel
-                              key={
-                                selectedImageObject?.id ||
-                                selectedClothingTemplate.id
-                              }
+                              key={selectedImageObject?.id || selectedClothingTemplate.id}
                               templateId={selectedClothingTemplate.id}
                               garmentObjectId={selectedImageObject?.id || ""}
                               regions={selectedClothingColourRegions}
                               disabled={selectedImageLocked}
                               onApply={handleMultiRegionClothingColourChange}
+                              onApplyArtwork={handleMultiRegionArtworkApply}
+                              onTransferArtwork={handleRegionArtworkTransfer}
+                              onEditText={handleEditGarmentText}
+                              onEditPattern={handleEditGarmentPattern}
+                              onManageArtwork={handleManageGarmentArtwork}
+                              artwork={selectedClothingArtwork}
+                              artworkLayers={selectedClothingArtworkLayers}
                             />
 
                             {selectedClothingDualView && (
@@ -12077,11 +12685,13 @@ function FashionEditor() {
                     artwork={selectedClothingArtwork}
                     artworkLayers={selectedClothingArtworkLayers}
                     onColourChange={handleSelectedClothingColourChange}
-                    onMultiRegionColourChange={
-                      handleMultiRegionClothingColourChange
-                    }
+                    onMultiRegionColourChange={handleMultiRegionClothingColourChange}
                     onArtworkChange={handle3DArtworkChange}
                     onArtworkUpload={handle3DArtworkUpload}
+                    onMultiRegionArtworkApply={handleMultiRegionArtworkApply}
+                    onArtworkTransfer={handleRegionArtworkTransfer}
+                    onManageArtwork={handleManageGarmentArtwork}
+                    garmentObjectId={selectedImageObject?.id || ""}
                     disabled={selectedImageLocked || !selectedClothingEditable}
                     onError={(error) => {
                       console.error("3D garment viewer error:", error);
@@ -12096,13 +12706,11 @@ function FashionEditor() {
 
         {/* Desktop right panel */}
 
-        {editorViewMode !== "3d" &&
-          isDesktopPanel &&
-          ui.rightPanelOpen !== false && (
-            <aside className="flex w-[320px] shrink-0 flex-col border-l border-slate-800 bg-slate-950">
-              {rightPanelContent}
-            </aside>
-          )}
+        {editorViewMode !== "3d" && isDesktopPanel && ui.rightPanelOpen !== false && (
+          <aside className="flex w-[320px] shrink-0 flex-col border-l border-slate-800 bg-slate-950">
+            {rightPanelContent}
+          </aside>
+        )}
       </main>
 
       {/* Mobile bottom toolbar */}

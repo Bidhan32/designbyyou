@@ -8,6 +8,8 @@
  */
 
 import * as THREE from "three";
+import { normalizeGarmentTextStyle, sanitizeGarmentText } from "./GarmentTextArtwork";
+import { normalizeGarmentPatternSettings, calculatePatternTile } from "./GarmentPatternStudio";
 import { getClothingTemplateArtworkBox, getClothingTemplateColourRegions } from "../templates/ClothingTemplates";
 
 const MAX_CANVAS_EDGE = 1024;
@@ -17,7 +19,7 @@ const MAX_LAYERS = 24;
 const REGION_IDS_BY_TEMPLATE = new Map();
 function regionIdsFor(templateId) {
   const id = String(templateId || "tshirt");
-  if (id !== "tshirt" && id !== "hoodie" && id !== "skirt" && id !== "pants" && id !== "shirt") return new Set();
+  if (id !== "tshirt" && id !== "hoodie" && id !== "skirt" && id !== "pants" && id !== "shirt" && id !== "dress") return new Set();
   if (!REGION_IDS_BY_TEMPLATE.has(id)) {
     REGION_IDS_BY_TEMPLATE.set(id, new Set(
       getClothingTemplateColourRegions(id).map((region) => region.id),
@@ -140,29 +142,52 @@ function paintGraphic(ctx, image, entry, unitsW, unitsH, pixelsPerX, pixelsPerY)
 }
 
 function paintPattern(ctx, image, entry, canvas, unitW, unitH) {
-  const tileSizeUnits = Math.max(8, Math.min(600, 84 * clamp(entry.scale, 0.05, 12, 1)));
-  // The original SVG pattern uses a square tile in SVG units.
-  const tileWidth = Math.round(clamp(tileSizeUnits * (canvas.width / unitW), 8, 2048));
-  const tileHeight = Math.round(clamp(tileSizeUnits * (canvas.height / unitH), 8, 2048));
+  const settings = normalizeGarmentPatternSettings(entry);
+  const dimensions = calculatePatternTile(settings, unitW, unitH, canvas.width, canvas.height);
+  const { motifW, motifH, strideW, strideH, tileW, tileH, brick } = dimensions;
   const tile = document.createElement("canvas");
-  tile.width = tileWidth;
-  tile.height = tileHeight;
+  tile.width = tileW;
+  tile.height = tileH;
   const tileCtx = tile.getContext("2d");
   if (!tileCtx) return;
-  drawImageFit(tileCtx, image, 0, 0, tileWidth, tileHeight, entry.fit || "cover");
+  tileCtx.imageSmoothingEnabled = true;
+  tileCtx.imageSmoothingQuality = "high";
+  // Repeat motif with transparent, editable gaps. Two rows create a seamless
+  // half-drop brick layout; negative columns fill both tile wrap edges.
+  const rows = brick ? 2 : 1;
+  for (let row = 0; row < rows; row += 1) {
+    const xShift = brick && row % 2 ? strideW / 2 : 0;
+    const fromCol = brick ? -1 : 0;
+    const toCol = brick ? 3 : 1;
+    for (let col = fromCol; col < toCol; col += 1) {
+      const x = col * strideW + xShift;
+      if (x >= tileW || x + motifW <= 0) continue;
+      drawImageFit(tileCtx, image, x, row * strideH, motifW, motifH, settings.fit);
+    }
+  }
   const pattern = ctx.createPattern(tile, "repeat");
   if (!pattern) return;
 
-  const dx = clamp(entry.offsetX, -2000, 2000, 0) * canvas.width / unitW;
-  const dy = clamp(entry.offsetY, -2000, 2000, 0) * canvas.height / unitH;
+  const dx = settings.offsetX * canvas.width / unitW;
+  const dy = settings.offsetY * canvas.height / unitH;
+  const xSide = settings.alignment.includes("right") ? "right"
+    : settings.alignment === "center" ? "center" : "left";
+  const ySide = settings.alignment.startsWith("bottom") ? "bottom"
+    : settings.alignment === "center" ? "center" : "top";
+  const anchorX = xSide === "right" ? canvas.width - motifW
+    : xSide === "center" ? (canvas.width - motifW) / 2 : 0;
+  const anchorY = ySide === "bottom" ? canvas.height - motifH
+    : ySide === "center" ? (canvas.height - motifH) / 2 : 0;
+
   ctx.save();
-  ctx.globalAlpha = clamp(entry.opacity, 0, 1, 1);
+  ctx.globalAlpha = settings.opacity;
   ctx.translate(canvas.width / 2, canvas.height / 2);
-  ctx.rotate((clamp(entry.rotation, -3600, 3600, 0) * Math.PI) / 180);
-  ctx.translate(-canvas.width / 2 + dx, -canvas.height / 2 + dy);
+  ctx.rotate(settings.rotation * Math.PI / 180);
+  ctx.translate(-canvas.width / 2 + dx + anchorX, -canvas.height / 2 + dy + anchorY);
   ctx.fillStyle = pattern;
-  // Large enough that rotating or offsetting the pattern never reveals a gap.
-  const pad = 5000 + Math.max(Math.abs(dx), Math.abs(dy));
+  // Cover every rotated viewport corner while keeping the actual GPU texture
+  // bounded to MAX_CANVAS_EDGE. We do not resize/rewrite uploaded source images.
+  const pad = Math.hypot(canvas.width, canvas.height) + Math.abs(dx) + Math.abs(dy) + Math.max(tileW, tileH);
   ctx.fillRect(-pad, -pad, canvas.width + pad * 2, canvas.height + pad * 2);
   ctx.restore();
 }
@@ -220,7 +245,10 @@ export function normalizeRegionArtworkStack(value, legacyEntry = null) {
         id: String(entry.id || `${prefix}-${Date.now()}`).slice(0, 100),
         type: prefix === "pattern" ? "pattern" : "image",
         source: entry.source,
-        text: typeof entry.text === "string" ? entry.text.slice(0, 60) : undefined,
+        text: typeof entry.text === "string" ? sanitizeGarmentText(entry.text) : undefined,
+        ...(prefix === "text" && typeof entry.text === "string" && entry.text.trim()
+          ? { textStyle: entry.textStyle ? normalizeGarmentTextStyle(entry.textStyle) : undefined }
+          : {}),
         scale: clamp(entry.scale, 0.05, 12, prefix === "pattern" ? 1 : 0.45),
         rotation: clamp(entry.rotation, -3600, 3600, 0),
         offsetX: clamp(entry.offsetX, -2000, 2000, 0),
@@ -228,6 +256,11 @@ export function normalizeRegionArtworkStack(value, legacyEntry = null) {
         opacity: clamp(entry.opacity, 0, 1, 1),
         fit: ["contain", "cover", "fill"].includes(entry.fit)
           ? entry.fit : (prefix === "pattern" ? "cover" : "contain"),
+        ...(prefix === "pattern" ? (() => {
+          const settings = normalizeGarmentPatternSettings(entry);
+          return { spacingX: settings.spacingX, spacingY: settings.spacingY,
+            alignment: settings.alignment, layout: settings.layout };
+        })() : {}),
       };
     };
     return {
@@ -282,24 +315,44 @@ export async function flattenRegionArtworkStack(templateId, regionId, input) {
   };
 }
 
-export function createTextArtwork(text, color = "#111111") {
-  const clean = String(text || "").replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
+/** Render a portable PNG from editable text metadata.
+ * Compatible with the original createTextArtwork(text, "#111111") API.
+ * An explicit style object adds font, weight, size, spacing, alignment and color.
+ */
+export function createTextArtwork(text, colorOrStyle = "#111111") {
+  const clean = sanitizeGarmentText(text);
   if (!clean) return null;
+  const options = typeof colorOrStyle === "string"
+    ? { color: colorOrStyle } : colorOrStyle;
+  const style = normalizeGarmentTextStyle(options);
   const canvas = document.createElement("canvas");
   canvas.width = 1024;
   canvas.height = 320;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = /^#[0-9a-f]{6}$/i.test(color) ? color : "#111111";
-  ctx.textAlign = "center";
+  ctx.fillStyle = style.color;
   ctx.textBaseline = "middle";
-  let fontSize = 190;
-  while (fontSize > 35) {
-    ctx.font = `700 ${fontSize}px Arial, sans-serif`;
-    if (ctx.measureText(clean).width <= 940) break;
-    fontSize -= 6;
+  ctx.textAlign = "left";
+  const glyphs = Array.from(clean);
+  let fontSize = style.fontSize;
+  const assignFont = () => {
+    ctx.font = `${style.fontStyle} ${style.fontWeight} ${fontSize}px "${style.fontFamily}", sans-serif`;
+  };
+  const measure = () => glyphs.reduce((w, glyph) => w + ctx.measureText(glyph).width, 0)
+    + Math.max(0, glyphs.length - 1) * style.letterSpacing;
+  assignFont();
+  while (fontSize > 18 && measure() > 940) {
+    fontSize -= 2;
+    assignFont();
   }
-  ctx.fillText(clean, 512, 166);
+  const renderedWidth = measure();
+  const x = style.align === "left" ? 42 : style.align === "right"
+    ? canvas.width - 42 - renderedWidth : (canvas.width - renderedWidth) / 2;
+  let cursor = x;
+  for (const glyph of glyphs) {
+    ctx.fillText(glyph, cursor, 166);
+    cursor += ctx.measureText(glyph).width + style.letterSpacing;
+  }
   return canvas.toDataURL("image/png");
 }
