@@ -1445,6 +1445,224 @@ function DocumentNameField({ documentData, setDocumentName }) {
   );
 }
 
+/**
+ * V3 Phase 1.1 — Universal 2D multi-region colors.
+ * Works with every ClothingTemplates entry, including Dress (2D-only).
+ * Selection is view state only; colors persist through FashionEditor's existing bridge.
+ */
+function ClothingMultiRegionColourPanel({
+  templateId = "",
+  garmentObjectId = "",
+  regions = [],
+  disabled = false,
+  onApply = null,
+}) {
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [paintColour, setPaintColour] = useState("#111111");
+
+  // A newly selected garment starts without stale selections from the previous garment.
+  useEffect(() => {
+    setSelectedIds([]);
+    setPaintColour("#111111");
+  }, [templateId, garmentObjectId]);
+
+  const validRegionIds = useMemo(
+    () => new Set(regions.map((region) => region.id)),
+    [regions],
+  );
+  const selected = selectedIds.filter((id) => validRegionIds.has(id));
+  const selectedSet = new Set(selected);
+  const groups = useMemo(() => {
+    const byGroup = new Map();
+    regions.forEach((region) => {
+      const group = String(region.group || "other");
+      if (!byGroup.has(group)) byGroup.set(group, []);
+      byGroup.get(group).push(region.id);
+    });
+    return [...byGroup.entries()]
+      .filter(([, ids]) => ids.length > 1)
+      .map(([id, ids]) => ({ id, ids, label: getClothingGroupLabel(id) }));
+  }, [regions]);
+
+  const choose = (ids) =>
+    setSelectedIds([...new Set(ids)].filter((id) => validRegionIds.has(id)));
+  const toggle = (id) => {
+    if (!validRegionIds.has(id)) return;
+    setSelectedIds((current) =>
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id],
+    );
+  };
+  const hexValid = /^#[0-9a-f]{6}$/i.test(paintColour);
+  const presets = [
+    "#ffffff",
+    "#111111",
+    "#475569",
+    "#ef4444",
+    "#f97316",
+    "#eab308",
+    "#22c55e",
+    "#06b6d4",
+    "#3b82f6",
+    "#8b5cf6",
+    "#ec4899",
+    "#a16207",
+  ];
+
+  return (
+    <details
+      open
+      className="mt-4 rounded-xl border border-violet-500/40 bg-slate-950/80 p-3"
+    >
+      <summary className="cursor-pointer text-xs font-semibold text-violet-200">
+        Multi-region color editor{" "}
+        <span className="text-[10px] font-normal text-slate-400">
+          ({selected.length} selected)
+        </span>
+      </summary>
+      <p className="mb-3 mt-2 text-[10px] leading-relaxed text-slate-400">
+        Select any combination of parts, then apply one color. One Apply action
+        equals one Undo step.
+      </p>
+      <div
+        className="mb-3 flex flex-wrap gap-1.5"
+        role="group"
+        aria-label="Quick 2D garment selections"
+      >
+        <button
+          type="button"
+          className="rounded-md border border-slate-600 bg-slate-800 px-2 py-1.5 text-[10px] text-slate-100"
+          onClick={() => choose(regions.map((r) => r.id))}
+        >
+          All
+        </button>
+        <button
+          type="button"
+          className="rounded-md border border-slate-600 bg-slate-800 px-2 py-1.5 text-[10px] text-slate-100"
+          onClick={() =>
+            choose(
+              regions
+                .filter((r) => getClothingRegionView(r) === "front")
+                .map((r) => r.id),
+            )
+          }
+        >
+          Front
+        </button>
+        <button
+          type="button"
+          className="rounded-md border border-slate-600 bg-slate-800 px-2 py-1.5 text-[10px] text-slate-100"
+          onClick={() =>
+            choose(
+              regions
+                .filter((r) => getClothingRegionView(r) === "back")
+                .map((r) => r.id),
+            )
+          }
+        >
+          Back
+        </button>
+        <button
+          type="button"
+          className="rounded-md border border-slate-600 bg-slate-800 px-2 py-1.5 text-[10px] text-slate-100"
+          onClick={() => choose([])}
+        >
+          Clear selection
+        </button>
+        {groups.map((group) => (
+          <button
+            key={group.id}
+            type="button"
+            className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-[10px] text-slate-300 hover:bg-slate-800"
+            onClick={() => choose(group.ids)}
+          >
+            {group.label}
+          </button>
+        ))}
+      </div>
+      <div
+        className="grid grid-cols-1 gap-1.5"
+        role="group"
+        aria-label="Select 2D clothing regions"
+      >
+        {regions.map((region) => (
+          <label
+            key={region.id}
+            className={`flex cursor-pointer items-center gap-2 rounded-md border px-2 py-1.5 text-[10px] ${selectedSet.has(region.id) ? "border-violet-500 bg-violet-950/50 text-slate-100" : "border-slate-800 bg-slate-900 text-slate-300"}`}
+          >
+            <input
+              type="checkbox"
+              checked={selectedSet.has(region.id)}
+              onChange={() => toggle(region.id)}
+              aria-label={`Select ${region.label}`}
+              className="shrink-0 accent-violet-500"
+            />
+            <span className="min-w-0 flex-1 truncate">{region.label}</span>
+            <span className="text-[9px] text-slate-500">
+              {CLOTHING_VIEW_LABELS[getClothingRegionView(region)] || "Other"}
+            </span>
+          </label>
+        ))}
+      </div>
+      <div className="mt-3 border-t border-slate-800 pt-3">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+          Apply color to selected parts
+        </p>
+        <div className="mb-3 grid grid-cols-6 gap-1.5">
+          {presets.map((swatch) => (
+            <button
+              key={swatch}
+              type="button"
+              title={swatch}
+              aria-label={`Select ${swatch}`}
+              aria-pressed={paintColour.toLowerCase() === swatch}
+              onClick={() => setPaintColour(swatch)}
+              className={`h-7 rounded-md border-2 ${paintColour.toLowerCase() === swatch ? "border-violet-400 ring-1 ring-violet-400" : "border-slate-600"}`}
+              style={{ backgroundColor: swatch }}
+            />
+          ))}
+        </div>
+        <div className="mb-3 flex items-center gap-2">
+          <input
+            type="color"
+            aria-label="Choose custom 2D garment color"
+            value={hexValid ? paintColour : "#111111"}
+            onChange={(event) => setPaintColour(event.target.value)}
+            className="h-9 w-11 shrink-0 cursor-pointer rounded border border-slate-600 bg-slate-950"
+          />
+          <input
+            type="text"
+            aria-label="2D garment color hex"
+            maxLength={7}
+            value={paintColour}
+            onChange={(event) => setPaintColour(event.target.value)}
+            className="min-w-0 flex-1 rounded-lg border border-slate-600 bg-slate-900 px-2 py-1.5 font-mono text-xs text-slate-100"
+          />
+        </div>
+        <button
+          type="button"
+          disabled={
+            disabled ||
+            !selected.length ||
+            !hexValid ||
+            typeof onApply !== "function"
+          }
+          onClick={() => onApply(selected, paintColour)}
+          className="min-h-10 w-full rounded-lg border border-violet-500 bg-violet-700 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-600 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Apply to {selected.length} region{selected.length === 1 ? "" : "s"}
+        </button>
+        {disabled && (
+          <p className="mt-2 text-[10px] text-amber-300">
+            Unlock the garment and its layer to edit colors.
+          </p>
+        )}
+      </div>
+    </details>
+  );
+}
+
 /*=========================================================
 Fashion Editor
 =========================================================*/
@@ -4743,6 +4961,50 @@ function FashionEditor() {
     },
     [
       selectedClothingEditable,
+      selectedClothingColourRegions,
+      applySelectedClothingColours,
+      setPrimaryColor,
+    ],
+  );
+
+  // V3 Phase 1.1: the same multi-region color operation works in 2D and 3D.
+  // Reuses the existing 2D preview and metadata persistence bridge.
+  const handleMultiRegionClothingColourChange = useCallback(
+    (regionIds, colour) => {
+      const hex = String(colour || "")
+        .trim()
+        .toLowerCase();
+      if (
+        !selectedClothingEditable ||
+        selectedImageLocked ||
+        !Array.isArray(regionIds) ||
+        !/^#[0-9a-f]{6}$/.test(hex)
+      ) {
+        return false;
+      }
+
+      const allowed = new Set(
+        selectedClothingColourRegions.map((region) => region.id),
+      );
+      const updates = {};
+      for (const regionId of new Set(regionIds)) {
+        if (typeof regionId === "string" && allowed.has(regionId)) {
+          updates[regionId] = hex;
+        }
+      }
+      const count = Object.keys(updates).length;
+      if (!count) return false;
+
+      const changed = applySelectedClothingColours(
+        updates,
+        `Color ${count} garment region${count === 1 ? "" : "s"}`,
+      );
+      if (changed) setPrimaryColor(hex);
+      return changed;
+    },
+    [
+      selectedClothingEditable,
+      selectedImageLocked,
       selectedClothingColourRegions,
       applySelectedClothingColours,
       setPrimaryColor,
@@ -8766,6 +9028,18 @@ function FashionEditor() {
                               </div>
                             )}
 
+                            <ClothingMultiRegionColourPanel
+                              key={
+                                selectedImageObject?.id ||
+                                selectedClothingTemplate.id
+                              }
+                              templateId={selectedClothingTemplate.id}
+                              garmentObjectId={selectedImageObject?.id || ""}
+                              regions={selectedClothingColourRegions}
+                              disabled={selectedImageLocked}
+                              onApply={handleMultiRegionClothingColourChange}
+                            />
+
                             {selectedClothingDualView && (
                               <div className="mt-3 grid grid-cols-2 gap-2">
                                 <button
@@ -11739,7 +12013,7 @@ function FashionEditor() {
           <div className="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-slate-700 bg-slate-950 px-3">
             <span className="truncate text-[11px] font-semibold text-slate-300">
               {editorViewMode === "3d"
-                ? "3D Garment Preview"
+                ? "3D Garment Studio"
                 : "2D Design Canvas"}
             </span>
             <div
@@ -11803,6 +12077,9 @@ function FashionEditor() {
                     artwork={selectedClothingArtwork}
                     artworkLayers={selectedClothingArtworkLayers}
                     onColourChange={handleSelectedClothingColourChange}
+                    onMultiRegionColourChange={
+                      handleMultiRegionClothingColourChange
+                    }
                     onArtworkChange={handle3DArtworkChange}
                     onArtworkUpload={handle3DArtworkUpload}
                     disabled={selectedImageLocked || !selectedClothingEditable}
@@ -11819,11 +12096,13 @@ function FashionEditor() {
 
         {/* Desktop right panel */}
 
-        {isDesktopPanel && ui.rightPanelOpen !== false && (
-          <aside className="flex w-[320px] shrink-0 flex-col border-l border-slate-800 bg-slate-950">
-            {rightPanelContent}
-          </aside>
-        )}
+        {editorViewMode !== "3d" &&
+          isDesktopPanel &&
+          ui.rightPanelOpen !== false && (
+            <aside className="flex w-[320px] shrink-0 flex-col border-l border-slate-800 bg-slate-950">
+              {rightPanelContent}
+            </aside>
+          )}
       </main>
 
       {/* Mobile bottom toolbar */}

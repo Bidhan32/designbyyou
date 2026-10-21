@@ -1,6 +1,6 @@
 /*
  * DesignByYou | Garment3DTextures.js
- * 2D template artwork -> fabric textures for T-shirt and Hoodie (beta)
+ * 2D template artwork -> fabric textures for T-shirt, Hoodie, Skirt, Pants and Shirt (beta)
  *
  * This model uses separated front/back meshes. For V1 we generate stable
  * planar UV coordinates on cloned geometry (never on useGLTF's cache).
@@ -17,7 +17,7 @@ const MAX_LAYERS = 24;
 const REGION_IDS_BY_TEMPLATE = new Map();
 function regionIdsFor(templateId) {
   const id = String(templateId || "tshirt");
-  if (id !== "tshirt" && id !== "hoodie") return new Set();
+  if (id !== "tshirt" && id !== "hoodie" && id !== "skirt" && id !== "pants" && id !== "shirt") return new Set();
   if (!REGION_IDS_BY_TEMPLATE.has(id)) {
     REGION_IDS_BY_TEMPLATE.set(id, new Set(
       getClothingTemplateColourRegions(id).map((region) => region.id),

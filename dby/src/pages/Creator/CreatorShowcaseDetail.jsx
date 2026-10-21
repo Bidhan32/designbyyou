@@ -1,23 +1,47 @@
 "use strict";
 
 /**
+
  * =========================================================
+
  * DesignByYou — Creator Showcase Detail
- * Version 3.9 — Multi-Garment 2D/3D Showcase
+
+ * Version 4.2 — Multi-Garment 2D/3D Showcase + 11-Region Shirt
+
  * =========================================================
+
  *
+
  * Supports:
+
  * - Responsive 2D image gallery
+
  * - Interactive read-only 3D T-Shirt previews
+
  * - Interactive read-only 3D Hoodie previews
+
+ * - Interactive read-only 3D Skirt previews
+
+ * - Interactive read-only 3D Cargo Pants previews
+
+ * - Interactive read-only 3D Button-Up Shirt previews
+
  * - Automatic garment detection and labels
+
  * - Multi-image selection for Fashion Editor
+
  * - Open in Fashion Editor with existing permissions
+
  * - Role-specific Creator and Designer actions
+
  *
+
  * Public preview data does not expose private project
+
  * contents or editable 3D artwork layer stacks.
+
  * =========================================================
+
  */
 
 import React, {
@@ -59,10 +83,13 @@ import {
 import API from "../../api/axios";
 
 // Load WebGL only when the user opens a 3D preview.
+
 const ShowcaseGarment3D = React.lazy(() => import("./ShowcaseGarment3D"));
 
 /* =========================================================
+
    UI STYLES
+
 ========================================================= */
 
 const BUTTON_FOCUS =
@@ -76,23 +103,48 @@ const PANEL =
   "rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-white/10 dark:bg-[#101011]";
 
 /* =========================================================
+
    SUPPORTED 3D GARMENTS
 
    These identifiers must match preview_3d.model returned
+
    by the Showcase backend.
 
    Future garments can be registered here after their
+
    GLB viewers and backend preview support are ready.
+
 ========================================================= */
 
 const SUPPORTED_3D_GARMENTS = Object.freeze({
   tshirt: {
     label: "T-Shirt",
+
     tabLabel: "3D T-Shirt",
   },
+
   hoodie: {
     label: "Hoodie",
+
     tabLabel: "3D Hoodie",
+  },
+
+  skirt: {
+    label: "Skirt",
+
+    tabLabel: "3D Skirt",
+  },
+
+  pants: {
+    label: "Cargo Pants",
+
+    tabLabel: "3D Pants",
+  },
+
+  shirt: {
+    label: "Button-Up Shirt",
+
+    tabLabel: "3D Shirt",
   },
 });
 
@@ -109,11 +161,14 @@ function get3DGarmentConfig(item) {
 }
 
 /* =========================================================
+
    HELPERS
+
 ========================================================= */
 
 function cleanText(value, fallback = "") {
   const text = String(value ?? "").trim();
+
   return text || fallback;
 }
 
@@ -180,6 +235,7 @@ function getShowcaseImages(item) {
   const rows = Array.isArray(item.images) ? item.images : [];
 
   const normalized = rows
+
     .map((image, originalIndex) => {
       const url = cleanText(
         typeof image === "string" ? image : image?.image_url || image?.url,
@@ -198,13 +254,18 @@ function getShowcaseImages(item) {
           image && typeof image === "object" && image.id
             ? String(image.id)
             : `gallery-${originalIndex}`,
+
         url,
+
         position:
           Number.isInteger(order) && order > 0 ? order : originalIndex + 1,
+
         originalIndex,
       };
     })
+
     .filter(Boolean)
+
     .sort(
       (a, b) => a.position - b.position || a.originalIndex - b.originalIndex,
     );
@@ -212,14 +273,17 @@ function getShowcaseImages(item) {
   const used = new Set();
 
   const images = normalized
+
     .filter(({ url }) => {
       if (used.has(url)) {
         return false;
       }
 
       used.add(url);
+
       return true;
     })
+
     .slice(0, 6);
 
   if (images.length) {
@@ -232,8 +296,11 @@ function getShowcaseImages(item) {
     ? [
         {
           id: "legacy-cover",
+
           url: fallback,
+
           position: 1,
+
           originalIndex: 0,
         },
       ]
@@ -253,6 +320,7 @@ function formatPublishedDate(value) {
 
   return new Intl.DateTimeFormat(undefined, {
     month: "long",
+
     year: "numeric",
   }).format(date);
 }
@@ -264,6 +332,7 @@ function bookingUrlFor(item) {
 
   const query = new URLSearchParams({
     designer_id: String(item.designer_id),
+
     design_id: String(item.design_id),
   });
 
@@ -271,7 +340,9 @@ function bookingUrlFor(item) {
 }
 
 /* =========================================================
+
    LOADING / ERROR SCREENS
+
 ========================================================= */
 
 function LoadingScreen() {
@@ -321,15 +392,20 @@ function ErrorScreen({ message }) {
 }
 
 /* =========================================================
+
    MAIN COMPONENT
+
 ========================================================= */
 
 export default function CreatorShowcaseDetail() {
   const { slug } = useParams();
+
   const navigate = useNavigate();
 
   const [item, setItem] = useState(null);
+
   const [loading, setLoading] = useState(true);
+
   const [error, setError] = useState("");
 
   const [openingEditor, setOpeningEditor] = useState(false);
@@ -337,9 +413,11 @@ export default function CreatorShowcaseDetail() {
   const [editorError, setEditorError] = useState("");
 
   // Preview state
+
   const [previewMode, setPreviewMode] = useState("2d");
 
   // 2D gallery state
+
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   const [selectedImageIds, setSelectedImageIds] = useState([]);
@@ -347,15 +425,19 @@ export default function CreatorShowcaseDetail() {
   const touchStartXRef = useRef(null);
 
   /* =====================================================
+
      DERIVED SHOWCASE DATA
+
   ===================================================== */
 
   const showcaseImages = useMemo(() => getShowcaseImages(item), [item]);
 
   const hasGallery = showcaseImages.length > 1;
 
-  // Supports T-Shirt and Hoodie.
+  // Supports T-Shirt, Hoodie, Skirt, Pants, and Button-Up Shirt.
+
   // Only trusted, registered model IDs enable the 3D tab.
+
   const garment3DConfig = get3DGarmentConfig(item);
 
   const has3D = Boolean(garment3DConfig);
@@ -381,11 +463,14 @@ export default function CreatorShowcaseDetail() {
   const selectedCount = selectedImages.length;
 
   const selectableIds = showcaseImages
+
     .filter((image) => isGalleryImageId(image.id))
+
     .map((image) => image.id);
 
   const selectedImageNumber = Math.min(
     activeImageIndex + 1,
+
     showcaseImages.length,
   );
 
@@ -435,12 +520,16 @@ export default function CreatorShowcaseDetail() {
           : "Open in Fashion Editor";
 
   /* =====================================================
+
      RESET STATE WHEN DESIGN CHANGES
+
   ===================================================== */
 
   useEffect(() => {
     setPreviewMode("2d");
+
     setActiveImageIndex(0);
+
     setSelectedImageIds([]);
   }, [slug, item?.design_id]);
 
@@ -448,7 +537,9 @@ export default function CreatorShowcaseDetail() {
     const scrollToTop = () =>
       window.scrollTo({
         top: 0,
+
         left: 0,
+
         behavior: "instant",
       });
 
@@ -460,7 +551,9 @@ export default function CreatorShowcaseDetail() {
   }, [slug, loading]);
 
   /* =====================================================
+
      FETCH PUBLIC SHOWCASE ITEM
+
   ===================================================== */
 
   useEffect(() => {
@@ -469,19 +562,26 @@ export default function CreatorShowcaseDetail() {
     async function loadItem() {
       if (!slug) {
         setItem(null);
+
         setError("The requested Showcase item is invalid.");
+
         setLoading(false);
+
         return;
       }
 
       setLoading(true);
+
       setError("");
+
       setEditorError("");
+
       setItem(null);
 
       try {
         const response = await API.get(
           `/creator-showcase/item/${encodeURIComponent(slug)}`,
+
           {
             signal: controller.signal,
           },
@@ -506,6 +606,7 @@ export default function CreatorShowcaseDetail() {
         if (import.meta.env.DEV) {
           console.error(
             "Creator Showcase detail request failed:",
+
             requestError,
           );
         }
@@ -530,7 +631,9 @@ export default function CreatorShowcaseDetail() {
   }, [slug]);
 
   /* =====================================================
+
      2D IMAGE GALLERY HANDLERS
+
   ===================================================== */
 
   const changeImage = (direction) => {
@@ -593,7 +696,9 @@ export default function CreatorShowcaseDetail() {
   };
 
   /* =====================================================
+
      OPEN DESIGN IN FASHION EDITOR
+
   ===================================================== */
 
   const handleOpenInEditor = async () => {
@@ -607,13 +712,18 @@ export default function CreatorShowcaseDetail() {
       setEditorError(
         "This Showcase design cannot be opened in Fashion Editor.",
       );
+
       return;
     }
 
     // In 3D mode, open the garment design itself,
+
     // not an image selected in the 2D gallery.
+
     //
+
     // The server enforces access and determines
+
     // whether an original or private copy is used.
 
     const requestedIds = is3D ? [] : selectedImages.map((image) => image.id);
@@ -622,6 +732,7 @@ export default function CreatorShowcaseDetail() {
       setEditorError(
         "The gallery image cannot be identified. Refresh and try again.",
       );
+
       return;
     }
 
@@ -641,18 +752,22 @@ export default function CreatorShowcaseDetail() {
             : {};
 
     setEditorError("");
+
     setOpeningEditor(true);
 
     try {
       const response = await API.post(
         `/creators/showcase/${encodeURIComponent(designId)}/open-in-editor`,
+
         payload,
       );
 
       const record = response?.data?.data || {};
 
       // Confirm that the backend handled the full
+
       // multi-image selection before navigating.
+
       if (requestedIds.length > 1) {
         const returned = Array.isArray(record.source_image_ids)
           ? record.source_image_ids.map(String)
@@ -680,6 +795,7 @@ export default function CreatorShowcaseDetail() {
       if (import.meta.env.DEV) {
         console.error(
           "Open Showcase design in Fashion Editor failed:",
+
           requestError,
         );
       }
@@ -709,7 +825,9 @@ export default function CreatorShowcaseDetail() {
   };
 
   /* =====================================================
+
      LOADING AND ERROR STATES
+
   ===================================================== */
 
   if (loading) {
@@ -721,13 +839,17 @@ export default function CreatorShowcaseDetail() {
   }
 
   /* =====================================================
+
      RENDER
+
   ===================================================== */
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-slate-50 pb-20 text-slate-900 dark:bg-[#050506] dark:text-white">
       {/* =================================================
+
           HEADER / BREADCRUMB
+
       ================================================= */}
 
       <div className="sticky top-16 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#09090b]/95 sm:top-20">
@@ -756,7 +878,9 @@ export default function CreatorShowcaseDetail() {
       </div>
 
       {/* =================================================
+
           MAIN CONTENT
+
       ================================================= */}
 
       <div className="mx-auto max-w-[1500px] px-4 pt-6 sm:px-6 sm:pt-9 lg:px-8">
@@ -782,6 +906,7 @@ export default function CreatorShowcaseDetail() {
               {item.category_name && (
                 <span className="inline-flex items-center gap-2">
                   <Layers3 size={14} />
+
                   {item.category_name}
                 </span>
               )}
@@ -789,6 +914,7 @@ export default function CreatorShowcaseDetail() {
               {item.style_category && (
                 <span className="inline-flex items-center gap-2">
                   <Palette size={14} />
+
                   {item.style_category}
                 </span>
               )}
@@ -805,7 +931,9 @@ export default function CreatorShowcaseDetail() {
 
         <div className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-12 lg:gap-8">
           {/* =============================================
+
               DESIGN PREVIEW COLUMN
+
           ============================================= */}
 
           <div className="min-w-0 space-y-6 lg:col-span-8">
@@ -847,6 +975,7 @@ export default function CreatorShowcaseDetail() {
                       }`}
                     >
                       <Box size={16} />
+
                       {garment3DTabLabel}
                     </button>
                   )}
@@ -965,7 +1094,9 @@ export default function CreatorShowcaseDetail() {
             </section>
 
             {/* =========================================
+
                 2D IMAGE GALLERY
+
             ========================================= */}
 
             {!is3D && hasGallery && (
@@ -994,6 +1125,7 @@ export default function CreatorShowcaseDetail() {
                       type="button"
                       onClick={() => {
                         setSelectedImageIds(selectableIds.slice(0, 6));
+
                         setEditorError("");
                       }}
                       disabled={openingEditor || selectableIds.length === 0}
@@ -1006,6 +1138,7 @@ export default function CreatorShowcaseDetail() {
                       type="button"
                       onClick={() => {
                         setSelectedImageIds([]);
+
                         setEditorError("");
                       }}
                       disabled={openingEditor || selectedCount === 0}
@@ -1035,6 +1168,7 @@ export default function CreatorShowcaseDetail() {
                           aria-pressed={activeImageIndex === index}
                           onClick={() => {
                             setActiveImageIndex(index);
+
                             setEditorError("");
                           }}
                           className={`block aspect-square w-full overflow-hidden rounded-xl border-2 bg-slate-100 transition dark:bg-[#1c1c1f] ${BUTTON_FOCUS} ${
@@ -1087,7 +1221,9 @@ export default function CreatorShowcaseDetail() {
             )}
 
             {/* =========================================
+
                 CONCEPT AND DESIGN INFORMATION
+
             ========================================= */}
 
             <section className={`${PANEL} space-y-6 p-5 sm:p-7`}>
@@ -1127,7 +1263,9 @@ export default function CreatorShowcaseDetail() {
           </div>
 
           {/* =============================================
+
               OWNER AND ACTIONS SIDEBAR
+
           ============================================= */}
 
           <aside className="min-w-0 lg:col-span-4">
@@ -1210,7 +1348,9 @@ export default function CreatorShowcaseDetail() {
               </section>
 
               {/* =========================================
+
                   OPEN IN FASHION EDITOR
+
               ========================================= */}
 
               {canOpenInEditor && (
@@ -1263,7 +1403,9 @@ export default function CreatorShowcaseDetail() {
               )}
 
               {/* =========================================
+
                   DESIGNER BOOKING ACTIONS
+
               ========================================= */}
 
               {designerOwned && (
