@@ -19,7 +19,8 @@ const MAX_LAYERS = 24;
 const REGION_IDS_BY_TEMPLATE = new Map();
 function regionIdsFor(templateId) {
   const id = String(templateId || "tshirt");
-  if (id !== "tshirt" && id !== "hoodie" && id !== "skirt" && id !== "pants" && id !== "shirt" && id !== "dress") return new Set();
+  // No garment whitelist: every registered 2D template can define editable 3D regions.
+  // Unknown template IDs naturally resolve to an empty region set.
   if (!REGION_IDS_BY_TEMPLATE.has(id)) {
     REGION_IDS_BY_TEMPLATE.set(id, new Set(
       getClothingTemplateColourRegions(id).map((region) => region.id),

@@ -1,6 +1,7 @@
 /*
  * DesignByYou — 3D Garment Studio V3, Phase 3.2
- * Five-garment 3D editor: universal batch colours, direct placement and artwork transform handles.
+ * Registry-driven 3D editor: universal batch colours, direct placement and artwork transform handles.
+ * Phase 4.5.2: stationary picking + orbit safety (from user's working editor).
  * Preserves the existing 2D metadata / editable artwork callbacks.
  */
 import React, {
@@ -9,7 +10,9 @@ import React, {
 import { Canvas, useThree } from "@react-three/fiber";
 import { Html, OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-import { getClothingTemplateArtworkBox, getClothingTemplateColourRegions } from "../templates/ClothingTemplates";
+import { getClothingTemplate, getClothingTemplateArtworkBox, getClothingTemplateColourRegions } from "../templates/ClothingTemplates";
+import { getGarment3DConfig } from "../templates/GarmentTemplateRegistry";
+import { createGarment3DClickGuard } from "./Garment3DClickGuard";
 import { createGarmentArtworkClipboard, getGarmentMirrorPartner } from "./GarmentArtworkTransfer";
 import { summarizeGarmentArtwork } from "./GarmentArtworkCleanup";
 import GarmentTextControls, { GarmentTextStyleFields } from "./GarmentTextControls";
@@ -20,15 +23,7 @@ import {
   flattenRegionArtworkStack, isGarmentRegion, projectRegionUv, normalizeRegionArtworkStack,
 } from "./Garment3DTextures";
 
-const MODEL_URL = "/models/garments/DBY_Realistic_TShirt_8Regions.glb";
 const DEFAULT_COLOUR = "#ffffff";
-const GARMENT_MODEL_URLS = Object.freeze({
-  tshirt: MODEL_URL,
-  hoodie: "/models/garments/DBY_Hoodie_Sketchfab_15Regions_BETA.glb",
-  skirt: "/models/garments/DBY_Aline_Skirt_8Regions_BETA.glb",
-  pants: "/models/garments/DBY_CargoPants_10Regions_BETA.glb",
-  shirt: "/models/garments/DBY_ButtonUpShirt_11Regions_BETA.glb",
-});
 const VIEWS = Object.freeze([
   { id: "perspective", label: "3/4" }, { id: "front", label: "Front" },
   { id: "back", label: "Back" }, { id: "left", label: "Left" },
@@ -132,9 +127,9 @@ function replaceArtworkLayer(stack, layerId, kind, updates) {
 }
 
 function Model({ modelUrl, templateId, regions, colours, artwork, wireframe, selectedRegions,
-  onRegionClick, placementMode, placementRegionId, onPlacementStart, onPlacementMove,
+  onRegionClick, onRegionPointerDown, placementMode, placementRegionId, onPlacementStart, onPlacementMove,
   onPlacementEnd, onPlacementCancel, onError,
-  transformMode = false, transformEntry = null, onTransformStart = null,
+  onModelAudit = null, highlightSelection = false, transformMode = false, transformEntry = null, onTransformStart = null,
   onTransformMove = null, onTransformEnd = null, onTransformCancel = null }) {
   const { scene } = useGLTF(modelUrl);
   const { invalidate } = useThree();
@@ -205,6 +200,15 @@ function Model({ modelUrl, templateId, regions, colours, artwork, wireframe, sel
       ownedMaterials, initialEmissive, activeTextures, appliedConfig };
   }, [scene, templateId]);
 
+  // Alert the editor if a newly registered model is missing expected region meshes.
+  // This does not change saved colours or artwork.
+  useEffect(() => {
+    if (typeof onModelAudit !== "function") return;
+    const missing = regions.filter(({ id }) => !prepared.meshesByRegion.has(id))
+      .map(({ id }) => id);
+    onModelAudit({ templateId, missing, mapped: regions.length - missing.length, total: regions.length });
+  }, [prepared, regions, templateId, onModelAudit]);
+
   useEffect(() => {
     let cancelled = false;
     const tasks = regions.map(async ({ id }) => {
@@ -264,14 +268,16 @@ function Model({ modelUrl, templateId, regions, colours, artwork, wireframe, sel
 
   // Selection visualization uses emissive tint; it never modifies saved colors.
   useEffect(() => {
-    const selected = new Set(selectedRegions);
+    // Highlight is opt-in. Never make an initial selection look like a fabric recolor.
+    const selected = new Set(highlightSelection ? selectedRegions : []);
     prepared.materialsByRegion.forEach((materials, regionId) => {
       for (const material of materials) {
         if (!material.emissive) continue;
         const initial = prepared.initialEmissive.get(material);
         if (selected.has(regionId)) {
-          material.emissive.set("#6d28d9");
-          material.emissiveIntensity = 0.23;
+          // An intentionally subtle cyan selection hint, NOT an actual fabric recolor.
+          material.emissive.set("#0891b2");
+          material.emissiveIntensity = 0.10;
         } else if (initial) {
           material.emissive.copy(initial.colour);
           material.emissiveIntensity = initial.intensity;
@@ -279,7 +285,7 @@ function Model({ modelUrl, templateId, regions, colours, artwork, wireframe, sel
       }
     });
     invalidate();
-  }, [prepared, selectedRegions, invalidate]);
+  }, [prepared, selectedRegions, highlightSelection, invalidate]);
 
   useEffect(() => {
     prepared.ownedMaterials.forEach((material) => {
@@ -318,23 +324,32 @@ function Model({ modelUrl, templateId, regions, colours, artwork, wireframe, sel
   }, [prepared, templateId]);
 
   const handleClick = useCallback((event) => {
-    if (placementMode || !onRegionClick) return;
+    // Artwork drag/resize is a separate mode: it must never select fabric.
+    if (placementMode || transformMode || !onRegionClick) return;
     const hit = findRegionHit(event);
     if (!hit) return;
     event.stopPropagation();
     const native = event.nativeEvent || event.sourceEvent || {};
     onRegionClick(hit.regionId, Boolean(native.shiftKey || native.ctrlKey || native.metaKey));
-  }, [onRegionClick, placementMode, findRegionHit]);
+  }, [onRegionClick, placementMode, transformMode, findRegionHit]);
 
   const handlePointerDown = useCallback((event) => {
-    if (!placementMode) return;
+    if (!placementMode) {
+      // The pointer must START on the region that is clicked later.
+      // No stopPropagation: OrbitControls still receives its pointer gesture.
+      if (!transformMode && onRegionPointerDown) {
+        const hit = findRegionHit(event);
+        if (hit) onRegionPointerDown(hit.regionId, event.pointerId);
+      }
+      return;
+    }
     const hit = findRegionHit(event, placementRegionId);
     if (!hit?.uv) return;
     event.stopPropagation();
     // R3F pointer capture keeps the drag active when the cursor leaves the mesh.
     try { event.target.setPointerCapture(event.pointerId); } catch { /* best effort */ }
     onPlacementStart?.(hit.uv);
-  }, [placementMode, placementRegionId, findRegionHit, onPlacementStart]);
+  }, [placementMode, transformMode, onRegionPointerDown, placementRegionId, findRegionHit, onPlacementStart]);
 
   const handlePointerMove = useCallback((event) => {
     if (!placementMode) return;
@@ -389,7 +404,7 @@ function Model({ modelUrl, templateId, regions, colours, artwork, wireframe, sel
   </group>;
 }
 
-function CameraControls({ view, revision, placementMode = false, transformMode = false }) {
+function CameraControls({ view, revision, placementMode = false, transformMode = false, onCameraChange = null }) {
   const controls = useRef(null);
   const { camera, invalidate } = useThree();
   useEffect(() => {
@@ -400,6 +415,7 @@ function CameraControls({ view, revision, placementMode = false, transformMode =
     invalidate();
   }, [camera, invalidate, view, revision]);
   return <OrbitControls ref={controls} makeDefault enableDamping dampingFactor={0.08}
+    onChange={onCameraChange}
     enabled={!placementMode && !transformMode} enablePan={false} minDistance={2.3} maxDistance={13}
     minPolarAngle={0.08} maxPolarAngle={Math.PI - 0.08}/>;
 }
@@ -433,19 +449,33 @@ export default function Garment3DViewer({
   disabled = false,
   modelUrl = null, className = "", onError = null,
 }) {
-  const supported = Object.hasOwn(GARMENT_MODEL_URLS, templateId);
-  const resolvedModelUrl = modelUrl || GARMENT_MODEL_URLS[templateId] || MODEL_URL;
+  const modelConfig = getGarment3DConfig(templateId);
+  const supported = Boolean(modelConfig?.url && getClothingTemplate(templateId));
+  // Existing explicit modelUrl overrides stay supported, but do not turn an
+  // unsupported 2D-only garment into a disguised T-Shirt model.
+  const resolvedModelUrl = modelUrl || modelConfig?.url || null;
   const regions = useMemo(() => supported ? getClothingTemplateColourRegions(templateId) : [],
     [templateId, supported]);
-  const garmentLabel = templateId === "hoodie" ? "Hoodie" : templateId === "skirt" ? "Skirt"
-    : templateId === "pants" ? "Pants" : templateId === "shirt" ? "Button-Up Shirt" : "T-Shirt";
+  const garmentLabel = getClothingTemplate(templateId)?.label || "Garment";
+
+  const [modelAudit, setModelAudit] = useState(null);
+  const onModelAudit = useCallback((audit) => {
+    setModelAudit((previous) => previous?.templateId === audit.templateId
+      && previous?.mapped === audit.mapped
+      && previous?.total === audit.total
+      && previous?.missing?.join("|") === audit.missing.join("|") ? previous : audit);
+  }, []);
+  useEffect(() => { setModelAudit(null); }, [templateId, resolvedModelUrl]);
 
   const [view, setView] = useState("perspective");
   const [revision, setRevision] = useState(0);
   const [wireframe, setWireframe] = useState(false);
-  const [selectedRegions, setSelectedRegions] = useState(() => regions[0] ? [regions[0].id] : []);
+  // Nothing is painted or highlighted merely by opening the 3D viewer.
+  const [selectedRegions, setSelectedRegions] = useState([]);
   const [selectedRegion, setSelectedRegion] = useState(() => regions[0]?.id || "frontBody");
-  const [multiSelect, setMultiSelect] = useState(true);
+  // Default to one-area selection. Users opt into toggle selection or hold Shift.
+  const [multiSelect, setMultiSelect] = useState(false);
+  const [highlightSelection, setHighlightSelection] = useState(false);
   const [paintColour, setPaintColour] = useState("#111111");
   const [activeTab, setActiveTab] = useState("graphic");
   const [selectedLayerId, setSelectedLayerId] = useState("");
@@ -464,15 +494,19 @@ export default function Garment3DViewer({
   const [placementSaving, setPlacementSaving] = useState(false);
   const placementRef = useRef(null);
   const previewTickRef = useRef(0);
-  const [temporaryColours, setTemporaryColours] = useState({});
+  // There is no optimistic color preview: only committed editor colors render.
   const inputRef = useRef(null);
   const bulkInputRef = useRef(null);
   const artworkSectionRef = useRef(null);
   const controlsRef = useRef(null);
+  // Pure pointer-movement guard: orbit drag and touch scroll cannot become a fabric click.
+  const regionClickGuardRef = useRef(null);
+  if (!regionClickGuardRef.current) regionClickGuardRef.current = createGarment3DClickGuard();
 
   useEffect(() => {
-    setTemporaryColours({});
-    setSelectedRegions(regions[0] ? [regions[0].id] : []);
+    setSelectedRegions([]);
+    setMultiSelect(false);
+    regionClickGuardRef.current.cancel();
     setSelectedRegion(regions[0]?.id || "frontBody");
     setView("perspective");
     setArtworkClipboard(null);
@@ -516,7 +550,7 @@ export default function Garment3DViewer({
   }, [placementMode, transformMode]);
 
   const regionIds = useMemo(() => new Set(regions.map((region) => region.id)), [regions]);
-  const resolvedColours = useMemo(() => ({ ...colours, ...temporaryColours }), [colours, temporaryColours]);
+  const resolvedColours = colours;
   const selectedRegionNames = regions.filter((region) => selectedRegions.includes(region.id));
   const groups = useMemo(() => {
     const entries = new Map();
@@ -537,6 +571,29 @@ export default function Garment3DViewer({
       return current.includes(regionId) ? current.filter((id) => id !== regionId) : [...current, regionId];
     });
   }, [regionIds, multiSelect]);
+
+  // Pointer-down must hit the SAME region as the eventual click.
+  // Camera movement immediately invalidates the click, even below the pixel threshold.
+  const handleRegionPointerDown = useCallback((regionId, pointerId) => {
+    if (placementMode || transformMode) return;
+    regionClickGuardRef.current.regionDown(regionId, pointerId);
+  }, [placementMode, transformMode]);
+  const handleCameraChange = useCallback(() => {
+    regionClickGuardRef.current.cameraChanged();
+  }, []);
+  const handleModelRegionClick = useCallback((regionId, multiKey = false) => {
+    if (placementMode || transformMode) return;
+    if (!regionClickGuardRef.current.consumeClick(regionId)) return;
+    selectRegion(regionId, multiKey);
+  }, [placementMode, transformMode, selectRegion]);
+
+  // When an active area is toggled off, keep the artwork editor anchored to a
+  // remaining selected area rather than an unrelated, deselected one.
+  useEffect(() => {
+    if (selectedRegions.length && !selectedRegions.includes(selectedRegion)) {
+      setSelectedRegion(selectedRegions[selectedRegions.length - 1]);
+    }
+  }, [selectedRegions, selectedRegion]);
 
   const selectSet = useCallback((ids) => {
     const validIds = [...new Set(ids)].filter((id) => regionIds.has(id));
@@ -733,7 +790,7 @@ export default function Garment3DViewer({
     return { ...artwork, [draftArtwork.regionId]: draftArtwork.entry };
   }, [artwork, draftArtwork, selectedRegion]);
   const artworkUnavailableReason = !supported
-    ? "Select a supported T-Shirt, Hoodie, Skirt, Pants, or Shirt template in 2D first."
+    ? "This template does not have a validated 3D garment model yet. Continue editing it in 2D."
     : disabled
       ? "This garment or layer is locked, hidden, or not editable. Unlock it in Layers."
       : !hasArtworkBridge || !hasUploadBridge
@@ -970,8 +1027,14 @@ export default function Garment3DViewer({
         <button type="button" aria-pressed={wireframe} className={BTN} onClick={() => setWireframe((old) => !old)}>Wireframe {wireframe ? "On" : "Off"}</button>
       </div>}
     </header>
+    {supported && modelAudit?.templateId === templateId && modelAudit.missing.length > 0 && (
+        <p role="status" className="border-b border-amber-700/60 bg-amber-950/40 px-3 py-2 text-xs text-amber-200">
+          This 3D model is missing {modelAudit.missing.length} editable region mesh(es):
+          {" "}{modelAudit.missing.join(", ")}. Colors/artwork on these regions may not appear in 3D.
+        </p>
+      )}
     {!supported ? <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center text-sm text-slate-300">
-      Switch to 2D, select a T-Shirt, Hoodie, Skirt, Pants, or Shirt, then return to 3D.
+      This clothing template is currently 2D-only. Select a template with a registered 3D model to open the 3D Studio.
     </div> : <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
       {/* On desktop, properties are on the LEFT. On mobile, model comes first. */}
       <aside ref={controlsRef} aria-label="3D garment properties"
@@ -982,11 +1045,17 @@ export default function Garment3DViewer({
             <strong className="text-xs uppercase tracking-wide text-slate-200">Select garment regions</strong>
             <span className="rounded-full border border-violet-600/60 bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-200">{selectedRegions.length} selected</span>
           </div>
-          <label className="flex cursor-pointer items-center gap-2 text-[11px] text-slate-300">
-            <input type="checkbox" checked={multiSelect} onChange={(event) => setMultiSelect(event.target.checked)} className="accent-violet-500" />
-            Multi-select on model click
-          </label>
-          <p className="text-[10px] leading-relaxed text-slate-400">Click a garment area to select it. When multi-select is enabled, clicks add or remove areas. Hold Shift to multi-select at any time.</p>
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            <label className="flex cursor-pointer items-center gap-2 text-[11px] text-slate-300">
+              <input type="checkbox" checked={multiSelect} onChange={(event) => setMultiSelect(event.target.checked)} className="accent-violet-500" />
+              Multi-select on model click
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text-[11px] text-slate-300">
+              <input type="checkbox" checked={highlightSelection} onChange={(event) => setHighlightSelection(event.target.checked)} className="accent-cyan-500" />
+              Highlight selected (preview only)
+            </label>
+          </div>
+          <p className="text-[10px] leading-relaxed text-slate-400">Click a stationary region to select. Shift/Ctrl-click or enable Multi-select to select several. Dragging or camera rotation never selects. The 3D fabric only changes after Apply.</p>
           <div className="flex flex-wrap gap-1.5" role="group" aria-label="Quick garment region selections">
             <button type="button" className={BTN} onClick={() => selectSet(regions.map((region) => region.id))}>All</button>
             <button type="button" className={BTN} onClick={() => selectSet(regions.filter((region) => region.view === "front").map((region) => region.id))}>Front</button>
@@ -1221,7 +1290,16 @@ export default function Garment3DViewer({
       </aside>
 
       <div className="relative order-1 flex h-[clamp(255px,44dvh,520px)] shrink-0 flex-col bg-gradient-to-b from-slate-700 via-slate-800 to-slate-950 lg:order-2 lg:h-auto lg:min-h-0 lg:min-w-0 lg:flex-1">
-        <div className="relative min-h-0 flex-1">
+        <div className="relative min-h-0 flex-1"
+          // Capture the original DOM pointer gesture before OrbitControls handles it.
+          // We track motion even when a raycast moves off a mesh mid-orbit.
+          // Never call stopPropagation or preventDefault: camera controls still work.
+          onPointerDownCapture={(event) => regionClickGuardRef.current.down(event)}
+          onPointerMoveCapture={(event) => regionClickGuardRef.current.move(event)}
+          onPointerUpCapture={(event) => regionClickGuardRef.current.up(event)}
+          onPointerCancelCapture={() => regionClickGuardRef.current.cancel()}
+          onPointerLeave={() => regionClickGuardRef.current.leave()}
+        >
           <ViewerErrorBoundary key={resolvedModelUrl} onError={onError}>
             <Canvas dpr={[1, 1.5]} frameloop="demand" camera={{ position: CAMERAS.perspective, fov: 35, near: 0.1, far: 80 }}
               gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }} style={{ height: "100%", width: "100%" }}>
@@ -1230,7 +1308,9 @@ export default function Garment3DViewer({
               <directionalLight position={[-5, 2, -4]} intensity={1.5}/>
               <Suspense fallback={<Html center><div className="rounded bg-slate-950 px-4 py-3 text-xs">Loading garment…</div></Html>}>
                 <Model modelUrl={resolvedModelUrl} templateId={templateId} regions={regions} colours={resolvedColours} artwork={artworkForModel}
-                  wireframe={wireframe} selectedRegions={selectedRegions} onRegionClick={selectRegion} onError={onError}
+                   wireframe={wireframe} selectedRegions={selectedRegions} highlightSelection={highlightSelection}
+                   onRegionPointerDown={handleRegionPointerDown} onRegionClick={handleModelRegionClick} onError={onError}
+                  onModelAudit={onModelAudit}
                   placementMode={placementMode && canPlaceArtwork} placementRegionId={selectedRegion}
                   onPlacementStart={startPlacement} onPlacementMove={movePlacement}
                   onPlacementEnd={finishPlacement} onPlacementCancel={endPlacementPreview}
@@ -1239,7 +1319,7 @@ export default function Garment3DViewer({
                   onTransformEnd={finishTransform} onTransformCancel={cancelTransform}/>
               </Suspense>
               <CameraControls view={view} revision={revision} placementMode={placementMode && canPlaceArtwork}
-                transformMode={transformMode && canPlaceArtwork}/>
+                transformMode={transformMode && canPlaceArtwork} onCameraChange={handleCameraChange}/>
             </Canvas>
           </ViewerErrorBoundary>
           <div className="pointer-events-none absolute left-3 top-3 rounded-lg border border-slate-700/60 bg-slate-950/85 px-3 py-2 text-[10px] text-slate-200">
@@ -1249,7 +1329,7 @@ export default function Garment3DViewer({
             {transformDraft && <div className="mt-1 font-mono text-cyan-200">Size {transformDraft.scale.toFixed(2)}× · Angle {transformDraft.rotation.toFixed(0)}°</div>}
           </div>
           <span className="pointer-events-none absolute bottom-2 right-2 rounded-md bg-slate-950/80 px-2 py-1 text-[10px] text-slate-400">
-            {placementMode || transformMode ? "Release handle to save as one Undo action" : "Selection glow is preview-only"}
+            {placementMode || transformMode ? "Release handle to save as one Undo action" : "Select only · Apply to save fabric colors"}
           </span>
         </div>
         <nav className="flex shrink-0 flex-wrap justify-center gap-1 border-t border-slate-700 bg-slate-950/95 p-2" aria-label="3D camera views">

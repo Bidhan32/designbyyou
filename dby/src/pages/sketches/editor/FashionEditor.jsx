@@ -20,6 +20,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import API from "/src/api/axios";
 
 import EditorCanvas from "./EditorCanvas";
+import GarmentTemplateBrowser from "./GarmentTemplateBrowser";
 import GarmentTextControls, { GarmentTextStyleFields } from "./GarmentTextControls";
 import GarmentPatternControls from "./GarmentPatternControls";
 import { cleanGarmentRegionStack, summarizeGarmentArtwork } from "./GarmentArtworkCleanup";
@@ -2160,6 +2161,10 @@ function FashionEditor() {
   const [aiFashionError, setAiFashionError] = useState("");
 
   const [imageImporting, setImageImporting] = useState(false);
+
+  // Phase 4.3: the clothing catalog is a modal, not a narrow sidebar list.
+  // This is UI state only; saved garment selection and artwork stay unchanged.
+  const [garmentLibraryOpen, setGarmentLibraryOpen] = useState(false);
 
   const [clothingImporting, setClothingImporting] = useState(false);
 
@@ -4961,7 +4966,7 @@ function FashionEditor() {
         activeLayer.locked ||
         activeLayer.visible === false
       ) {
-        return;
+        return false;
       }
 
       setClothingImporting(true);
@@ -4982,6 +4987,8 @@ function FashionEditor() {
         showToast(
           `${template.label} front + back ready. Click the canvas to place it.`,
         );
+
+        return true;
       } catch (error) {
         console.error(error);
 
@@ -4991,6 +4998,8 @@ function FashionEditor() {
           error?.message || "The clothing template could not be loaded.",
           "error",
         );
+
+        return false;
       } finally {
         setClothingImporting(false);
       }
@@ -5117,10 +5126,11 @@ function FashionEditor() {
     (regionId, colour) => {
       if (
         !selectedClothingEditable ||
+        selectedImageLocked ||
         typeof regionId !== "string" ||
         !/^#[0-9a-f]{6}$/i.test(String(colour || ""))
       ) {
-        return;
+        return false;
       }
 
       const region = selectedClothingColourRegions.find(
@@ -5128,7 +5138,7 @@ function FashionEditor() {
       );
 
       if (!region) {
-        return;
+        return false;
       }
 
       const safeColour = String(colour).toLowerCase();
@@ -5143,9 +5153,11 @@ function FashionEditor() {
       if (changed) {
         setPrimaryColor(safeColour);
       }
+      return Boolean(changed);
     },
     [
       selectedClothingEditable,
+      selectedImageLocked,
       selectedClothingColourRegions,
       applySelectedClothingColours,
       setPrimaryColor,
@@ -7257,6 +7269,23 @@ function FashionEditor() {
     }
   }, [setUiState, isDesktopPanel]);
 
+  // Both desktop and mobile toolbar buttons use this handler. Clicking
+  // Clothing opens the full modal even when Clothing is already active.
+  const handleEditorToolSelection = useCallback((toolId) => {
+    setActiveTool(toolId);
+    if (toolId === EDITOR_TOOLS.CLOTHING) {
+      setPanelDrawerOpen(false);
+      setMobileMenuOpen(false);
+      setGarmentLibraryOpen(true);
+    } else {
+      setGarmentLibraryOpen(false);
+    }
+  }, [setActiveTool]);
+
+  const closeGarmentLibrary = useCallback(() => {
+    setGarmentLibraryOpen(false);
+  }, []);
+
   /*=====================================================
     Right Panel Content
     =====================================================*/
@@ -8325,103 +8354,21 @@ function FashionEditor() {
             )}
 
             {activeTool === EDITOR_TOOLS.CLOTHING && (
-              <PanelSection title="Clothing Templates">
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-xs font-semibold text-slate-200">
-                        Front + Back Fashion Flats
-                      </p>
-
-                      <span className="shrink-0 rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-violet-200">
-                        Dual View
-                      </span>
-                    </div>
-
-                    <p className="mt-1 text-[10px] leading-relaxed text-slate-500">
-                      Each garment includes realistic front and back fashion
-                      flats with editable colours, graphics and fabric patterns
-                      clipped safely inside construction regions.
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-3">
-                    {CLOTHING_TEMPLATES.map((template) => {
-                      const regionCount =
-                        getClothingTemplateColourRegions(template).length;
-
-                      return (
-                        <button
-                          key={template.id}
-                          type="button"
-                          disabled={
-                            clothingImporting ||
-                            !activeLayer ||
-                            activeLayer.locked ||
-                            activeLayer.visible === false
-                          }
-                          onClick={() => {
-                            void handleChooseClothingTemplate(template);
-                          }}
-                          className="group overflow-hidden rounded-xl border border-slate-700 bg-slate-900 p-2 text-left transition hover:border-violet-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          <div className="flex aspect-[14/9] items-center justify-center overflow-hidden rounded-lg bg-white p-2">
-                            <img
-                              src={createClothingTemplatePreview(template)}
-                              alt={`${template.label} front and back clothing template`}
-                              className="h-full w-full object-contain"
-                              draggable={false}
-                            />
-                          </div>
-
-                          <div className="mt-2 flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <span className="block text-xs font-semibold text-slate-200 group-hover:text-white">
-                                {template.label}
-                              </span>
-
-                              {template.description && (
-                                <span className="mt-1 block text-[9px] leading-relaxed text-slate-500">
-                                  {template.description}
-                                </span>
-                              )}
-                            </div>
-
-                            <span className="shrink-0 rounded-full border border-slate-700 bg-slate-950 px-2 py-1 text-[8px] font-bold uppercase tracking-wide text-slate-400">
-                              {template.dualView ? "Front + Back" : "Front"}
-                            </span>
-                          </div>
-
-                          <span className="mt-2 block text-[9px] font-semibold uppercase tracking-wide text-violet-300">
-                            {regionCount} colour + artwork region
-                            {regionCount === 1 ? "" : "s"}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {clothingImporting && (
-                    <div className="rounded-lg border border-violet-500/30 bg-violet-500/10 p-3">
-                      <p className="text-xs font-semibold text-violet-200">
-                        Preparing dual-view template…
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-3">
-                    <p className="text-xs font-semibold text-violet-100">
-                      How to use
-                    </p>
-
-                    <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
-                      Select a garment and click the canvas once. Front and back
-                      are placed together as one editable fashion board. Select
-                      it afterward to colour front/back regions independently,
-                      add clipped graphics or patterns, resize, rotate, move,
-                      duplicate, save or export it.
-                    </p>
-                  </div>
+              <PanelSection title="Clothing">
+                <div className="space-y-3">
+                  <p className="text-xs leading-5 text-slate-400">
+                    Browse the complete garment catalog to select a 2D/3D clothing template.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setGarmentLibraryOpen(true)}
+                    className="flex min-h-11 w-full items-center justify-center rounded-xl bg-violet-600 px-4 py-3 text-xs font-bold text-white transition hover:bg-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+                  >
+                    Browse garment library ({CLOTHING_TEMPLATES.length})
+                  </button>
+                  <p className="text-[10px] leading-4 text-slate-500">
+                    Select a garment in the modal, choose Place on canvas, then click the canvas once to insert it.
+                  </p>
                 </div>
               </PanelSection>
             )}
@@ -12560,7 +12507,7 @@ function FashionEditor() {
                 key={tool.id}
                 tool={tool}
                 active={activeTool === tool.id}
-                onClick={setActiveTool}
+                onClick={handleEditorToolSelection}
               />
             ))}
 
@@ -12722,7 +12669,7 @@ function FashionEditor() {
               key={tool.id}
               tool={tool}
               active={activeTool === tool.id}
-              onClick={setActiveTool}
+              onClick={handleEditorToolSelection}
               horizontal
             />
           ))}
@@ -13561,6 +13508,18 @@ function FashionEditor() {
           </aside>
         </div>
       )}
+
+      {/* Full garment picker: always mounted so it also works with Layers tab
+          selected and on mobile. No duplicate garment grid in Properties. */}
+      <GarmentTemplateBrowser
+        open={garmentLibraryOpen}
+        onClose={closeGarmentLibrary}
+        templates={CLOTHING_TEMPLATES}
+        currentTemplateId={selectedClothingTemplate?.id || null}
+        importing={clothingImporting}
+        canInsert={Boolean(activeLayer && !activeLayer.locked && activeLayer.visible !== false)}
+        onChoose={handleChooseClothingTemplate}
+      />
 
       {/* Toast */}
 

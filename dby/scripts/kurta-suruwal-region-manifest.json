@@ -1,0 +1,408 @@
+{
+  "kurta": {
+    "file": "DBY_Sketchfab_Kurta_10Regions.glb",
+    "file_bytes": 377048,
+    "triangles": 12335,
+    "regions": [
+      "frontBody",
+      "backBody",
+      "frontLeftSleeve",
+      "frontRightSleeve",
+      "backLeftSleeve",
+      "backRightSleeve",
+      "frontNeckline",
+      "backNeckline",
+      "frontHem",
+      "backHem"
+    ],
+    "artwork_boxes": {
+      "frontBody": {
+        "x": 148.38,
+        "y": 80.88,
+        "width": 102.62,
+        "height": 237.0
+      },
+      "frontHem": {
+        "x": 150.75,
+        "y": 317.75,
+        "width": 97.62,
+        "height": 15.38
+      },
+      "frontLeftSleeve": {
+        "x": 34.5,
+        "y": 80.0,
+        "width": 121.62,
+        "height": 52.75
+      },
+      "frontNeckline": {
+        "x": 170.0,
+        "y": 82.12,
+        "width": 60.12,
+        "height": 20.5
+      },
+      "frontRightSleeve": {
+        "x": 244.0,
+        "y": 80.12,
+        "width": 132.88,
+        "height": 53.0
+      },
+      "backLeftSleeve": {
+        "x": 23.25,
+        "y": 80.12,
+        "width": 132.88,
+        "height": 53.5
+      },
+      "backHem": {
+        "x": 146.88,
+        "y": 317.75,
+        "width": 107.62,
+        "height": 15.25
+      },
+      "backBody": {
+        "x": 146.88,
+        "y": 81.12,
+        "width": 106.62,
+        "height": 236.75
+      },
+      "backRightSleeve": {
+        "x": 244.0,
+        "y": 80.25,
+        "width": 121.62,
+        "height": 53.38
+      },
+      "backNeckline": {
+        "x": 170.0,
+        "y": 81.88,
+        "width": 60.12,
+        "height": 9.75
+      }
+    },
+    "audit": {
+      "frontBody": {
+        "triangles": 3851,
+        "vertices": 2072,
+        "3d_bounds": [
+          [
+            -0.191085,
+            0.545,
+            -0.067279
+          ],
+          [
+            0.188255,
+            1.422336,
+            0.090077
+          ]
+        ],
+        "path_commands": 658
+      },
+      "frontHem": {
+        "triangles": 333,
+        "vertices": 219,
+        "3d_bounds": [
+          [
+            -0.182564,
+            0.488613,
+            -0.008997
+          ],
+          [
+            0.178747,
+            0.545,
+            0.069197
+          ]
+        ],
+        "path_commands": 32
+      },
+      "frontLeftSleeve": {
+        "triangles": 872,
+        "vertices": 485,
+        "3d_bounds": [
+          [
+            -0.612898,
+            1.23044,
+            -0.056409
+          ],
+          [
+            -0.163,
+            1.425511,
+            0.037165
+          ]
+        ],
+        "path_commands": 209
+      },
+      "frontNeckline": {
+        "triangles": 144,
+        "vertices": 110,
+        "3d_bounds": [
+          [
+            -0.111,
+            1.342,
+            -0.071767
+          ],
+          [
+            0.111,
+            1.417568,
+            0.040245
+          ]
+        ],
+        "path_commands": 34
+      },
+      "frontRightSleeve": {
+        "triangles": 935,
+        "vertices": 518,
+        "3d_bounds": [
+          [
+            0.163,
+            1.22905,
+            -0.054227
+          ],
+          [
+            0.654583,
+            1.424871,
+            0.037499
+          ]
+        ],
+        "path_commands": 259
+      },
+      "backLeftSleeve": {
+        "triangles": 928,
+        "vertices": 513,
+        "3d_bounds": [
+          [
+            0.163,
+            1.227389,
+            -0.118568
+          ],
+          [
+            0.654583,
+            1.424871,
+            -0.027152
+          ]
+        ],
+        "path_commands": 269
+      },
+      "backHem": {
+        "triangles": 353,
+        "vertices": 229,
+        "3d_bounds": [
+          [
+            -0.201295,
+            0.488873,
+            -0.117661
+          ],
+          [
+            0.196884,
+            0.545,
+            -0.03091
+          ]
+        ],
+        "path_commands": 65
+      },
+      "backBody": {
+        "triangles": 3921,
+        "vertices": 2099,
+        "3d_bounds": [
+          [
+            -0.197637,
+            0.545,
+            -0.162768
+          ],
+          [
+            0.196986,
+            1.421466,
+            -0.015489
+          ]
+        ],
+        "path_commands": 586
+      },
+      "backRightSleeve": {
+        "triangles": 899,
+        "vertices": 498,
+        "3d_bounds": [
+          [
+            -0.612898,
+            1.227186,
+            -0.118392
+          ],
+          [
+            -0.163,
+            1.424602,
+            -0.025734
+          ]
+        ],
+        "path_commands": 225
+      },
+      "backNeckline": {
+        "triangles": 99,
+        "vertices": 83,
+        "3d_bounds": [
+          [
+            -0.111,
+            1.383,
+            -0.126517
+          ],
+          [
+            0.111,
+            1.418693,
+            -0.065423
+          ]
+        ],
+        "path_commands": 102
+      }
+    }
+  },
+  "suruwal": {
+    "file": "DBY_Sketchfab_SlimSuruwal_6Regions.glb",
+    "file_bytes": 167848,
+    "triangles": 5364,
+    "regions": [
+      "frontWaistband",
+      "backWaistband",
+      "frontLeftLeg",
+      "frontRightLeg",
+      "backLeftLeg",
+      "backRightLeg"
+    ],
+    "artwork_boxes": {
+      "frontWaistband": {
+        "x": 130.62,
+        "y": 78.0,
+        "width": 139.0,
+        "height": 38.75
+      },
+      "frontLeftLeg": {
+        "x": 128.0,
+        "y": 116.62,
+        "width": 72.12,
+        "height": 265.12
+      },
+      "frontRightLeg": {
+        "x": 200.0,
+        "y": 116.62,
+        "width": 71.88,
+        "height": 266.0
+      },
+      "backRightLeg": {
+        "x": 200.0,
+        "y": 116.62,
+        "width": 72.12,
+        "height": 265.25
+      },
+      "backLeftLeg": {
+        "x": 128.25,
+        "y": 116.62,
+        "width": 71.88,
+        "height": 266.0
+      },
+      "backWaistband": {
+        "x": 130.62,
+        "y": 90.38,
+        "width": 138.88,
+        "height": 26.38
+      }
+    },
+    "audit": {
+      "frontWaistband": {
+        "triangles": 428,
+        "vertices": 258,
+        "3d_bounds": [
+          [
+            -0.182676,
+            0.785,
+            -0.052716
+          ],
+          [
+            0.18286,
+            0.886801,
+            0.066463
+          ]
+        ],
+        "path_commands": 212
+      },
+      "frontLeftLeg": {
+        "triangles": 1112,
+        "vertices": 616,
+        "3d_bounds": [
+          [
+            -0.189464,
+            0.087768,
+            -0.05705
+          ],
+          [
+            -0.0,
+            0.785,
+            0.069832
+          ]
+        ],
+        "path_commands": 747
+      },
+      "frontRightLeg": {
+        "triangles": 1133,
+        "vertices": 628,
+        "3d_bounds": [
+          [
+            -0.0,
+            0.085392,
+            -0.060081
+          ],
+          [
+            0.188927,
+            0.785,
+            0.070109
+          ]
+        ],
+        "path_commands": 709
+      },
+      "backRightLeg": {
+        "triangles": 1222,
+        "vertices": 679,
+        "3d_bounds": [
+          [
+            -0.189464,
+            0.087615,
+            -0.125224
+          ],
+          [
+            0.0,
+            0.785,
+            -0.011125
+          ]
+        ],
+        "path_commands": 706
+      },
+      "backLeftLeg": {
+        "triangles": 1253,
+        "vertices": 695,
+        "3d_bounds": [
+          [
+            0.0,
+            0.085392,
+            -0.125023
+          ],
+          [
+            0.188838,
+            0.785,
+            -0.012094
+          ]
+        ],
+        "path_commands": 738
+      },
+      "backWaistband": {
+        "triangles": 216,
+        "vertices": 156,
+        "3d_bounds": [
+          [
+            -0.182676,
+            0.785,
+            -0.143817
+          ],
+          [
+            0.182668,
+            0.854125,
+            -0.026269
+          ]
+        ],
+        "path_commands": 232
+      }
+    }
+  }
+}

@@ -277,31 +277,43 @@ Helpers
 =========================================================*/
 
 function cleanText(value) {
+
   return String(value ?? "").trim();
+
 }
 
 function sendError(res, status, code, message) {
+
   return res.status(status).json({
+
     status: "error",
 
     code,
 
     message,
+
   });
+
 }
 
 function parsePositiveInteger(value, fallback) {
+
   if (value === undefined || value === null || value === "") {
+
     return fallback;
+
   }
 
   const parsed = Number.parseInt(value, 10);
 
   if (!Number.isInteger(parsed) || parsed < 1) {
+
     return null;
+
   }
 
   return parsed;
+
 }
 
 /*=========================================================
@@ -311,8 +323,11 @@ Discovery Slug Validation
 =========================================================*/
 
 function isValidDiscoverySlug(value) {
+
   if (!value) {
+
     return false;
+
   }
 
   /*
@@ -330,6 +345,7 @@ function isValidDiscoverySlug(value) {
   graduation
 
   */ return /^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(value);
+
 }
 
 /*=========================================================
@@ -369,8 +385,11 @@ is_trending = TRUE
 =========================================================*/
 
 exports.getShowcaseDiscovery = async (req, res) => {
+
   try {
+
     const result = await db.query(
+
       `
 
             SELECT
@@ -424,6 +443,7 @@ exports.getShowcaseDiscovery = async (req, res) => {
               name ASC
 
           `,
+
     );
 
     const styles = [];
@@ -435,7 +455,9 @@ exports.getShowcaseDiscovery = async (req, res) => {
     const trending = [];
 
     for (const row of result.rows) {
+
       const term = {
+
         id: row.id,
 
         name: row.name,
@@ -449,33 +471,45 @@ exports.getShowcaseDiscovery = async (req, res) => {
         description: row.description || null,
 
         sort_order: row.sort_order,
+
       };
 
       if (row.group_type === "style") {
+
         styles.push(term);
 
         if (row.is_trending === true) {
+
           trending.push(term);
+
         }
 
         continue;
+
       }
 
       if (row.group_type === "garment") {
+
         garments.push(term);
 
         continue;
+
       }
 
       if (row.group_type === "occasion") {
+
         occasions.push(term);
+
       }
+
     }
 
     return res.status(200).json({
+
       status: "success",
 
       data: {
+
         styles,
 
         garments,
@@ -483,12 +517,17 @@ exports.getShowcaseDiscovery = async (req, res) => {
         occasions,
 
         trending,
+
       },
+
     });
+
   } catch (error) {
+
     console.error("Creator Showcase discovery query error:", error);
 
     return sendError(
+
       res,
 
       500,
@@ -496,8 +535,11 @@ exports.getShowcaseDiscovery = async (req, res) => {
       "SHOWCASE_DISCOVERY_UNAVAILABLE",
 
       "Showcase discovery options are currently unavailable.",
+
     );
+
   }
+
 };
 
 /*=========================================================
@@ -579,7 +621,9 @@ Creator accounts do not require admin approval
 =========================================================*/
 
 exports.getShowcase = async (req, res) => {
+
   try {
+
     /*=================================================
 
       Filters
@@ -605,7 +649,9 @@ exports.getShowcase = async (req, res) => {
       =================================================*/
 
     if (page === null) {
+
       return sendError(
+
         res,
 
         400,
@@ -613,11 +659,15 @@ exports.getShowcase = async (req, res) => {
         "INVALID_PAGE",
 
         "Page must be a positive integer.",
+
       );
+
     }
 
     if (requestedLimit === null) {
+
       return sendError(
+
         res,
 
         400,
@@ -625,7 +675,9 @@ exports.getShowcase = async (req, res) => {
         "INVALID_LIMIT",
 
         "Limit must be a positive integer.",
+
       );
+
     }
 
     const limit = Math.min(requestedLimit, MAX_LIMIT);
@@ -637,7 +689,9 @@ exports.getShowcase = async (req, res) => {
       =================================================*/
 
     if (search.length > MAX_SEARCH_LENGTH) {
+
       return sendError(
+
         res,
 
         400,
@@ -645,11 +699,15 @@ exports.getShowcase = async (req, res) => {
         "SEARCH_TOO_LONG",
 
         `Search must not exceed ${MAX_SEARCH_LENGTH} characters.`,
+
       );
+
     }
 
     if (style.length > MAX_STYLE_LENGTH) {
+
       return sendError(
+
         res,
 
         400,
@@ -657,11 +715,15 @@ exports.getShowcase = async (req, res) => {
         "STYLE_TOO_LONG",
 
         `Style must not exceed ${MAX_STYLE_LENGTH} characters.`,
+
       );
+
     }
 
     if (category.length > MAX_CATEGORY_LENGTH) {
+
       return sendError(
+
         res,
 
         400,
@@ -669,11 +731,15 @@ exports.getShowcase = async (req, res) => {
         "CATEGORY_TOO_LONG",
 
         `Category must not exceed ${MAX_CATEGORY_LENGTH} characters.`,
+
       );
+
     }
 
     if (term.length > MAX_TERM_LENGTH) {
+
       return sendError(
+
         res,
 
         400,
@@ -681,11 +747,15 @@ exports.getShowcase = async (req, res) => {
         "TERM_TOO_LONG",
 
         `Discovery term must not exceed ${MAX_TERM_LENGTH} characters.`,
+
       );
+
     }
 
     if (term && !isValidDiscoverySlug(term)) {
+
       return sendError(
+
         res,
 
         400,
@@ -693,7 +763,9 @@ exports.getShowcase = async (req, res) => {
         "INVALID_DISCOVERY_TERM",
 
         "The selected Showcase discovery term is invalid.",
+
       );
+
     }
 
     /*=================================================
@@ -931,6 +1003,7 @@ exports.getShowcase = async (req, res) => {
       =================================================*/
 
     if (term) {
+
       params.push(term);
 
       const termIndex = params.length;
@@ -972,6 +1045,7 @@ exports.getShowcase = async (req, res) => {
           )
 
         `;
+
     }
 
     /*=================================================
@@ -987,6 +1061,7 @@ exports.getShowcase = async (req, res) => {
       =================================================*/
 
     if (style) {
+
       params.push(style);
 
       query += `
@@ -1002,6 +1077,7 @@ exports.getShowcase = async (req, res) => {
           )
 
         `;
+
     }
 
     /*=================================================
@@ -1019,6 +1095,7 @@ exports.getShowcase = async (req, res) => {
       =================================================*/
 
     if (category) {
+
       params.push(category);
 
       query += `
@@ -1034,6 +1111,7 @@ exports.getShowcase = async (req, res) => {
           )
 
         `;
+
     }
 
     /*=================================================
@@ -1061,6 +1139,7 @@ exports.getShowcase = async (req, res) => {
       =================================================*/
 
     if (search) {
+
       const searchPattern = `%${search}%`;
 
       params.push(searchPattern);
@@ -1112,6 +1191,7 @@ exports.getShowcase = async (req, res) => {
           )
 
         `;
+
     }
 
     /*=================================================
@@ -1169,6 +1249,7 @@ exports.getShowcase = async (req, res) => {
     const designs = hasMore ? result.rows.slice(0, limit) : result.rows;
 
     return res.status(200).json({
+
       status: "success",
 
       results: designs.length,
@@ -1176,6 +1257,7 @@ exports.getShowcase = async (req, res) => {
       data: designs,
 
       filters: {
+
         search: search || null,
 
         style: style || null,
@@ -1183,20 +1265,27 @@ exports.getShowcase = async (req, res) => {
         category: category || null,
 
         term: term || null,
+
       },
 
       pagination: {
+
         page,
 
         limit,
 
         hasMore,
+
       },
+
     });
+
   } catch (error) {
+
     console.error("Creator Showcase pipeline query error:", error);
 
     return sendError(
+
       res,
 
       500,
@@ -1204,8 +1293,11 @@ exports.getShowcase = async (req, res) => {
       "SHOWCASE_UNAVAILABLE",
 
       "The Creator Showcase is currently unavailable.",
+
     );
+
   }
+
 };
 
 /*=========================================================
@@ -1241,128 +1333,28 @@ private.
 =========================================================*/
 
 const SHOWCASE_3D_REGIONS_BY_MODEL = Object.freeze({
-  tshirt: Object.freeze([
-    "frontBody",
-
-    "backBody",
-
-    "frontLeftSleeve",
-
-    "frontRightSleeve",
-
-    "backLeftSleeve",
-
-    "backRightSleeve",
-
-    "frontCollar",
-
-    "backCollar",
-  ]),
-
-  hoodie: Object.freeze([
-    "frontBody",
-
-    "backBody",
-
-    "frontLeftSleeve",
-
-    "frontRightSleeve",
-
-    "backLeftSleeve",
-
-    "backRightSleeve",
-
-    "frontHood",
-
-    "backHood",
-
-    "frontPocket",
-
-    "frontHem",
-
-    "backHem",
-
-    "frontLeftCuff",
-
-    "frontRightCuff",
-
-    "backLeftCuff",
-
-    "backRightCuff",
-  ]),
-
-  skirt: Object.freeze([
-    "frontWaistband",
-
-    "backWaistband",
-
-    "frontLeftPanel",
-
-    "frontCentrePanel",
-
-    "frontRightPanel",
-
-    "backLeftPanel",
-
-    "backCentrePanel",
-
-    "backRightPanel",
-  ]),
-
-  // Cargo details share the existing 2D Pants waistband/leg/pocket controls.
-
-  pants: Object.freeze([
-    "frontWaistband",
-
-    "backWaistband",
-
-    "frontLeftLeg",
-
-    "frontRightLeg",
-
-    "backLeftLeg",
-
-    "backRightLeg",
-
-    "frontLeftPocket",
-
-    "frontRightPocket",
-
-    "backLeftPocket",
-
-    "backRightPocket",
-  ]),
-
-  // Button-up shirt: eleven independently editable 2D/3D appearance regions.
-  // The model's shirtDetails mesh (buttons and placket) stays read-only.
-  shirt: Object.freeze([
-    "frontLeftBody",
-
-    "frontRightBody",
-
-    "backBody",
-
-    "frontLeftSleeve",
-
-    "frontRightSleeve",
-
-    "backLeftSleeve",
-
-    "backRightSleeve",
-
-    "frontLeftCollar",
-
-    "frontRightCollar",
-
-    "backCollar",
-
-    "frontPocket",
-  ]),
+  "kurta": Object.freeze(["frontBody", "backBody", "frontLeftSleeve", "frontRightSleeve", "backLeftSleeve", "backRightSleeve", "frontNeckline", "backNeckline", "frontHem", "backHem"]),
+  "suruwal": Object.freeze(["frontWaistband", "backWaistband", "frontLeftLeg", "frontRightLeg", "backLeftLeg", "backRightLeg"]),
+  "tshirt": Object.freeze(["frontBody", "backBody", "frontLeftSleeve", "frontRightSleeve", "backLeftSleeve", "backRightSleeve", "frontCollar", "backCollar"]),
+  "oversized-tshirt": Object.freeze(["frontBody", "backBody", "frontLeftSleeve", "frontRightSleeve", "backLeftSleeve", "backRightSleeve", "frontCollar", "backCollar", "frontHem", "backHem"]),
+  "polo": Object.freeze(["frontBody", "backBody", "frontLeftSleeve", "frontRightSleeve", "backLeftSleeve", "backRightSleeve", "frontLeftCuff", "frontRightCuff", "backLeftCuff", "backRightCuff", "frontCollar", "backCollar", "frontPlacket"]),
+  "long-sleeve-tshirt": Object.freeze(["frontBody", "backBody", "frontLeftSleeve", "frontRightSleeve", "backLeftSleeve", "backRightSleeve", "frontLeftCuff", "frontRightCuff", "backLeftCuff", "backRightCuff", "frontCollar", "backCollar"]),
+  "crop-top": Object.freeze(["frontBody", "backBody", "frontLeftSleeve", "frontRightSleeve", "backLeftSleeve", "backRightSleeve", "frontCollar", "backCollar", "frontHem", "backHem"]),
+  "shirt": Object.freeze(["frontLeftBody", "frontRightBody", "backBody", "frontLeftSleeve", "frontRightSleeve", "backLeftSleeve", "backRightSleeve", "frontLeftCollar", "frontRightCollar", "backCollar", "frontPocket"]),
+  "hoodie": Object.freeze(["frontBody", "backBody", "frontLeftSleeve", "frontRightSleeve", "backLeftSleeve", "backRightSleeve", "frontHood", "backHood", "frontPocket", "frontHem", "backHem", "frontLeftCuff", "frontRightCuff", "backLeftCuff", "backRightCuff"]),
+  "dress": Object.freeze(["frontBodice", "backBodice", "frontSkirt", "backSkirt", "frontLeftSleeve", "frontRightSleeve", "backLeftSleeve", "backRightSleeve", "frontWaistband", "backWaistband", "frontNeckline", "backNeckline"]),
+  "pants": Object.freeze(["frontWaistband", "backWaistband", "frontLeftLeg", "frontRightLeg", "backLeftLeg", "backRightLeg", "frontLeftPocket", "frontRightPocket", "backLeftPocket", "backRightPocket"]),
+  "womens-blazer": Object.freeze(["frontLeftBody", "frontRightBody", "backBody", "sideLeftBody", "sideRightBody", "frontLeftSleeve", "frontRightSleeve", "backLeftSleeve", "backRightSleeve", "frontLeftLapel", "frontRightLapel", "topCollar", "backInnerCollar"]),
+  "jeans": Object.freeze(["frontWaistband", "backWaistband", "frontLeftLeg", "frontRightLeg", "backLeftLeg", "backRightLeg", "frontLeftPocket", "frontRightPocket", "backLeftPocket", "backRightPocket"]),
+  "skirt": Object.freeze(["frontWaistband", "backWaistband", "frontLeftPanel", "frontCentrePanel", "frontRightPanel", "backLeftPanel", "backCentrePanel", "backRightPanel"]),
 });
+
+const SHOWCASE_3D_MODEL_IDS = Object.freeze(Object.keys(SHOWCASE_3D_REGIONS_BY_MODEL));
 
 const SHOWCASE_3D_HEX = /^#[0-9a-f]{6}$/i;
 
 const SHOWCASE_3D_IMAGE =
+
   /^data:image\/(png|jpeg|jpg|webp);base64,([A-Za-z0-9+/=]+)$/i;
 
 const SHOWCASE_3D_MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -1372,18 +1364,25 @@ const SHOWCASE_3D_MAX_OUTPUT_BYTES = 300 * 1024;
 let showcaseSharp;
 
 function readShowcaseSharp() {
+
   if (showcaseSharp !== undefined) return showcaseSharp;
 
   try {
+
     showcaseSharp = require("sharp");
+
   } catch {
+
     showcaseSharp = null;
+
   }
 
   return showcaseSharp;
+
 }
 
 async function makePublic3DOverlay(raw) {
+
   if (typeof raw !== "string" || raw.length > 7_000_000) return null;
 
   const match = SHOWCASE_3D_IMAGE.exec(raw);
@@ -1397,11 +1396,15 @@ async function makePublic3DOverlay(raw) {
   const sharp = readShowcaseSharp();
 
   if (sharp) {
+
     try {
+
       const converted = await sharp(bytes, { limitInputPixels: 6_000_000 })
+
         .rotate()
 
         .resize({
+
           width: 768,
 
           height: 768,
@@ -1409,6 +1412,7 @@ async function makePublic3DOverlay(raw) {
           fit: "inside",
 
           withoutEnlargement: true,
+
         })
 
         .webp({ quality: 76, effort: 4 })
@@ -1416,15 +1420,21 @@ async function makePublic3DOverlay(raw) {
         .toBuffer();
 
       if (converted.length <= SHOWCASE_3D_MAX_OUTPUT_BYTES) {
+
         return `data:image/webp;base64,${converted.toString("base64")}`;
+
       }
+
     } catch (error) {
+
       // Invalid preview data must never fail the whole Showcase detail.
 
       console.warn("Public 3D overlay conversion skipped:", error?.message);
+
     }
 
     return null;
+
   }
 
   // A very small, already-flattened artwork can render without Sharp.
@@ -1434,14 +1444,17 @@ async function makePublic3DOverlay(raw) {
   if (bytes.length <= SHOWCASE_3D_MAX_OUTPUT_BYTES) return raw;
 
   return null;
+
 }
 
 async function getPublicGarment3DPreview(designId) {
+
   // This query selects ONLY the published garment's appearance fields.
 
   // It never reads private projects or returns all of canvas_state to JS.
 
   const result = await db.query(
+
     `
 
       SELECT
@@ -1486,7 +1499,7 @@ async function getPublicGarment3DPreview(designId) {
 
         )
 
-        AND region.value #>> '{metadata,clothingTemplateId}' IN ('tshirt', 'hoodie', 'skirt', 'pants', 'shirt')
+        AND region.value #>> '{metadata,clothingTemplateId}' = ANY($2::text[])
 
         AND region.value->>'visible' IS DISTINCT FROM 'false'
 
@@ -1496,7 +1509,8 @@ async function getPublicGarment3DPreview(designId) {
 
     `,
 
-    [designId],
+    [designId, SHOWCASE_3D_MODEL_IDS],
+
   );
 
   const garment = result.rows[0];
@@ -1516,31 +1530,43 @@ async function getPublicGarment3DPreview(designId) {
   const artwork = {};
 
   const rawColours =
+
     garment.colours && typeof garment.colours === "object"
+
       ? garment.colours
+
       : {};
 
   const rawArtwork =
+
     garment.artwork && typeof garment.artwork === "object"
+
       ? garment.artwork
+
       : {};
 
   for (const id of regionIds) {
+
     const colour = rawColours[id];
 
     colours[id] =
+
       typeof colour === "string" && SHOWCASE_3D_HEX.test(colour)
+
         ? colour
+
         : "#ffffff";
 
     const source = await makePublic3DOverlay(rawArtwork[id]?.source);
 
     if (source) {
+
       // The 2D/3D editor already flattened its pattern, logos, and text into
 
       // one transparent image. Avoid sending the editable layer source here.
 
       artwork[id] = {
+
         source,
 
         type: "image",
@@ -1556,18 +1582,25 @@ async function getPublicGarment3DPreview(designId) {
         opacity: 1,
 
         fit: "fill",
+
       };
+
     }
+
   }
 
   return { model, version: 1, colours, artwork };
+
 }
 
 exports.getShowcaseItem = async (req, res) => {
+
   const slug = cleanText(req.params.slug);
 
   if (!slug) {
+
     return sendError(
+
       res,
 
       400,
@@ -1575,11 +1608,15 @@ exports.getShowcaseItem = async (req, res) => {
       "SHOWCASE_SLUG_REQUIRED",
 
       "A showcase item identifier is required.",
+
     );
+
   }
 
   if (slug.length > 200) {
+
     return sendError(
+
       res,
 
       400,
@@ -1587,11 +1624,15 @@ exports.getShowcaseItem = async (req, res) => {
       "INVALID_SHOWCASE_SLUG",
 
       "The showcase item identifier is invalid.",
+
     );
+
   }
 
   try {
+
     const result = await db.query(
+
       `
 
             SELECT
@@ -1951,10 +1992,13 @@ exports.getShowcaseItem = async (req, res) => {
           `,
 
       [slug],
+
     );
 
     if (result.rows.length === 0) {
+
       return sendError(
+
         res,
 
         404,
@@ -1962,7 +2006,9 @@ exports.getShowcaseItem = async (req, res) => {
         "SHOWCASE_ITEM_NOT_FOUND",
 
         "Showcase item not found.",
+
       );
+
     }
 
     /*=========================================================
@@ -1992,11 +2038,15 @@ exports.getShowcaseItem = async (req, res) => {
     let images = [];
 
     const galleryTable = await db.query(
+
       "SELECT to_regclass('public.design_images') AS table_name",
+
     );
 
     if (galleryTable.rows[0]?.table_name) {
+
       const galleryResult = await db.query(
+
         `
 
           SELECT
@@ -2044,15 +2094,19 @@ exports.getShowcaseItem = async (req, res) => {
         `,
 
         [design.design_id],
+
       );
 
       images = galleryResult.rows.map((row) => ({
+
         id: row.id,
 
         image_url: row.image_url,
 
         display_order: Number(row.display_order),
+
       }));
+
     }
 
     // Existing single-image previews and Fashion Editor publications
@@ -2060,15 +2114,21 @@ exports.getShowcaseItem = async (req, res) => {
     // have no design_images rows; use their established cover image.
 
     if (!images.length && design.watermarked_preview_url) {
+
       images = [
+
         {
+
           id: null,
 
           image_url: design.watermarked_preview_url,
 
           display_order: 1,
+
         },
+
       ];
+
     }
 
     // Only public/published appearance is revealed. This cannot grant remix
@@ -2078,23 +2138,33 @@ exports.getShowcaseItem = async (req, res) => {
     let preview3d = null;
 
     if (design.source_type === "fashion_editor") {
+
       try {
+
         preview3d = await getPublicGarment3DPreview(design.design_id);
+
       } catch (previewError) {
+
         console.error(
+
           "Showcase 3D preview could not be prepared:",
 
           previewError,
+
         );
 
         // Preserve the public image gallery if an older schema lacks 3D fields.
+
       }
+
     }
 
     return res.status(200).json({
+
       status: "success",
 
       data: {
+
         ...design,
 
         images,
@@ -2102,12 +2172,17 @@ exports.getShowcaseItem = async (req, res) => {
         image_count: images.length,
 
         preview_3d: preview3d,
+
       },
+
     });
+
   } catch (error) {
+
     console.error("Creator Showcase item query error:", error);
 
     return sendError(
+
       res,
 
       500,
@@ -2115,8 +2190,11 @@ exports.getShowcaseItem = async (req, res) => {
       "SHOWCASE_ITEM_UNAVAILABLE",
 
       "Unable to load the showcase item.",
+
     );
+
   }
+
 };
 
 /*=========================================================
@@ -2134,8 +2212,11 @@ featured Designer discovery.
 =========================================================*/
 
 exports.getTopDesigners = async (req, res) => {
+
   try {
+
     const result = await db.query(
+
       `
 
             SELECT
@@ -2205,19 +2286,25 @@ exports.getTopDesigners = async (req, res) => {
           `,
 
       [TOP_DESIGNERS_LIMIT],
+
     );
 
     return res.status(200).json({
+
       status: "success",
 
       results: result.rows.length,
 
       data: result.rows,
+
     });
+
   } catch (error) {
+
     console.error("Creator Showcase top designers query error:", error);
 
     return sendError(
+
       res,
 
       500,
@@ -2225,6 +2312,9 @@ exports.getTopDesigners = async (req, res) => {
       "TOP_DESIGNERS_UNAVAILABLE",
 
       "Unable to load featured designers.",
+
     );
+
   }
+
 };

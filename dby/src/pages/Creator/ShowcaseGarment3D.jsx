@@ -11,12 +11,9 @@
  */
 
 import React, {
-  Component,
-  Suspense,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+
+  Component, Suspense, useEffect, useMemo, useRef, useState,
+
 } from "react";
 
 import { Canvas, useThree } from "@react-three/fiber";
@@ -24,123 +21,44 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { Html, OrbitControls, useGLTF } from "@react-three/drei";
 
 import * as THREE from "three";
+import { getClothingTemplate } from "../sketches/templates/ClothingTemplates.js";
+import { getGarment3DConfig } from "../sketches/templates/GarmentTemplateRegistry.js";
 
-const GARMENT_MODELS = Object.freeze({
-  tshirt: Object.freeze({
-    label: "T-Shirt",
+// Phase 4 Showcase: use the SAME allowlisted 3D paths and 2D region IDs as
+// the Fashion Editor. Public preview payloads supply only a model ID, never a URL.
+function getPublishedGarmentConfiguration(model) {
+  if (typeof model !== "string" || !/^[a-z][a-z0-9-]*$/.test(model)) return null;
+  const template = getClothingTemplate(model);
+  const model3D = getGarment3DConfig(model);
+  if (!template || !model3D?.url || !Array.isArray(template.colourRegions)) return null;
+  return {
+    label: template.label,
+    url: model3D.url,
+    regions: template.colourRegions.map(({ id }) => id),
+  };
+}
 
-    url: "/models/garments/DBY_Realistic_TShirt_8Regions.glb",
-
-    regions: Object.freeze([
-      "frontBody",
-      "backBody",
-      "frontLeftSleeve",
-      "frontRightSleeve",
-
-      "backLeftSleeve",
-      "backRightSleeve",
-      "frontCollar",
-      "backCollar",
-    ]),
-  }),
-
-  hoodie: Object.freeze({
-    label: "Hoodie",
-
-    url: "/models/garments/DBY_Hoodie_Sketchfab_15Regions_BETA.glb",
-
-    regions: Object.freeze([
-      "frontBody",
-      "backBody",
-      "frontLeftSleeve",
-      "frontRightSleeve",
-
-      "backLeftSleeve",
-      "backRightSleeve",
-      "frontHood",
-      "backHood",
-
-      "frontPocket",
-      "frontHem",
-      "backHem",
-      "frontLeftCuff",
-
-      "frontRightCuff",
-      "backLeftCuff",
-      "backRightCuff",
-    ]),
-  }),
-
-  skirt: Object.freeze({
-    label: "Skirt",
-
-    url: "/models/garments/DBY_Aline_Skirt_8Regions_BETA.glb",
-
-    regions: Object.freeze([
-      "frontWaistband",
-      "backWaistband",
-
-      "frontLeftPanel",
-      "frontCentrePanel",
-      "frontRightPanel",
-
-      "backLeftPanel",
-      "backCentrePanel",
-      "backRightPanel",
-    ]),
-  }),
-
-  pants: Object.freeze({
-    label: "Cargo Pants",
-
-    url: "/models/garments/DBY_CargoPants_10Regions_BETA.glb",
-
-    regions: Object.freeze([
-      "frontWaistband",
-      "backWaistband",
-
-      "frontLeftLeg",
-      "frontRightLeg",
-      "backLeftLeg",
-      "backRightLeg",
-
-      "frontLeftPocket",
-      "frontRightPocket",
-      "backLeftPocket",
-      "backRightPocket",
-    ]),
-  }),
-
-  shirt: Object.freeze({
-    label: "Button-Up Shirt",
-
-    url: "/models/garments/DBY_ButtonUpShirt_11Regions_BETA.glb",
-
-    // These 11 names must match the GLB meshes and editor template regions.
-
-    // shirtDetails is intentionally not an editable region.
-
-    regions: Object.freeze([
-      "frontLeftBody",
-      "frontRightBody",
-      "backBody",
-
-      "frontLeftSleeve",
-      "frontRightSleeve",
-
-      "backLeftSleeve",
-      "backRightSleeve",
-
-      "frontLeftCollar",
-      "frontRightCollar",
-      "backCollar",
-
-      "frontPocket",
-    ]),
-  }),
+// CC BY 4.0 attributions for adapted Sketchfab models; links are fixed by code.
+// The editor's native T-shirt model is omitted because no external attribution
+// is verified for that specific GLB.
+const PUBLISHED_MODEL_CREDITS = Object.freeze({
+  hoodie: { creator: "Virtual Pandora", source: "https://sketchfab.com/3d-models/hoodie-97611a53e3b846f69e0655b210f72b2f" },
+  skirt: { creator: "geenee", source: "https://sketchfab.com/3d-models/a-line-skirt-a961f438af1c4249b88ac8c425d59292" },
+  pants: { creator: "Alexandru Jardan", source: "https://sketchfab.com/3d-models/cargo-pants-15af6dd7d5274fc5be6e09e245154761" },
+  shirt: { creator: "Scarecrow_original", source: "https://sketchfab.com/3d-models/shirt-2-75b758f5aed04fbda8e2f28d19ae3a36" },
+  dress: { creator: "Style3D Meta", source: "https://sketchfab.com/3d-models/long-white-puffed-sleeve-dress-40fa1e27c9044499bf644481b346bf8f" },
+  polo: { creator: "Ikal.Ichwan", source: "https://sketchfab.com/3d-models/t-shirt-polo-lengan-pendek-74c33d16b31346f1a46a55c3ec8e8a78" },
+  "oversized-tshirt": { creator: "ap-school", source: "https://sketchfab.com/3d-models/oversized-t-shirt-e6f9b60f58404ccaa40e8e3bdb4edc95" },
+  "long-sleeve-tshirt": { creator: "chokybali", source: "https://sketchfab.com/3d-models/long-sleeve-t-shirt-ef22cf345c174b569fdfa6a653a6bf6f" },
+  "crop-top": { creator: "yurakara1212", source: "https://sketchfab.com/3d-models/athletic-mesh-crop-top-game-ready-21a1fcf3ab8c472e93b52679398193a1" },
+  kurta: { creator: "toorkhan", source: "https://sketchfab.com/3d-models/shalwar-kameez-pakistani-dress-kurta-qamees-baec698ca4b948f190db432f4d521073" },
+  suruwal: { creator: "toorkhan", source: "https://sketchfab.com/3d-models/shalwar-kameez-pakistani-dress-kurta-qamees-baec698ca4b948f190db432f4d521073" },
+  "womens-blazer": { creator: "Latitude23", source: "https://sketchfab.com/3d-models/womens-blazer-black-43d65a4518c24b5c8e786657364b2c41" },
+  jeans: { creator: "zulfiqarhussain555", source: "https://sketchfab.com/3d-models/male-grey-jeans-c9194aae802448d6906bee7d15893feb" },
 });
 
 const CAMERA_POSITIONS = Object.freeze({
+
   perspective: [3.3, 1.5, 5.1],
 
   front: [0, 0, 5.4],
@@ -150,14 +68,17 @@ const CAMERA_POSITIONS = Object.freeze({
   left: [-5.4, 0, 0],
 
   right: [5.4, 0, 0],
+
 });
 
 const COLOUR_RE = /^#[0-9a-f]{6}$/i;
 
 const safeColour = (colour) =>
+
   typeof colour === "string" && COLOUR_RE.test(colour) ? colour : "#ffffff";
 
 function projectedUv(geometry, regionId, bounds) {
+
   const owned = geometry.clone();
 
   const positions = owned.getAttribute("position");
@@ -171,6 +92,7 @@ function projectedUv(geometry, regionId, bounds) {
   const uv = new Float32Array(positions.count * 2);
 
   for (let i = 0; i < positions.count; i += 1) {
+
     const x = (positions.getX(i) - bounds.min.x) / width;
 
     const y = (positions.getY(i) - bounds.min.y) / height;
@@ -178,36 +100,45 @@ function projectedUv(geometry, regionId, bounds) {
     uv[2 * i] = regionId.startsWith("back") ? 1 - x : x;
 
     uv[2 * i + 1] = y;
+
   }
 
   owned.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
 
   return owned;
+
 }
 
 function collectBounds(meshes) {
+
   const box = new THREE.Box3();
 
   for (const mesh of meshes) {
+
     if (!mesh.geometry.getAttribute("position")) continue;
 
     if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
 
     box.union(mesh.geometry.boundingBox);
+
   }
 
   return box;
+
 }
 
 function readOverlay(source) {
+
   return new Promise((resolve, reject) => {
-    if (
-      typeof source !== "string" ||
-      !/^data:image\/(png|jpe?g|webp);base64,/i.test(source)
-    ) {
+
+    if (typeof source !== "string" ||
+
+        !/^data:image\/(png|jpe?g|webp);base64,/i.test(source)) {
+
       reject(new Error("Unsupported published artwork preview."));
 
       return;
+
     }
 
     const image = new Image();
@@ -216,24 +147,23 @@ function readOverlay(source) {
 
     image.onload = () => resolve(image);
 
-    image.onerror = () =>
-      reject(new Error("Published artwork could not be decoded."));
+    image.onerror = () => reject(new Error("Published artwork could not be decoded."));
 
     image.src = source;
+
   });
+
 }
 
 async function makeTexture(source, colour) {
+
   const image = await readOverlay(source);
 
   const canvas = document.createElement("canvas");
 
   canvas.width = Math.max(1, Math.min(1024, image.naturalWidth || image.width));
 
-  canvas.height = Math.max(
-    1,
-    Math.min(1024, image.naturalHeight || image.height),
-  );
+  canvas.height = Math.max(1, Math.min(1024, image.naturalHeight || image.height));
 
   const ctx = canvas.getContext("2d", { alpha: false });
 
@@ -256,14 +186,17 @@ async function makeTexture(source, colour) {
   texture.needsUpdate = true;
 
   return texture;
+
 }
 
 function PublishedGarment({ preview, configuration }) {
+
   const { scene } = useGLTF(configuration.url);
 
   const { invalidate } = useThree();
 
   const prepared = useMemo(() => {
+
     const instance = scene.clone(true);
 
     const regions = new Map();
@@ -277,24 +210,25 @@ function PublishedGarment({ preview, configuration }) {
     const textures = new Map();
 
     function visit(node, parentRegion = null) {
-      const id = configuration.regions.includes(node.name)
-        ? node.name
-        : parentRegion;
+
+      const id = configuration.regions.includes(node.name) ? node.name : parentRegion;
 
       if (node.isMesh) {
+
         if (id) {
+
           const meshes = regions.get(id) || [];
 
           meshes.push(node);
 
           regions.set(id, meshes);
+
         }
 
-        const originals = Array.isArray(node.material)
-          ? node.material
-          : [node.material];
+        const originals = Array.isArray(node.material) ? node.material : [node.material];
 
         const owned = originals.map((mat) => {
+
           const material = mat.clone();
 
           material.side = THREE.DoubleSide;
@@ -306,28 +240,35 @@ function PublishedGarment({ preview, configuration }) {
           materialsOwned.push(material);
 
           return material;
+
         });
 
         node.material = Array.isArray(node.material) ? owned : owned[0];
 
         if (id) materials.set(id, [...(materials.get(id) || []), ...owned]);
+
       }
 
       node.children.forEach((child) => visit(child, id));
+
     }
 
     visit(instance);
 
     for (const [regionId, meshes] of regions) {
+
       const bounds = collectBounds(meshes);
 
       if (bounds.isEmpty()) continue;
 
       for (const mesh of meshes) {
+
         mesh.geometry = projectedUv(mesh.geometry, regionId, bounds);
 
         geometriesOwned.push(mesh.geometry);
+
       }
+
     }
 
     instance.updateWorldMatrix(true, true);
@@ -342,22 +283,18 @@ function PublishedGarment({ preview, configuration }) {
 
     const scale = 2.65 / Math.max(size.x, size.y, size.z, 0.001);
 
-    return {
-      instance,
-      scale,
-      materials,
-      materialsOwned,
-      geometriesOwned,
-      textures,
-    };
+    return { instance, scale, materials, materialsOwned, geometriesOwned, textures };
+
   }, [scene, configuration]);
 
   useEffect(() => {
+
     let active = true;
 
     // Preview data never contains editing layers: only final flattened artwork.
 
     const tasks = configuration.regions.map(async (id) => {
+
       const mats = prepared.materials.get(id) || [];
 
       if (!mats.length) return;
@@ -369,71 +306,78 @@ function PublishedGarment({ preview, configuration }) {
       let texture = null;
 
       if (source) {
+
         try {
+
           texture = await makeTexture(source, colour);
+
         } catch (error) {
+
           console.warn("3D artwork preview skipped for", id, error?.message);
+
         }
+
       }
 
       if (!active) {
+
         texture?.dispose();
 
         return;
+
       }
 
       const previous = prepared.textures.get(id);
 
       for (const mat of mats) {
+
         mat.map = texture;
 
         mat.color?.set(texture ? "#ffffff" : colour);
 
         mat.needsUpdate = true;
+
       }
 
       if (texture) prepared.textures.set(id, texture);
+
       else prepared.textures.delete(id);
 
       if (previous && previous !== texture) previous.dispose();
 
       invalidate();
+
     });
 
     void Promise.all(tasks);
 
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
+
   }, [prepared, preview, configuration, invalidate]);
 
-  useEffect(
-    () => () => {
-      prepared.textures.forEach((texture) => texture.dispose());
+  useEffect(() => () => {
 
-      prepared.geometriesOwned.forEach((geometry) => geometry.dispose());
+    prepared.textures.forEach((texture) => texture.dispose());
 
-      prepared.materialsOwned.forEach((material) => material.dispose());
-    },
-    [prepared],
-  );
+    prepared.geometriesOwned.forEach((geometry) => geometry.dispose());
 
-  return (
-    <group scale={prepared.scale}>
-      <primitive object={prepared.instance} dispose={null} />
-    </group>
-  );
+    prepared.materialsOwned.forEach((material) => material.dispose());
+
+  }, [prepared]);
+
+  return <group scale={prepared.scale}><primitive object={prepared.instance} dispose={null}/></group>;
+
 }
 
 function ReadonlyCamera({ view, resetKey }) {
+
   const controls = useRef(null);
 
   const { camera, invalidate } = useThree();
 
   useEffect(() => {
-    camera.position.set(
-      ...(CAMERA_POSITIONS[view] || CAMERA_POSITIONS.perspective),
-    );
+
+    camera.position.set(...(CAMERA_POSITIONS[view] || CAMERA_POSITIONS.perspective));
 
     camera.lookAt(0, 0, 0);
 
@@ -442,248 +386,156 @@ function ReadonlyCamera({ view, resetKey }) {
     controls.current?.update();
 
     invalidate();
+
   }, [view, resetKey, camera, invalidate]);
 
   return (
+
     <OrbitControls
-      ref={controls}
-      makeDefault
-      enableDamping
-      dampingFactor={0.08}
-      enablePan={false}
-      minDistance={2.3}
-      maxDistance={13}
-      minPolarAngle={0.08}
-      maxPolarAngle={Math.PI - 0.08}
+
+      ref={controls} makeDefault enableDamping dampingFactor={0.08}
+
+      enablePan={false} minDistance={2.3} maxDistance={13}
+
+      minPolarAngle={0.08} maxPolarAngle={Math.PI - 0.08}
+
     />
+
   );
+
 }
 
 class PreviewErrorBoundary extends Component {
+
   constructor(props) {
+
     super(props);
 
     this.state = { error: false };
+
   }
 
-  static getDerivedStateFromError() {
-    return { error: true };
-  }
+  static getDerivedStateFromError() { return { error: true }; }
 
-  componentDidCatch(error) {
-    console.error("3D Showcase preview failed:", error);
-  }
+  componentDidCatch(error) { console.error("3D Showcase preview failed:", error); }
 
   render() {
+
     if (this.state.error) {
-      return (
-        <div
-          role="status"
-          className="flex h-full items-center justify-center p-8 text-center text-sm text-slate-500"
-        >
-          This 3D preview is temporarily unavailable. The 2D images are still
-          available.
-        </div>
-      );
+
+      return <div role="status" className="flex h-full items-center justify-center p-8 text-center text-sm text-slate-500">This 3D preview is temporarily unavailable. The 2D images are still available.</div>;
+
     }
 
     return this.props.children;
+
   }
+
 }
 
 export default function ShowcaseGarment3D({ preview }) {
+
   const [view, setView] = useState("perspective");
 
   const [resetKey, setResetKey] = useState(0);
 
   const options = [
-    { id: "perspective", label: "3/4" },
-    { id: "front", label: "Front" },
 
-    { id: "back", label: "Back" },
-    { id: "left", label: "Left" },
+    { id: "perspective", label: "3/4" }, { id: "front", label: "Front" },
+
+    { id: "back", label: "Back" }, { id: "left", label: "Left" },
 
     { id: "right", label: "Right" },
+
   ];
 
   const model = typeof preview?.model === "string" ? preview.model : "";
 
-  const configuration = Object.hasOwn(GARMENT_MODELS, model)
-    ? GARMENT_MODELS[model]
-    : null;
+  const configuration = useMemo(() => getPublishedGarmentConfiguration(model), [model]);
 
   if (!configuration) return null;
 
   return (
-    <section
-      className="flex h-full min-h-0 w-full flex-col bg-gradient-to-b from-slate-200 via-slate-100 to-slate-300 dark:from-slate-700 dark:via-slate-800 dark:to-slate-950"
-      aria-label={`Read-only interactive 3D ${configuration.label} preview`}
-    >
+
+    <section className="flex h-full min-h-0 w-full flex-col bg-gradient-to-b from-slate-200 via-slate-100 to-slate-300 dark:from-slate-700 dark:via-slate-800 dark:to-slate-950" aria-label={`Read-only interactive 3D ${configuration.label} preview`}>
+
       <div className="relative min-h-0 flex-1">
+
         <PreviewErrorBoundary key={configuration.url}>
+
           <Canvas
-            dpr={[1, 1.5]}
-            frameloop="demand"
-            camera={{
-              position: CAMERA_POSITIONS.perspective,
-              fov: 35,
-              near: 0.1,
-              far: 80,
-            }}
-            gl={{
-              antialias: true,
-              alpha: true,
-              powerPreference: "high-performance",
-            }}
+
+            dpr={[1, 1.5]} frameloop="demand"
+
+            camera={{ position: CAMERA_POSITIONS.perspective, fov: 35, near: 0.1, far: 80 }}
+
+            gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
+
             style={{ width: "100%", height: "100%" }}
+
           >
-            <ambientLight intensity={1.4} />
 
-            <hemisphereLight args={["#ffffff", "#475569", 1.4]} />
+            <ambientLight intensity={1.4}/>
 
-            <directionalLight position={[4, 6, 6]} intensity={2.5} />
+            <hemisphereLight args={["#ffffff", "#475569", 1.4]}/>
 
-            <directionalLight position={[-5, 2, -4]} intensity={1.5} />
+            <directionalLight position={[4, 6, 6]} intensity={2.5}/>
 
-            <Suspense
-              fallback={
-                <Html center>
-                  <div className="rounded-md bg-black/80 px-4 py-2 text-xs text-white">
-                    Loading 3D {configuration.label}…
-                  </div>
-                </Html>
-              }
-            >
-              <PublishedGarment
-                key={configuration.url}
-                preview={preview}
-                configuration={configuration}
-              />
+            <directionalLight position={[-5, 2, -4]} intensity={1.5}/>
+
+            <Suspense fallback={<Html center><div className="rounded-md bg-black/80 px-4 py-2 text-xs text-white">Loading 3D {configuration.label}…</div></Html>}>
+
+              <PublishedGarment key={configuration.url} preview={preview} configuration={configuration}/>
+
             </Suspense>
 
-            <ReadonlyCamera view={view} resetKey={resetKey} />
+            <ReadonlyCamera view={view} resetKey={resetKey}/>
+
           </Canvas>
+
         </PreviewErrorBoundary>
 
-        <span className="pointer-events-none absolute bottom-3 left-3 rounded-lg bg-black/70 px-3 py-1.5 text-[11px] text-white">
-          {configuration.label} · Drag to rotate · Scroll to zoom · Preview only
-        </span>
+        <span className="pointer-events-none absolute bottom-3 left-3 rounded-lg bg-black/70 px-3 py-1.5 text-[11px] text-white">{configuration.label} · Drag to rotate · Scroll to zoom · Preview only</span>
+
       </div>
 
-      <nav
-        className="flex shrink-0 flex-wrap items-center justify-center gap-2 border-t border-black/10 bg-slate-950/95 p-3"
-        aria-label="3D garment camera controls"
-      >
+      <nav className="flex shrink-0 flex-wrap items-center justify-center gap-2 border-t border-black/10 bg-slate-950/95 p-3" aria-label="3D garment camera controls">
+
         {options.map(({ id, label }) => (
-          <button
-            key={id}
-            type="button"
-            aria-pressed={view === id}
-            onClick={() => {
-              setView(id);
-              setResetKey((n) => n + 1);
-            }}
-            className={`rounded-lg border px-3 py-2 text-xs font-bold transition ${view === id ? "border-[#D4AF37] bg-[#D4AF37] text-black" : "border-white/20 bg-slate-800 text-white hover:bg-slate-700"}`}
-          >
+
+          <button key={id} type="button" aria-pressed={view === id}
+
+            onClick={() => { setView(id); setResetKey((n) => n + 1); }}
+
+            className={`rounded-lg border px-3 py-2 text-xs font-bold transition ${view === id ? "border-[#D4AF37] bg-[#D4AF37] text-black" : "border-white/20 bg-slate-800 text-white hover:bg-slate-700"}`}>
+
             {label}
+
           </button>
+
         ))}
+
       </nav>
 
-      {preview.model === "pants" && (
+      {Object.prototype.hasOwnProperty.call(PUBLISHED_MODEL_CREDITS, model) && (
         <p className="shrink-0 bg-slate-950 px-3 pb-2 text-center text-[10px] text-slate-400">
-          Modified 3D Cargo Pants model by{" "}
-          <a
-            href="https://sketchfab.com/3d-models/cargo-pants-15af6dd7d5274fc5be6e09e245154761"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-white"
-          >
-            Alexandru Jardan (Sketchfab)
+          Adapted 3D garment by{" "}
+          <a href={PUBLISHED_MODEL_CREDITS[model].source} target="_blank"
+            rel="noopener noreferrer" className="underline underline-offset-2 hover:text-white">
+            {PUBLISHED_MODEL_CREDITS[model].creator} (Sketchfab)
           </a>
           {" · "}
-          <a
-            href="https://creativecommons.org/licenses/by/4.0/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-white"
-          >
+          <a href="https://creativecommons.org/licenses/by/4.0/"
+            target="_blank" rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-white">
             CC BY 4.0
           </a>
-          {" · "}Mesh segmented into 10 editable regions for DesignByYou.
+          {" · "}Modified and segmented for DesignByYou.
         </p>
       )}
 
-      {preview.model === "skirt" && (
-        <p className="shrink-0 bg-slate-950 px-3 pb-2 text-center text-[10px] text-slate-400">
-          Modified 3D A-line skirt model by{" "}
-          <a
-            href="https://sketchfab.com/3d-models/a-line-skirt-a961f438af1c4249b88ac8c425d59292"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-white"
-          >
-            geenee (Sketchfab)
-          </a>
-          {" · "}
-          <a
-            href="https://creativecommons.org/licenses/by/4.0/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-white"
-          >
-            CC BY 4.0
-          </a>
-        </p>
-      )}
-
-      {preview.model === "shirt" && (
-        <p className="shrink-0 bg-slate-950 px-3 pb-2 text-center text-[10px] text-slate-400">
-          Modified 3D Shirt 2 model by{" "}
-          <a
-            href="https://sketchfab.com/3d-models/shirt-2-75b758f5aed04fbda8e2f28d19ae3a36"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-white"
-          >
-            Scarecrow_original (Sketchfab)
-          </a>
-          {" · "}
-          <a
-            href="https://creativecommons.org/licenses/by/4.0/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-white"
-          >
-            CC BY 4.0
-          </a>
-          {" · "}Modified for DesignByYou: 11 editable regions; textures
-          omitted.
-        </p>
-      )}
-
-      {preview.model === "hoodie" && (
-        <p className="shrink-0 bg-slate-950 px-3 pb-2 text-center text-[10px] text-slate-400">
-          Modified 3D hoodie model by{" "}
-          <a
-            href="https://sketchfab.com/3d-models/hoodie-97611a53e3b846f69e0655b210f72b2f"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-white"
-          >
-            Virtual Pandora (Sketchfab)
-          </a>
-          {" · "}
-          <a
-            href="https://creativecommons.org/licenses/by/4.0/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-white"
-          >
-            CC BY 4.0
-          </a>
-        </p>
-      )}
     </section>
+
   );
+
 }

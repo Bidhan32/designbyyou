@@ -1,0 +1,28 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const source = readFileSync(resolve(here, "../src/pages/sketches/editor/Garment3DClickGuard.js"), "utf8");
+const guardModule = await import(`data:text/javascript,${encodeURIComponent(source)}`);
+const createGuard = guardModule.createGarment3DClickGuard;
+const ev = (x, y, other = {}) => ({ target: { tagName: "CANVAS" }, pointerId: 4, pointerType: "mouse", isPrimary: true, button: 0, clientX: x, clientY: y, ...other });
+let checks = 0;
+const verify = (testName, fn) => { fn(); checks++; console.log(`[PASS] ${testName}`); };
+const downRegion = (guard, region = "frontBody", event = ev(100, 100)) => { guard.down(event); guard.regionDown(region, event.pointerId); };
+verify("stationary primary mouse click selects starting region", () => { const g=createGuard(); downRegion(g); g.up(ev(100,100)); assert.equal(g.consumeClick("frontBody"), true); });
+verify("single slight pointer jitter below 3px can select", () => { const g=createGuard(); downRegion(g); g.move(ev(102,101)); g.up(ev(102,101)); assert.equal(g.consumeClick("frontBody"), true); });
+verify("drag rotates without selecting, even if pointer returns", () => { const g=createGuard(); downRegion(g); g.move(ev(130,135)); g.move(ev(100,100)); g.up(ev(100,100)); assert.equal(g.consumeClick("frontBody"), false); });
+verify("small orbit movement blocks click even below pixel threshold", () => { const g=createGuard(); downRegion(g); g.cameraChanged(); g.up(ev(100,100)); assert.equal(g.consumeClick("frontBody"), false); });
+verify("different region on pointer-up cannot be picked", () => { const g=createGuard(); downRegion(g, "frontBody"); g.up(ev(100,100)); assert.equal(g.consumeClick("frontCollar"), false); });
+verify("canvas click without region pointer-down does not select", () => { const g=createGuard(); g.down(ev(100,100)); g.up(ev(100,100)); assert.equal(g.consumeClick("frontBody"), false); });
+verify("secondary mouse buttons are ignored", () => { const g=createGuard(); g.down(ev(100,100,{button:2})); g.regionDown("frontBody",4); g.up(ev(100,100)); assert.equal(g.consumeClick("frontBody"), false); });
+verify("second touch pointer is ignored", () => { const g=createGuard(); g.down(ev(100,100,{pointerType:"touch",isPrimary:false})); g.regionDown("frontBody",4); g.up(ev(100,100)); assert.equal(g.consumeClick("frontBody"),false); });
+verify("touch rotation is not click", () => { const g=createGuard(); downRegion(g,"frontBody",ev(100,100,{pointerType:"touch"})); g.move(ev(108,100)); g.up(ev(108,100)); assert.equal(g.consumeClick("frontBody"),false); });
+verify("touch tap selects", () => { const g=createGuard(); downRegion(g,"frontBody",ev(100,100,{pointerType:"touch"})); g.up(ev(104,104,{pointerType:"touch"})); assert.equal(g.consumeClick("frontBody"),true); });
+verify("leaving canvas cancels click", () => { const g=createGuard(); downRegion(g); g.leave(); g.up(ev(100,100)); assert.equal(g.consumeClick("frontBody"),false); });
+verify("cancelled gesture cannot select", () => { const g=createGuard(); downRegion(g); g.cancel(); g.up(ev(100,100)); assert.equal(g.consumeClick("frontBody"),false); });
+verify("the click can be consumed only once", () => { const g=createGuard(); downRegion(g); g.up(ev(100,100)); assert.equal(g.consumeClick("frontBody"),true); assert.equal(g.consumeClick("frontBody"),false); });
+verify("overlay controls are not model clicks", () => { const g=createGuard(); g.down(ev(100,100,{target:{tagName:"BUTTON"}})); g.regionDown("frontBody",4); g.up(ev(100,100)); assert.equal(g.consumeClick("frontBody"),false); });
+console.log(`\n${checks} guard tests passed`);
