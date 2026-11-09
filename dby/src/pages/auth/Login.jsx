@@ -1,14 +1,11 @@
 "use strict";
-
 /*
 =========================================================
 DesignByYou Login Page
 Authentication, Email Verification & Role Redirect
 Version 2.1
 =========================================================
-
 Version 2.1:
-
 - Creator email verification is enforced by the backend.
 - EMAIL_NOT_VERIFIED redirects only that specific case
   to /verify-otp.
@@ -18,279 +15,249 @@ Version 2.1:
 - Preserves Creator, Designer and Superadmin redirects.
 =========================================================
 */
-
 import React, { useState } from "react";
-
 import { Link, useNavigate } from "react-router-dom";
-
 import { Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
-
 import API from "../../api/axios";
-
 import AuthLayout from "../../Layouts/AuthLayout";
-
 import { useAuth } from "../../context/AuthContext";
-
 /*=========================================================
 Login
 =========================================================*/
-
 const Login = () => {
   const navigate = useNavigate();
-
   const { login } = useAuth();
-
   const [loading, setLoading] = useState(false);
-
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
   const [error, setError] = useState("");
-
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
-
   /*=====================================================
   Input Change
   =====================================================*/
-
   const handleChange = (event) => {
     const { name, value } = event.target;
-
     setFormData((current) => ({
       ...current,
       [name]: value,
     }));
-
     if (error) {
       setError("");
+    }
+  };
+  /*=====================================================
+  Recover an unfinished email verification.
+  Password is not required to request a code, and the
+  backend deliberately returns the same success message
+  for unknown, verified and unverified email addresses.
+  =====================================================*/
+  const handleResumeVerification = async () => {
+    if (loading || recoveryLoading) return;
+
+    const email = formData.email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Enter the email address you registered with first.");
+      return;
+    }
+
+    setRecoveryLoading(true);
+    setError("");
+
+    try {
+      await API.post("/auth/resend-otp", { email });
+
+      try {
+        sessionStorage.setItem("pending_verification_email", email);
+      } catch {
+        // Navigation state will still carry the email if storage is blocked.
+      }
+
+      navigate("/verify-otp", {
+        state: {
+          email,
+          reason: "EMAIL_NOT_VERIFIED",
+          message:
+            "If this email has an unverified account, a new code has been requested. Check your inbox and spam folder; use the latest code.",
+        },
+      });
+    } catch (error) {
+      if (error?.response?.status === 429) {
+        setError(
+          error?.response?.data?.message ||
+            "Too many code requests. Please try again later.",
+        );
+      } else {
+        setError(
+          "Unable to request a verification code right now. Please try again.",
+        );
+      }
+    } finally {
+      setRecoveryLoading(false);
     }
   };
 
   /*=====================================================
   Login
   =====================================================*/
-
   const handleLogin = async (event) => {
     event.preventDefault();
-
-    if (loading) {
+    if (loading || recoveryLoading) {
       return;
     }
-
     const email = formData.email.trim().toLowerCase();
-
     const password = formData.password;
-
     /*-------------------------------------------------
     Basic Validation
     -------------------------------------------------*/
-
     if (!email) {
       setError("Please enter your email address.");
-
       return;
     }
-
     if (!password) {
       setError("Please enter your password.");
-
       return;
     }
-
     setLoading(true);
-
     setError("");
-
     try {
       const { data } = await API.post("/auth/login", {
         email,
         password,
       });
-
       /*-------------------------------------------------
       Validate Login Response
       -------------------------------------------------*/
-
       if (data?.status !== "success" || !data?.token || !data?.user) {
         throw new Error("Invalid login response.");
       }
-
       /*-------------------------------------------------
       Save Authentication
-
       AuthContext stores:
-
       - JWT token
       - current user
       -------------------------------------------------*/
-
       login(data.user, data.token);
-
       /*-------------------------------------------------
       Clear Verification Trace
-
       A successful login means the account passed all
       login-level verification requirements.
       -------------------------------------------------*/
-
       sessionStorage.removeItem("pending_verification_email");
-
       /*-------------------------------------------------
       Role Redirect
-
       CREATOR:
       - Backend already guarantees verified email before
         a Creator reaches this point.
-
       DESIGNER:
       - Pending Designers may still sign in.
       - Approval-sensitive actions are protected by
         backend authorization middleware.
-
       SUPERADMIN:
       - Redirect directly to Superadmin dashboard.
       -------------------------------------------------*/
-
       const role = String(data.user.role || "")
         .trim()
         .toLowerCase();
-
       if (role === "creator") {
         navigate("/creator/showcase", {
           replace: true,
         });
-
         return;
       }
-
       if (role === "designer") {
         navigate("/designer/explore", {
           replace: true,
         });
-
         return;
       }
-
       if (role === "superadmin") {
         navigate("/superadmin/dashboard", {
           replace: true,
         });
-
         return;
       }
-
       navigate("/unauthorized", {
         replace: true,
       });
     } catch (err) {
       const status = err.response?.status;
-
       const responseData = err.response?.data;
-
       const code = String(responseData?.code || "")
         .trim()
         .toUpperCase();
-
       const backendMessage = responseData?.message;
-
       /*-------------------------------------------------
       Email Verification Required
-
       IMPORTANT:
-
       Only this explicit backend code redirects the user
       to OTP verification.
-
       Never redirect every HTTP 403 to /verify-otp.
       -------------------------------------------------*/
-
       if (status === 403 && code === "EMAIL_NOT_VERIFIED") {
         /*
         Keep the email available if the user refreshes
         the verification page.
         */
-
         sessionStorage.setItem("pending_verification_email", email);
-
         navigate("/verify-otp", {
           replace: true,
-
           state: {
             email,
-
             reason: "EMAIL_NOT_VERIFIED",
-
             message:
               backendMessage || "Please verify your email before signing in.",
           },
         });
-
         return;
       }
-
       /*-------------------------------------------------
       Login Rate Limit
       -------------------------------------------------*/
-
       if (status === 429 || code === "LOGIN_RATE_LIMITED") {
         setError(
           backendMessage ||
             "Too many sign-in attempts. Please wait before trying again.",
         );
-
         return;
       }
-
       /*-------------------------------------------------
       Invalid Credentials
       -------------------------------------------------*/
-
       if (status === 401) {
         setError(backendMessage || "Invalid email or password.");
-
         return;
       }
-
       /*-------------------------------------------------
       Forbidden Account
-
       Other HTTP 403 responses must NOT be mistaken for
       email verification.
-
       Examples may include:
-
       - FORBIDDEN
       - ACCOUNT_PENDING_APPROVAL
       - ACCOUNT_REJECTED
       - ACCOUNT_SUSPENDED
       -------------------------------------------------*/
-
       if (status === 403) {
         setError(
           backendMessage || "This account cannot access the application.",
         );
-
         return;
       }
-
       /*-------------------------------------------------
       Network Failure
       -------------------------------------------------*/
-
       if (!err.response) {
         setError(
           "Unable to connect to the server. Please check your connection and try again.",
         );
-
         return;
       }
-
       /*-------------------------------------------------
       Development Logging
       -------------------------------------------------*/
-
       if (import.meta.env.DEV) {
         console.error("Login failed:", {
           status,
@@ -298,21 +265,17 @@ const Login = () => {
           message: backendMessage || err.message,
         });
       }
-
       /*-------------------------------------------------
       Generic Failure
       -------------------------------------------------*/
-
       setError(backendMessage || "Unable to sign in. Please try again.");
     } finally {
       setLoading(false);
     }
   };
-
   /*=====================================================
   Render
   =====================================================*/
-
   return (
     <AuthLayout
       title="Welcome Back"
@@ -322,7 +285,6 @@ const Login = () => {
         {/*=========================================
         Email
         =========================================*/}
-
         <div className="space-y-1">
           <label
             htmlFor="login-email"
@@ -330,14 +292,12 @@ const Login = () => {
           >
             Email Address
           </label>
-
           <div className="relative">
             <Mail
               className="absolute left-4 top-3.5 text-gray-400"
               size={18}
               aria-hidden="true"
             />
-
             <input
               id="login-email"
               name="email"
@@ -353,11 +313,9 @@ const Login = () => {
             />
           </div>
         </div>
-
         {/*=========================================
         Password
         =========================================*/}
-
         <div className="space-y-1">
           <div className="flex justify-between items-end mb-1">
             <label
@@ -366,7 +324,6 @@ const Login = () => {
             >
               Password
             </label>
-
             <Link
               to="/forgot-password"
               className="text-[10px] uppercase tracking-widest font-bold text-[#D4AF37] hover:underline"
@@ -374,14 +331,12 @@ const Login = () => {
               Forgot?
             </Link>
           </div>
-
           <div className="relative">
             <Lock
               className="absolute left-4 top-3.5 text-gray-400"
               size={18}
               aria-hidden="true"
             />
-
             <input
               id="login-password"
               name="password"
@@ -394,7 +349,6 @@ const Login = () => {
               className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-[#D4AF37] focus:bg-white transition-all disabled:opacity-60"
               required
             />
-
             <button
               type="button"
               onClick={() => setShowPassword((current) => !current)}
@@ -410,11 +364,9 @@ const Login = () => {
             </button>
           </div>
         </div>
-
         {/*=========================================
         Error
         =========================================*/}
-
         {error && (
           <div
             role="alert"
@@ -423,31 +375,50 @@ const Login = () => {
             {error}
           </div>
         )}
-
         {/*=========================================
         Submit
         =========================================*/}
-
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || recoveryLoading}
           className="w-full py-4 bg-[#1A1A1A] text-white rounded-2xl font-semibold tracking-wide hover:bg-black transition-all shadow-xl shadow-black/5 flex justify-center items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           {loading ? (
             <>
               <Loader2 className="animate-spin" size={20} aria-hidden="true" />
-
               <span>Signing In...</span>
             </>
           ) : (
             "Sign In to Studio"
           )}
         </button>
-
+        {/*=========================================
+        Resume email verification (works without password)
+        =========================================*/}
+        <div className="rounded-2xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.06] px-4 py-4 text-center">
+          <p className="text-xs font-semibold text-slate-700">
+            Registered but never entered your verification code?
+          </p>
+          <p className="mt-1 text-[11px] leading-5 text-slate-500">
+            Enter your registration email above, then request a fresh code.
+          </p>
+          <button
+            type="button"
+            onClick={handleResumeVerification}
+            disabled={loading || recoveryLoading}
+            className="mt-3 inline-flex min-h-9 items-center justify-center gap-2 rounded-xl border border-[#D4AF37]/50 bg-white px-4 py-2 text-xs font-bold text-[#8b6b20] transition hover:bg-[#D4AF37]/10 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {recoveryLoading ? (
+              <Loader2 size={15} className="animate-spin" aria-hidden="true" />
+            ) : (
+              <Mail size={15} aria-hidden="true" />
+            )}
+            {recoveryLoading ? "Requesting code..." : "Resend verification code"}
+          </button>
+        </div>
         {/*=========================================
         Registration
         =========================================*/}
-
         <div className="text-center pt-6 border-t border-gray-50">
           <p className="text-sm text-gray-500">
             Don't have an account?{" "}
@@ -463,5 +434,4 @@ const Login = () => {
     </AuthLayout>
   );
 };
-
 export default Login;
