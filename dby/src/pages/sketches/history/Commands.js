@@ -1280,9 +1280,9 @@ export function canMergeCommands(
             );
 
         case COMMAND_TYPES.UPDATE_OBJECTS:
-
+        // falls through
         case COMMAND_TYPES.MOVE_OBJECTS:
-
+        // falls through
         case COMMAND_TYPES.TRANSFORM_OBJECTS:
 
             return haveMatchingObjectIds(
@@ -1302,9 +1302,9 @@ export function canMergeCommands(
             );
 
         case COMMAND_TYPES.SET_VIEWPORT:
-
+        // falls through
         case COMMAND_TYPES.SET_ZOOM:
-
+        // falls through
         case COMMAND_TYPES.PAN_VIEWPORT:
 
             return true;

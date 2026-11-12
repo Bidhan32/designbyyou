@@ -1213,8 +1213,24 @@ exports.createEditorProject = async (req, res) => {
     );
   }
 
+  const saveKey = req.body?.client_save_id;
+  if (saveKey !== undefined && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(saveKey)) {
+    return sendError(res, 400, "Invalid save request ID.");
+  }
+  let client;
   try {
-    const result = await db.query(
+    if (saveKey) {
+      client = await db.connect();
+      await client.query("BEGIN");
+      await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [creatorId + ":" + saveKey]);
+      const existing = await client.query("SELECT * FROM editor_projects WHERE owner_id=$1 AND project_data->>'cloudSaveKey'=$2 LIMIT 1", [creatorId, saveKey]);
+      if (existing.rows.length) {
+        await client.query("COMMIT");
+        return res.status(200).json({ status: "success", reused: true, data: existing.rows[0] });
+      }
+      projectValidation.serializedProject = JSON.stringify({ ...projectValidation.projectData, cloudSaveKey: saveKey });
+    }
+    const result = await (client || db).query(
       `
         INSERT INTO editor_projects (
           owner_id,
@@ -1260,12 +1276,14 @@ exports.createEditorProject = async (req, res) => {
       ],
     );
 
+    if (client) await client.query("COMMIT");
     return res.status(201).json({
       status: "success",
       message: "Creator Fashion Editor project created successfully.",
       data: result.rows[0],
     });
   } catch (error) {
+    if (client) await rollbackQuietly(client);
     console.error("Creator editor project creation failed:", error);
 
     return sendError(
@@ -1274,6 +1292,8 @@ exports.createEditorProject = async (req, res) => {
       "The Creator Fashion Editor project could not be created.",
       "CREATOR_EDITOR_PROJECT_CREATE_FAILED",
     );
+  } finally {
+    client?.release();
   }
 };
 
@@ -1511,6 +1531,9 @@ exports.updateEditorProject = async (req, res) => {
       }
 
       nextProjectData = projectValidation.projectData;
+      if (existingProject.project_data?.cloudSaveKey) {
+        nextProjectData = { ...nextProjectData, cloudSaveKey: existingProject.project_data.cloudSaveKey };
+      }
       nextSchemaVersion = projectValidation.schemaVersion;
     }
 

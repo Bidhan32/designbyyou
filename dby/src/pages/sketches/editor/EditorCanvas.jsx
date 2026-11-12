@@ -1,3 +1,4 @@
+import { numberOr, isFinitePoint, screenPointToDocumentPoint } from "./EditorCanvas.helpers.js";
 /*
 =========================================================
 FashionVision Professional Editor
@@ -71,11 +72,7 @@ const RESIZE_FIT_DELAY = 60;
 Numeric Helpers
 =========================================================*/
 
-function numberOr(value, fallback = 0) {
-  const numericValue = Number(value);
 
-  return Number.isFinite(numericValue) ? numericValue : fallback;
-}
 
 function clamp(value, minimum, maximum) {
   return Math.max(
@@ -230,13 +227,7 @@ function getPointerId(nativeEvent) {
   return Number.isFinite(touchIdentifier) ? touchIdentifier : null;
 }
 
-function isFinitePoint(point) {
-  return Boolean(
-    point &&
-    Number.isFinite(Number(point.x)) &&
-    Number.isFinite(Number(point.y)),
-  );
-}
+
 
 function clonePoint(point) {
   if (!isFinitePoint(point)) {
@@ -306,27 +297,7 @@ function getResponsiveFitPadding(width, height) {
 Coordinate Conversion
 =========================================================*/
 
-export function screenPointToDocumentPoint(screenPoint, viewport) {
-  if (!isFinitePoint(screenPoint)) {
-    return null;
-  }
 
-  const zoom = Math.max(
-    0.0001,
-
-    numberOr(viewport?.zoom, 1),
-  );
-
-  const viewportX = numberOr(viewport?.x, 0);
-
-  const viewportY = numberOr(viewport?.y, 0);
-
-  return {
-    x: (Number(screenPoint.x) - viewportX) / zoom,
-
-    y: (Number(screenPoint.y) - viewportY) / zoom,
-  };
-}
 
 function isPointInsideDocument(point, documentData) {
   if (!isFinitePoint(point) || !documentData) {
@@ -968,32 +939,19 @@ function EditorCanvas(
     */
 
   useEffect(() => {
-    if (!editingTextObjectId) {
-      return;
-    }
-
-    if (!editingTextObject) {
-      closeTextEditor("object-unavailable");
-
-      return;
-    }
-
-    const state = useFashionEditorStore.getState();
-
-    const layer = state.layers.find(
-      (item) => item.id === editingTextObject.layerId,
-    );
-
-    if (
-      editingTextObject.visible === false ||
-      editingTextObject.locked === true ||
-      !layer ||
-      layer.visible === false ||
-      layer.locked === true
-    ) {
-      closeTextEditor("object-unavailable", editingTextObject);
-    }
-  }, [closeTextEditor, editingTextObject, editingTextObjectId]);
+    if (!editingTextObjectId) return undefined;
+    let closed = false;
+    return useFashionEditorStore.subscribe((state) => {
+      if (closed) return;
+      const object = state.objects[editingTextObjectId];
+      const layer = object && state.layers.find((item) => item.id === object.layerId);
+      if (!object || object.visible === false || object.locked === true ||
+          !layer || layer.visible === false || layer.locked === true) {
+        closed = true;
+        closeTextEditor("object-unavailable", object || null);
+      }
+    });
+  }, [closeTextEditor, editingTextObjectId]);
 
   /*=====================================================
     Tool Manager
@@ -1198,8 +1156,11 @@ function EditorCanvas(
       manager.deactivate();
     }
 
-    updateTemporaryObject(null);
-  }, [activeTool, updateTemporaryObject]);
+  }, [activeTool]);
+
+  useEffect(() => useFashionEditorStore.subscribe((state, previous) => {
+    if (state.activeTool !== previous.activeTool) updateTemporaryObject(null);
+  }), [updateTemporaryObject]);
 
   /*=====================================================
     Stage Reference
@@ -2418,12 +2379,6 @@ function EditorCanvas(
       return "grab";
     }
 
-    const managerCursor = managerRef.current?.getCursor?.();
-
-    if (managerCursor && managerCursor !== "default") {
-      return managerCursor;
-    }
-
     if (activeTool === EDITOR_TOOLS.SELECT) {
       return "default";
     }
@@ -2436,6 +2391,16 @@ function EditorCanvas(
     isSpacePressed,
     ui.canvasCursor,
   ]);
+
+  // Tool cursors depend on the imperative manager; synchronize the DOM after activation.
+  useEffect(() => {
+    const managerCursor = managerRef.current?.getCursor?.();
+    if (containerRef.current) {
+      const override = !isTouchGesturing && !isPanning && !isSpacePressed &&
+        activeTool !== EDITOR_TOOLS.PAN && managerCursor && managerCursor !== "default";
+      containerRef.current.style.cursor = override ? managerCursor : cursor;
+    }
+  }, [cursor, activeTool, isTouchGesturing, isPanning, isSpacePressed, ui.canvasCursor]);
 
   /*=====================================================
     Document Geometry

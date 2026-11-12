@@ -746,6 +746,28 @@ async function returnExistingBookingResponse(res, booking, context) {
     );
   }
 
+  // A booking retry must not silently swap a private Editor design (or version).
+  // This also prevents a request without a design from reusing a design-linked booking.
+  const snapshotReference = await db.query(
+    `SELECT source_editor_project_id, source_project_version
+       FROM public.booking_design_snapshots
+       WHERE booking_id = $1::uuid LIMIT 1`,
+    [booking.id],
+  );
+  const savedSnapshot = snapshotReference.rows[0] || null;
+  const sameEditorAttachment = context.editorProjectId
+    ? Boolean(
+        savedSnapshot &&
+        String(savedSnapshot.source_editor_project_id) === context.editorProjectId &&
+        Number(savedSnapshot.source_project_version) === context.editorProjectVersion
+      )
+    : !savedSnapshot;
+  if (!sameEditorAttachment) {
+    return sendError(res, 409,
+      "This client_request_id already belongs to a booking with a different Editor design snapshot.",
+      "CLIENT_REQUEST_ID_REUSED");
+  }
+
   if (!booking.stripe_payment_intent_id) {
     return sendError(
       res,
@@ -1173,6 +1195,22 @@ async function processRefundStateInternal(refundObject, client) {
       refundId,
       refundStatus: "succeeded",
       bookingStatus: booking.status,
+    };
+  }
+
+  // A dashboard/external refund can arrive after designer earnings were released.
+  // The normal pending-escrow reversal cannot recover available/paid-out earnings.
+  // Keep completion/accounting intact and expose the event for manual review.
+  if (normalizeStatus(booking.status) === BOOKING_STATUS.COMPLETED) {
+    return {
+      success: true,
+      ignored: true,
+      manualReconciliationRequired: true,
+      bookingId,
+      refundId,
+      refundStatus,
+      bookingStatus: BOOKING_STATUS.COMPLETED,
+      reason: "Refund received after booking earnings were released. Manual financial reconciliation is required.",
     };
   }
 
@@ -1901,6 +1939,15 @@ exports.createP2PBooking = async (req, res) => {
 
   const bookingType = normalizeBookingType(req.body?.booking_type, designId);
 
+  // Phase 5.1A: both Editor fields must be supplied together. The ID is BIGINT,
+  // NOT bookings.design_id (UUID). Require a decimal string to avoid JS precision loss.
+  const body = req.body || {};
+  const editorIdSupplied = Object.prototype.hasOwnProperty.call(body, "editor_project_id");
+  const editorVersionSupplied = Object.prototype.hasOwnProperty.call(body, "editor_project_version");
+  const editorProjectId = editorIdSupplied && typeof body.editor_project_id === "string"
+    ? body.editor_project_id.trim() : null;
+  const editorProjectVersion = editorVersionSupplied ? Number(body.editor_project_version) : null;
+
   if (!creatorId || !isUuid(creatorId)) {
     return sendError(
       res,
@@ -1990,6 +2037,25 @@ exports.createP2PBooking = async (req, res) => {
     );
   }
 
+  if (editorIdSupplied !== editorVersionSupplied) {
+    return sendError(res, 400, "editor_project_id and editor_project_version must be provided together.",
+      "EDITOR_PROJECT_REFERENCE_REQUIRED");
+  }
+  if (editorIdSupplied) {
+    const isValidBigint = editorProjectId && /^[1-9]\d{0,18}$/.test(editorProjectId) &&
+      BigInt(editorProjectId) <= 9223372036854775807n;
+    if (!isValidBigint || !Number.isInteger(editorProjectVersion) ||
+        editorProjectVersion < 1 || editorProjectVersion > 2147483647) {
+      return sendError(res, 400, "A valid numeric Editor project ID and version are required.",
+        "INVALID_EDITOR_PROJECT_REFERENCE");
+    }
+    if (bookingType !== "commission" || designId) {
+      return sendError(res, 400,
+        "Private Editor designs can only accompany commission bookings without design_id.",
+        "INVALID_EDITOR_BOOKING_TYPE");
+    }
+  }
+
   const bookingId = clientRequestId;
 
   const requestContext = {
@@ -2001,6 +2067,8 @@ exports.createP2PBooking = async (req, res) => {
     deadline,
     scheduledAt,
     bookingType,
+    editorProjectId,
+    editorProjectVersion,
   };
 
   let paymentIntent = null;
@@ -2046,6 +2114,24 @@ exports.createP2PBooking = async (req, res) => {
       IMPORTANT:
       is_email_verified must be selected.
     */
+
+    // Reject missing, foreign, or stale projects BEFORE creating a Stripe PaymentIntent.
+    // The same reference is checked again under a database lock in the transaction.
+    if (editorProjectId) {
+      const projectCheck = await db.query(
+        `SELECT id, version FROM public.editor_projects
+         WHERE id = $1::bigint AND owner_id = $2::uuid LIMIT 1`,
+        [editorProjectId, creatorId],
+      );
+      if (!projectCheck.rows.length) {
+        return sendError(res, 404, "This Fashion Editor project is not available to your account.",
+          "EDITOR_PROJECT_NOT_FOUND");
+      }
+      if (Number(projectCheck.rows[0].version) !== editorProjectVersion) {
+        return sendError(res, 409, "The Fashion Editor project has changed. Save and retry the booking.",
+          "EDITOR_PROJECT_VERSION_CONFLICT");
+      }
+    }
 
     const userResult = await db.query(
       `
@@ -2386,6 +2472,38 @@ exports.createP2PBooking = async (req, res) => {
           }
         }
 
+        let editorSnapshotSource = null;
+        if (editorProjectId) {
+          const projectResult = await client.query(
+            `SELECT id, owner_id, title, project_data, schema_version, version
+             FROM public.editor_projects
+             WHERE id = $1::bigint AND owner_id = $2::uuid
+             LIMIT 1 FOR SHARE`,
+            [editorProjectId, creatorId],
+          );
+          editorSnapshotSource = projectResult.rows[0] || null;
+          if (!editorSnapshotSource ||
+              Number(editorSnapshotSource.version) !== editorProjectVersion) {
+            await rollbackQuietly(client);
+            await cancelPaymentIntentQuietly(paymentIntent.id);
+            return sendError(res, 409,
+              "The Editor project was changed or removed before booking. Save and retry.",
+              "EDITOR_PROJECT_VERSION_CONFLICT");
+          }
+          const state = editorSnapshotSource.project_data;
+          const validState = state && typeof state === "object" && !Array.isArray(state) &&
+            state.document && typeof state.document === "object" &&
+            Array.isArray(state.layers) &&
+            (Array.isArray(state.objects) ||
+              (state.objects && typeof state.objects === "object" && !Array.isArray(state.objects)));
+          if (!validState) {
+            await rollbackQuietly(client);
+            await cancelPaymentIntentQuietly(paymentIntent.id);
+            return sendError(res, 409, "The saved Editor project has invalid design data.",
+              "INVALID_EDITOR_PROJECT_DATA");
+          }
+        }
+
         /*
           Serialize bookings for this Designer + calendar day.
         */
@@ -2504,6 +2622,22 @@ exports.createP2PBooking = async (req, res) => {
             clientRequestId,
           ],
         );
+
+        // Create the immutable booking-specific design copy atomically with the booking.
+        // No Showcase publication and no public preview are created here.
+        if (editorSnapshotSource) {
+          await client.query(
+            `INSERT INTO public.booking_design_snapshots
+              (booking_id, creator_id, source_editor_project_id,
+               source_project_version, source_schema_version,
+               design_title, snapshot_data, preview_image_key)
+             VALUES ($1::uuid, $2::uuid, $3::bigint, $4, $5, $6, $7::jsonb, NULL)`,
+            [bookingId, creatorId, editorProjectId,
+             editorProjectVersion, Number(editorSnapshotSource.schema_version),
+             editorSnapshotSource.title,
+             JSON.stringify(editorSnapshotSource.project_data)],
+          );
+        }
 
         await client.query(
           `
@@ -2970,6 +3104,45 @@ exports.verifyEscrowPayment = async (req, res) => {
       error.statusCode || 500,
       error.statusCode ? error.message : "Escrow verification failed.",
     );
+  }
+};
+
+/**
+ * GET /api/v1/p2p-bookings/:id/design-snapshot
+ * Private: booking Creator or assigned Designer only; never public Showcase.
+ * Source project changes/deletion do not change this booking's snapshot.
+ */
+exports.getBookingDesignSnapshot = async (req, res) => {
+  const userId = getAuthenticatedUserId(req);
+  const bookingId = String(req.params?.id || "").trim();
+  res.set("Cache-Control", "private, no-store, max-age=0");
+  res.set("Pragma", "no-cache");
+  if (!userId || !isUuid(userId)) {
+    return sendError(res, 401, "Authentication is required.");
+  }
+  if (!isUuid(bookingId)) {
+    return sendError(res, 400, "A valid booking ID is required.");
+  }
+  try {
+    const result = await db.query(
+      `SELECT s.id, s.booking_id, s.design_title, s.snapshot_data,
+              s.source_project_version, s.source_schema_version, s.created_at
+         FROM public.booking_design_snapshots s
+         JOIN public.bookings b ON b.id = s.booking_id
+         WHERE b.id = $1::uuid
+           AND (b.creator_id = $2::uuid OR b.designer_id = $2::uuid)
+         LIMIT 1`,
+      [bookingId, userId],
+    );
+    if (result.rows.length === 0) {
+      // Do not disclose whether an unrelated booking or private snapshot exists.
+      return sendError(res, 404, "The booking design snapshot was not found.",
+        "BOOKING_DESIGN_NOT_FOUND");
+    }
+    return res.status(200).json({ status: "success", data: result.rows[0] });
+  } catch (error) {
+    console.error("Unable to retrieve private booking design snapshot:", error);
+    return sendError(res, 500, "The booking design could not be loaded.");
   }
 };
 

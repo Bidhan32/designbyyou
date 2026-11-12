@@ -60,3 +60,17 @@ server/tryon-response.json
 # Local backup copies
 server/controllers/p2pBookingController.backup..js
 server/routes/webhookController.copy.js
+
+# Local schema inspection output; commit only a reviewed baseline export.
+server/database/schema.snapshot.json
+server/database/schema.baseline.sql.*.tmp
+server/database/schema.verify.log
+server/database/schema.restored.snapshot.json
+server/stripe-sandbox-report.json
+server/stripe-delivery-report.json
+server/stripe-browser-report.json
+server/payout-sandbox-report.json
+server/creator-wallet-sandbox-report.json
+server/subscription-sandbox-report.json
+
+server/auth-sandbox-report.json

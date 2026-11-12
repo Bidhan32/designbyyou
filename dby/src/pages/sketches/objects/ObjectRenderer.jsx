@@ -1,3 +1,4 @@
+import { isObject, isFunction, resolveObjectType, resolveRenderer } from "./ObjectRenderer.helpers.js";
 /*
 =========================================================
 FashionVision Professional Editor
@@ -8,19 +9,16 @@ Version 1.4
 
 import React, {
     memo,
-    useEffect,
-    useMemo
+    useEffect
 } from "react";
 
-import BrushObject from "./BrushObject";
-import ShapeObject from "./ShapeObject";
-import TextObject from "./TextObject";
-import ImageObject from "./ImageObject";
-import PatternObject from "./PatternObject";
 
-import {
-    OBJECT_TYPES
-} from "../useFashionEditorStore";
+
+
+
+
+
+
 
 /*=========================================================
 Development Warnings
@@ -33,102 +31,27 @@ const warnedObjectTypes =
 General Helpers
 =========================================================*/
 
-function isObject(
-    value
-) {
-    return Boolean(
-        value &&
-        typeof value ===
-            "object" &&
-        !Array.isArray(value)
-    );
-}
 
-function isFunction(
-    value
-) {
-    return (
-        typeof value ===
-        "function"
-    );
-}
+
+
 
 /*=========================================================
 Built-in Renderer Registry
 =========================================================*/
 
-const BUILT_IN_RENDERERS =
-    Object.freeze({
-        [OBJECT_TYPES.BRUSH]:
-            BrushObject,
 
-        [OBJECT_TYPES.SHAPE]:
-            ShapeObject,
-
-        [OBJECT_TYPES.TEXT]:
-            TextObject,
-
-        [OBJECT_TYPES.IMAGE]:
-            ImageObject,
-
-        [OBJECT_TYPES.PATTERN]:
-            PatternObject
-    });
 
 /*=========================================================
 Resolve Object Type
 =========================================================*/
 
-function resolveObjectType(
-    object
-) {
-    if (
-        typeof object?.type !==
-            "string" ||
-        object.type.trim() ===
-            ""
-    ) {
-        return null;
-    }
 
-    return object.type.trim();
-}
 
 /*=========================================================
 Resolve Renderer
 =========================================================*/
 
-function resolveRenderer(
-    objectType,
-    customRenderers
-) {
-    if (!objectType) {
-        return null;
-    }
 
-    const customRenderer =
-        customRenderers?.[
-            objectType
-        ];
-
-    if (
-        isFunction(
-            customRenderer
-        ) ||
-        isObject(
-            customRenderer
-        )
-    ) {
-        return customRenderer;
-    }
-
-    return (
-        BUILT_IN_RENDERERS[
-            objectType
-        ] ||
-        null
-    );
-}
 
 /*=========================================================
 Unsupported Object Warning
@@ -211,29 +134,9 @@ function ObjectRenderer({
     onDelete = null,
     onRenderError = null
 }) {
-    const objectType =
-        useMemo(
-            () =>
-                resolveObjectType(
-                    object
-                ),
-            [
-                object?.type
-            ]
-        );
+    const objectType = resolveObjectType(object);
 
-    const Renderer =
-        useMemo(
-            () =>
-                resolveRenderer(
-                    objectType,
-                    renderers
-                ),
-            [
-                objectType,
-                renderers
-            ]
-        );
+    const Renderer = resolveRenderer(objectType, renderers);
 
     useEffect(
         () => {
@@ -306,11 +209,7 @@ function ObjectRenderer({
         onRenderError
     };
 
-    return (
-        <Renderer
-            {...rendererProps}
-        />
-    );
+    return React.createElement(Renderer, rendererProps);
 }
 
 /*=========================================================
@@ -371,10 +270,6 @@ MemoizedObjectRenderer.displayName =
 Exports
 =========================================================*/
 
-export {
-    BUILT_IN_RENDERERS,
-    resolveObjectType,
-    resolveRenderer
-};
+
 
 export default MemoizedObjectRenderer;

@@ -116,7 +116,21 @@ exports.createOrGetRoom = async (req, res) => {
     const { designer_id } = req.body;
     const creator_id = req.user.id;
 
+    if (req.user.role !== 'creator') {
+        return res.status(403).json({ message: "Only creators can initialize designer conversations." });
+    }
+    if (typeof designer_id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(designer_id)) {
+        return res.status(400).json({ message: "A valid designer ID is required." });
+    }
+
     try {
+        const eligible = await db.query(
+            "SELECT id FROM users WHERE id = $1 AND role = 'designer' AND approval_status = 'approved' AND is_email_verified = true",
+            [designer_id]
+        );
+        if (!eligible.rows.length) {
+            return res.status(404).json({ message: "Designer is unavailable." });
+        }
         // Check if a room already exists between these two
         let room = await db.query(
             'SELECT * FROM chat_rooms WHERE creator_id = $1 AND designer_id = $2',

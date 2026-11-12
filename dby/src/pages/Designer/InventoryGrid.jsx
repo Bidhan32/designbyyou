@@ -362,13 +362,9 @@ Inventory Image
 =========================================================*/
 
 function InventoryImage({ src, alt, className = "" }) {
-  const [failed, setFailed] = useState(false);
+  const [failedSource, setFailedSource] = useState(null);
 
-  useEffect(() => {
-    setFailed(false);
-  }, [src]);
-
-  if (!src || failed) {
+  if (!src || failedSource === src) {
     return (
       <div
         className={`
@@ -395,7 +391,7 @@ function InventoryImage({ src, alt, className = "" }) {
       alt={alt}
       loading="lazy"
       decoding="async"
-      onError={() => setFailed(true)}
+      onError={() => setFailedSource(src)}
       className={className}
     />
   );

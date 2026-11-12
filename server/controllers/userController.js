@@ -1452,11 +1452,15 @@ exports.updateSecurity = async (req, res) => {
     );
   }
 
+  if (Buffer.byteLength(newPassword, "utf8") > 72) {
+    return sendError(res, 400, "New password must not exceed 72 UTF-8 bytes.");
+  }
+
   /**
    * Reasonable upper bound against pathological request
    * bodies for the current-password comparison.
    */
-  if (currentPassword.length > 512) {
+  if (Buffer.byteLength(currentPassword, "utf8") > 72) {
     return sendError(res, 400, "Current password is invalid.");
   }
 
@@ -1558,6 +1562,9 @@ exports.updateSecurity = async (req, res) => {
           SET
             password_hash =
               $1,
+
+            password_reset_otp_hash = NULL,
+            password_reset_otp_expires_at = NULL,
 
             token_version =
               COALESCE(

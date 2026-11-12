@@ -55,7 +55,7 @@ export function normalizeGarmentPatternSettings(raw = {}) {
   };
 }
 
-export function useGarmentPatternPreset(current, presetId) {
+export function applyGarmentPatternPreset(current, presetId) {
   const preset = GARMENT_PATTERN_PRESETS.find((item) => item.id === presetId);
   if (!preset) return normalizeGarmentPatternSettings(current);
   // Preserve saved color-independent positioning, alignment, fitting and opacity.

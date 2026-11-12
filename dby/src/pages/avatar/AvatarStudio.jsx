@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 
 import API from "../../api/axios";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/AuthContext.helpers.js";
 
 import FashionPersonaAvatar, {
   DEFAULT_FASHION_PERSONA_CONFIG,

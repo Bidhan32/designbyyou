@@ -94,7 +94,7 @@ import { useNavigate } from "react-router-dom";
 
 import API from "../../api/axios";
 
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/AuthContext.helpers.js";
 
 import FashionPersonaAvatar, {
   FashionPersonaDesignBadge,

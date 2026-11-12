@@ -17,7 +17,7 @@ const DesignerApprovals = () => {
             const res = await API.get('/superadmin/users?role=designer');
             const pending = res.data.filter(user => user.status === 'pending');
             setRequests(pending);
-        } catch (err) {
+        } catch {
             console.error("Failed to load requests");
         } finally {
             setLoading(false);
@@ -30,7 +30,7 @@ const DesignerApprovals = () => {
             // Assuming your backend supports a status update:
             await API.patch(`/superadmin/update-status/${id}`, { status });
             setRequests(prev => prev.filter(req => req.id !== id));
-        } catch (err) {
+        } catch {
             alert("Action failed. Ensure the update-status route exists.");
         }
     };

@@ -115,11 +115,13 @@ import {
 
 import API from "../../api/axios";
 
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/AuthContext.helpers.js";
 
 /*=========================================================
 Configuration
 =========================================================*/
+
+
 
 const SHOWCASE_ENDPOINT = "/marketplace";
 
@@ -617,14 +619,9 @@ function ShowcaseImage({
   className = "",
   priority = false,
 }) {
-  const [failed, setFailed] =
-    useState(false);
+  const [failedSource, setFailedSource] = useState(null);
 
-  useEffect(() => {
-    setFailed(false);
-  }, [src]);
-
-  if (!src || failed) {
+  if (!src || failedSource === src) {
     return (
       <div
         className={`
@@ -666,7 +663,7 @@ function ShowcaseImage({
       }
       decoding="async"
       onError={() =>
-        setFailed(true)
+        setFailedSource(src)
       }
       className={className}
     />

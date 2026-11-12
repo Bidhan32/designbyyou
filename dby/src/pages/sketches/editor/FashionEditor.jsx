@@ -20,6 +20,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import API from "/src/api/axios";
 
 import EditorCanvas from "./EditorCanvas";
+import FashionEditorBookingModal from "./FashionEditorBookingModal";
+import useCloudAutosave from "./useCloudAutosave";
 import GarmentTemplateBrowser from "./GarmentTemplateBrowser";
 import GarmentTextControls, { GarmentTextStyleFields } from "./GarmentTextControls";
 import GarmentPatternControls from "./GarmentPatternControls";
@@ -1363,9 +1365,11 @@ function SliderField({
 function LayerNameField({ layer, renameLayer }) {
   const [name, setName] = useState(layer.name);
 
-  useEffect(() => {
+  const [source, setSource] = useState({ id: layer.id, name: layer.name });
+  if (source.id !== layer.id || source.name !== layer.name) {
+    setSource({ id: layer.id, name: layer.name });
     setName(layer.name);
-  }, [layer.id, layer.name]);
+  }
 
   const commitName = useCallback(() => {
     const cleanedName = name.trim();
@@ -1410,9 +1414,11 @@ function LayerNameField({ layer, renameLayer }) {
 function DocumentNameField({ documentData, setDocumentName }) {
   const [name, setName] = useState(documentData.name);
 
-  useEffect(() => {
+  const [source, setSource] = useState({ id: documentData.id, name: documentData.name });
+  if (source.id !== documentData.id || source.name !== documentData.name) {
+    setSource({ id: documentData.id, name: documentData.name });
     setName(documentData.name);
-  }, [documentData.id, documentData.name]);
+  }
 
   const commitName = useCallback(() => {
     const cleanedName = name.trim();
@@ -1936,7 +1942,7 @@ function FashionEditor() {
 
       mode: normaliseSymmetryMode(storedSymmetry?.mode),
     }),
-    [storedSymmetry, documentData.width, documentData.height],
+    [storedSymmetry, documentData],
   );
 
   const brush = useFashionEditorStore((state) => state.brush);
@@ -1984,6 +1990,7 @@ function FashionEditor() {
   const history = useFashionEditorStore((state) => state.history);
 
   const persistence = useFashionEditorStore((state) => state.persistence);
+  const revision = useFashionEditorStore((state) => state.revision);
 
   /*=====================================================
     Store Actions
@@ -2184,8 +2191,16 @@ function FashionEditor() {
   const [projectLoading, setProjectLoading] = useState(Boolean(routeProjectId));
 
   const [projectSaving, setProjectSaving] = useState(false);
+  const [saveConflict, setSaveConflict] = useState(false);
+  const cloudCreateKey = useRef(null);
+  const initialProjectId = useRef(routeProjectId);
+  useEffect(() => { if (!initialProjectId.current) newDocument(); }, [newDocument]);
 
   const [showcaseShareOpen, setShowcaseShareOpen] = useState(false);
+
+  // Phase 5.1B — private designer booking, distinct from public Showcase.
+  const [designerBookingOpen, setDesignerBookingOpen] = useState(false);
+  const [designerBookingPreview, setDesignerBookingPreview] = useState("");
 
   const [showcaseSharing, setShowcaseSharing] = useState(false);
 
@@ -2982,6 +2997,8 @@ function FashionEditor() {
   }, [fitDocumentToViewport]);
 
   const handleNewDocument = useCallback(() => {
+    if (saveInFlightRef.current) return;
+    setSaveConflict(false);
     setMobileMenuOpen(false);
 
     if (!confirmReplaceDocument()) {
@@ -2991,6 +3008,7 @@ function FashionEditor() {
     projectLoadControllerRef.current?.abort();
     projectSaveControllerRef.current?.abort();
     newDocument();
+    cloudCreateKey.current = null;
     setEditorViewMode("2d");
 
     setCloudProjectId(null);
@@ -3007,6 +3025,7 @@ function FashionEditor() {
   }, [confirmReplaceDocument, newDocument, navigate, fitCanvas, showToast]);
 
   const handleOpenProject = useCallback(() => {
+    if (saveInFlightRef.current) return;
     setMobileMenuOpen(false);
 
     if (!confirmReplaceDocument()) {
@@ -3031,7 +3050,11 @@ function FashionEditor() {
 
         const project = JSON.parse(textContent);
 
+        if (saveInFlightRef.current) return;
+        setSaveConflict(false);
         loadProject(project);
+        cloudCreateKey.current = null;
+        useFashionEditorStore.setState(state => ({ persistence: { ...state.persistence, dirty: true } }));
         setEditorViewMode("2d");
 
         setCloudProjectId(null);
@@ -3044,7 +3067,7 @@ function FashionEditor() {
 
         setEditorError(null);
 
-        showToast("Local project opened. Save to create a cloud project.");
+        showToast("Project opened. Changes will save automatically.");
       } catch (error) {
         console.error(error);
 
@@ -3063,6 +3086,10 @@ function FashionEditor() {
       if (saveInFlightRef.current || projectLoading) {
         return null;
       }
+      if (routeProjectId && (String(routeProjectId) !== String(cloudProjectId) || !cloudProjectVersion)) {
+        showToast("Wait for this cloud project to load before saving.", "error");
+        return null;
+      }
 
       const silent = Boolean(options?.silent);
 
@@ -3072,7 +3099,9 @@ function FashionEditor() {
         projectOverride.document &&
         projectOverride.layers;
 
+      const savedRevision = useFashionEditorStore.getState().revision;
       const project = isProjectData ? projectOverride : getProjectData();
+      if (options.bookingPreview) project.bookingPreview = options.bookingPreview;
 
       const title = String(
         project?.document?.name ||
@@ -3126,11 +3155,13 @@ function FashionEditor() {
             },
           );
         } else {
+          cloudCreateKey.current ||= globalThis.crypto.randomUUID();
           response = await API.post(
             CREATOR_EDITOR_ENDPOINT,
             {
               title,
               project_data: project,
+              client_save_id: cloudCreateKey.current,
             },
             {
               signal: abortController.signal,
@@ -3156,7 +3187,9 @@ function FashionEditor() {
             : cloudProjectVersion || 1,
         );
 
-        markSaved();
+        // A recovered create may contain an earlier revision; save current work next.
+        if (!response.data?.reused) markSaved(savedRevision);
+        setSaveConflict(false);
 
         setEditorError(null);
 
@@ -3196,6 +3229,7 @@ function FashionEditor() {
         const normalizedError = new Error(message);
 
         normalizedError.status = error?.response?.status;
+        setSaveConflict(error?.response?.status === 409);
 
         setSaveError(normalizedError);
         setEditorError(normalizedError);
@@ -3226,6 +3260,58 @@ function FashionEditor() {
       showToast,
     ],
   );
+
+  /*=====================================================
+    Phase 5.1B — Book an approved Designer from Fashion Editor
+    =====================================================*/
+
+  useCloudAutosave({
+    dirty: persistence.dirty, revision, saving: projectSaving,
+    blocked: projectLoading || saveConflict || Boolean(routeProjectId && (String(routeProjectId) !== String(cloudProjectId) || !cloudProjectVersion)),
+    failed: Boolean(persistence.error), onSave: handleSaveProject,
+  });
+  const cloudSaveLabel = projectLoading ? "Loading design…" : projectSaving ? "Saving to cloud…"
+    : saveConflict ? "Save conflict — download a copy before reloading"
+    : persistence.error ? "Not saved — retrying…"
+    : persistence.dirty ? "Changes pending…" : cloudProjectId ? "Saved to cloud" : "Autosave on";
+  const handleOpenProjects = async () => {
+    if (saveInFlightRef.current) return;
+    if (useFashionEditorStore.getState().persistence.dirty) {
+      const saved = await handleSaveProject(null, { silent: true });
+      if (!saved || useFashionEditorStore.getState().persistence.dirty) {
+        showToast("Your latest changes aren't saved yet. Retry or download a copy before leaving.", "error");
+        return;
+      }
+    }
+    navigate("/creator/projects");
+  };
+
+  const handleCloseDesignerBooking = useCallback(() => {
+    setDesignerBookingOpen(false);
+    setDesignerBookingPreview("");
+  }, []);
+
+  // Reconcile redirected Stripe payments using the existing backend verifier.
+  // Do not infer payment success from URL parameters or client-side state.
+  const stripeReturnHandledRef = useRef(false);
+  useEffect(() => {
+    if (stripeReturnHandledRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const bookingId = params.get("editor_booking_id");
+    if (!bookingId || !/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(bookingId)) return;
+    if (!params.has("payment_intent") && !params.has("payment_intent_client_secret")) return;
+    stripeReturnHandledRef.current = true;
+    API.post("/p2p-bookings/verify-escrow", { bookingId })
+      .then(() => {
+        showToast("Booking payment verified. Your design is attached privately.");
+        const url = new URL(window.location.href);
+        ["editor_booking_id", "payment_intent", "payment_intent_client_secret", "redirect_status"].forEach((key) => url.searchParams.delete(key));
+        window.history.replaceState(window.history.state, "", url.toString());
+      })
+      .catch((error) => {
+        showToast(getApiErrorMessage(error, "Could not verify the booking payment. Open your bookings to check its status."), "error");
+      });
+  }, [showToast]);
 
   const handleDownloadProject = useCallback(() => {
     setMobileMenuOpen(false);
@@ -3326,6 +3412,7 @@ function FashionEditor() {
         }
 
         loadProject(projectData);
+        setSaveConflict(false);
         setEditorViewMode("2d");
 
         setCloudProjectId(String(projectRecord.id));
@@ -4065,6 +4152,23 @@ function FashionEditor() {
       showToast,
     ],
   );
+
+  const handleOpenDesignerBooking = useCallback(() => {
+    setMobileMenuOpen(false);
+    if (projectLoading || projectSaving || saveInFlightRef.current || showcaseSharing) return;
+    if (objectCount <= 0) {
+      showToast("Create or add a design before booking a designer.", "error");
+      return;
+    }
+    try {
+      const dimension = Math.max(1, numberOr(documentData.width, 1), numberOr(documentData.height, 1));
+      setDesignerBookingPreview(captureStagePngDataUrl({ pixelRatio: clamp(760 / dimension, 0.08, 1) }));
+    } catch {
+      // A preview is optional; the authoritative design is saved as project JSON.
+      setDesignerBookingPreview("");
+    }
+    setDesignerBookingOpen(true);
+  }, [projectLoading, projectSaving, showcaseSharing, objectCount, showToast, documentData.width, documentData.height, captureStagePngDataUrl]);
 
   /*=====================================================
     AI Realistic Fashion Preview
@@ -5108,18 +5212,7 @@ function FashionEditor() {
 
       return true;
     },
-    [
-      selectedImageObject,
-      selectedImageLocked,
-      selectedClothingTemplate,
-      selectedClothingEditable,
-      selectedClothingColourRegions,
-      selectedClothingColours,
-      selectedClothingViews,
-      selectedClothingArtwork,
-      updateSelectedImage,
-      showToast,
-    ],
+    [selectedImageObject, selectedImageLocked, selectedClothingTemplate, selectedClothingEditable, selectedClothingColourRegions, selectedClothingArtwork, updateSelectedImage, selectedClothingViews, selectedClothingColours, showToast],
   );
 
   const handleSelectedClothingColourChange = useCallback(
@@ -5534,17 +5627,7 @@ function FashionEditor() {
 
       return true;
     },
-    [
-      selectedImageObject,
-      selectedImageLocked,
-      selectedClothingTemplate,
-      selectedClothingArtworkEditable,
-      selectedClothingColours,
-      selectedClothingViews,
-      selectedClothingArtwork,
-      updateSelectedImage,
-      showToast,
-    ],
+    [selectedImageObject, selectedImageLocked, selectedClothingTemplate, selectedClothingArtworkEditable, selectedClothingColours, selectedClothingViews, updateSelectedImage, showToast],
   );
 
   /*=====================================================
@@ -11436,6 +11519,7 @@ function FashionEditor() {
             <span className="sm:hidden">Showcase</span>
           </button>
 
+          <button type="button" onClick={handleOpenProjects} disabled={projectLoading || projectSaving} className="shrink-0 rounded-lg border border-slate-600 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-50">My projects</button>
           <div className="hidden h-6 w-px bg-slate-800 lg:block" />
 
           <div className="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
@@ -11452,13 +11536,7 @@ function FashionEditor() {
             )}
 
             <span className="hidden shrink-0 rounded-full border border-slate-700 bg-slate-900 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-slate-400 sm:inline-flex">
-              {projectLoading
-                ? "Loading"
-                : projectSaving
-                  ? "Saving"
-                  : cloudProjectId
-                    ? `Cloud #${cloudProjectId}`
-                    : "New project"}
+              {cloudSaveLabel}
             </span>
           </div>
         </div>
@@ -11495,6 +11573,15 @@ function FashionEditor() {
               title="Open the in-editor Share to Showcase panel"
             >
               {showcaseSharing ? "Sharing…" : "Share"}
+            </HeaderButton>
+
+            <HeaderButton
+              onClick={handleOpenDesignerBooking}
+              disabled={projectLoading || projectSaving || showcaseSharing || objectCount <= 0}
+              title="Save the current private design and book an approved designer"
+              className="border-violet-500/70 bg-violet-700/80 text-white hover:bg-violet-600"
+            >
+              Book a Designer
             </HeaderButton>
 
             <HeaderButton onClick={handleExportPng} disabled={exporting}>
@@ -11629,6 +11716,15 @@ function FashionEditor() {
                 className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm font-semibold text-amber-200 hover:bg-amber-950/40 disabled:opacity-40"
               >
                 {showcaseSharing ? "Sharing to Showcase…" : "Share to Showcase"}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleOpenDesignerBooking}
+                disabled={projectLoading || projectSaving || showcaseSharing || objectCount <= 0}
+                className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm font-semibold text-violet-200 hover:bg-violet-950/50 disabled:opacity-40"
+              >
+                Book a Designer
               </button>
 
               <button
@@ -12739,16 +12835,23 @@ function FashionEditor() {
                   : "text-emerald-400"
             }
           >
-            {projectSaving
-              ? "Saving…"
-              : persistence.dirty
-                ? "Unsaved"
-                : cloudProjectId
-                  ? "Cloud saved"
-                  : "Ready"}
+            {cloudSaveLabel}
           </span>
         </div>
       </footer>
+
+      {/* Phase 5.1B: private booking; independent of Showcase sharing. */}
+      <FashionEditorBookingModal
+        open={designerBookingOpen}
+        onClose={handleCloseDesignerBooking}
+        onSaveProject={handleSaveProject}
+        documentTitle={documentData.name}
+        previewDataUrl={designerBookingPreview}
+        onComplete={({ type }) => {
+          if (type === "booking_created") showToast("Booking created. Complete secure payment to fund it.");
+          if (type === "payment_verified") showToast("Booking paid and private design attached successfully.");
+        }}
+      />
 
       {/* Creator Showcase share modal */}
 

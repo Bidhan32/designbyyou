@@ -17,7 +17,8 @@ Version 2.2:
 =========================================================
 */
 
-import React from "react";
+import React, { lazy } from "react";
+import RouteContent from "./components/RouteContent";
 
 import {
   BrowserRouter as Router,
@@ -39,7 +40,12 @@ import "./App.css";
 System Context
 =========================================================*/
 
-import { AuthProvider, useAuth } from "./context/AuthContext";
+
+
+import { AuthProvider } from "./context/AuthContext";
+
+
+import { useAuth } from "./context/AuthContext.helpers.js";
 
 import { ToastProvider } from "./context/ToastContext";
 
@@ -63,24 +69,24 @@ import ProtectedRoute from "./components/ProtectedRoute";
 Layouts
 =========================================================*/
 
-import DesignerLayout from "./Layouts/DesignerLayout";
+const DesignerLayout = lazy(() => import("./Layouts/DesignerLayout"));
 
-import CreatorLayout from "./Layouts/CreatorLayout";
-import AdminLayout from "./Layouts/AdminLayout";
+const CreatorLayout = lazy(() => import("./Layouts/CreatorLayout"));
+const AdminLayout = lazy(() => import("./Layouts/AdminLayout"));
 
 /*=========================================================
 Authentication Pages
 =========================================================*/
 
-import Register from "./pages/auth/Register";
+const Register = lazy(() => import("./pages/auth/Register"));
 
-import VerifyOTP from "./pages/auth/VerifyOTP";
+const VerifyOTP = lazy(() => import("./pages/auth/VerifyOTP"));
 
-import Login from "./pages/auth/Login";
+const Login = lazy(() => import("./pages/auth/Login"));
 
-import ForgotPassword from "./pages/auth/ForgotPassword";
+const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword"));
 
-import ResetPassword from "./pages/auth/ResetPassword";
+const ResetPassword = lazy(() => import("./pages/auth/ResetPassword"));
 
 /*=========================================================
 Shared Avatar System
@@ -92,75 +98,75 @@ The SAME AvatarStudio component is used by:
 - Creator
 =========================================================*/
 
-import AvatarStudio from "./pages/avatar/AvatarStudio";
+const AvatarStudio = lazy(() => import("./pages/avatar/AvatarStudio"));
 
-import SuperAdminDashboard from "./pages/Superadmin/SuperadminDashboard";
+const SuperAdminDashboard = lazy(() => import("./pages/Superadmin/SuperadminDashboard"));
 
-import UserManagement from "./pages/Superadmin/UserManagement";
+const UserManagement = lazy(() => import("./pages/Superadmin/UserManagement"));
 
-import DesignerApprovals from "./pages/Superadmin/DesignerApprovals";
+const DesignerApprovals = lazy(() => import("./pages/Superadmin/DesignerApprovals"));
 
-import SystemSettings from "./pages/Superadmin/Settings";
+const SystemSettings = lazy(() => import("./pages/Superadmin/Settings"));
 
 /*=========================================================
 Designer Pages
 =========================================================*/
 
-import DesignerMarketplace from "./pages/Designer/DesignerMarketplace";
+const DesignerMarketplace = lazy(() => import("./pages/Designer/DesignerMarketplace"));
 
-import DesignerDashboard from "./pages/Designer/DesignerDashboard";
+const DesignerDashboard = lazy(() => import("./pages/Designer/DesignerDashboard"));
 
-import InventoryGrid from "./pages/Designer/InventoryGrid";
+const InventoryGrid = lazy(() => import("./pages/Designer/InventoryGrid"));
 
-import DesignerBookings from "./pages/Designer/DesignerBookings";
+const DesignerBookings = lazy(() => import("./pages/Designer/DesignerBookings"));
 
-import DesignerWallet from "./pages/Designer/DesignerWallet";
+const DesignerWallet = lazy(() => import("./pages/Designer/DesignerWallet"));
 
-import DesignerUploadDesign from "./pages/Designer/DesignerUploadDesign";
+const DesignerUploadDesign = lazy(() => import("./pages/Designer/DesignerUploadDesign"));
 
-import DesignDetail from "./pages/Designer/DesignDetail";
+const DesignDetail = lazy(() => import("./pages/Designer/DesignDetail"));
 
-import ProfileSettings from "./pages/Designer/DesignerProfileSettings";
+const ProfileSettings = lazy(() => import("./pages/Designer/DesignerProfileSettings"));
 
-import ProfileView from "./pages/Designer/DesignerProfileView";
+const ProfileView = lazy(() => import("./pages/Designer/DesignerProfileView"));
 
-import OrderHistoryPage from "./pages/Designer/OrderHistoryPage";
+const OrderHistoryPage = lazy(() => import("./pages/Designer/OrderHistoryPage"));
 
-import DesignerOrders from "./pages/Designer/DesignerOrders";
+const DesignerOrders = lazy(() => import("./pages/Designer/DesignerOrders"));
 
-import DesignerBookingDetail from "./pages/Designer/DesignerBookingDetail";
+const DesignerBookingDetail = lazy(() => import("./pages/Designer/DesignerBookingDetail"));
 
-import DesignerShowcaseDetail from "./pages/Designer/DesignerShowcaseDetail";
+const DesignerShowcaseDetail = lazy(() => import("./pages/Designer/DesignerShowcaseDetail"));
 
 /*=========================================================
 Creator Pages
 =========================================================*/
 
-import CreatorBookings from "./pages/Creator/CreatorBookings";
+const CreatorBookings = lazy(() => import("./pages/Creator/CreatorBookings"));
 
-import CreatorBookingDetail from "./pages/Creator/CreatorBookingDetail";
+const CreatorBookingDetail = lazy(() => import("./pages/Creator/CreatorBookingDetail"));
 
-import CreatorInitiateCommission from "./pages/Creator/CreatorInitiateCommission";
+const CreatorInitiateCommission = lazy(() => import("./pages/Creator/CreatorInitiateCommission"));
 
-import DesignerStudioProfile from "./pages/Creator/DesignerStudioProfile";
+const DesignerStudioProfile = lazy(() => import("./pages/Creator/DesignerStudioProfile"));
 
-import CreatorOrdersHistory from "./pages/Creator/CreatorOrdersHistory";
+const CreatorOrdersHistory = lazy(() => import("./pages/Creator/CreatorOrdersHistory"));
 
-import CreatorUpload from "./pages/Creator/CreatorUpload";
+const CreatorUpload = lazy(() => import("./pages/Creator/CreatorUpload"));
 
-import CreatorWallet from "./pages/Creator/CreatorWallet";
+const CreatorWallet = lazy(() => import("./pages/Creator/CreatorWallet"));
 
-import CreatorShowcase from "./pages/Creator/CreatorShowcase";
+const CreatorShowcase = lazy(() => import("./pages/Creator/CreatorShowcase"));
 
-import CreatorShowcaseDetail from "./pages/Creator/CreatorShowcaseDetail";
+const CreatorShowcaseDetail = lazy(() => import("./pages/Creator/CreatorShowcaseDetail"));
 
-import CreatorCreateBooking from "./pages/Creator/CreatorCreateBooking";
+const CreatorCreateBooking = lazy(() => import("./pages/Creator/CreatorCreateBooking"));
 
-import DesignerDirectory from "./pages/Creator/DesignerDirectory";
+const DesignerDirectory = lazy(() => import("./pages/Creator/DesignerDirectory"));
 
-import CreatorProfile from "./pages/Creator/CreatorProfile";
+const CreatorProfile = lazy(() => import("./pages/Creator/CreatorProfile"));
 
-import CreatorSettings from "./pages/Creator/CreatorSettings";
+const CreatorSettings = lazy(() => import("./pages/Creator/CreatorSettings"));
 
 /*=========================================================
 Creator Fashion Editor
@@ -182,14 +188,16 @@ The editor supports:
 Creator Showcase publishing remains separate.
 =========================================================*/
 
-import FashionEditor from "./pages/sketches/editor/FashionEditor";
-import CreatorToolsPage from "./pages/Creator/CreatorToolsPage";
-import CreatorBackgroundRemover from "./pages/Creator/CreatorBackgroundRemover";
-import CreatorCostumeExtractor from "./pages/Creator/CreatorCostumeExtractor";
-import CreatorTextToImage from "./pages/Creator/CreatorTextToImage";
-import CreatorSketchToImage from "./pages/Creator/CreatorSketchToImage";
-import CreatorVirtualTryOn from "./pages/Creator/CreatorVirtualTryOn";
-import CreatorMultiViewGenerator from "./pages/Creator/CreatorMultiViewGenerator";
+const CreatorProjects = lazy(() => import("./pages/Creator/CreatorProjects"));
+const FashionEditor = lazy(() => import("./pages/sketches/editor/FashionEditor"));
+const CreatorToolsPage = lazy(() => import("./pages/Creator/CreatorToolsPage"));
+const CreatorBackgroundRemover = lazy(() => import("./pages/Creator/CreatorBackgroundRemover"));
+const CreatorCostumeExtractor = lazy(() => import("./pages/Creator/CreatorCostumeExtractor"));
+const CreatorTextToImage = lazy(() => import("./pages/Creator/CreatorTextToImage"));
+const CreatorSketchToImage = lazy(() => import("./pages/Creator/CreatorSketchToImage"));
+const CreatorVirtualTryOn = lazy(() => import("./pages/Creator/CreatorVirtualTryOn"));
+const CreatorMultiViewGenerator = lazy(() => import("./pages/Creator/CreatorMultiViewGenerator"));
+const CreatorPatternExtractor = lazy(() => import("./pages/Creator/CreatorPatternExtractor"));
 
 
 /*=========================================================
@@ -385,6 +393,7 @@ function App() {
       <AuthProvider>
         <ToastProvider>
           <Elements stripe={stripePromise}>
+            <RouteContent fullScreen>
             <Routes>
               {/*=========================================
               Public Authentication Routes
@@ -618,12 +627,11 @@ Normal admins, creators and designers cannot enter.
                     element={<Navigate to="/creator/showcase" replace />}
                   />
 
-                  {/*=====================================
-                  Shared Avatar Studio
-                  =====================================*/}
+                  {}
 
                   <Route path="avatar-studio" element={<AvatarStudio />} />
 
+                  <Route path="projects" element={<CreatorProjects />} />
                   <Route path="bookings" element={<CreatorBookings />} />
 
                   <Route
@@ -678,6 +686,13 @@ Normal admins, creators and designers cannot enter.
   element={<CreatorMultiViewGenerator />}
 />
 
+
+<Route
+  path="tools/pattern-extractor"
+  element={<CreatorPatternExtractor />}
+/>
+
+
                   <Route
                     path="showcase/:slug"
                     element={<CreatorShowcaseDetail />}
@@ -712,6 +727,7 @@ Normal admins, creators and designers cannot enter.
 
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
+            </RouteContent>
           </Elements>
         </ToastProvider>
       </AuthProvider>

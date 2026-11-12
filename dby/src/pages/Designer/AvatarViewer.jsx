@@ -1,6 +1,6 @@
 import React, { useMemo, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Environment, ContactShadows, PresentationControls, useGLTF } from '@react-three/drei';
+import { OrbitControls, Environment, ContactShadows, PresentationControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { useStudioStore } from './store';
 import { X, Shirt, Loader2 } from 'lucide-react';

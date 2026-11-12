@@ -1,3 +1,4 @@
+import { IMAGE_RESOURCE_CACHE } from "./ImageObject.helpers.js";
 /*
 =========================================================
 FashionVision Professional Editor
@@ -34,7 +35,7 @@ Constants
 const DEFAULT_WIDTH = 640;
 const DEFAULT_HEIGHT = 480;
 const MINIMUM_DIMENSION = 0.0001;
-const IMAGE_RESOURCE_CACHE = new Map();
+
 
 /*=========================================================
 General Helpers
@@ -441,22 +442,7 @@ function useCachedImage(source) {
     return snapshot;
 }
 
-export function clearImageObjectCache(
-    source = null
-) {
-    if (
-        typeof source === "string" &&
-        source
-    ) {
-        IMAGE_RESOURCE_CACHE.delete(
-            source
-        );
 
-        return;
-    }
-
-    IMAGE_RESOURCE_CACHE.clear();
-}
 
 /*=========================================================
 Image Layout

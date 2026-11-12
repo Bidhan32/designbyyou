@@ -29,6 +29,21 @@ function freezeEntry(entry) {
 
 // Never rename existing IDs: clothingTemplateId is saved in creator projects.
 export const GARMENT_CATALOG = Object.freeze({
+  "agc-jacket": freezeEntry({
+    category: "outerwear",
+    tags: ["leather jacket", "jacket", "agc", "button front", "pointed collar", "patch pockets", "long sleeves", "outerwear", "akhaller"],
+    // AGC Jacket by akhaller (Sketchfab CC BY 4.0) — attribution required.
+    // Triangle-preserving original model segmentation, 12 recolorable regions.
+    model3D: { url: `${BASE_URL}DBY_AGC_Jacket_12Regions.glb`, uvMode: "projected", format: "glb" },
+  }),
+
+  "leather-coat": freezeEntry({
+    category: "outerwear",
+    tags: ["leather jacket", "long leather coat", "trench coat", "overcoat", "women", "double breasted", "long coat", "lapels", "outerwear"],
+    // Source user-provided GLB, 13 triangle-derived editable regions. Redistribution rights NOT independently verified.
+    model3D: { url: `${BASE_URL}DBY_SourceLeatherLongCoat_13Regions.glb`, uvMode: "projected", format: "glb" },
+  }),
+
   "kurta": freezeEntry({
     category: "traditional",
     tags: ["kurta", "long kurta", "v neck", "traditional wear", "south asian", "tunic", "shalwar kameez", "women"],

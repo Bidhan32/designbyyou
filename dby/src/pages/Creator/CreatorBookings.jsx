@@ -1163,242 +1163,75 @@ export default function CreatorBookings() {
 
   return (
     <div
-      className="
-        relative
-        min-h-screen
-        overflow-hidden
-        bg-slate-50
-        pb-24
-        text-slate-950
-        antialiased
-        transition-colors
-        duration-300
-
-        dark:bg-[#030303]
-        dark:text-white
-      "
+      className="relative min-h-screen overflow-hidden bg-slate-50 pb-24 text-slate-950 antialiased transition-colors duration-300 dark:bg-[#030303] dark:text-white"
     >
       {/*===================================================
       Ambient Background
       ===================================================*/}
 
       <div
-        className="
-          pointer-events-none
-          fixed
-          inset-0
-          z-0
-          overflow-hidden
-        "
+        className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
       >
         <div
-          className="
-            absolute
-            -right-[14rem]
-            -top-[18rem]
-            h-[40rem]
-            w-[40rem]
-            rounded-full
-            bg-[#D4AF37]/10
-            blur-[170px]
-
-            dark:bg-[#D4AF37]/10
-          "
+          className="absolute -right-[14rem] -top-[18rem] h-[40rem] w-[40rem] rounded-full bg-[#D4AF37]/10 blur-[170px] dark:bg-[#D4AF37]/10"
         />
 
         <div
-          className="
-            absolute
-            -bottom-[18rem]
-            -left-[16rem]
-            h-[42rem]
-            w-[42rem]
-            rounded-full
-            bg-indigo-500/[0.04]
-            blur-[180px]
-
-            dark:bg-indigo-500/[0.07]
-          "
+          className="absolute -bottom-[18rem] -left-[16rem] h-[42rem] w-[42rem] rounded-full bg-indigo-500/[0.04] blur-[180px] dark:bg-indigo-500/[0.07]"
         />
 
         <div
-          className="
-            absolute
-            inset-0
-            bg-[linear-gradient(to_right,rgba(15,23,42,0.022)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.022)_1px,transparent_1px)]
-            bg-[size:40px_40px]
-
-            dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.014)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.014)_1px,transparent_1px)]
-          "
+          className="absolute inset-0 bg-[linear-gradient(to_right,rgba(15,23,42,0.022)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.022)_1px,transparent_1px)] bg-[size:40px_40px] dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.014)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.014)_1px,transparent_1px)]"
         />
       </div>
 
       <div
-        className="
-          relative
-          z-10
-          mx-auto
-          max-w-[1400px]
-          px-4
-          pt-9
-
-          sm:px-6
-
-          lg:px-10
-          lg:pt-12
-        "
+        className="relative z-10 mx-auto max-w-[1400px] px-4 pt-9 sm:px-6 lg:px-10 lg:pt-12"
       >
         {/*=================================================
         Hero
         =================================================*/}
 
         <section
-          className="
-            relative
-            mb-8
-            overflow-hidden
-            rounded-[2rem]
-            border
-            border-slate-200/80
-            bg-white/85
-            p-6
-            shadow-[0_24px_70px_rgba(15,23,42,0.06)]
-            backdrop-blur-xl
-
-            sm:p-8
-
-            lg:p-10
-
-            dark:border-white/[0.06]
-            dark:bg-[#090909]/90
-            dark:shadow-[0_30px_90px_rgba(0,0,0,0.45)]
-          "
+          className="relative mb-8 overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/85 p-6 shadow-sm backdrop-blur-xl sm:p-8 lg:p-10 dark:border-white/[0.06] dark:bg-[#090909]/90 shadow-sm"
         >
           <div
-            className="
-              pointer-events-none
-              absolute
-              -right-20
-              -top-24
-              h-72
-              w-72
-              rounded-full
-              bg-[#D4AF37]/10
-              blur-[80px]
-            "
+            className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[#D4AF37]/10 blur-[80px]"
           />
 
           <div
-            className="
-              pointer-events-none
-              absolute
-              bottom-0
-              right-10
-              hidden
-              font-serif
-              text-[11rem]
-              leading-none
-              text-slate-950/[0.018]
-
-              xl:block
-
-              dark:text-white/[0.018]
-            "
+            className="pointer-events-none absolute bottom-0 right-10 hidden font-serif text-[11rem] leading-none text-slate-950/[0.018] xl:block dark:text-white/[0.018]"
           >
             DBY
           </div>
 
           <div
-            className="
-              relative
-              z-10
-              flex
-              flex-col
-              gap-8
-
-              lg:flex-row
-              lg:items-end
-              lg:justify-between
-            "
+            className="relative z-10 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between"
           >
             <div>
               <div
-                className="
-                  mb-4
-                  inline-flex
-                  items-center
-                  gap-2
-                  rounded-full
-                  border
-                  border-[#D4AF37]/20
-                  bg-[#D4AF37]/10
-                  px-3
-                  py-1.5
-                  text-[9px]
-                  font-black
-                  uppercase
-                  tracking-[0.28em]
-                  text-[#95731B]
-
-                  dark:text-[#D4AF37]
-                "
+                className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/10 px-3 py-1.5 text-xs font-semibold tracking-normal text-[#95731B] dark:text-[#D4AF37]"
               >
                 <Compass size={12} />
-                Creator Operations
+                Bookings
               </div>
 
               <h1
-                className="
-                  max-w-3xl
-                  font-serif
-                  text-4xl
-                  font-light
-                  leading-[1.05]
-                  tracking-tight
-
-                  sm:text-5xl
-
-                  lg:text-6xl
-                "
+                className="max-w-3xl font-semibold font-semibold leading-[1.05] tracking-tight text-3xl sm:text-4xl"
               >
-                Your Booking{" "}
-                <span
-                  className="
-                    italic
-                    text-[#A27E1D]
-
-                    dark:text-[#D4AF37]
-                  "
-                >
-                  Pipeline
-                </span>
+                Your bookings{" "}
+                
               </h1>
 
               <p
-                className="
-                  mt-5
-                  max-w-2xl
-                  text-sm
-                  leading-7
-                  text-slate-500
-
-                  dark:text-white/45
-                "
+                className="mt-5 max-w-2xl text-sm leading-7 text-slate-500 dark:text-white/45"
               >
-                Follow every design booking from request and secured payment
-                through prototype review, final delivery, cancellation, and
-                refunds.
+                Track progress, review deliveries, and see what needs your attention.
               </p>
             </div>
 
             <div
-              className="
-                flex
-                flex-col
-                gap-3
-
-                sm:flex-row
-              "
+              className="flex flex-col gap-3 sm:flex-row"
             >
               <button
                 type="button"
@@ -1408,37 +1241,7 @@ export default function CreatorBookings() {
                   })
                 }
                 disabled={refreshing}
-                className="
-                  inline-flex
-                  h-12
-                  items-center
-                  justify-center
-                  gap-2
-                  rounded-xl
-                  border
-                  border-slate-200
-                  bg-white
-                  px-5
-                  text-[9px]
-                  font-black
-                  uppercase
-                  tracking-[0.18em]
-                  text-slate-600
-                  shadow-sm
-                  transition
-
-                  hover:-translate-y-0.5
-                  hover:border-[#D4AF37]/50
-                  hover:text-[#94711A]
-
-                  disabled:cursor-not-allowed
-                  disabled:opacity-50
-
-                  dark:border-white/10
-                  dark:bg-white/[0.04]
-                  dark:text-white/60
-                  dark:hover:text-[#D4AF37]
-                "
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-xs font-semibold tracking-normal text-slate-600 shadow-sm transition hover:border-[#D4AF37]/50 hover:text-[#94711A] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/60 dark:hover:text-[#D4AF37]"
               >
                 <RefreshCw
                   size={14}
@@ -1449,27 +1252,7 @@ export default function CreatorBookings() {
 
               <Link
                 to="/creator/bookings/new"
-                className="
-                  inline-flex
-                  h-12
-                  items-center
-                  justify-center
-                  gap-2
-                  rounded-xl
-                  bg-[#D4AF37]
-                  px-6
-                  text-[9px]
-                  font-black
-                  uppercase
-                  tracking-[0.19em]
-                  text-black
-                  shadow-[0_14px_35px_rgba(212,175,55,0.24)]
-                  transition
-
-                  hover:-translate-y-0.5
-                  hover:bg-[#E6C962]
-                  hover:shadow-[0_18px_45px_rgba(212,175,55,0.3)]
-                "
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-6 text-xs font-semibold tracking-normal text-black shadow-sm transition hover:bg-[#E6C962] hover:shadow-sm"
               >
                 <Plus size={15} />
                 New Booking
@@ -1483,15 +1266,7 @@ export default function CreatorBookings() {
         =================================================*/}
 
         <section
-          className="
-            mb-8
-            grid
-            gap-4
-
-            sm:grid-cols-2
-
-            xl:grid-cols-4
-          "
+          className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
         >
           {[
             {
@@ -1558,29 +1333,7 @@ export default function CreatorBookings() {
             return (
               <article
                 key={item.label}
-                className="
-                    group
-                    relative
-                    overflow-hidden
-                    rounded-2xl
-                    border
-                    border-slate-200/80
-                    bg-white/90
-                    p-5
-                    shadow-sm
-                    backdrop-blur
-                    transition
-                    duration-300
-
-                    hover:-translate-y-1
-                    hover:border-[#D4AF37]/25
-                    hover:shadow-[0_18px_50px_rgba(15,23,42,0.08)]
-
-                    dark:border-white/[0.06]
-                    dark:bg-[#0B0B0B]/90
-                    dark:hover:border-[#D4AF37]/20
-                    dark:hover:shadow-[0_24px_70px_rgba(0,0,0,0.45)]
-                  "
+                className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white/90 p-5 shadow-sm backdrop-blur transition duration-300 hover:border-[#D4AF37]/25 hover:shadow-sm dark:border-white/[0.06] dark:bg-[#0B0B0B]/90 dark:hover:border-[#D4AF37]/20 dark:hover:shadow-sm"
               >
                 <div
                   className={`
@@ -1598,48 +1351,23 @@ export default function CreatorBookings() {
                 />
 
                 <div
-                  className="
-                      relative
-                      flex
-                      items-start
-                      justify-between
-                      gap-4
-                    "
+                  className="relative flex items-start justify-between gap-4"
                 >
                   <div>
                     <p
-                      className="
-                          text-[9px]
-                          font-black
-                          uppercase
-                          tracking-[0.2em]
-                          text-slate-400
-
-                          dark:text-white/30
-                        "
+                      className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/30"
                     >
                       {item.label}
                     </p>
 
                     <p
-                      className="
-                          mt-3
-                          font-serif
-                          text-4xl
-                          tracking-tight
-                        "
+                      className="mt-3 font-serif text-4xl tracking-tight"
                     >
                       {item.value}
                     </p>
 
                     <p
-                      className="
-                          mt-2
-                          text-xs
-                          text-slate-500
-
-                          dark:text-white/35
-                        "
+                      className="mt-2 text-xs text-slate-500 dark:text-white/35"
                     >
                       {item.helper}
                     </p>
@@ -1680,58 +1408,20 @@ export default function CreatorBookings() {
         =================================================*/}
 
         <section
-          className="
-            overflow-hidden
-            rounded-[2rem]
-            border
-            border-slate-200/80
-            bg-white/90
-            shadow-[0_20px_60px_rgba(15,23,42,0.05)]
-            backdrop-blur-xl
-
-            dark:border-white/[0.06]
-            dark:bg-[#090909]/90
-            dark:shadow-[0_30px_80px_rgba(0,0,0,0.4)]
-          "
+          className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/90 shadow-sm backdrop-blur-xl dark:border-white/[0.06] dark:bg-[#090909]/90 shadow-sm"
         >
           {/*===============================================
           Tabs / Search
           ===============================================*/}
 
           <div
-            className="
-              border-b
-              border-slate-200/80
-              p-5
-
-              sm:p-6
-
-              dark:border-white/[0.06]
-            "
+            className="border-b border-slate-200/80 p-5 sm:p-6 dark:border-white/[0.06]"
           >
             <div
-              className="
-                flex
-                flex-col
-                gap-5
-
-                xl:flex-row
-                xl:items-end
-                xl:justify-between
-              "
+              className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between"
             >
               <div
-                className="
-                  -mx-1
-                  flex
-                  gap-1
-                  overflow-x-auto
-                  rounded-xl
-                  bg-slate-100/80
-                  p-1
-
-                  dark:bg-white/[0.035]
-                "
+                className="-mx-1 flex gap-1 overflow-x-auto rounded-xl bg-slate-100/80 p-1 dark:bg-white/[0.035]"
               >
                 {TAB_DEFINITIONS.map((tab) => {
                   const isActive = activeTab === tab.id;
@@ -1754,10 +1444,10 @@ export default function CreatorBookings() {
                           rounded-lg
                           px-4
                           py-3
-                          text-[9px]
-                          font-black
-                          uppercase
-                          tracking-[0.16em]
+                          text-xs
+                          font-semibold
+                          
+                          tracking-normal
                           transition
 
                           ${
@@ -1777,7 +1467,7 @@ export default function CreatorBookings() {
                             px-1.5
                             py-0.5
                             text-center
-                            text-[8px]
+                            text-xs
 
                             ${
                               attention
@@ -1796,28 +1486,13 @@ export default function CreatorBookings() {
               </div>
 
               <label
-                className="
-                  relative
-                  block
-                  w-full
-
-                  xl:max-w-md
-                "
+                className="relative block w-full xl:max-w-md"
               >
                 <span className="sr-only">Search bookings</span>
 
                 <Search
                   size={15}
-                  className="
-                    pointer-events-none
-                    absolute
-                    left-4
-                    top-1/2
-                    -translate-y-1/2
-                    text-slate-400
-
-                    dark:text-white/30
-                  "
+                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30"
                 />
 
                 <input
@@ -1826,57 +1501,14 @@ export default function CreatorBookings() {
                   maxLength={100}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Search designer, booking, title or ID"
-                  className="
-                    h-12
-                    w-full
-                    rounded-xl
-                    border
-                    border-slate-200
-                    bg-slate-50/80
-                    pl-11
-                    pr-11
-                    text-sm
-                    text-slate-900
-                    outline-none
-                    transition
-                    placeholder:text-slate-400
-
-                    focus:border-[#D4AF37]/50
-                    focus:bg-white
-                    focus:ring-4
-                    focus:ring-[#D4AF37]/10
-
-                    dark:border-white/10
-                    dark:bg-white/[0.035]
-                    dark:text-white
-                    dark:placeholder:text-white/25
-                    dark:focus:bg-white/[0.05]
-                  "
+                  className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50/80 pl-11 pr-11 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/50 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.035] dark:text-white dark:placeholder:text-white/25 dark:focus:bg-white/[0.05]"
                 />
 
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={() => setSearchQuery("")}
-                    className="
-                      absolute
-                      right-3
-                      top-1/2
-                      grid
-                      h-7
-                      w-7
-                      -translate-y-1/2
-                      place-items-center
-                      rounded-full
-                      text-slate-400
-                      transition
-
-                      hover:bg-slate-200
-                      hover:text-slate-700
-
-                      dark:hover:bg-white/10
-                      dark:hover:text-white
-                    "
+                    className="absolute right-3 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white"
                     aria-label="Clear search"
                   >
                     <X size={13} />
@@ -1886,35 +1518,16 @@ export default function CreatorBookings() {
             </div>
 
             <div
-              className="
-                mt-4
-                flex
-                items-center
-                justify-between
-                gap-4
-              "
+              className="mt-4 flex items-center justify-between gap-4"
             >
               <p
-                className="
-                  text-xs
-                  text-slate-400
-
-                  dark:text-white/30
-                "
+                className="text-xs text-slate-400 dark:text-white/30"
               >
                 {activeTabDefinition.description}
               </p>
 
               <p
-                className="
-                  text-[9px]
-                  font-black
-                  uppercase
-                  tracking-[0.16em]
-                  text-slate-400
-
-                  dark:text-white/25
-                "
+                className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/25"
               >
                 {visibleBookings.length} visible
               </p>
@@ -1928,78 +1541,29 @@ export default function CreatorBookings() {
           {error ? (
             <div
               role="alert"
-              className="
-                m-5
-                rounded-2xl
-                border
-                border-rose-200
-                bg-rose-50/80
-                p-6
-
-                sm:m-6
-
-                dark:border-rose-400/20
-                dark:bg-rose-400/[0.07]
-              "
+              className="m-5 rounded-2xl border border-rose-200 bg-rose-50/80 p-6 sm:m-6 dark:border-rose-400/20 dark:bg-rose-400/[0.07]"
             >
               <div
-                className="
-                  flex
-                  flex-col
-                  gap-5
-
-                  sm:flex-row
-                  sm:items-center
-                  sm:justify-between
-                "
+                className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div
-                  className="
-                    flex
-                    items-start
-                    gap-4
-                  "
+                  className="flex items-start gap-4"
                 >
                   <div
-                    className="
-                      grid
-                      h-11
-                      w-11
-                      shrink-0
-                      place-items-center
-                      rounded-xl
-                      bg-rose-100
-                      text-rose-700
-
-                      dark:bg-rose-400/10
-                      dark:text-rose-300
-                    "
+                    className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-rose-100 text-rose-700 dark:bg-rose-400/10 dark:text-rose-300"
                   >
                     <AlertCircle size={20} />
                   </div>
 
                   <div>
                     <h2
-                      className="
-                        font-semibold
-                        text-rose-900
-
-                        dark:text-rose-100
-                      "
+                      className="font-semibold text-rose-900 dark:text-rose-100"
                     >
                       Could not load bookings
                     </h2>
 
                     <p
-                      className="
-                        mt-1
-                        max-w-2xl
-                        text-sm
-                        leading-6
-                        text-rose-700/75
-
-                        dark:text-rose-200/65
-                      "
+                      className="mt-1 max-w-2xl text-sm leading-6 text-rose-700/75 dark:text-rose-200/65"
                     >
                       {error}
                     </p>
@@ -2009,25 +1573,7 @@ export default function CreatorBookings() {
                 <button
                   type="button"
                   onClick={() => fetchBookings()}
-                  className="
-                    inline-flex
-                    h-10
-                    shrink-0
-                    items-center
-                    justify-center
-                    gap-2
-                    rounded-xl
-                    bg-rose-700
-                    px-4
-                    text-[9px]
-                    font-black
-                    uppercase
-                    tracking-[0.16em]
-                    text-white
-                    transition
-
-                    hover:bg-rose-800
-                  "
+                  className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-xs font-semibold tracking-normal text-white transition hover:bg-rose-800"
                 >
                   <RefreshCw size={13} />
                   Retry
@@ -2040,76 +1586,31 @@ export default function CreatorBookings() {
             =============================================*/
 
             <div
-              className="
-                space-y-4
-                p-5
-
-                sm:p-6
-              "
+              className="space-y-4 p-5 sm:p-6"
             >
               {[1, 2, 3].map((item) => (
                 <div
                   key={item}
-                  className="
-                      overflow-hidden
-                      rounded-2xl
-                      border
-                      border-slate-200
-                      bg-white
-
-                      dark:border-white/[0.06]
-                      dark:bg-[#0D0D0D]
-                    "
+                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-white/[0.06] dark:bg-[#0D0D0D]"
                 >
                   <div
-                    className="
-                        animate-pulse
-                        space-y-5
-                        p-6
-                      "
+                    className="animate-pulse space-y-5 p-6"
                   >
                     <div
-                      className="
-                          h-6
-                          w-48
-                          rounded-full
-                          bg-slate-100
-
-                          dark:bg-white/[0.05]
-                        "
+                      className="h-6 w-48 rounded-full bg-slate-100 dark:bg-white/[0.05]"
                     />
 
                     <div
-                      className="
-                          h-8
-                          w-2/3
-                          rounded-lg
-                          bg-slate-100
-
-                          dark:bg-white/[0.05]
-                        "
+                      className="h-8 w-2/3 rounded-lg bg-slate-100 dark:bg-white/[0.05]"
                     />
 
                     <div
-                      className="
-                          grid
-                          gap-3
-
-                          sm:grid-cols-2
-
-                          lg:grid-cols-4
-                        "
+                      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
                     >
                       {[1, 2, 3, 4].map((block) => (
                         <div
                           key={block}
-                          className="
-                                h-24
-                                rounded-xl
-                                bg-slate-100
-
-                                dark:bg-white/[0.04]
-                              "
+                          className="h-24 rounded-xl bg-slate-100 dark:bg-white/[0.04]"
                         />
                       ))}
                     </div>
@@ -2123,45 +1624,13 @@ export default function CreatorBookings() {
             =============================================*/
 
             <div
-              className="
-                flex
-                min-h-[430px]
-                flex-col
-                items-center
-                justify-center
-                px-6
-                py-20
-                text-center
-              "
+              className="flex min-h-[430px] flex-col items-center justify-center px-6 py-20 text-center"
             >
               <div
-                className="
-                  relative
-                  grid
-                  h-20
-                  w-20
-                  place-items-center
-                  rounded-3xl
-                  border
-                  border-slate-200
-                  bg-slate-50
-                  text-[#A17D1D]
-                  shadow-inner
-
-                  dark:border-white/10
-                  dark:bg-white/[0.03]
-                  dark:text-[#D4AF37]
-                "
+                className="relative grid h-20 w-20 place-items-center rounded-3xl border border-slate-200 bg-slate-50 text-[#A17D1D] shadow-inner dark:border-white/10 dark:bg-white/[0.03] dark:text-[#D4AF37]"
               >
                 <div
-                  className="
-                    pointer-events-none
-                    absolute
-                    inset-0
-                    rounded-3xl
-                    bg-[#D4AF37]/10
-                    blur-xl
-                  "
+                  className="pointer-events-none absolute inset-0 rounded-3xl bg-[#D4AF37]/10 blur-xl"
                 />
 
                 {searchQuery ? (
@@ -2172,12 +1641,7 @@ export default function CreatorBookings() {
               </div>
 
               <h2
-                className="
-                  mt-7
-                  font-serif
-                  text-3xl
-                  font-light
-                "
+                className="mt-7 font-serif text-3xl font-light"
               >
                 {searchQuery
                   ? "No matching bookings"
@@ -2185,15 +1649,7 @@ export default function CreatorBookings() {
               </h2>
 
               <p
-                className="
-                  mt-3
-                  max-w-lg
-                  text-sm
-                  leading-7
-                  text-slate-500
-
-                  dark:text-white/40
-                "
+                className="mt-3 max-w-lg text-sm leading-7 text-slate-500 dark:text-white/40"
               >
                 {searchQuery
                   ? "Try another designer name, booking ID, design title, booking type, or workflow state."
@@ -2206,33 +1662,7 @@ export default function CreatorBookings() {
                 <button
                   type="button"
                   onClick={() => setSearchQuery("")}
-                  className="
-                    mt-7
-                    inline-flex
-                    h-11
-                    items-center
-                    justify-center
-                    gap-2
-                    rounded-xl
-                    border
-                    border-slate-200
-                    bg-white
-                    px-5
-                    text-[9px]
-                    font-black
-                    uppercase
-                    tracking-[0.18em]
-                    text-slate-600
-                    transition
-
-                    hover:border-[#D4AF37]/40
-                    hover:text-[#98751A]
-
-                    dark:border-white/10
-                    dark:bg-white/[0.04]
-                    dark:text-white/60
-                    dark:hover:text-[#D4AF37]
-                  "
+                  className="mt-7 inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-xs font-semibold tracking-normal text-slate-600 transition hover:border-[#D4AF37]/40 hover:text-[#98751A] dark:border-white/10 dark:bg-white/[0.04] dark:text-white/60 dark:hover:text-[#D4AF37]"
                 >
                   <X size={13} />
                   Clear Search
@@ -2241,25 +1671,7 @@ export default function CreatorBookings() {
                 bookings.length === 0 && (
                   <Link
                     to="/creator/bookings/new"
-                    className="
-                      mt-7
-                      inline-flex
-                      h-11
-                      items-center
-                      justify-center
-                      gap-2
-                      rounded-xl
-                      bg-[#D4AF37]
-                      px-5
-                      text-[9px]
-                      font-black
-                      uppercase
-                      tracking-[0.18em]
-                      text-black
-                      transition
-
-                      hover:bg-[#E4C65E]
-                    "
+                    className="mt-7 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-5 text-xs font-semibold tracking-normal text-black transition hover:bg-[#E4C65E]"
                   >
                     <Plus size={14} />
                     Create First Booking
@@ -2273,12 +1685,7 @@ export default function CreatorBookings() {
             =============================================*/
 
             <div
-              className="
-                space-y-4
-                p-4
-
-                sm:p-6
-              "
+              className="space-y-4 p-4 sm:p-6"
             >
               {visibleBookings.map((booking) => {
                 const status = normalizeStatus(booking?.status);
@@ -2320,55 +1727,22 @@ export default function CreatorBookings() {
                   <Link
                     key={booking.id}
                     to={`/creator/bookings/${booking.id}`}
-                    className="
-                        group
-                        block
-                        overflow-hidden
-                        rounded-2xl
-                        border
-                        border-slate-200/90
-                        bg-white
-                        shadow-sm
-                        transition
-                        duration-300
-
-                        hover:-translate-y-0.5
-                        hover:border-[#D4AF37]/45
-                        hover:shadow-[0_22px_60px_rgba(15,23,42,0.10)]
-
-                        dark:border-white/[0.06]
-                        dark:bg-[#0C0C0C]
-                        dark:hover:border-[#D4AF37]/25
-                        dark:hover:shadow-[0_28px_80px_rgba(0,0,0,0.5)]
-                      "
+                    className="group block overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm transition duration-300 hover:border-[#D4AF37]/45 hover:shadow-sm dark:border-white/[0.06] dark:bg-[#0C0C0C] dark:hover:border-[#D4AF37]/25 dark:hover:shadow-sm"
                   >
                     <div
-                      className="
-                          grid
-
-                          xl:grid-cols-[minmax(0,1fr)_290px]
-                        "
+                      className="grid xl:grid-cols-[minmax(0,1fr)_290px]"
                     >
                       {/*=================================
                         Main Card
                         =================================*/}
 
                       <div
-                        className="
-                            p-5
-
-                            sm:p-7
-                          "
+                        className="p-5 sm:p-7"
                       >
                         {/* Badges */}
 
                         <div
-                          className="
-                              flex
-                              flex-wrap
-                              items-center
-                              gap-2
-                            "
+                          className="flex flex-wrap items-center gap-2"
                         >
                           <span
                             className={`
@@ -2379,10 +1753,10 @@ export default function CreatorBookings() {
                                 border
                                 px-3
                                 py-1.5
-                                text-[8px]
-                                font-black
-                                uppercase
-                                tracking-[0.16em]
+                                text-xs
+                                font-semibold
+                                
+                                tracking-normal
 
                                 ${statusDetails.badgeClass}
                               `}
@@ -2398,69 +1772,20 @@ export default function CreatorBookings() {
                           </span>
 
                           <span
-                            className="
-                                rounded-full
-                                border
-                                border-slate-200
-                                bg-slate-50
-                                px-3
-                                py-1.5
-                                font-mono
-                                text-[8px]
-                                uppercase
-                                tracking-[0.14em]
-                                text-slate-500
-
-                                dark:border-white/10
-                                dark:bg-white/[0.03]
-                                dark:text-white/35
-                              "
+                            className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-mono text-xs tracking-normal text-slate-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-white/35"
                           >
                             #{shortId}
                           </span>
 
                           <span
-                            className="
-                                rounded-full
-                                border
-                                border-[#D4AF37]/20
-                                bg-[#D4AF37]/[0.07]
-                                px-3
-                                py-1.5
-                                text-[8px]
-                                font-black
-                                uppercase
-                                tracking-[0.15em]
-                                text-[#90701A]
-
-                                dark:text-[#D4AF37]
-                              "
+                            className="rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] px-3 py-1.5 text-xs font-semibold tracking-normal text-[#90701A] dark:text-[#D4AF37]"
                           >
                             {formatBookingType(booking?.booking_type)}
                           </span>
 
                           {CREATOR_ACTION_STATUSES.has(status) && (
                             <span
-                              className="
-                                  inline-flex
-                                  items-center
-                                  gap-1
-                                  rounded-full
-                                  border
-                                  border-violet-300/70
-                                  bg-violet-50
-                                  px-3
-                                  py-1.5
-                                  text-[8px]
-                                  font-black
-                                  uppercase
-                                  tracking-[0.14em]
-                                  text-violet-700
-
-                                  dark:border-violet-400/20
-                                  dark:bg-violet-400/10
-                                  dark:text-violet-300
-                                "
+                              className="inline-flex items-center gap-1 rounded-full border border-violet-300/70 bg-violet-50 px-3 py-1.5 text-xs font-semibold tracking-normal text-violet-700 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300"
                             >
                               <Sparkles size={10} />
                               Your Action
@@ -2471,93 +1796,31 @@ export default function CreatorBookings() {
                         {/* Title */}
 
                         <div
-                          className="
-                              mt-5
-                              flex
-                              items-start
-                              justify-between
-                              gap-5
-                            "
+                          className="mt-5 flex items-start justify-between gap-5"
                         >
                           <div className="min-w-0">
                             <h2
-                              className="
-                                  font-serif
-                                  text-2xl
-                                  font-light
-                                  leading-tight
-                                  tracking-tight
-                                  text-slate-950
-                                  transition
-                                  duration-300
-
-                                  group-hover:text-[#997619]
-
-                                  sm:text-3xl
-
-                                  dark:text-white
-                                  dark:group-hover:text-[#D4AF37]
-                                "
+                              className="font-serif text-2xl font-light leading-tight tracking-tight text-slate-950 transition duration-300 group-hover:text-[#997619] sm:text-3xl dark:text-white dark:group-hover:text-[#D4AF37]"
                             >
                               {projectTitle}
                             </h2>
 
                             <p
-                              className="
-                                  mt-3
-                                  line-clamp-2
-                                  max-w-3xl
-                                  text-sm
-                                  leading-6
-                                  text-slate-500
-
-                                  dark:text-white/42
-                                "
+                              className="mt-3 line-clamp-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-white/42"
                             >
                               {booking?.brief_text ||
                                 "No project brief was supplied for this booking."}
                             </p>
 
                             <p
-                              className="
-                                  mt-3
-                                  text-[9px]
-                                  font-bold
-                                  uppercase
-                                  tracking-[0.14em]
-                                  text-slate-400
-
-                                  dark:text-white/25
-                                "
+                              className="mt-3 text-xs font-bold tracking-normal text-slate-400 dark:text-white/25"
                             >
                               Created {formatCreatedDate(booking?.created_at)}
                             </p>
                           </div>
 
                           <div
-                            className="
-                                hidden
-                                h-10
-                                w-10
-                                shrink-0
-                                -translate-x-2
-                                place-items-center
-                                rounded-full
-                                border
-                                border-[#D4AF37]/20
-                                bg-[#D4AF37]/10
-                                text-[#98751A]
-                                opacity-0
-                                transition
-                                duration-300
-
-                                group-hover:translate-x-0
-                                group-hover:opacity-100
-
-                                sm:grid
-
-                                dark:text-[#D4AF37]
-                              "
+                            className="hidden h-10 w-10 shrink-0 -translate-x-2 place-items-center rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/10 text-[#98751A] opacity-0 transition duration-300 group-hover:translate-x-0 group-hover:opacity-100 sm:grid dark:text-[#D4AF37]"
                           >
                             <ArrowRight size={16} />
                           </div>
@@ -2566,94 +1829,36 @@ export default function CreatorBookings() {
                         {/* Details */}
 
                         <div
-                          className="
-                              mt-7
-                              grid
-                              gap-3
-
-                              sm:grid-cols-2
-
-                              lg:grid-cols-4
-                            "
+                          className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
                         >
                           {/* Designer */}
 
                           <div
-                            className="
-                                rounded-xl
-                                border
-                                border-slate-200/80
-                                bg-slate-50/80
-                                p-4
-
-                                dark:border-white/[0.06]
-                                dark:bg-white/[0.025]
-                              "
+                            className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-white/[0.06] dark:bg-white/[0.025]"
                           >
                             <div
-                              className="
-                                  flex
-                                  items-center
-                                  gap-2
-                                  text-[8px]
-                                  font-black
-                                  uppercase
-                                  tracking-[0.18em]
-                                  text-slate-400
-
-                                  dark:text-white/28
-                                "
+                              className="flex items-center gap-2 text-xs font-semibold tracking-normal text-slate-400 dark:text-white/28"
                             >
                               <UserRound size={12} />
                               Designer
                             </div>
 
                             <div
-                              className="
-                                  mt-3
-                                  flex
-                                  min-w-0
-                                  items-center
-                                  gap-2.5
-                                "
+                              className="mt-3 flex min-w-0 items-center gap-2.5"
                             >
                               <div
-                                className="
-                                    grid
-                                    h-9
-                                    w-9
-                                    shrink-0
-                                    place-items-center
-                                    overflow-hidden
-                                    rounded-full
-                                    border
-                                    border-slate-200
-                                    bg-white
-
-                                    dark:border-white/10
-                                    dark:bg-white/5
-                                  "
+                                className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full border border-slate-200 bg-white dark:border-white/10 dark:bg-white/5"
                               >
                                 {designerAvatar ? (
                                   <img
                                     src={designerAvatar}
                                     alt=""
                                     loading="lazy"
-                                    className="
-                                        h-full
-                                        w-full
-                                        object-cover
-                                      "
+                                    className="h-full w-full object-cover"
                                   />
                                 ) : (
                                   <span
-                                    className="
-                                        text-xs
-                                        font-bold
-                                        text-slate-500
-
-                                        dark:text-white/40
-                                      "
+                                    className="text-xs font-bold text-slate-500 dark:text-white/40"
                                   >
                                     {getFirstName(designerName)
                                       .charAt(0)
@@ -2663,11 +1868,7 @@ export default function CreatorBookings() {
                               </div>
 
                               <span
-                                className="
-                                    truncate
-                                    text-sm
-                                    font-semibold
-                                  "
+                                className="truncate text-sm font-semibold"
                               >
                                 {designerName}
                               </span>
@@ -2677,45 +1878,17 @@ export default function CreatorBookings() {
                           {/* Value */}
 
                           <div
-                            className="
-                                rounded-xl
-                                border
-                                border-slate-200/80
-                                bg-slate-50/80
-                                p-4
-
-                                dark:border-white/[0.06]
-                                dark:bg-white/[0.025]
-                              "
+                            className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-white/[0.06] dark:bg-white/[0.025]"
                           >
                             <div
-                              className="
-                                  flex
-                                  items-center
-                                  gap-2
-                                  text-[8px]
-                                  font-black
-                                  uppercase
-                                  tracking-[0.18em]
-                                  text-slate-400
-
-                                  dark:text-white/28
-                                "
+                              className="flex items-center gap-2 text-xs font-semibold tracking-normal text-slate-400 dark:text-white/28"
                             >
                               <BadgeDollarSign size={12} />
                               Agreed Value
                             </div>
 
                             <p
-                              className="
-                                  mt-3
-                                  font-mono
-                                  text-lg
-                                  font-semibold
-                                  text-[#937119]
-
-                                  dark:text-[#D4AF37]
-                                "
+                              className="mt-3 font-mono text-lg font-semibold text-[#937119] dark:text-[#D4AF37]"
                             >
                               {formatCurrency(booking?.agreed_price, currency)}
                             </p>
@@ -2724,41 +1897,17 @@ export default function CreatorBookings() {
                           {/* Deadline */}
 
                           <div
-                            className="
-                                rounded-xl
-                                border
-                                border-slate-200/80
-                                bg-slate-50/80
-                                p-4
-
-                                dark:border-white/[0.06]
-                                dark:bg-white/[0.025]
-                              "
+                            className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-white/[0.06] dark:bg-white/[0.025]"
                           >
                             <div
-                              className="
-                                  flex
-                                  items-center
-                                  gap-2
-                                  text-[8px]
-                                  font-black
-                                  uppercase
-                                  tracking-[0.18em]
-                                  text-slate-400
-
-                                  dark:text-white/28
-                                "
+                              className="flex items-center gap-2 text-xs font-semibold tracking-normal text-slate-400 dark:text-white/28"
                             >
                               <CalendarDays size={12} />
                               Deadline
                             </div>
 
                             <p
-                              className="
-                                  mt-3
-                                  text-sm
-                                  font-semibold
-                                "
+                              className="mt-3 text-sm font-semibold"
                             >
                               {formatDate(booking?.deadline)}
                             </p>
@@ -2766,7 +1915,7 @@ export default function CreatorBookings() {
                             <p
                               className={`
                                   mt-1
-                                  text-[10px]
+                                  text-xs
 
                                   ${
                                     deadline.urgent
@@ -2782,30 +1931,10 @@ export default function CreatorBookings() {
                           {/* Payment */}
 
                           <div
-                            className="
-                                rounded-xl
-                                border
-                                border-slate-200/80
-                                bg-slate-50/80
-                                p-4
-
-                                dark:border-white/[0.06]
-                                dark:bg-white/[0.025]
-                              "
+                            className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-white/[0.06] dark:bg-white/[0.025]"
                           >
                             <div
-                              className="
-                                  flex
-                                  items-center
-                                  gap-2
-                                  text-[8px]
-                                  font-black
-                                  uppercase
-                                  tracking-[0.18em]
-                                  text-slate-400
-
-                                  dark:text-white/28
-                                "
+                              className="flex items-center gap-2 text-xs font-semibold tracking-normal text-slate-400 dark:text-white/28"
                             >
                               <LockKeyhole size={12} />
                               Payment
@@ -2825,14 +1954,7 @@ export default function CreatorBookings() {
 
                             {booking?.refund_status && (
                               <p
-                                className="
-                                    mt-1
-                                    truncate
-                                    text-[10px]
-                                    text-slate-500
-
-                                    dark:text-white/30
-                                  "
+                                className="mt-1 truncate text-xs text-slate-500 dark:text-white/30"
                               >
                                 Refund: {booking.refund_status}
                               </p>
@@ -2844,36 +1966,16 @@ export default function CreatorBookings() {
 
                         <div className="mt-7">
                           <div
-                            className="
-                                mb-2.5
-                                flex
-                                items-center
-                                justify-between
-                                gap-4
-                              "
+                            className="mb-2.5 flex items-center justify-between gap-4"
                           >
                             <p
-                              className="
-                                  text-[8px]
-                                  font-black
-                                  uppercase
-                                  tracking-[0.2em]
-                                  text-slate-400
-
-                                  dark:text-white/28
-                                "
+                              className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/28"
                             >
                               Workflow Progress
                             </p>
 
                             <p
-                              className="
-                                  text-[9px]
-                                  font-semibold
-                                  text-slate-500
-
-                                  dark:text-white/35
-                                "
+                              className="text-xs font-semibold text-slate-500 dark:text-white/35"
                             >
                               {progress === undefined
                                 ? "Review"
@@ -2882,14 +1984,7 @@ export default function CreatorBookings() {
                           </div>
 
                           <div
-                            className="
-                                h-1.5
-                                overflow-hidden
-                                rounded-full
-                                bg-slate-100
-
-                                dark:bg-white/[0.05]
-                              "
+                            className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/[0.05]"
                           >
                             <div
                               className={`
@@ -2963,10 +2058,10 @@ export default function CreatorBookings() {
                           <p
                             className={`
                                 mt-5
-                                text-[8px]
-                                font-black
-                                uppercase
-                                tracking-[0.2em]
+                                text-xs
+                                font-semibold
+                                
+                                tracking-normal
 
                                 ${actionDetails.accentClass}
                               `}
@@ -2975,70 +2070,31 @@ export default function CreatorBookings() {
                           </p>
 
                           <h3
-                            className="
-                                mt-2
-                                text-lg
-                                font-semibold
-                                tracking-tight
-                              "
+                            className="mt-2 text-lg font-semibold tracking-tight"
                           >
                             {actionDetails.label}
                           </h3>
 
                           <p
-                            className="
-                                mt-1.5
-                                text-xs
-                                leading-5
-                                text-slate-500
-
-                                dark:text-white/40
-                              "
+                            className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-white/40"
                           >
                             {actionDetails.detail}
                           </p>
                         </div>
 
                         <div
-                          className="
-                              mt-7
-                              border-t
-                              border-current/10
-                              pt-5
-                            "
+                          className="mt-7 border-t border-current/10 pt-5"
                         >
                           <p
-                            className="
-                                text-xs
-                                leading-5
-                                text-slate-500
-
-                                dark:text-white/40
-                              "
+                            className="text-xs leading-5 text-slate-500 dark:text-white/40"
                           >
                             {statusDetails.description}
                           </p>
 
                           <div
-                            className="
-                                mt-5
-                                inline-flex
-                                items-center
-                                gap-2
-                                text-[9px]
-                                font-black
-                                uppercase
-                                tracking-[0.17em]
-                                text-slate-700
-                                transition
-
-                                group-hover:text-[#967319]
-
-                                dark:text-white/60
-                                dark:group-hover:text-[#D4AF37]
-                              "
+                            className="mt-5 inline-flex items-center gap-2 text-xs font-semibold tracking-normal text-slate-700 transition group-hover:text-[#967319] dark:text-white/60 dark:group-hover:text-[#D4AF37]"
                           >
-                            Open workspace
+                            View booking
                             <ArrowRight size={13} />
                           </div>
                         </div>

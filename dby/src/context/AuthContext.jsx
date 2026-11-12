@@ -1,3 +1,4 @@
+import { AuthContext } from "./AuthContext.helpers.js";
 "use strict";
 
 /*
@@ -8,22 +9,18 @@ Version 2.0
 =========================================================
 */
 
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+
+
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import API from "../api/axios";
+import { requestSession } from "./sessionRequest";
 
 /*=========================================================
 Context
 =========================================================*/
 
-const AuthContext = createContext(null);
+
 
 /*=========================================================
 Helpers
@@ -43,6 +40,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
   const [loading, setLoading] = useState(true);
+  const [sessionError, setSessionError] = useState(null);
 
   /*=====================================================
     Restore Session
@@ -53,43 +51,19 @@ export const AuthProvider = ({ children }) => {
 
     if (!token) {
       setUser(null);
+      setSessionError(null);
       setLoading(false);
 
       return;
     }
 
+    setLoading(true);
     try {
-      const { data } = await API.get("/auth/me");
-
-      if (data?.status === "success" && data?.data) {
-        setUser(data.data);
-
-        /*
-                    Keep this only for compatibility with
-                    older frontend code that may read user
-                    directly from localStorage.
-
-                    AuthContext remains the real source of
-                    truth.
-                    */
-
-        localStorage.setItem("user", JSON.stringify(data.data));
-      } else {
-        clearStoredAuth();
-
-        setUser(null);
-      }
+      const currentUser = await requestSession(API, localStorage);
+      if (currentUser !== undefined) setUser(currentUser);
+      setSessionError(null);
     } catch (error) {
-      /*
-                Axios already clears revoked/expired session
-                tokens for known authentication failures.
-
-                We still clear here as a defensive fallback.
-                */
-
-      clearStoredAuth();
-
-      setUser(null);
+      setSessionError("Unable to restore your session. Please retry when your connection is available.");
 
       if (import.meta.env.DEV) {
         console.error(
@@ -125,6 +99,7 @@ export const AuthProvider = ({ children }) => {
       clearStoredAuth();
 
       setUser(null);
+      setSessionError(null);
 
       setLoading(false);
     };
@@ -151,6 +126,7 @@ export const AuthProvider = ({ children }) => {
       throw new Error("Login response is missing authentication data.");
     }
 
+    setSessionError(null);
     localStorage.setItem("token", token);
 
     /*
@@ -196,25 +172,10 @@ export const AuthProvider = ({ children }) => {
       return null;
     }
 
-    try {
-      const { data } = await API.get("/auth/me");
-
-      const currentUser = data?.data || null;
-
-      setUser(currentUser);
-
-      if (currentUser) {
-        localStorage.setItem("user", JSON.stringify(currentUser));
-      }
-
-      return currentUser;
-    } catch (error) {
-      clearStoredAuth();
-
-      setUser(null);
-
-      throw error;
-    }
+    const currentUser = await requestSession(API, localStorage);
+    if (currentUser !== undefined) setUser(currentUser);
+    setSessionError(null);
+    return currentUser;
   }, []);
 
   /*=====================================================
@@ -228,6 +189,8 @@ export const AuthProvider = ({ children }) => {
       setUser,
 
       loading,
+      sessionError,
+      retrySession: loadUser,
 
       isAuthenticated: Boolean(user),
 
@@ -237,7 +200,7 @@ export const AuthProvider = ({ children }) => {
 
       refreshUser,
     }),
-    [user, loading, login, logout, refreshUser],
+    [user, loading, sessionError, loadUser, login, logout, refreshUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -246,13 +209,3 @@ export const AuthProvider = ({ children }) => {
 /*=========================================================
 Hook
 =========================================================*/
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error("useAuth must be used inside AuthProvider.");
-  }
-
-  return context;
-};

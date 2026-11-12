@@ -1,3 +1,4 @@
+import BookingDesignAttachment from "../../components/BookingDesignAttachment";
 /*
 =========================================================
 FashionVision Designer Booking Detail
@@ -1694,6 +1695,8 @@ function DesignerBookingDetail() {
               <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-7 text-slate-600 dark:border-white/5 dark:bg-white/[0.025] dark:text-white/55">
                 {booking.brief_text || "No project brief was supplied."}
               </div>
+
+              <BookingDesignAttachment bookingId={id} />
 
               {booking.revision_notes && (
                 <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-400/20 dark:bg-amber-400/10">

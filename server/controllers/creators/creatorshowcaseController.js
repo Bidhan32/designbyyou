@@ -1333,6 +1333,10 @@ private.
 =========================================================*/
 
 const SHOWCASE_3D_REGIONS_BY_MODEL = Object.freeze({
+  "agc-jacket": Object.freeze(["frontLeftBody","frontRightBody","backLeftBody","backRightBody","leftSleeve","rightSleeve","leftCuff","rightCuff","collar","leftPocket","rightPocket","frontPlacket"]),
+
+  "leather-coat": Object.freeze(["frontLeftUpper","frontRightUpper","frontLeftLower","frontRightLower","backUpper","backLower","frontLeftSleeve","frontRightSleeve","backLeftSleeve","backRightSleeve","frontLeftLapel","frontRightLapel","backCollar"]),
+
   "kurta": Object.freeze(["frontBody", "backBody", "frontLeftSleeve", "frontRightSleeve", "backLeftSleeve", "backRightSleeve", "frontNeckline", "backNeckline", "frontHem", "backHem"]),
   "suruwal": Object.freeze(["frontWaistband", "backWaistband", "frontLeftLeg", "frontRightLeg", "backLeftLeg", "backRightLeg"]),
   "tshirt": Object.freeze(["frontBody", "backBody", "frontLeftSleeve", "frontRightSleeve", "backLeftSleeve", "backRightSleeve", "frontCollar", "backCollar"]),

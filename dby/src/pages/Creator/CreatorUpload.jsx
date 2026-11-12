@@ -113,7 +113,7 @@ const INITIAL_FORM = {
 
 function cleanText(value) {
   return String(value ?? "")
-    .replace(/[\u0000-\u001F\u007F]/g, " ")
+    .replace(/./gs, (char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127 ? " " : char)
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -121,7 +121,7 @@ function cleanText(value) {
 function cleanMultiline(value) {
   return String(value ?? "")
     .replace(/\r\n?/g, "\n")
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .replace(/./gs, (char) => (char.charCodeAt(0) < 32 && char !== "\n" && char !== "\t" && char !== "\r") || char.charCodeAt(0) === 127 ? "" : char)
     .trim();
 }
 
@@ -414,11 +414,11 @@ function makeImageId() {
 
 function FieldLabel({ children, optional = false }) {
   return (
-    <div className="mb-2 flex items-center justify-between gap-3 text-[9px] font-black uppercase tracking-[0.17em] text-slate-500 dark:text-white/40">
+    <div className="mb-2 flex items-center justify-between gap-3 text-xs font-semibold tracking-normal text-slate-500 dark:text-white/40">
       <span>{children}</span>
 
       {optional && (
-        <span className="text-[8px] font-medium tracking-wider text-slate-400 dark:text-white/25">
+        <span className="text-xs font-medium tracking-wider text-slate-400 dark:text-white/25">
           Optional
         </span>
       )}
@@ -1588,18 +1588,18 @@ export default function CreatorUpload() {
       <main className="relative z-10 mx-auto max-w-[1100px] px-4 pt-9 sm:px-6 lg:px-10 lg:pt-12">
         {/* Header */}
 
-        <section className="relative mb-7 overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/90 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:p-8 lg:p-10 dark:border-white/[0.06] dark:bg-[#090909]/90">
+        <section className="relative mb-7 overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/90 p-6 shadow-sm backdrop-blur-xl sm:p-8 lg:p-10 dark:border-white/[0.06] dark:bg-[#090909]/90">
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="inline-flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.24em] text-[#98751A] dark:text-[#D4AF37]">
+              <p className="inline-flex items-center gap-2 text-xs font-semibold tracking-normal text-[#98751A] dark:text-[#D4AF37]">
                 <Sparkles size={12} />
-                Creator Studio
+                Upload a design
               </p>
 
-              <h1 className="mt-4 font-serif text-4xl font-light tracking-tight sm:text-5xl">
-                Save your{" "}
+              <h1 className="mt-4 font-semibold font-semibold tracking-tight text-3xl sm:text-4xl">
+                Upload your{" "}
                 <span className="italic text-[#A17D1C] dark:text-[#D4AF37]">
-                  creative work
+                  design
                 </span>
               </h1>
 
@@ -1615,10 +1615,10 @@ export default function CreatorUpload() {
               onClick={() =>
                 navigate(CREATOR_HUB_ROUTE)
               }
-              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 px-5 text-[9px] font-black uppercase tracking-wider text-slate-500 transition hover:border-[#D4AF37] dark:border-white/10 dark:text-white/45"
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 px-5 text-xs font-semibold tracking-wider text-slate-500 transition hover:border-[#D4AF37] dark:border-white/10 dark:text-white/45"
             >
               <ArrowLeft size={13} />
-              Creator Hub
+              Create
             </button>
           </div>
         </section>
@@ -1636,7 +1636,7 @@ export default function CreatorUpload() {
               One creation, multiple images
             </p>
 
-            <p className="mt-1 text-[10px] leading-5 text-violet-700/70 dark:text-violet-200/55">
+            <p className="mt-1 text-xs leading-5 text-violet-700/70 dark:text-violet-200/55">
               Choose several pictures at once or add them
               individually using the same artwork area.
               Select a cover and arrange the gallery
@@ -1695,16 +1695,16 @@ export default function CreatorUpload() {
           <section className="border-b border-slate-200 p-6 sm:p-8 dark:border-white/[0.06]">
             <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
               <div>
-                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-[#98751A] dark:text-[#D4AF37]">
-                  Creative Asset
+                <p className="text-xs font-semibold tracking-normal text-[#98751A] dark:text-[#D4AF37]">
+                  Images
                 </p>
 
                 <h2 className="mt-2 font-serif text-2xl">
-                  Artwork preview
+                  Your images
                 </h2>
               </div>
 
-              <span className="inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-[#98751A] dark:text-[#D4AF37]">
+              <span className="inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-3 py-1.5 text-xs font-semibold tracking-wider text-[#98751A] dark:text-[#D4AF37]">
                 {gallery.length}/{MAX_IMAGES} images
 
                 {gallery.length > 0 && (
@@ -1775,7 +1775,7 @@ export default function CreatorUpload() {
                   automatically.
                 </p>
 
-                <span className="mt-5 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[9px] font-black uppercase tracking-wider text-slate-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-white/35">
+                <span className="mt-5 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold tracking-wider text-slate-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-white/35">
                   <FileImage size={12} />
                   JPG · PNG · WEBP · 5 MB each · Up to 6
                 </span>
@@ -1820,7 +1820,7 @@ export default function CreatorUpload() {
                     className="max-h-[620px] min-h-[320px] w-full object-contain"
                   />
 
-                  <span className="absolute left-4 top-4 rounded-full bg-black/70 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-white">
+                  <span className="absolute left-4 top-4 rounded-full bg-black/70 px-3 py-2 text-xs font-semibold tracking-wider text-white">
                     {activeImage?.id === coverImage?.id
                       ? "Cover image"
                       : "Gallery preview"}
@@ -1869,7 +1869,7 @@ export default function CreatorUpload() {
 
                 {/* Preview Metadata */}
 
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/10 bg-[#080808] px-5 py-3 text-[9px] text-white/45">
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/10 bg-[#080808] px-5 py-3 text-xs text-white/45">
                   <span className="max-w-[18rem] truncate">
                     {activeImage?.file?.name ||
                       "Studio artwork"}
@@ -1935,12 +1935,12 @@ export default function CreatorUpload() {
                             className="h-full w-full object-cover"
                           />
 
-                          <span className="absolute left-2 top-2 rounded-md bg-black/75 px-2 py-1 text-[8px] text-white">
+                          <span className="absolute left-2 top-2 rounded-md bg-black/75 px-2 py-1 text-xs text-white">
                             {index + 1}
                           </span>
 
                           {coverImage?.id === image.id && (
-                            <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-md bg-[#D4AF37] px-2 py-1 text-[8px] font-bold text-black">
+                            <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-md bg-[#D4AF37] px-2 py-1 text-xs font-bold text-black">
                               <Star
                                 size={10}
                                 fill="currentColor"
@@ -2039,14 +2039,14 @@ export default function CreatorUpload() {
                     >
                       <Plus size={19} />
 
-                      <span className="text-[9px] font-black uppercase tracking-wider">
+                      <span className="text-xs font-semibold tracking-wider">
                         Add more
                       </span>
                     </button>
                   )}
                 </div>
 
-                <p className="bg-[#0d0d0d] px-4 pb-4 text-[10px] text-white/40">
+                <p className="bg-[#0d0d0d] px-4 pb-4 text-xs text-white/40">
                   Click a thumbnail to preview. Use the star
                   to choose a cover, and arrows to change
                   the sequence. All images save as one
@@ -2060,12 +2060,12 @@ export default function CreatorUpload() {
 
           <section className="p-6 sm:p-8">
             <div className="mb-7 border-b border-slate-200 pb-5 dark:border-white/[0.06]">
-              <p className="text-[8px] font-black uppercase tracking-[0.2em] text-[#98751A] dark:text-[#D4AF37]">
-                Creative Details
+              <p className="text-xs font-semibold tracking-normal text-[#98751A] dark:text-[#D4AF37]">
+                Design details
               </p>
 
               <h2 className="mt-2 font-serif text-2xl">
-                Describe your concept
+                About your design
               </h2>
             </div>
 
@@ -2074,7 +2074,7 @@ export default function CreatorUpload() {
 
               <label className="block">
                 <FieldLabel optional>
-                  Design Title
+                  Title
                 </FieldLabel>
 
                 <input
@@ -2095,9 +2095,12 @@ export default function CreatorUpload() {
 
               {/* Format */}
 
-              <div>
+              <details className="rounded-xl border border-slate-200 p-4 dark:border-white/10">
+                    <summary className="cursor-pointer text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4">More details <span className="font-normal text-slate-500 dark:text-white/60">(optional)</span></summary>
+                    <div className="mt-5 space-y-5">
+<div>
                 <FieldLabel optional>
-                  Creative Format
+                  Format
                 </FieldLabel>
 
                 <SelectField
@@ -2131,7 +2134,7 @@ export default function CreatorUpload() {
 
               <div>
                 <FieldLabel optional>
-                  Creative Category
+                  Category
                 </FieldLabel>
 
                 <SelectField
@@ -2170,7 +2173,7 @@ export default function CreatorUpload() {
                 </SelectField>
 
                 {categoriesError && (
-                  <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-rose-500">
+                  <div className="mt-2 flex items-center justify-between gap-2 text-xs text-rose-500">
                     <span>
                       {categoriesError}
                     </span>
@@ -2189,7 +2192,7 @@ export default function CreatorUpload() {
                 )}
 
                 {selectedCategory?.description && (
-                  <p className="mt-2 text-[10px] text-slate-400 dark:text-white/30">
+                  <p className="mt-2 text-xs text-slate-400 dark:text-white/30">
                     {selectedCategory.description}
                   </p>
                 )}
@@ -2206,10 +2209,10 @@ export default function CreatorUpload() {
 
                   <div>
                     <h3 className="font-serif text-xl">
-                      Showcase Discovery
+                      Help people find your design
                     </h3>
 
-                    <p className="mt-1 text-[10px] leading-5 text-slate-500 dark:text-white/35">
+                    <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-white/35">
                       Optional selections help people
                       find public creations.
                     </p>
@@ -2226,7 +2229,7 @@ export default function CreatorUpload() {
                     Loading discovery options…
                   </div>
                 ) : discoveryError ? (
-                  <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-[10px] text-rose-700 dark:border-rose-400/15 dark:bg-rose-400/[0.06] dark:text-rose-200">
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700 dark:border-rose-400/15 dark:bg-rose-400/[0.06] dark:text-rose-200">
                     <span>
                       {discoveryError}
                     </span>
@@ -2326,7 +2329,7 @@ export default function CreatorUpload() {
                         Occasion
                       </FieldLabel>
 
-                      <p className="mb-3 text-[10px] text-slate-400 dark:text-white/30">
+                      <p className="mb-3 text-xs text-slate-400 dark:text-white/30">
                         Select any occasions this design
                         fits; multiple selections are allowed.
                       </p>
@@ -2373,7 +2376,7 @@ export default function CreatorUpload() {
                                   )}
                                 </div>
 
-                                <p className="mt-2 text-[9px] font-black uppercase tracking-wider">
+                                <p className="mt-2 text-xs font-semibold tracking-wider">
                                   {occasion.name}
                                 </p>
                               </button>
@@ -2396,7 +2399,7 @@ export default function CreatorUpload() {
                           .map((term) => (
                             <span
                               key={term.id}
-                              className="rounded-full bg-[#D4AF37]/10 px-3 py-1.5 text-[9px] font-bold text-[#8A6814] dark:text-[#D4AF37]"
+                              className="rounded-full bg-[#D4AF37]/10 px-3 py-1.5 text-xs font-bold text-[#8A6814] dark:text-[#D4AF37]"
                             >
                               {term.emoji
                                 ? `${term.emoji} `
@@ -2479,7 +2482,7 @@ export default function CreatorUpload() {
                   </button>
                 </div>
 
-                <div className="mt-2 flex justify-between text-[9px] text-slate-400">
+                <div className="mt-2 flex justify-between text-xs text-slate-400">
                   <span>
                     Press Enter or comma to add
                   </span>
@@ -2494,7 +2497,7 @@ export default function CreatorUpload() {
                     {tags.map((tag) => (
                       <span
                         key={tag}
-                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] text-slate-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-white/50"
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-white/50"
                       >
                         #{tag}
 
@@ -2541,11 +2544,12 @@ export default function CreatorUpload() {
                   className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-7 text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-[#111111] dark:text-white dark:placeholder:text-white/25"
                 />
 
-                <p className="mt-2 text-right text-[9px] text-slate-400">
+                <p className="mt-2 text-right text-xs text-slate-400">
                   {form.description.length}/
                   {MAX_DESCRIPTION_LENGTH}
                 </p>
               </label>
+</div></details>
 
               {/* Visibility */}
 
@@ -2554,7 +2558,7 @@ export default function CreatorUpload() {
                   Visibility
                 </FieldLabel>
 
-                <p className="mb-3 text-[10px] leading-5 text-slate-500 dark:text-white/35">
+                <p className="mb-3 text-xs leading-5 text-slate-500 dark:text-white/35">
                   Private is the default. You can change
                   visibility later from your Creator profile.
                 </p>
@@ -2610,7 +2614,7 @@ export default function CreatorUpload() {
                             {label}
                           </p>
 
-                          <p className="mt-1.5 text-[10px] leading-5 text-slate-500 dark:text-white/35">
+                          <p className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-white/35">
                             {description}
                           </p>
                         </button>
@@ -2619,7 +2623,7 @@ export default function CreatorUpload() {
                   )}
                 </div>
 
-                <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-[10px] leading-5 text-slate-500 dark:border-white/10 dark:bg-white/[0.025] dark:text-white/40">
+                <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-xs leading-5 text-slate-500 dark:border-white/10 dark:bg-white/[0.025] dark:text-white/40">
                   {form.visibility === "public" ? (
                     <Globe2
                       size={14}
@@ -2645,7 +2649,7 @@ export default function CreatorUpload() {
           <footer className="border-t border-slate-200 bg-slate-50/70 p-5 sm:p-6 dark:border-white/[0.06] dark:bg-white/[0.015]">
             {loading && (
               <div className="mb-5">
-                <div className="mb-2 flex justify-between text-[9px] font-bold uppercase text-slate-400">
+                <div className="mb-2 flex justify-between text-xs font-bold text-slate-400">
                   <span>
                     Saving Creator Studio creation
                   </span>
@@ -2667,7 +2671,7 @@ export default function CreatorUpload() {
             )}
 
             <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-              <p className="inline-flex items-start gap-2 text-[10px] leading-5 text-slate-400 dark:text-white/30">
+              <p className="inline-flex items-start gap-2 text-xs leading-5 text-slate-400 dark:text-white/30">
                 <Layers3
                   size={13}
                   className="mt-0.5 shrink-0"
@@ -2687,7 +2691,7 @@ export default function CreatorUpload() {
               <button
                 type="submit"
                 disabled={loading || success}
-                className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-7 text-[9px] font-black uppercase tracking-[0.18em] text-black shadow-[0_14px_35px_rgba(212,175,55,0.2)] transition hover:bg-[#E4C65D] disabled:opacity-50"
+                className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-7 text-xs font-semibold tracking-normal text-black shadow-sm transition hover:bg-[#E4C65D] disabled:opacity-50"
               >
                 {loading ? (
                   <>
@@ -2710,7 +2714,7 @@ export default function CreatorUpload() {
                 ) : (
                   <>
                     <Lock size={14} />
-                    Save Private Asset
+                    Save privately
                   </>
                 )}
               </button>

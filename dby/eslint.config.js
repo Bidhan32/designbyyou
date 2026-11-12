@@ -24,6 +24,27 @@ export default defineConfig([
     },
     rules: {
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'jsx/uses-vars': 'error',
+    },
+    plugins: {
+      jsx: {
+        rules: {
+          'uses-vars': {
+            meta: { schema: [] },
+            create(context) {
+              return {
+                JSXOpeningElement(node) {
+                  let name = node.name;
+                  while (name.type === 'JSXMemberExpression') name = name.object;
+                  if (name.type === 'JSXIdentifier' && /^[A-Z]/u.test(name.name)) {
+                    context.sourceCode.markVariableAsUsed(name.name, node);
+                  }
+                },
+              };
+            },
+          },
+        },
+      },
     },
   },
 ])

@@ -1,3 +1,4 @@
+import { projectedUvToArtworkOffset } from "./Garment3DViewer.helpers.js";
 /*
  * DesignByYou — 3D Garment Studio V3, Phase 3.2
  * Registry-driven 3D editor: universal batch colours, direct placement and artwork transform handles.
@@ -7,7 +8,7 @@
 import React, {
   Component, Suspense, useCallback, useEffect, useMemo, useRef, useState,
 } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { Html, OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { Palette, ImagePlus, Layers3, Wrench, MousePointer2, ChevronDown, Search } from "lucide-react";
@@ -53,15 +54,7 @@ const FIELD = "min-w-0 w-full rounded-lg border border-slate-600 bg-slate-900 px
 // A projected 3D region uses normalized UVs (left→right, bottom→top).
 // Existing SVG artwork uses center-relative region-box units (X→right, Y→down).
 // Since projectRegionUv already mirrors back regions, we use the UV unchanged.
-export function projectedUvToArtworkOffset(uv, artworkBox) {
-  if (!uv || !artworkBox || !Number.isFinite(uv.x) || !Number.isFinite(uv.y)) return null;
-  const u = Math.max(0, Math.min(1, uv.x));
-  const v = Math.max(0, Math.min(1, uv.y));
-  return {
-    offsetX: Math.round((u - 0.5) * artworkBox.width * 10) / 10,
-    offsetY: Math.round((0.5 - v) * artworkBox.height * 10) / 10,
-  };
-}
+
 
 // Locate the saved artwork centre on the visible region mesh. The existing
 // planar UVs are retained: the handle is a visual guide, not a 3D decal.
@@ -253,9 +246,14 @@ function Model({ modelUrl, templateId, regions, colours, artwork, wireframe, sel
     return () => { cancelled = true; };
   }, [prepared, colours, artwork, invalidate, regions, templateId]);
 
-  // The gizmo follows the selected artwork position in projected-UV space.
-  // Recalculate on position/selection changes, not continuously during scaling.
-  useEffect(() => {
+  // Read Three.js transforms on its frame lifecycle, after model refs are attached.
+  const lastHandleInputs = useRef(null);
+  useFrame(() => {
+    if (transformMode && transformEntry && !modelRootRef.current) return;
+    const inputs = [prepared, templateId, transformMode, transformEntry?.regionId,
+      transformEntry?.offsetX, transformEntry?.offsetY, transformEntry?.kind];
+    if (lastHandleInputs.current?.every((value, index) => Object.is(value, inputs[index]))) return;
+    lastHandleInputs.current = inputs;
     if (!transformMode || !transformEntry || !modelRootRef.current) {
       setHandlePosition(null);
       return;
@@ -270,8 +268,7 @@ function Model({ modelUrl, templateId, regions, colours, artwork, wireframe, sel
       prepared.meshesByRegion.get(transformEntry.regionId), u, v,
       modelRootRef.current, transformEntry.regionId.startsWith("back"),
     ));
-  }, [prepared, templateId, transformMode, transformEntry?.regionId,
-    transformEntry?.offsetX, transformEntry?.offsetY, transformEntry?.kind]);
+  });
 
   // Selection visualization uses emissive tint; it never modifies saved colors.
   useEffect(() => {

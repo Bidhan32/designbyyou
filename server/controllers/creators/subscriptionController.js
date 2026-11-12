@@ -505,6 +505,13 @@ async function ensureStripeCustomer(creator) {
       );
     }
 
+    if (
+      (customer.metadata?.user_id && customer.metadata.user_id !== String(creator.id)) ||
+      (customer.metadata?.customer_purpose && customer.metadata.customer_purpose !== "creator_subscription")
+    ) {
+      throw createAppError("The Stripe billing profile belongs to a different identity or purpose. Billing reconciliation is required.", "STRIPE_CUSTOMER_RECONCILIATION_REQUIRED", 409);
+    }
+
     /*
     Keep Stripe's billing identity aligned with the current
     account email/name.
@@ -1105,6 +1112,10 @@ async function findBlockingStripeSubscription(customerId) {
     ),
   );
 
+  if (response.has_more) {
+    throw createAppError("The Stripe subscription history requires reconciliation before another checkout can be created.", "CREATOR_SUBSCRIPTION_HISTORY_RECONCILIATION_REQUIRED", 409);
+  }
+
   if (blocking.length > 1) {
     throw createAppError(
       "Multiple active Stripe subscriptions were found for this creator. Billing reconciliation is required.",
@@ -1310,7 +1321,15 @@ exports.createCheckoutSession = async (req, res) => {
     );
   }
 
+  let checkoutClient;
+  let checkoutLocked = false;
   try {
+    // Session lock only: no transaction or wallet row lock spans provider calls.
+    checkoutClient = await db.connect();
+    const lock = await checkoutClient.query("SELECT pg_try_advisory_lock(hashtext($1), hashtext($2)) AS locked", ["creator-subscription-checkout", creatorId]);
+    checkoutLocked = lock.rows[0]?.locked === true;
+    if (!checkoutLocked) return sendError(res, 409, "Subscription checkout is already being prepared. Please retry shortly.", { code: "SUBSCRIPTION_CHECKOUT_IN_PROGRESS" });
+
     const creator = await loadCreator(db, creatorId);
 
     if (!creator) {
@@ -1356,6 +1375,22 @@ exports.createCheckoutSession = async (req, res) => {
     const stripe = getStripeClient();
 
     const baseUrl = getFrontendBaseUrl();
+
+    const open = await stripe.checkout.sessions.list({ customer: customerId, status: "open", limit: 100 });
+    const sessions = (open.data || []).filter((item) => item.mode === "subscription" && item.metadata?.transaction_purpose === "creator_subscription");
+    if (open.has_more || sessions.length > 1 || sessions.some((item) => item.metadata?.user_id !== String(creatorId))) {
+      return sendError(res, 409, "Existing subscription checkouts require billing reconciliation.", { code: "SUBSCRIPTION_CHECKOUT_RECONCILIATION_REQUIRED" });
+    }
+    if (sessions.length === 1) {
+      const existing = sessions[0];
+      const lines = await stripe.checkout.sessions.listLineItems(existing.id, { limit: 2 });
+      const matching = existing.metadata.subscription_plan === plan && !lines.has_more && lines.data?.length === 1 &&
+        getStripeObjectId(lines.data[0].price) === priceId && lines.data[0].quantity === 1;
+      if (matching && existing.url) return res.status(201).json({ status: "success", idempotent: true,
+        message: "Existing subscription checkout resumed.", url: existing.url, checkout_session_id: existing.id, plan });
+      // A changed plan/price must invalidate the previous payable session first.
+      await stripe.checkout.sessions.expire(existing.id);
+    }
 
     const checkoutPayload = {
       mode: "subscription",
@@ -1413,7 +1448,8 @@ exports.createCheckoutSession = async (req, res) => {
       session = await stripe.checkout.sessions.create(checkoutPayload);
     }
 
-    if (!session?.url) {
+    if (!session?.url || session.status !== "open") {
+      if (session?.status && session.status !== "open") throw createAppError("This checkout attempt is no longer open. Start a new checkout attempt.", "SUBSCRIPTION_CHECKOUT_NO_LONGER_OPEN", 409);
       throw new Error("Stripe Checkout did not return a hosted checkout URL.");
     }
 
@@ -1436,6 +1472,14 @@ exports.createCheckoutSession = async (req, res) => {
       error,
       "The subscription checkout could not be initialized.",
     );
+  } finally {
+    if (checkoutClient) {
+      let discard = false;
+      if (checkoutLocked) try {
+        await checkoutClient.query("SELECT pg_advisory_unlock(hashtext($1), hashtext($2))", ["creator-subscription-checkout", creatorId]);
+      } catch { discard = true; }
+      checkoutClient.release(discard);
+    }
   }
 };
 
@@ -1492,7 +1536,7 @@ exports.createPortalSession = async (req, res) => {
     const baseUrl = getFrontendBaseUrl();
 
     const payload = {
-      customer: customerId,
+      customer: await ensureStripeCustomer(creator),
 
       return_url: `${baseUrl}/creator/wallet`,
     };

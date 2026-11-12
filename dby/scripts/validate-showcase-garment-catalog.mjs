@@ -3,11 +3,11 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../src/pages");
 const root = path.resolve(frontend, "../../..");
-const { CLOTHING_TEMPLATES } = await import(path.join(frontend, "sketches/templates/ClothingTemplates.js"));
-const { getGarment3DConfig } = await import(path.join(frontend, "sketches/templates/GarmentTemplateRegistry.js"));
+const { CLOTHING_TEMPLATES } = await import(pathToFileURL(path.join(frontend, "sketches/templates/ClothingTemplates.js")).href);
+const { getGarment3DConfig } = await import(pathToFileURL(path.join(frontend, "sketches/templates/GarmentTemplateRegistry.js")).href);
 const controller = fs.readFileSync(path.join(root, "server/controllers/creators/creatorshowcaseController.js"), "utf8");
 const begin = controller.indexOf("const SHOWCASE_3D_REGIONS_BY_MODEL = Object.freeze({");
 const end = controller.indexOf("const SHOWCASE_3D_MODEL_IDS", begin);

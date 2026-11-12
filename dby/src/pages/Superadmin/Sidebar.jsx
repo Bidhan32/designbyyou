@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { 
     LayoutDashboard, 
     Users, 
@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 
 const Sidebar = ({ closeSidebar }) => {
-    const navigate = useNavigate();
     const location = useLocation();
 
     const menuItems = [

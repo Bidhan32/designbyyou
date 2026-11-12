@@ -1,3 +1,4 @@
+import RouteContent from "../components/RouteContent";
 // 1. Added useEffect to the imports
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
@@ -92,7 +93,7 @@ const AdminLayout = () => {
                 {/* Scrollable Content Section */}
                 <div className="flex-1 overflow-y-auto bg-[#FDFDFD] custom-scrollbar">
                     <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto">
-                        <Outlet />
+                        <RouteContent><Outlet /></RouteContent>
                     </div>
                 </div>
             </main>

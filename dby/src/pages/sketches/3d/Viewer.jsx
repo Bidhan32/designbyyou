@@ -1,3 +1,4 @@
+import { isObject, resolveViewerBlueprint } from "./Viewer.helpers.js";
 /*
 =========================================================
 FashionVision AI
@@ -74,85 +75,19 @@ const EMPTY_MESH_SUMMARY =
 Object Validation
 =========================================================*/
 
-function isObject(
-    value
-) {
-    return Boolean(
-        value &&
-        typeof value === "object" &&
-        !Array.isArray(value)
-    );
-}
+
 
 /*=========================================================
 Detect Serialized Garment Blueprint
 =========================================================*/
 
-function isGarmentBlueprint(
-    value
-) {
-    if (!isObject(value)) {
-        return false;
-    }
 
-    return Boolean(
-        value.kind ===
-            "fashionvision-garment-blueprint" ||
-        Array.isArray(value.parts) ||
-        value.constructionHints ||
-        value.bounds
-    );
-}
 
 /*=========================================================
 Resolve Blueprint From Possible API Shapes
 =========================================================*/
 
-export function resolveViewerBlueprint(
-    value
-) {
-    if (!isObject(value)) {
-        return null;
-    }
 
-    const candidates = [
-        value.garmentBlueprint,
-
-        value.blueprint
-            ?.garmentBlueprint,
-
-        value.data
-            ?.garmentBlueprint,
-
-        value.result
-            ?.garmentBlueprint,
-
-        value.localBlueprint,
-
-        value.blueprint,
-
-        value
-    ];
-
-    const recognizedBlueprint =
-        candidates.find(
-            candidate =>
-                isGarmentBlueprint(
-                    candidate
-                )
-        );
-
-    if (recognizedBlueprint) {
-        return recognizedBlueprint;
-    }
-
-    /*
-    Allow MeshBuilder to validate an unfamiliar server
-    blueprint instead of rejecting it inside Viewer.
-    */
-
-    return value;
-}
 
 /*=========================================================
 Find Reconstruction Method
@@ -291,60 +226,114 @@ function GarmentModel({
     onBuildStateChange
 }) {
 
-    const [
-        garmentObject,
-        setGarmentObject
-    ] = useState(null);
+    const [garmentState, setGarmentState] = useState(null);
+    const garmentObject = garmentState?.blueprint === blueprint && garmentState?.meshOptions === meshOptions
+        ? garmentState.object : null;
 
     useEffect(() => {
 
         let generatedObject =
             null;
 
-        setGarmentObject(
-            null
-        );
+        // Construct after the frame boundary so changes can cancel stale mesh work.
+        const frame = window.requestAnimationFrame(() => {
+            setGarmentState(null);
 
-        if (!blueprint) {
+            if (!blueprint) {
+
+                onBuildStateChange({
+                    phase: "idle",
+                    message: "",
+                    summary: EMPTY_MESH_SUMMARY,
+                    reconstructionMethod: null,
+                    floorY: -2.1
+                });
+
+                return undefined;
+            }
 
             onBuildStateChange({
-                phase: "idle",
-                message: "",
+                phase: "building",
+                message:
+                    "Constructing garment mesh...",
                 summary: EMPTY_MESH_SUMMARY,
                 reconstructionMethod: null,
                 floorY: -2.1
             });
 
-            return undefined;
-        }
+            try {
 
-        onBuildStateChange({
-            phase: "building",
-            message:
-                "Constructing garment mesh...",
-            summary: EMPTY_MESH_SUMMARY,
-            reconstructionMethod: null,
-            floorY: -2.1
-        });
+                generatedObject =
+                    buildGarmentMesh(
+                        blueprint,
+                        meshOptions
+                    );
 
-        try {
+                const summary =
+                    getGarmentMeshSummary(
+                        generatedObject
+                    );
 
-            generatedObject =
-                buildGarmentMesh(
-                    blueprint,
-                    meshOptions
+                if (
+                    !generatedObject
+                        ?.isObject3D ||
+                    summary.meshCount === 0
+                ) {
+
+                    if (generatedObject) {
+                        disposeGarmentMesh(
+                            generatedObject
+                        );
+                    }
+
+                    generatedObject =
+                        null;
+
+                    onBuildStateChange({
+                        phase: "empty",
+                        message:
+                            "No valid closed garment silhouette could be constructed.",
+                        summary:
+                            EMPTY_MESH_SUMMARY,
+                        reconstructionMethod:
+                            null,
+                        floorY:
+                            -2.1
+                    });
+
+                    return undefined;
+                }
+
+                generatedObject.updateMatrixWorld(
+                    true
                 );
 
-            const summary =
-                getGarmentMeshSummary(
-                    generatedObject
-                );
+                const floorY =
+                    calculateFloorPosition(
+                        generatedObject
+                    );
 
-            if (
-                !generatedObject
-                    ?.isObject3D ||
-                summary.meshCount === 0
-            ) {
+                const reconstructionMethod =
+                    getReconstructionMethod(
+                        summary
+                    );
+
+                setGarmentState({ blueprint, meshOptions, object: generatedObject });
+
+                onBuildStateChange({
+                    phase: "ready",
+                    message: "",
+                    summary,
+                    reconstructionMethod,
+                    floorY
+                });
+
+            } catch (error) {
+
+                console.error(
+                    "FashionVision mesh construction failed:",
+                    error
+                );
 
                 if (generatedObject) {
                     disposeGarmentMesh(
@@ -356,9 +345,10 @@ function GarmentModel({
                     null;
 
                 onBuildStateChange({
-                    phase: "empty",
+                    phase: "error",
                     message:
-                        "No valid closed garment silhouette could be constructed.",
+                        error?.message ||
+                        "The garment mesh could not be generated.",
                     summary:
                         EMPTY_MESH_SUMMARY,
                     reconstructionMethod:
@@ -366,65 +356,9 @@ function GarmentModel({
                     floorY:
                         -2.1
                 });
-
-                return undefined;
             }
 
-            generatedObject.updateMatrixWorld(
-                true
-            );
-
-            const floorY =
-                calculateFloorPosition(
-                    generatedObject
-                );
-
-            const reconstructionMethod =
-                getReconstructionMethod(
-                    summary
-                );
-
-            setGarmentObject(
-                generatedObject
-            );
-
-            onBuildStateChange({
-                phase: "ready",
-                message: "",
-                summary,
-                reconstructionMethod,
-                floorY
-            });
-
-        } catch (error) {
-
-            console.error(
-                "FashionVision mesh construction failed:",
-                error
-            );
-
-            if (generatedObject) {
-                disposeGarmentMesh(
-                    generatedObject
-                );
-            }
-
-            generatedObject =
-                null;
-
-            onBuildStateChange({
-                phase: "error",
-                message:
-                    error?.message ||
-                    "The garment mesh could not be generated.",
-                summary:
-                    EMPTY_MESH_SUMMARY,
-                reconstructionMethod:
-                    null,
-                floorY:
-                    -2.1
-            });
-        }
+        });
 
         /*
         Dispose the old mesh whenever the blueprint changes
@@ -432,6 +366,7 @@ function GarmentModel({
         */
 
         return () => {
+            window.cancelAnimationFrame(frame);
 
             if (generatedObject) {
                 disposeGarmentMesh(
@@ -843,8 +778,9 @@ export const Viewer = ({
             -2.1
     });
 
-    useEffect(() => {
-
+    const [buildInputs, setBuildInputs] = useState({ blueprint: resolvedBlueprint, meshOptions: resolvedMeshOptions });
+    if (buildInputs.blueprint !== resolvedBlueprint || buildInputs.meshOptions !== resolvedMeshOptions) {
+        setBuildInputs({ blueprint: resolvedBlueprint, meshOptions: resolvedMeshOptions });
         setBuildState({
             phase:
                 resolvedBlueprint
@@ -862,10 +798,7 @@ export const Viewer = ({
             floorY:
                 -2.1
         });
-
-    }, [
-        resolvedBlueprint
-    ]);
+    }
 
     const handleBuildStateChange =
         useCallback(

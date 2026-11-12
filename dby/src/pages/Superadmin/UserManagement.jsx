@@ -36,7 +36,7 @@ const UserManagement = () => {
             await API.patch(`/superadmin/update-role/${id}`, { role: newRole });
             // Local state update for instant UI response
             setUsers(prev => prev.map(u => u.id === id ? { ...u, role: newRole } : u));
-        } catch (err) {
+        } catch {
             alert("Role update failed");
         }
     };
@@ -46,7 +46,7 @@ const UserManagement = () => {
             await API.patch(`/superadmin/update-status/${id}`, { status: newStatus });
             setUsers(prev => prev.map(u => u.id === id ? { ...u, status: newStatus } : u));
             setIsModalOpen(false);
-        } catch (err) {
+        } catch {
             alert("Status update failed");
         }
     };

@@ -137,18 +137,7 @@ function clamp(
     );
 }
 
-function isPlainObject(
-    value
-) {
-    return Boolean(
-        value &&
-        typeof value ===
-            "object" &&
-        !Array.isArray(
-            value
-        )
-    );
-}
+
 
 function isFinitePoint(
     point

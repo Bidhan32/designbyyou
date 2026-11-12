@@ -143,7 +143,7 @@ import { useNavigate } from "react-router-dom";
 
 import API from "../../api/axios";
 
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/AuthContext.helpers.js";
 
 import FashionPersonaAvatar from "../avatar/FashionPersonaAvatar";
 
@@ -887,11 +887,9 @@ export default function CreatorSettings() {
   Hydrate from AuthContext
   =======================================================*/
 
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-
+  const [formOwner, setFormOwner] = useState(null);
+  if (user && formOwner !== user.id) {
+    setFormOwner(user.id);
     setForm({
       full_name: user.full_name || "",
 
@@ -911,7 +909,7 @@ export default function CreatorSettings() {
     setProfileImagePreview(
       resolveImageSrc(user.profile_image_url || user.profile_image || ""),
     );
-  }, [user?.id]);
+  }
 
   /*=======================================================
   Load Fashion Persona

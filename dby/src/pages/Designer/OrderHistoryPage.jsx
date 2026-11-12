@@ -36,7 +36,7 @@ const OrderHistoryPage = () => {
             document.body.appendChild(link);
             link.click();
             link.remove();
-        } catch (err) {
+        } catch {
             alert("Secure media initialization stream failure. Please refresh and retry.");
         }
     };

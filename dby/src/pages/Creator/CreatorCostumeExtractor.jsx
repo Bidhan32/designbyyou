@@ -825,7 +825,7 @@ export default function CreatorCostumeExtractor() {
     );
   };
 
-  const usePreset = (keys) => {
+  const applyViewPreset = (keys) => {
     if (!selectionLocked) {
       setSelectedViews([...keys]);
     }
@@ -1391,7 +1391,7 @@ export default function CreatorCostumeExtractor() {
                   <button
                     key={preset.label}
                     type="button"
-                    onClick={() => usePreset(preset.keys)}
+                    onClick={() => applyViewPreset(preset.keys)}
                     className={`rounded-full border px-2.5 py-1.5 text-[10px] font-semibold transition ${
                       sameSelection(selectedViews, preset.keys)
                         ? "border-[#c9a353] bg-[#e5c67d]/20 text-[#795919] dark:text-[#f3d693]"

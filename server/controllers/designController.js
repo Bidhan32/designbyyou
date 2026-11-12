@@ -1,7 +1,5 @@
 // server/controllers/designController.js
-// Ensure your database dependency is imported correctly at the top
-// const db = require('../config/db'); 
-// const axios = require('axios');
+const db = require('../config/db');
 
 // ==========================================
 // 1. CORE WORKSPACE HANDLERS (Previously Missing)
@@ -14,8 +12,10 @@ exports.loadSketch = async (req, res) => {
     try {
         const { designId } = req.params;
         
-        // TODO: Replace this placeholder with your actual original load query logic
-        const result = await db.query(`SELECT * FROM designs WHERE id = $1`, [designId]);
+        const result = await db.query(
+            `SELECT * FROM designs WHERE id = $1 AND owner_id = $2`,
+            [designId, req.user.id]
+        );
         
         if (result.rows.length === 0) {
             return res.status(404).json({ message: "Workspace profile not found." });
@@ -36,7 +36,6 @@ exports.saveNewSketch = async (req, res) => {
         const { title, product_type, canvas_state } = req.body;
         const owner_id = req.user.id;
 
-        // TODO: Replace this placeholder with your actual original insert query logic
         const result = await db.query(
             `INSERT INTO designs (title, product_type, canvas_state, owner_id, created_at, updated_at)
              VALUES ($1, $2, $3, $4, NOW(), NOW()) RETURNING *`,
@@ -60,7 +59,6 @@ exports.updateSketch = async (req, res) => {
         const { canvas_state } = req.body;
         const owner_id = req.user.id;
 
-        // TODO: Replace this placeholder with your actual original update query logic
         const result = await db.query(
             `UPDATE designs 
                 SET canvas_state = $1, updated_at = NOW() 
@@ -82,109 +80,16 @@ exports.updateSketch = async (req, res) => {
 /**
  * POST /api/v1/workspace/ecommerce/designs/:designId/ai-render
  */
-exports.transformSketchToApparel = async (req, res) => {
-    try {
-        const { designId } = req.params;
-        const { prompt, sketchDataUrl } = req.body;
+// Incomplete legacy AI integrations must not return fake success or submit paid jobs.
+function legacyAiUnavailable(req, res) {
+    return res.status(501).json({
+        status: 'error', code: 'LEGACY_WORKSPACE_AI_UNAVAILABLE',
+        message: 'Use Creator Tools for sketch generation and virtual try-on.'
+    });
+}
+exports.transformSketchToApparel = legacyAiUnavailable;
+exports.virtualTryOnRender = legacyAiUnavailable;
 
-        // TODO: Re-paste your original Fal.ai transform code here!
-        
-        res.status(200).json({ status: 'success', renderUrl: "https://via.placeholder.com/500" });
-    } catch (err) {
-        console.error("AI Transform Error:", err);
-        res.status(500).json({ message: "AI pipeline rendering fault." });
-    }
-};
-
-
-// ==========================================
-// 2. NEW PREMIUM FASHION EXTENSIONS
-// ==========================================
-
-/**
- * POST /api/v1/workspace/ecommerce/designs/:designId/ai-tryon
- */
-exports.virtualTryOnRender = async (req, res) => {
-    try {
-        const { designId } = req.params;
-        const { sketchDataUrl, modelBgUrl, modelPrompt } = req.body;
-        const designerId = req.user.id;
- 
-        // 1. Ownership check
-        const designCheck = await db.query(
-            `SELECT id FROM designs WHERE id = $1 AND owner_id = $2`,
-            [designId, designerId]
-        );
- 
-        if (designCheck.rows.length === 0) {
-            return res.status(403).json({ message: "Unauthorized access modification request." });
-        }
- 
-        if (!sketchDataUrl || !modelBgUrl || !modelPrompt) {
-            return res.status(400).json({
-                message: "sketchDataUrl, modelBgUrl, and modelPrompt are all required."
-            });
-        }
- 
-        // 2. Stamp dispatch timestamp immediately
-        await db.query(
-            `UPDATE designs
-                SET tryon_model_bg_url  = $1,
-                    tryon_model_prompt  = $2,
-                    tryon_dispatched_at = NOW(),
-                    updated_at          = NOW()
-              WHERE id = $3`,
-            [modelBgUrl, modelPrompt, designId]
-        );
- 
-        // 3. Dispatch to Fal.ai IP-Adapter
-        const aiResponse = await axios.post('https://queue.fal.run/fal-ai/ip-adapter-face-id', {
-            ip_adapter_image_url: sketchDataUrl,  // garment reference
-            image_url: modelBgUrl,                // runway/backdrop compositional base
- 
-            prompt: `${modelPrompt}, wearing the garment from the reference image, ` +
-                    'editorial high-fashion photography, 8k resolution, hyper-realistic fabric texture, ' +
-                    'professional studio lighting, Vogue runway aesthetic, crisp seams',
-            negative_prompt: 'cartoon, illustration, blurry, deformed, duplicate, extra limbs, ' +
-                             'ugly, low quality, watermark, text, drawing paper background',
- 
-            num_inference_steps: 35,
-            guidance_scale: 7.0,
-            ip_adapter_scale: 0.6,   // 0 = ignore garment ref, 1 = copy exactly
-            strength: 0.75,          // how much the backdrop init image steers composition
-        }, {
-            headers: {
-                'Authorization': `Key ${process.env.FAL_KEY}`,
-                'Content-Type': 'application/json'
-            }
-        });
- 
-        const tryonUrl = aiResponse.data.images[0].url;
- 
-        // 4. Persist completed result
-        await db.query(
-            `UPDATE designs
-                SET tryon_high_res_file_url = $1,
-                    tryon_completed_at      = NOW(),
-                    updated_at              = NOW()
-              WHERE id = $2`,
-            [tryonUrl, designId]
-        );
- 
-        res.status(200).json({
-            status: 'success',
-            message: 'Virtual try-on render completed.',
-            tryonUrl
-        });
- 
-    } catch (err) {
-        console.error("AI Virtual Try-On Crash:", err.response?.data || err.message);
-        res.status(500).json({
-            message: "The try-on pipeline encountered an error compositing the model scene."
-        });
-    }
-};
- 
 /**
  * PATCH /api/v1/workspace/ecommerce/designs/:designId/texture
  */

@@ -10,9 +10,10 @@ Version 2.0
 
 import React, { useState } from "react";
 
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
-import { ArrowRight, Loader2, Mail } from "lucide-react";
+import { AuthField, AuthNotice, AuthSubmit } from "./AuthFields";
+import { validEmail, saveSession } from "./authFlow";
 
 import API from "../../api/axios";
 import AuthLayout from "../../Layouts/AuthLayout";
@@ -24,7 +25,8 @@ Forgot Password
 const ForgotPassword = () => {
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("");
+  const location = useLocation();
+  const [email, setEmail] = useState(location.state?.email || "");
 
   const [loading, setLoading] = useState(false);
 
@@ -43,8 +45,8 @@ const ForgotPassword = () => {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    if (!normalizedEmail) {
-      setError("Please enter your email address.");
+    if (!validEmail(normalizedEmail)) {
+      setError("Enter a valid email address.");
 
       return;
     }
@@ -77,7 +79,7 @@ const ForgotPassword = () => {
             - accidental reload on reset page
             */
 
-      sessionStorage.setItem("pending_password_reset_email", normalizedEmail);
+      saveSession("pending_password_reset_email", normalizedEmail);
 
       navigate("/reset-password", {
         replace: false,
@@ -145,112 +147,14 @@ const ForgotPassword = () => {
     Render
     =====================================================*/
 
-  return (
-    <AuthLayout
-      title="Lost your way?"
-      subtitle="Enter your email and we'll send a 6-digit password reset code."
-    >
-      <form onSubmit={handleRequestOTP} className="space-y-6" noValidate>
-        {/*=========================================
-                Email
-                =========================================*/}
-
-        <div className="space-y-1">
-          <label
-            htmlFor="forgot-password-email"
-            className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-400 ml-1"
-          >
-            Email Address
-          </label>
-
-          <div className="relative">
-            <Mail
-              className="absolute left-4 top-3.5 text-gray-400"
-              size={18}
-              aria-hidden="true"
-            />
-
-            <input
-              id="forgot-password-email"
-              type="email"
-              value={email}
-              placeholder="couture@designbyyou.com"
-              autoComplete="email"
-              inputMode="email"
-              disabled={loading}
-              onChange={(event) => {
-                setEmail(event.target.value);
-
-                if (error) {
-                  setError("");
-                }
-              }}
-              className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-[#D4AF37] focus:bg-white transition-all disabled:opacity-60"
-              required
-            />
-          </div>
-        </div>
-
-        {/*=========================================
-                Privacy-Safe Explanation
-                =========================================*/}
-
-        <p className="text-xs text-gray-400 leading-relaxed text-center">
-          If an account exists for this email, you'll receive a reset code
-          shortly.
-        </p>
-
-        {/*=========================================
-                Error
-                =========================================*/}
-
-        {error && (
-          <div
-            role="alert"
-            className="bg-red-50 border border-red-100 text-red-600 text-xs p-3 rounded-xl text-center font-medium"
-          >
-            {error}
-          </div>
-        )}
-
-        {/*=========================================
-                Submit
-                =========================================*/}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-4 bg-[#1A1A1A] text-white rounded-2xl font-semibold hover:bg-black transition-all flex justify-center items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="animate-spin" size={20} aria-hidden="true" />
-
-              <span>Sending...</span>
-            </>
-          ) : (
-            <>
-              Send Code
-              <ArrowRight size={18} aria-hidden="true" />
-            </>
-          )}
-        </button>
-
-        {/*=========================================
-                Back To Login
-                =========================================*/}
-
-        <div className="text-center pt-2">
-          <Link
-            to="/login"
-            className="text-xs text-gray-400 hover:text-[#D4AF37] font-medium transition-colors"
-          >
-            Back to sign in
-          </Link>
-        </div>
-      </form>
-    </AuthLayout>
-  );
+  return <AuthLayout title="Forgot password?" subtitle="Enter your email to request a reset code.">
+    <form onSubmit={handleRequestOTP} className="auth-form" noValidate aria-busy={loading}>
+      <AuthField id="forgot-email" label="Email address" type="email" value={email} name="email" autoComplete="email" inputMode="email" placeholder="you@example.com" required disabled={loading} onChange={event => { setEmail(event.target.value); setError(""); }} />
+      <AuthNotice error>{error}</AuthNotice>
+      <AuthSubmit busy={loading} busyLabel="Requesting code…">Send reset code</AuthSubmit>
+      <p className="auth-help">If an account uses this email, you’ll receive a six-digit code. Check your spam folder too.</p>
+      <p className="auth-divider"><Link to="/login" state={{ email }} className="auth-link">Back to sign in</Link></p>
+    </form>
+  </AuthLayout>;
 };
-
 export default ForgotPassword;

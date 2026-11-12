@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import API from '../../api/axios';
+import API from '../api/axios';
 
 // Initialize Stripe globally using your publishable key
-const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || 'pk_test_your_key_here');
+const stripePromise = import.meta.env.VITE_STRIPE_PUBLIC_KEY ? loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY) : null;
 
 const CheckoutForm = ({ designerId, designId, onClose, onBookingSuccess }) => {
     const stripe = useStripe();

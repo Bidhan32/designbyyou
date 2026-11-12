@@ -1,3 +1,4 @@
+import { INTERNAL3D_REQUIRED_MATERIALS, INTERNAL3D_REQUIRED_BONES, INTERNAL3D_V1_REQUIRED_MORPHS } from "./Internal3DModelInspector.helpers.js";
 import React, {
   Component,
   Suspense,
@@ -45,39 +46,9 @@ import {
    Production Standards
    ========================================================= */
 
-export const INTERNAL3D_REQUIRED_MATERIALS = [
-  "Skin",
-  "Iris",
-  "EyeWhite",
-];
 
-export const INTERNAL3D_REQUIRED_BONES = [
-  "Hips",
 
-  "Spine",
-  "Chest",
 
-  "Neck",
-  "Head",
-
-  "LeftShoulder",
-  "LeftUpperArm",
-  "LeftForearm",
-  "LeftHand",
-
-  "RightShoulder",
-  "RightUpperArm",
-  "RightForearm",
-  "RightHand",
-
-  "LeftUpperLeg",
-  "LeftLowerLeg",
-  "LeftFoot",
-
-  "RightUpperLeg",
-  "RightLowerLeg",
-  "RightFoot",
-];
 
 /*
  * Our first morph milestone.
@@ -87,107 +58,13 @@ export const INTERNAL3D_REQUIRED_BONES = [
  * Once these work, we expand the full system.
  */
 
-export const INTERNAL3D_V1_REQUIRED_MORPHS = [
-  "faceWidth_positive",
-  "faceWidth_negative",
 
-  "jawWidth_positive",
-  "jawWidth_negative",
-
-  "noseWidth_positive",
-  "noseWidth_negative",
-
-  "shoulderWidth_positive",
-  "shoulderWidth_negative",
-];
 
 /* =========================================================
    Full Future Morph Standard
    ========================================================= */
 
-export const INTERNAL3D_FULL_MORPH_STANDARD = [
-  /* FACE */
 
-  "faceWidth_positive",
-  "faceWidth_negative",
-
-  "faceHeight_positive",
-  "faceHeight_negative",
-
-  "jawWidth_positive",
-  "jawWidth_negative",
-
-  "jawShape_positive",
-  "jawShape_negative",
-
-  "cheekVolume_positive",
-  "cheekVolume_negative",
-
-  "chinWidth_positive",
-  "chinWidth_negative",
-
-  "chinLength_positive",
-  "chinLength_negative",
-
-  "eyeSize_positive",
-  "eyeSize_negative",
-
-  "eyeSpacing_positive",
-  "eyeSpacing_negative",
-
-  "eyeHeight_positive",
-  "eyeHeight_negative",
-
-  "eyeTilt_positive",
-  "eyeTilt_negative",
-
-  "noseWidth_positive",
-  "noseWidth_negative",
-
-  "noseLength_positive",
-  "noseLength_negative",
-
-  "noseBridge_positive",
-  "noseBridge_negative",
-
-  "mouthWidth_positive",
-  "mouthWidth_negative",
-
-  "upperLip_positive",
-  "upperLip_negative",
-
-  "lowerLip_positive",
-  "lowerLip_negative",
-
-  /* BODY */
-
-  "frame_positive",
-  "frame_negative",
-
-  "height_positive",
-  "height_negative",
-
-  "shoulderWidth_positive",
-  "shoulderWidth_negative",
-
-  "chest_positive",
-  "chest_negative",
-
-  "waist_positive",
-  "waist_negative",
-
-  "hips_positive",
-  "hips_negative",
-
-  "muscularity_positive",
-  "muscularity_negative",
-
-  "armLength_positive",
-  "armLength_negative",
-
-  "legLength_positive",
-  "legLength_negative",
-];
 
 /* =========================================================
    Helpers
@@ -1386,12 +1263,3 @@ export default function Internal3DModelInspector({
 /* =========================================================
    Preloader
    ========================================================= */
-
-export function preloadInternal3DModel(
-  modelUrl =
-    "/avatars/internal3d/base/human-base.glb",
-) {
-  useGLTF.preload(
-    modelUrl,
-  );
-}

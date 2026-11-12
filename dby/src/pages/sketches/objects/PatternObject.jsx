@@ -1,3 +1,4 @@
+import { PATTERN_RESOURCE_CACHE } from "./PatternObject.helpers.js";
 /*
 =========================================================
 FashionVision Professional Editor
@@ -78,8 +79,7 @@ const PATTERN_REPEAT_VALUES =
         "no-repeat"
     ]);
 
-const PATTERN_RESOURCE_CACHE =
-    new Map();
+
 
 /*=========================================================
 General Helpers
@@ -714,26 +714,7 @@ function useCachedPatternImage(
     return snapshot;
 }
 
-export function clearPatternObjectCache(
-    source =
-        null
-) {
-    if (
-        typeof source ===
-            "string" &&
-        source
-    ) {
-        PATTERN_RESOURCE_CACHE
-            .delete(
-                source
-            );
 
-        return;
-    }
-
-    PATTERN_RESOURCE_CACHE
-        .clear();
-}
 
 /*=========================================================
 Konva Helpers

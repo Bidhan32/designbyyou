@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   GARMENT_PATTERN_PRESETS, GARMENT_PATTERN_ALIGNMENT, GARMENT_PATTERN_LAYOUTS,
-  normalizeGarmentPatternSettings, useGarmentPatternPreset,
+  normalizeGarmentPatternSettings, applyGarmentPatternPreset,
 } from "./GarmentPatternStudio";
 
 const field = "w-full min-w-0 rounded-md border border-slate-600 bg-slate-900 px-2 py-1.5 text-xs text-slate-100";
@@ -22,12 +22,13 @@ export default function GarmentPatternControls({ entry, disabled = false, onSave
   const [draft, setDraft] = useState(() => normalizeGarmentPatternSettings(entry));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  useEffect(() => {
+  const resetKey = JSON.stringify([entry?.id, entry?.source, normalizeGarmentPatternSettings(entry)]);
+  const [sourceKey, setSourceKey] = useState(resetKey);
+  if (sourceKey !== resetKey) {
+    setSourceKey(resetKey);
     setDraft(normalizeGarmentPatternSettings(entry));
     setMessage("");
-  }, [entry?.id, entry?.source, entry?.scale, entry?.spacingX, entry?.spacingY,
-      entry?.rotation, entry?.offsetX, entry?.offsetY, entry?.alignment, entry?.layout,
-      entry?.fit, entry?.opacity]);
+  }
 
   if (!entry) return null;
   const update = (key, value) => { setDraft((old) => ({ ...old, [key]: value })); setMessage(""); };
@@ -56,7 +57,7 @@ export default function GarmentPatternControls({ entry, disabled = false, onSave
       <p className="mt-1 text-[10px] leading-relaxed text-slate-400">Presets change repeat settings, not your uploaded artwork. Preview adjustments using Apply; use Undo to reverse.</p></div>
     <div className="grid grid-cols-2 gap-1.5">
       {GARMENT_PATTERN_PRESETS.map((preset) => <button type="button" key={preset.id}
-        disabled={disabled || saving} className={button} onClick={() => setDraft((value) => useGarmentPatternPreset(value, preset.id))}>{preset.label}</button>)}
+        disabled={disabled || saving} className={button} onClick={() => setDraft((value) => applyGarmentPatternPreset(value, preset.id))}>{preset.label}</button>)}
     </div>
     <div className="grid grid-cols-2 gap-2">
       <label className="space-y-1 text-[10px] text-slate-300">Alignment

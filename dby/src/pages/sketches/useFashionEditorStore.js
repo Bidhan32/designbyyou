@@ -6070,14 +6070,14 @@ export const useFashionEditorStore =
                     },
 
                 markSaved:
-                    () => {
+                    (savedRevision) => {
                         set(
                             state => ({
                                 persistence: {
                                     ...state.persistence,
 
                                     dirty:
-                                        false,
+                                        savedRevision !== undefined && state.revision !== savedRevision,
 
                                     saving:
                                         false,

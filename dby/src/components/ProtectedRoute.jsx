@@ -12,7 +12,7 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 
 import { Loader2 } from "lucide-react";
 
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext.helpers.js";
 
 /*
 IMPORTANT:
@@ -24,10 +24,12 @@ If ProtectedRoute.jsx is not located where this import works:
 adjust ONLY that import path to match your project structure.
 */
 
+
+
 export const ProtectedRoute = ({ children, requiredRole }) => {
   const location = useLocation();
 
-  const { user, loading } = useAuth();
+  const { user, loading, sessionError, retrySession } = useAuth();
 
   /*=====================================================
     Wait Until AuthContext Validates Existing JWT
@@ -71,6 +73,18 @@ export const ProtectedRoute = ({ children, requiredRole }) => {
     - token_version
     - current database user
     =====================================================*/
+
+  if (!user && sessionError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white p-6">
+        <div role="alert" className="max-w-md space-y-4 text-center text-gray-700">
+          <p>{sessionError}</p>
+          <button type="button" onClick={() => void retrySession()}
+            className="rounded-lg bg-gray-900 px-4 py-2 text-white">Retry connection</button>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (

@@ -1348,7 +1348,7 @@ export default function CreatorShowcase() {
         <section
           className="
             relative
-            min-h-[610px]
+            min-h-[360px]
             w-full
             max-w-none
             overflow-hidden
@@ -1357,9 +1357,9 @@ export default function CreatorShowcase() {
             bg-[#101010]
             shadow-[0_36px_120px_rgba(0,0,0,0.7)]
 
-            sm:min-h-[680px]
+            sm:min-h-[420px]
 
-            lg:min-h-[720px]
+            lg:min-h-[460px]
           "
         >
           {/*===============================================
@@ -1462,21 +1462,21 @@ export default function CreatorShowcase() {
               z-10
               mx-auto
               flex
-              min-h-[610px]
+              min-h-[360px]
               w-full
               text-white
               max-w-[1800px]
               flex-col
               justify-center
               px-7
-              py-20
+              py-10
 
-              sm:min-h-[680px]
+              sm:min-h-[420px]
               sm:px-12
 
               md:px-16
 
-              lg:min-h-[720px]
+              lg:min-h-[460px]
               lg:px-20
             "
           >
@@ -1724,9 +1724,9 @@ export default function CreatorShowcase() {
 
         <section
           className="
-            py-20
+            py-10
 
-            sm:py-24
+            sm:py-12
           "
         >
           <SectionHeading
@@ -1984,11 +1984,11 @@ export default function CreatorShowcase() {
           className="
             border-t
             border-slate-200
-            py-20
+            py-10
 
             dark:border-white/[0.07]
 
-            sm:py-24
+            sm:py-12
           "
         >
           <SectionHeading
@@ -2085,11 +2085,11 @@ export default function CreatorShowcase() {
           className="
             border-t
             border-slate-200
-            py-20
+            py-10
 
             dark:border-white/[0.07]
 
-            sm:py-24
+            sm:py-12
           "
         >
           <SectionHeading
@@ -2182,11 +2182,11 @@ export default function CreatorShowcase() {
           className="
             border-t
             border-slate-200
-            py-20
+            py-10
 
             dark:border-white/[0.07]
 
-            sm:py-24
+            sm:py-12
           "
         >
           <SectionHeading
@@ -2263,11 +2263,11 @@ export default function CreatorShowcase() {
           className="
             border-t
             border-slate-200
-            py-20
+            py-10
 
             dark:border-white/[0.07]
 
-            sm:py-24
+            sm:py-12
           "
         >
           <SectionHeading
@@ -2590,11 +2590,11 @@ export default function CreatorShowcase() {
             scroll-mt-28
             border-t
             border-slate-200
-            py-20
+            py-10
 
             dark:border-white/[0.07]
 
-            sm:py-24
+            sm:py-12
           "
         >
           <SectionHeading
@@ -3194,174 +3194,7 @@ export default function CreatorShowcase() {
         CREATE YOUR OWN DESIGN
         =================================================*/}
 
-        <section
-          className="
-            relative
-            mt-8
-            overflow-hidden
-            rounded-[2.5rem]
-            border
-            border-[#e5c67d]/30
-            bg-white
-            px-6
-            shadow-sm
-            transition-colors
-
-            dark:border-[#e5c67d]/20
-            dark:bg-[#111]
-            dark:shadow-none
-            py-16
-            text-center
-
-            sm:px-10
-            sm:py-20
-
-            lg:px-16
-            lg:py-24
-          "
-        >
-          <div
-            aria-hidden="true"
-            className="
-              absolute
-              left-1/2
-              top-1/2
-              h-[32rem]
-              w-[32rem]
-              -translate-x-1/2
-              -translate-y-1/2
-              rounded-full
-              bg-[#e5c67d]/[0.08]
-              blur-[120px]
-            "
-          />
-
-          <div
-            className="
-              relative
-              z-10
-              mx-auto
-              max-w-4xl
-            "
-          >
-            <Sparkles
-              size={24}
-              className="
-                mx-auto
-                text-[#e5c67d]
-              "
-            />
-
-            <p
-              className="
-                mt-5
-                text-[9px]
-                font-black
-                uppercase
-                tracking-[0.32em]
-                text-[#e5c67d]
-              "
-            >
-              Your Idea Starts Here
-            </p>
-
-            <h2
-              className="
-                mt-4
-                font-serif
-                text-4xl
-                leading-tight
-
-                sm:text-5xl
-
-                lg:text-6xl
-              "
-            >
-              Create Your Own
-              <span
-                className="
-                  italic
-                  text-[#e5c67d]
-                "
-              >
-                {" "}
-                Design
-              </span>
-            </h2>
-
-            <p
-              className="
-                mx-auto
-                mt-6
-                max-w-2xl
-                text-base
-                leading-8
-                text-slate-600
-
-                dark:text-white/50
-              "
-            >
-              I don&apos;t need something that someone already has. Just dream
-              it. Build something that feels like you.
-            </p>
-
-            <div
-              className="
-                mt-8
-                flex
-                flex-wrap
-                justify-center
-                gap-x-6
-                gap-y-3
-                font-serif
-                text-lg
-                italic
-                text-slate-400
-
-                dark:text-white/30
-
-                sm:text-xl
-              "
-            >
-              <span>Wear your identity.</span>
-
-              <span>You create it.</span>
-
-              <span>Just dream it.</span>
-
-              <span>It&apos;s not just about the logo.</span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => navigate(CREATE_ROUTE)}
-              className="
-                mt-10
-                inline-flex
-                items-center
-                gap-2
-                rounded-full
-                bg-[#e5c67d]
-                px-8
-                py-4
-                text-[10px]
-                font-black
-                uppercase
-                tracking-[0.2em]
-                text-black
-                transition
-
-                hover:-translate-y-0.5
-                hover:bg-white
-                hover:shadow-[0_0_45px_rgba(229,198,125,0.25)]
-              "
-            >
-              <PencilRuler size={15} />
-              Start Creating
-              <ArrowRight size={14} />
-            </button>
-          </div>
-        </section>
+        
       </div>
     </div>
   );

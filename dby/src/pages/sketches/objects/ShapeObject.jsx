@@ -1,3 +1,4 @@
+import { SHAPE_PATTERN_RESOURCE_CACHE } from "./ShapeObject.helpers.js";
 /*
 =========================================================
 FashionVision Professional Editor
@@ -76,8 +77,7 @@ const PATTERN_REPEAT_VALUES =
         "no-repeat"
     ]);
 
-const SHAPE_PATTERN_RESOURCE_CACHE =
-    new Map();
+
 
 /*=========================================================
 Helpers
@@ -931,26 +931,7 @@ function useCachedPatternImage(
     return snapshot;
 }
 
-export function clearShapePatternCache(
-    source =
-        null
-) {
-    if (
-        typeof source ===
-            "string" &&
-        source
-    ) {
-        SHAPE_PATTERN_RESOURCE_CACHE
-            .delete(
-                source
-            );
 
-        return;
-    }
-
-    SHAPE_PATTERN_RESOURCE_CACHE
-        .clear();
-}
 
 function resolveObjectOpacity(
     object

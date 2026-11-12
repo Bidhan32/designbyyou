@@ -1,3 +1,4 @@
+import { DEFAULT_WIDTH, DEFAULT_HEIGHT, MINIMUM_DIMENSION, numberOr, findTextObjectNode, calculateTextOverlayLayout } from "./TextEditOverlay.helpers.js";
 /*
 =========================================================
 FashionVision Professional Editor
@@ -64,11 +65,9 @@ const DEFAULT_LINE_HEIGHT =
 const DEFAULT_FILL =
     "#111111";
 
-const DEFAULT_WIDTH =
-    240;
 
-const DEFAULT_HEIGHT =
-    64;
+
+
 
 const DEFAULT_HISTORY_LABEL =
     "Edit text";
@@ -76,26 +75,13 @@ const DEFAULT_HISTORY_LABEL =
 const POSITION_EPSILON =
     0.05;
 
-const MINIMUM_DIMENSION =
-    1;
+
 
 /*=========================================================
 General Helpers
 =========================================================*/
 
-function numberOr(
-    value,
-    fallback = 0
-) {
-    const numericValue =
-        Number(value);
 
-    return Number.isFinite(
-        numericValue
-    )
-        ? numericValue
-        : fallback;
-}
 
 function clamp(
     value,
@@ -510,114 +496,9 @@ function resolveDirection(
 Konva Node Helpers
 =========================================================*/
 
-function collectionToArray(
-    collection
-) {
-    if (!collection) {
-        return [];
-    }
 
-    if (
-        Array.isArray(
-            collection
-        )
-    ) {
-        return collection;
-    }
 
-    if (
-        typeof collection
-            .toArray ===
-        "function"
-    ) {
-        return collection
-            .toArray();
-    }
 
-    const result =
-        [];
-
-    if (
-        typeof collection.each ===
-        "function"
-    ) {
-        collection.each(
-            node => {
-                result.push(
-                    node
-                );
-            }
-        );
-
-        return result;
-    }
-
-    try {
-        return [
-            ...collection
-        ];
-    } catch {
-        return result;
-    }
-}
-
-export function findTextObjectNode(
-    stage,
-    objectId
-) {
-    if (
-        !stage ||
-        !objectId
-    ) {
-        return null;
-    }
-
-    try {
-        const namedNodes =
-            collectionToArray(
-                stage.find(
-                    ".fashion-editor-text-object"
-                )
-            );
-
-        const namedMatch =
-            namedNodes.find(
-                node =>
-                    node?.getAttr?.(
-                        "editorObjectId"
-                    ) ===
-                    objectId
-            );
-
-        if (namedMatch) {
-            return namedMatch;
-        }
-
-        const objectNodes =
-            collectionToArray(
-                stage.find(
-                    ".fashion-editor-object"
-                )
-            );
-
-        return (
-            objectNodes.find(
-                node =>
-                    node?.getAttr?.(
-                        "editorObjectRoot"
-                    ) ===
-                        true &&
-                    node?.getAttr?.(
-                        "editorObjectId"
-                    ) ===
-                        objectId
-            ) ||
-            null
-        );
-    } catch {
-        return null;
-    }
-}
 
 function findSelectionTransformer(
     stage
@@ -661,155 +542,9 @@ function getStageContainer(
     );
 }
 
-function readAbsoluteMatrix(
-    node
-) {
-    const transform =
-        node
-            ?.getAbsoluteTransform
-            ?.();
 
-    const matrix =
-        transform
-            ?.getMatrix
-            ?.();
 
-    if (
-        !Array.isArray(
-            matrix
-        ) ||
-        matrix.length <
-            6
-    ) {
-        return [
-            1,
-            0,
-            0,
-            1,
-            0,
-            0
-        ];
-    }
 
-    return matrix.map(
-        value =>
-            numberOr(
-                value,
-                0
-            )
-    );
-}
-
-export function calculateTextOverlayLayout({
-    stage,
-    node,
-    container,
-    width,
-    height
-}) {
-    if (
-        !stage ||
-        !node ||
-        !container
-    ) {
-        return null;
-    }
-
-    const rectangle =
-        container
-            .getBoundingClientRect
-            ?.();
-
-    if (!rectangle) {
-        return null;
-    }
-
-    const stageWidth =
-        Math.max(
-            1,
-            numberOr(
-                stage.width?.(),
-                rectangle.width ||
-                1
-            )
-        );
-
-    const stageHeight =
-        Math.max(
-            1,
-            numberOr(
-                stage.height?.(),
-                rectangle.height ||
-                1
-            )
-        );
-
-    const cssScaleX =
-        rectangle.width /
-        stageWidth;
-
-    const cssScaleY =
-        rectangle.height /
-        stageHeight;
-
-    const [
-        a,
-        b,
-        c,
-        d,
-        e,
-        f
-    ] =
-        readAbsoluteMatrix(
-            node
-        );
-
-    return {
-        left:
-            rectangle.left,
-
-        top:
-            rectangle.top,
-
-        width:
-            Math.max(
-                MINIMUM_DIMENSION,
-                numberOr(
-                    width,
-                    DEFAULT_WIDTH
-                )
-            ),
-
-        height:
-            Math.max(
-                MINIMUM_DIMENSION,
-                numberOr(
-                    height,
-                    DEFAULT_HEIGHT
-                )
-            ),
-
-        matrix: [
-            a *
-            cssScaleX,
-
-            b *
-            cssScaleY,
-
-            c *
-            cssScaleX,
-
-            d *
-            cssScaleY,
-
-            e *
-            cssScaleX,
-
-            f *
-            cssScaleY
-        ]
-    };
-}
 
 function layoutsEqual(
     first,
@@ -956,7 +691,7 @@ function createTextUpdates(
 Text Edit Overlay
 =========================================================*/
 
-function TextEditOverlay({
+function TextEditSession({
     object,
     open = true,
 
@@ -1385,28 +1120,6 @@ function TextEditOverlay({
     editing.
     */
 
-    useEffect(
-        () => {
-            const nextText =
-                resolveTextContent(
-                    object
-                );
-
-            originalTextRef.current =
-                nextText;
-
-            closingRef.current =
-                false;
-
-            setDraftText(
-                nextText
-            );
-        },
-        [
-            object?.id
-        ]
-    );
-
     /*
     Resolve and continuously follow the Konva object. The
     requestAnimationFrame loop is necessary because panning,
@@ -1420,11 +1133,8 @@ function TextEditOverlay({
                 !visible ||
                 !resolvedStage
             ) {
-                setLayout(
-                    null
-                );
-
-                return undefined;
+                const frame = window.requestAnimationFrame(() => setLayout(null));
+                return () => window.cancelAnimationFrame(frame);
             }
 
             const node =
@@ -1443,11 +1153,8 @@ function TextEditOverlay({
                 !node ||
                 !container
             ) {
-                setLayout(
-                    null
-                );
-
-                return undefined;
+                const frame = window.requestAnimationFrame(() => setLayout(null));
+                return () => window.cancelAnimationFrame(frame);
             }
 
             nodeRef.current =
@@ -1520,7 +1227,7 @@ function TextEditOverlay({
                             );
                 };
 
-            updateLayout();
+            animationFrameId = window.requestAnimationFrame(updateLayout);
 
             onOpen?.(
                 object
@@ -1747,6 +1454,10 @@ function TextEditOverlay({
 /*=========================================================
 Export
 =========================================================*/
+
+function TextEditOverlay(props) {
+    return <TextEditSession key={String(props.object?.id) + ":" + String(props.open ?? true)} {...props} />;
+}
 
 TextEditOverlay.displayName =
     "TextEditOverlay";

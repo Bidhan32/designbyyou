@@ -245,18 +245,7 @@ function isFinitePoint(
 Vector Helpers
 =========================================================*/
 
-function createVector(
-    x = 0,
-    y = 0
-) {
-    return {
-        x:
-            numberOr(x),
 
-        y:
-            numberOr(y)
-    };
-}
 
 function addVectors(
     first,

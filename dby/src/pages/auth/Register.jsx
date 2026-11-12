@@ -8,17 +8,8 @@ Version 2.1 - Resume verification for existing email
 */
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  Briefcase,
-  Building,
-  Camera,
-  FileText,
-  Globe,
-  Loader2,
-  Lock,
-  Mail,
-  User,
-} from "lucide-react";
+import { AuthField, AuthNotice, AuthSubmit } from "./AuthFields";
+import { validEmail, passwordError } from "./authFlow";
 import API from "../../api/axios";
 import AuthLayout from "../../Layouts/AuthLayout";
 /*=========================================================
@@ -197,6 +188,9 @@ const Register = () => {
       setError("Please select a valid account type.");
       return;
     }
+    if (!validEmail(email)) { setError("Enter a valid email address."); return; }
+    const passwordIssue = passwordError(formData.password);
+    if (passwordIssue) { setError(passwordIssue); return; }
     if (formData.password.length < MIN_PASSWORD_LENGTH) {
       setError(
         `Password must contain at least ${MIN_PASSWORD_LENGTH} characters.`,
@@ -330,350 +324,43 @@ const Register = () => {
   /*=====================================================
     Render
     =====================================================*/
-  return (
-    <AuthLayout
-      title="Create an Account"
-      subtitle="Join our exclusive community of designers and creators."
-      step="01"
-    >
-      <form
-        onSubmit={handleRegister}
-        className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar"
-        noValidate
-      >
-        {/*=========================================
-                Role Selection
-                =========================================*/}
-        <div className="flex gap-4 mb-6">
-          {ALLOWED_ROLES.map((role) => (
-            <button
-              key={role}
-              type="button"
-              disabled={loading}
-              onClick={() => handleRoleChange(role)}
-              className={`flex-1 py-2 rounded-xl border-2 transition-all capitalize font-medium cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
-                formData.role === role
-                  ? "border-[#D4AF37] bg-[#D4AF37]/5 text-[#D4AF37]"
-                  : "border-gray-100 text-gray-400 hover:border-gray-200"
-              }`}
-              aria-pressed={formData.role === role}
-            >
-              {role}
-            </button>
-          ))}
-        </div>
-        {/*=========================================
-                Profile Image
-                =========================================*/}
-        <div className="flex flex-col items-center justify-center mb-6">
-          <label className="relative cursor-pointer group">
-            <div className="w-24 h-24 rounded-full bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden group-hover:border-[#D4AF37] transition-all">
-              {imagePreview ? (
-                <img
-                  src={imagePreview}
-                  alt="Profile preview"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <Camera
-                  className="text-gray-300 group-hover:text-[#D4AF37]"
-                  size={32}
-                  aria-hidden="true"
-                />
-              )}
-            </div>
-            <input
-              type="file"
-              name="profileImage"
-              onChange={handleProfileImage}
-              disabled={loading}
-              className="hidden"
-              accept=".jpg,.jpeg,.png,image/jpeg,image/png"
-            />
-            <div className="absolute bottom-0 right-0 p-1.5 bg-[#1A1A1A] rounded-full text-white shadow-lg">
-              <FileText size={12} aria-hidden="true" />
-            </div>
-          </label>
-          <span className="text-[10px] text-gray-400 mt-2 uppercase tracking-widest font-bold">
-            Upload Portrait
-          </span>
-          <span className="text-[10px] text-gray-300 mt-1">
-            JPG or PNG · Max 5 MB
-          </span>
-        </div>
-        {/*=========================================
-                Basic Information
-                =========================================*/}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="relative">
-            <User
-              className="absolute left-4 top-3.5 text-gray-400"
-              size={18}
-              aria-hidden="true"
-            />
-            <input
-              name="full_name"
-              type="text"
-              placeholder="Full Name"
-              value={formData.full_name}
-              onChange={handleChange}
-              disabled={loading}
-              autoComplete="name"
-              className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:border-[#D4AF37] disabled:opacity-60"
-              required
-            />
-          </div>
-          <div className="relative">
-            <Mail
-              className="absolute left-4 top-3.5 text-gray-400"
-              size={18}
-              aria-hidden="true"
-            />
-            <input
-              name="email"
-              type="email"
-              placeholder="Email Address"
-              value={formData.email}
-              onChange={handleChange}
-              disabled={loading}
-              autoComplete="email"
-              inputMode="email"
-              className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:border-[#D4AF37] disabled:opacity-60"
-              required
-            />
-          </div>
-        </div>
-        {/*=========================================
-                Passwords
-                =========================================*/}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="relative">
-            <Lock
-              className="absolute left-4 top-3.5 text-gray-400"
-              size={18}
-              aria-hidden="true"
-            />
-            <input
-              name="password"
-              type="password"
-              placeholder="Password"
-              value={formData.password}
-              onChange={handleChange}
-              disabled={loading}
-              autoComplete="new-password"
-              minLength={MIN_PASSWORD_LENGTH}
-              className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:border-[#D4AF37] disabled:opacity-60"
-              required
-            />
-          </div>
-          <div className="relative">
-            <Lock
-              className="absolute left-4 top-3.5 text-gray-400"
-              size={18}
-              aria-hidden="true"
-            />
-            <input
-              name="confirm_password"
-              type="password"
-              placeholder="Confirm Password"
-              value={formData.confirm_password}
-              onChange={handleChange}
-              disabled={loading}
-              autoComplete="new-password"
-              minLength={MIN_PASSWORD_LENGTH}
-              className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:border-[#D4AF37] disabled:opacity-60"
-              required
-            />
-          </div>
-        </div>
-        <p className="text-[10px] text-gray-400 px-1">
-          Password must contain at least {MIN_PASSWORD_LENGTH} characters.
-        </p>
-        {/*=========================================
-                Creator Fields
-                =========================================*/}
-        {formData.role === "creator" && (
-          <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="relative">
-              <Building
-                className="absolute left-4 top-3.5 text-gray-400"
-                size={18}
-                aria-hidden="true"
-              />
-              <input
-                name="company_name"
-                type="text"
-                placeholder="Company Name"
-                value={formData.company_name}
-                onChange={handleChange}
-                disabled={loading}
-                autoComplete="organization"
-                className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:border-[#D4AF37] disabled:opacity-60"
-              />
-            </div>
-            <div className="relative">
-              <Briefcase
-                className="absolute left-4 top-3.5 text-gray-400"
-                size={18}
-                aria-hidden="true"
-              />
-              <input
-                name="preferred_category"
-                type="text"
-                placeholder="Preferred Category (e.g., Fashion, Tech)"
-                value={formData.preferred_category}
-                onChange={handleChange}
-                disabled={loading}
-                className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:border-[#D4AF37] disabled:opacity-60"
-              />
-            </div>
-          </div>
-        )}
-        {/*=========================================
-                Designer Fields
-                =========================================*/}
-        {formData.role === "designer" && (
-          <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="relative">
-              <Globe
-                className="absolute left-4 top-3.5 text-gray-400"
-                size={18}
-                aria-hidden="true"
-              />
-              <input
-                name="portfolio_url"
-                type="url"
-                placeholder="Portfolio URL (e.g., Behance, Dribbble)"
-                value={formData.portfolio_url}
-                onChange={handleChange}
-                disabled={loading}
-                autoComplete="url"
-                className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:border-[#D4AF37] disabled:opacity-60"
-              />
-            </div>
-            <div className="relative">
-              <Briefcase
-                className="absolute left-4 top-3.5 text-gray-400"
-                size={18}
-                aria-hidden="true"
-              />
-              <input
-                name="address_line"
-                type="text"
-                placeholder="Street Address"
-                value={formData.address_line}
-                onChange={handleChange}
-                disabled={loading}
-                autoComplete="street-address"
-                className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:border-[#D4AF37] disabled:opacity-60"
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input
-                name="city"
-                type="text"
-                placeholder="City"
-                value={formData.city}
-                onChange={handleChange}
-                disabled={loading}
-                autoComplete="address-level2"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:border-[#D4AF37] disabled:opacity-60"
-              />
-              <input
-                name="country"
-                type="text"
-                placeholder="Country"
-                value={formData.country}
-                onChange={handleChange}
-                disabled={loading}
-                autoComplete="country-name"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:border-[#D4AF37] disabled:opacity-60"
-              />
-            </div>
-            <textarea
-              name="bio"
-              placeholder="Brief Professional Bio"
-              value={formData.bio}
-              onChange={handleChange}
-              disabled={loading}
-              rows={3}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:border-[#D4AF37] resize-none disabled:opacity-60"
-            />
-          </div>
-        )}
-        {/*=========================================
-                Error
-                =========================================*/}
-        {error && (
-          <div
-            role="alert"
-            className="bg-red-50 border border-red-100 text-red-600 text-xs p-3 rounded-xl text-center font-medium animate-in fade-in zoom-in duration-300"
-          >
-            {error}
-          </div>
-        )}
-        {existingEmail && (
-          <div className="rounded-xl border border-[#D4AF37]/40 bg-[#D4AF37]/10 p-4 text-center">
-            <p className="text-xs font-semibold text-slate-800">
-              Did you register earlier but miss the verification code?
-            </p>
-            <p className="mt-1 text-[11px] leading-5 text-slate-600">
-              Continue with your existing email. You can request a fresh code
-              without creating another account.
-            </p>
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={handleContinueVerification}
-                disabled={loading}
-                className="rounded-xl bg-[#1A1A1A] px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-black disabled:opacity-50"
-              >
-                Complete email verification
-              </button>
-              <Link
-                to="/login"
-                className="text-xs font-semibold text-[#9d7528] hover:underline"
-              >
-                Sign in instead
-              </Link>
-            </div>
-          </div>
-        )}
-        {/*=========================================
-                Submit
-                =========================================*/}
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-4 bg-[#1A1A1A] text-white rounded-xl font-semibold tracking-wide hover:bg-black transition-all shadow-lg shadow-black/10 flex justify-center items-center gap-2 cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="animate-spin" size={20} aria-hidden="true" />
-              <span>Creating Account...</span>
-            </>
-          ) : (
-            "Request Access"
-          )}
-        </button>
-        <div className="space-y-2 pb-3 text-center text-xs text-slate-500">
-          <p>
-            Already have an account?{" "}
-            <Link to="/login" className="font-semibold text-[#9d7528] hover:underline">
-              Sign in
-            </Link>
-          </p>
-          <button
-            type="button"
-            onClick={handleContinueVerification}
-            disabled={loading}
-            className="font-semibold text-[#9d7528] underline-offset-2 hover:underline disabled:opacity-50"
-          >
-            Registered but not verified? Continue verification
-          </button>
-        </div>
-      </form>
-    </AuthLayout>
-  );
+  return <AuthLayout title="Create an account" subtitle="Choose how you want to use DesignByYou." step="1 of 2 · Account details">
+    <form onSubmit={handleRegister} className="auth-form" noValidate aria-busy={loading}>
+      <fieldset className="auth-roles" disabled={loading}><legend>I want to…</legend>
+        <div className="auth-role-options">{ALLOWED_ROLES.map(role => <label className="auth-role" key={role}>
+          <input type="radio" name="role" value={role} checked={formData.role === role} onChange={() => handleRoleChange(role)} />
+          <strong>{role === "creator" ? "Create" : "Design for clients"}</strong>
+          <span>{role === "creator" ? "Make designs and work with designers." : "Share a portfolio and accept bookings."}</span>
+        </label>)}</div>
+      </fieldset>
+      {formData.role === "designer" && <p className="auth-help">Verify your email after signing up. Your designer account also needs approval before you can accept paid work.</p>}
+      <AuthField id="register-name" label="Full name" name="full_name" value={formData.full_name} onChange={handleChange} autoComplete="name" maxLength={150} required disabled={loading} />
+      <AuthField id="register-email" label="Email address" name="email" type="email" value={formData.email} onChange={handleChange} autoComplete="email" inputMode="email" placeholder="you@example.com" required disabled={loading} />
+      <AuthField id="register-password" label="Password" name="password" type="password" value={formData.password} onChange={handleChange} autoComplete="new-password" hint="Use at least 8 characters. Longer passwords with uncommon words are easier to remember." required disabled={loading} />
+      <AuthField id="register-confirm" label="Confirm password" name="confirm_password" type="password" value={formData.confirm_password} onChange={handleChange} autoComplete="new-password" required disabled={loading} />
+      <details className="auth-details"><summary>Profile details (optional)</summary><div className="auth-stack">
+        <p className="auth-help">You can add these now or complete your profile later.</p>
+        <AuthField id="register-photo" label="Profile photo" type="file" name="profileImage" accept=".jpg,.jpeg,.png,image/jpeg,image/png" onChange={handleProfileImage} disabled={loading} hint="JPG or PNG, up to 5 MB." />
+        {imagePreview && <img src={imagePreview} className="auth-preview" alt="Selected profile photo" />}
+        {formData.role === "creator" ? <>
+          <AuthField id="register-company" label="Company or brand" name="company_name" value={formData.company_name} onChange={handleChange} autoComplete="organization" disabled={loading} />
+          <AuthField id="register-category" label="Design interests" name="preferred_category" value={formData.preferred_category} onChange={handleChange} placeholder="For example, streetwear" disabled={loading} />
+        </> : <>
+          <AuthField id="register-portfolio" label="Portfolio link" name="portfolio_url" type="url" value={formData.portfolio_url} onChange={handleChange} autoComplete="url" placeholder="https://" disabled={loading} />
+          <AuthField id="register-address" label="Street address" name="address_line" value={formData.address_line} onChange={handleChange} autoComplete="street-address" disabled={loading} />
+          <AuthField id="register-city" label="City" name="city" value={formData.city} onChange={handleChange} autoComplete="address-level2" disabled={loading} />
+          <AuthField id="register-country" label="Country" name="country" value={formData.country} onChange={handleChange} autoComplete="country-name" disabled={loading} />
+          <div className="auth-field"><label htmlFor="register-bio">About your work</label><textarea id="register-bio" name="bio" rows={3} className="auth-control" value={formData.bio} onChange={handleChange} disabled={loading} /></div>
+        </>}
+      </div></details>
+      <AuthNotice error>{error}</AuthNotice>
+      {existingEmail && <div className="auth-stack"><p className="auth-help">Already registered? Sign in, or finish verifying your email.</p>
+        <div className="auth-row"><Link to="/login" state={{ email: existingEmail }} className="auth-link">Sign in</Link><button type="button" className="auth-link" disabled={loading} onClick={handleContinueVerification}>Verify email</button></div>
+      </div>}
+      <AuthSubmit busy={loading} busyLabel="Creating account…">Create account</AuthSubmit>
+      <p className="auth-help">Next, enter the verification code sent to your email.</p>
+      <p className="auth-divider">Already have an account? <Link to="/login" className="auth-link">Sign in</Link></p>
+    </form>
+  </AuthLayout>;
 };
 export default Register;

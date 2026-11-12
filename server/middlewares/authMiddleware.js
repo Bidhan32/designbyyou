@@ -275,9 +275,9 @@ exports.protect = async (req, res, next) => {
     );
   }
 
-  const tokenVersion = Number(decoded.tokenVersion);
+  const tokenVersion = decoded.tokenVersion;
 
-  if (!Number.isInteger(tokenVersion) || tokenVersion < 0) {
+  if (!Number.isSafeInteger(tokenVersion) || tokenVersion < 0 || !Number.isSafeInteger(decoded.exp)) {
     return sendAuthError(
       res,
       401,

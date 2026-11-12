@@ -1,3 +1,4 @@
+import { isPlainObject, isFunction, uniqueIds, normalizeLayerBlendMode, getRenderableLayerObjects } from "./LayerRenderer.helpers.js";
 /*
 =========================================================
 FashionVision Professional Editor
@@ -18,20 +19,17 @@ import {
 
 import ObjectRenderer from "../objects/ObjectRenderer";
 
-import {
-    BLEND_MODES,
-    useFashionEditorStore
-} from "../useFashionEditorStore";
+import { useFashionEditorStore } from "../useFashionEditorStore";
 
 /*=========================================================
 Constants
 =========================================================*/
 
-const DEFAULT_BLEND_MODE =
-    "source-over";
 
-const warnedMissingObjects =
-    new Set();
+
+
+
+
 
 /*=========================================================
 Numeric Helpers
@@ -72,161 +70,29 @@ function clamp(
 General Helpers
 =========================================================*/
 
-function isPlainObject(
-    value
-) {
-    return Boolean(
-        value &&
-        typeof value === "object" &&
-        !Array.isArray(value)
-    );
-}
 
-function isFunction(
-    value
-) {
-    return typeof value ===
-        "function";
-}
 
-function uniqueIds(
-    values = []
-) {
-    if (!Array.isArray(values)) {
-        return [];
-    }
 
-    return [
-        ...new Set(
-            values.filter(
-                value =>
-                    typeof value ===
-                        "string" &&
-                    value.length > 0
-            )
-        )
-    ];
-}
+
+
 
 /*=========================================================
 Blend Mode Normalization
 =========================================================*/
 
-export function normalizeLayerBlendMode(
-    blendMode
-) {
-    return BLEND_MODES.includes(
-        blendMode
-    )
-        ? blendMode
-        : DEFAULT_BLEND_MODE;
-}
+
 
 /*=========================================================
 Development Warning
 =========================================================*/
 
-function warnMissingObject(
-    layerId,
-    objectId
-) {
-    if (
-        !import.meta.env.DEV ||
-        warnedMissingObjects.has(
-            objectId
-        )
-    ) {
-        return;
-    }
 
-    warnedMissingObjects.add(
-        objectId
-    );
-
-    console.warn(
-        `[LayerRenderer] Object "${objectId}" referenced by layer "${layerId}" could not be found.`
-    );
-}
 
 /*=========================================================
 Resolve Layer Objects
 =========================================================*/
 
-export function getRenderableLayerObjects(
-    layer,
-    objects,
-    {
-        includeHiddenObjects = false,
-        objectFilter = null
-    } = {}
-) {
-    if (
-        !layer ||
-        !Array.isArray(
-            layer.objectIds
-        ) ||
-        !isPlainObject(objects)
-    ) {
-        return [];
-    }
 
-    return uniqueIds(
-        layer.objectIds
-    )
-        .map(
-            objectId => {
-                const object =
-                    objects[objectId];
-
-                if (!object) {
-                    warnMissingObject(
-                        layer.id,
-                        objectId
-                    );
-
-                    return null;
-                }
-
-                /*
-                An object must belong to this logical layer.
-
-                This prevents stale layer references from rendering
-                the same object in multiple layers.
-                */
-
-                if (
-                    object.layerId &&
-                    object.layerId !==
-                        layer.id
-                ) {
-                    return null;
-                }
-
-                if (
-                    !includeHiddenObjects &&
-                    object.visible ===
-                        false
-                ) {
-                    return null;
-                }
-
-                if (
-                    isFunction(
-                        objectFilter
-                    ) &&
-                    !objectFilter(
-                        object,
-                        layer
-                    )
-                ) {
-                    return null;
-                }
-
-                return object;
-            }
-        )
-        .filter(Boolean);
-}
 
 /*=========================================================
 Compare Object References in One Layer

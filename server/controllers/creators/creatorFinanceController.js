@@ -2333,19 +2333,7 @@ exports.createWalletDeposit = async (req, res) => {
 
     let idempotent = Boolean(deposit);
 
-    if (deposit) {
-      if (
-        moneyToCents(deposit.amount) !== requestedCents ||
-        deposit.payment_provider !== "stripe" ||
-        String(deposit.currency || "usd").toLowerCase() !== "usd"
-      ) {
-        return sendError(
-          res,
-          409,
-          "This client_request_id is already associated with a different wallet deposit.",
-        );
-      }
-    } else {
+    if (!deposit) {
       result = await db.query(
         `
           INSERT INTO creator_wallet_deposits (
@@ -2406,6 +2394,16 @@ exports.createWalletDeposit = async (req, res) => {
 
     if (!deposit) {
       throw new Error("Creator wallet deposit could not be initialized.");
+    }
+
+    // An INSERT conflict can reveal a row created after the initial SELECT.
+    // Validate that winning row before creating or retrieving provider objects.
+    if (
+      moneyToCents(deposit.amount) !== requestedCents ||
+      deposit.payment_provider !== "stripe" ||
+      String(deposit.currency || "usd").toLowerCase() !== "usd"
+    ) {
+      return sendError(res, 409, "This client_request_id is already associated with a different wallet deposit.");
     }
 
     const stripe = getStripeClient();

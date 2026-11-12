@@ -1,3 +1,4 @@
+import { FASHION_PERSONA_SKIN_TONES } from "./FashionPersonaAvatar.helpers.js";
 import React, { useId, useMemo, useState } from "react";
 
 import {
@@ -86,32 +87,7 @@ export const DEFAULT_FASHION_PERSONA_CONFIG = Object.freeze({
    Avatar Option Definitions
    ========================================================= */
 
-export const FASHION_PERSONA_SKIN_TONES = [
-  {
-    value: "light-1",
-    color: "#F6D3BE",
-  },
-  {
-    value: "light-2",
-    color: "#E8B99D",
-  },
-  {
-    value: "medium-1",
-    color: "#CC8F66",
-  },
-  {
-    value: "medium-2",
-    color: "#B97855",
-  },
-  {
-    value: "deep-1",
-    color: "#875137",
-  },
-  {
-    value: "deep-2",
-    color: "#5B3424",
-  },
-];
+
 
 /* =========================================================
    Generic Helpers

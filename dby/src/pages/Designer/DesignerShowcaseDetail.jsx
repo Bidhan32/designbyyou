@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 
 import API from "../../api/axios";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/AuthContext.helpers.js";
 
 const detailEndpoint = (slug) =>
   `/marketplace/product/${encodeURIComponent(slug)}`;
@@ -471,13 +471,9 @@ Reusable Components
 =========================================================*/
 
 function SafeImage({ src, alt, className = "", priority = false }) {
-  const [failed, setFailed] = useState(false);
+  const [failedSource, setFailedSource] = useState(null);
 
-  useEffect(() => {
-    setFailed(false);
-  }, [src]);
-
-  if (!src || failed) {
+  if (!src || failedSource === src) {
     return (
       <div
         className={`flex h-full w-full items-center justify-center bg-slate-100 text-slate-300 dark:bg-white/[0.035] dark:text-white/15 ${className}`}
@@ -494,7 +490,7 @@ function SafeImage({ src, alt, className = "", priority = false }) {
       loading={priority ? "eager" : "lazy"}
       fetchPriority={priority ? "high" : "auto"}
       decoding="async"
-      onError={() => setFailed(true)}
+      onError={() => setFailedSource(src)}
       className={className}
     />
   );

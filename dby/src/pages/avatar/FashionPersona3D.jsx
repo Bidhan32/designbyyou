@@ -1696,16 +1696,3 @@ export default function FashionPersona3D({
 
        preloadFashionPersona3D();
    ========================================================= */
-
-export function preloadFashionPersona3D(
-  modelUrl =
-    "/avatars/internal3d/base/human-base.glb",
-) {
-  if (!modelUrl) {
-    return;
-  }
-
-  useGLTF.preload(
-    modelUrl,
-  );
-}

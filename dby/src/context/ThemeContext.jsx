@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { ThemeContext } from "./ThemeContext.helpers.js";
+import React, { useEffect, useState } from 'react';
 
-const ThemeContext = createContext();
+
 
 export const ThemeProvider = ({ children }) => {
     // Default to 'dark' so your current hardcoded dark UI stays exactly the same
@@ -28,5 +29,3 @@ export const ThemeProvider = ({ children }) => {
         </ThemeContext.Provider>
     );
 };
-
-export const useTheme = () => useContext(ThemeContext);

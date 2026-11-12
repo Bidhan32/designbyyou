@@ -81,6 +81,9 @@ function validatePassword(password) {
       message: `Password must not exceed ${MAX_PASSWORD_LENGTH} characters.`,
     };
   }
+  if (Buffer.byteLength(password, "utf8") > 72) {
+    return { valid: false, message: "Password must not exceed 72 UTF-8 bytes." };
+  }
   return {
     valid: true,
     message: null,
@@ -491,6 +494,17 @@ exports.verifyEmail = async (req, res) => {
       });
     }
     const otpHash = hashOtp(otp);
+    let loginChallenge = null;
+    if (req.body?.login_challenge) {
+      try {
+        loginChallenge = jwt.verify(req.body.login_challenge, getJwtSecret(), { algorithms: ["HS256"] });
+        if (loginChallenge.purpose !== "email_verification_login" || loginChallenge.email !== email ||
+            !Number.isSafeInteger(loginChallenge.version) || loginChallenge.version < 0 ||
+            !Number.isSafeInteger(loginChallenge.exp) || !/^[0-9a-f-]{36}$/i.test(loginChallenge.id || "")) throw new Error("Invalid challenge");
+      } catch {
+        return res.status(401).json({ status: "error", code: "VERIFICATION_LOGIN_EXPIRED", message: "Please sign in again to request a new verification code." });
+      }
+    }
     /**
      * Atomic OTP consumption.
      */
@@ -518,13 +532,16 @@ exports.verifyEmail = async (req, res) => {
             AND
             email_verification_otp_expires_at >
               NOW()
+            AND ($3::uuid IS NULL OR (id = $3 AND token_version = $4))
+            AND LOWER(COALESCE(approval_status::text, '')) <> 'suspended'
           RETURNING
             id,
             email,
             role,
-            approval_status
+            approval_status,
+            token_version
         `,
-      [email, otpHash],
+      [email, otpHash, loginChallenge?.id || null, loginChallenge?.version ?? null],
     );
     if (result.rows.length === 0) {
       const existing = await db.query(
@@ -553,6 +570,9 @@ exports.verifyEmail = async (req, res) => {
     return res.status(200).json({
       status: "success",
       message: "Email verified successfully. You can now sign in.",
+      ...(loginChallenge && ["creator", "designer"].includes(normalizeRole(result.rows[0].role))
+        ? { token: signToken(result.rows[0].id, normalizeRole(result.rows[0].role), Number(result.rows[0].token_version)) }
+        : {}),
     });
   } catch (error) {
     console.error("Email verification error:", error);
@@ -651,7 +671,8 @@ exports.login = async (req, res) => {
     if (
       !isValidEmail(email) ||
       typeof password !== "string" ||
-      password.length === 0
+      password.length === 0 ||
+      Buffer.byteLength(password, "utf8") > 72
     ) {
       return res.status(401).json({
         status: "error",
@@ -693,6 +714,9 @@ exports.login = async (req, res) => {
       });
     }
     const role = normalizeRole(preUser.role);
+    if (String(preUser.approval_status || "").trim().toLowerCase() === "suspended") {
+      return res.status(403).json({ status: "error", code: "ACCOUNT_SUSPENDED", message: "Your account is suspended and cannot access this service." });
+    }
     /**
      * Account Policy
      *
@@ -704,11 +728,14 @@ exports.login = async (req, res) => {
      * - Does not require administrator approval.
      * - MUST verify email before signing in.
      */
-    if (role === "creator" && preUser.is_email_verified !== true) {
+    if (["creator", "designer"].includes(role) && preUser.is_email_verified !== true) {
       return res.status(403).json({
         status: "error",
         code: "EMAIL_NOT_VERIFIED",
         message: "Please verify your email before signing in.",
+        // This is not an access token: no tokenVersion claim. It requires a valid OTP.
+        login_challenge: jwt.sign({ purpose: "email_verification_login", id: preUser.id, email,
+          version: Number(preUser.token_version ?? 0) }, getJwtSecret(), { algorithm: "HS256", expiresIn: "10m" }),
       });
     }
     await db.query(

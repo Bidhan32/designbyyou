@@ -1,0 +1,14 @@
+AGC Jacket — Original source model by akhaller
+Original: https://sketchfab.com/3d-models/agc-jacket-93ccd8bac0ed44c28ecfd0d60d8ceace
+Creator: https://sketchfab.com/akhaller
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+License text: https://creativecommons.org/licenses/by/4.0/
+
+Modifications by DesignByYou / FashionVision (2026):
+- Triangle geometry retained; regrouped into 12 independently recolorable fabric regions.
+- Original textured button hardware preserved as separate geometry.
+- Opacity blending disabled to avoid front surfaces showing through the back.
+- Original jacket front/back orthographic silhouettes traced into a 2D editable SVG.
+- Other originally textured body materials converted to neutral recolorable surfaces.
+
+This is an adapted model. Neither the original creator nor Sketchfab endorses this adaptation.

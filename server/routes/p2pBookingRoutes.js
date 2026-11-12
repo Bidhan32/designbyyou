@@ -528,6 +528,9 @@ router.post("/verify-escrow", protect, p2pController.verifyEscrowPayment);
    to /pipeline.
    ========================================================= */
 
+// Phase 5.1A: private Editor snapshot; controller enforces exact booking participants.
+router.get("/:id/design-snapshot", protect, p2pController.getBookingDesignSnapshot);
+
 router.get("/:id/whatsapp-contact", protect, p2pController.getWhatsAppContact);
 
 /* =========================================================

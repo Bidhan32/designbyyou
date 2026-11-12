@@ -64,7 +64,7 @@ const creatorBackgroundRemoverRoutes = require("./routes/creatorBackgroundRemove
 const avatarRoutes = require("./routes/avatarRoutes");
 const showcaseHeroRoutes = require("./routes/showcaseHeroRoutes");
 const creatorCostumeExtractorRoutes = require("./routes/creatorCostumeExtractorRoutes");
-
+const creatorPatternExtractorRoutes = require("./routes/creatorPatternExtractorRoutes");
 /*=========================================================
 Application Configuration
 =========================================================*/
@@ -381,6 +381,11 @@ app.use("/api/v1/ai-fashion", aiFashionRoutes);
 app.use(
   "/api/v1/creator-tools/costume-extractor",
   creatorCostumeExtractorRoutes,
+);
+
+app.use(
+  "/api/v1/creator-tools/pattern-extractor",
+  creatorPatternExtractorRoutes,
 );
 
 app.use("/api/v1/chat", chatRoutes);

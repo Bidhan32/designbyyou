@@ -16,23 +16,26 @@ Version 2.1:
 =========================================================
 */
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { AuthField, AuthNotice, AuthSubmit } from "./AuthFields";
+import { validEmail, saveSession } from "./authFlow";
 import API from "../../api/axios";
 import AuthLayout from "../../Layouts/AuthLayout";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/AuthContext.helpers.js";
 /*=========================================================
 Login
 =========================================================*/
+
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [recoveryLoading, setRecoveryLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+
+
   const [error, setError] = useState("");
   const [formData, setFormData] = useState({
-    email: "",
+    email: location.state?.email || "",
     password: "",
   });
   /*=====================================================
@@ -54,57 +57,9 @@ const Login = () => {
   backend deliberately returns the same success message
   for unknown, verified and unverified email addresses.
   =====================================================*/
-  const handleResumeVerification = async () => {
-    if (loading || recoveryLoading) return;
-
-    const email = formData.email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError("Enter the email address you registered with first.");
-      return;
-    }
-
-    setRecoveryLoading(true);
-    setError("");
-
-    try {
-      await API.post("/auth/resend-otp", { email });
-
-      try {
-        sessionStorage.setItem("pending_verification_email", email);
-      } catch {
-        // Navigation state will still carry the email if storage is blocked.
-      }
-
-      navigate("/verify-otp", {
-        state: {
-          email,
-          reason: "EMAIL_NOT_VERIFIED",
-          message:
-            "If this email has an unverified account, a new code has been requested. Check your inbox and spam folder; use the latest code.",
-        },
-      });
-    } catch (error) {
-      if (error?.response?.status === 429) {
-        setError(
-          error?.response?.data?.message ||
-            "Too many code requests. Please try again later.",
-        );
-      } else {
-        setError(
-          "Unable to request a verification code right now. Please try again.",
-        );
-      }
-    } finally {
-      setRecoveryLoading(false);
-    }
-  };
-
-  /*=====================================================
-  Login
-  =====================================================*/
   const handleLogin = async (event) => {
     event.preventDefault();
-    if (loading || recoveryLoading) {
+    if (loading) {
       return;
     }
     const email = formData.email.trim().toLowerCase();
@@ -112,8 +67,8 @@ const Login = () => {
     /*-------------------------------------------------
     Basic Validation
     -------------------------------------------------*/
-    if (!email) {
-      setError("Please enter your email address.");
+    if (!validEmail(email)) {
+      setError("Enter a valid email address.");
       return;
     }
     if (!password) {
@@ -145,7 +100,8 @@ const Login = () => {
       A successful login means the account passed all
       login-level verification requirements.
       -------------------------------------------------*/
-      sessionStorage.removeItem("pending_verification_email");
+      saveSession("pending_verification_email", "");
+      saveSession("pending_verification_login", "");
       /*-------------------------------------------------
       Role Redirect
       CREATOR:
@@ -201,14 +157,24 @@ const Login = () => {
         Keep the email available if the user refreshes
         the verification page.
         */
-        sessionStorage.setItem("pending_verification_email", email);
+        saveSession("pending_verification_email", email);
+        saveSession("pending_verification_login", JSON.stringify({ email, token: responseData.login_challenge || "" }));
+        let message = "A verification code has been requested. Check your inbox and spam folder.";
+        let codeRequested = false;
+        try {
+          const resend = await API.post("/auth/resend-otp", { email });
+          if (resend.data?.status !== "success") throw new Error("Code request failed");
+          codeRequested = true;
+        } catch (resendError) {
+          message = resendError.response?.data?.message || "We couldn’t request a code. Use Resend code below to try again.";
+        }
         navigate("/verify-otp", {
           replace: true,
           state: {
             email,
             reason: "EMAIL_NOT_VERIFIED",
-            message:
-              backendMessage || "Please verify your email before signing in.",
+            codeRequested,
+            message,
           },
         });
         return;
@@ -277,159 +243,17 @@ const Login = () => {
   Render
   =====================================================*/
   return (
-    <AuthLayout
-      title="Welcome Back"
-      subtitle="Access your design studio and the global marketplace."
-    >
-      <form onSubmit={handleLogin} className="space-y-6" noValidate>
-        {/*=========================================
-        Email
-        =========================================*/}
-        <div className="space-y-1">
-          <label
-            htmlFor="login-email"
-            className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-400 ml-1"
-          >
-            Email Address
-          </label>
-          <div className="relative">
-            <Mail
-              className="absolute left-4 top-3.5 text-gray-400"
-              size={18}
-              aria-hidden="true"
-            />
-            <input
-              id="login-email"
-              name="email"
-              type="email"
-              value={formData.email}
-              placeholder="couture@designbyyou.com"
-              autoComplete="email"
-              inputMode="email"
-              onChange={handleChange}
-              disabled={loading}
-              className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-[#D4AF37] focus:bg-white transition-all disabled:opacity-60"
-              required
-            />
-          </div>
-        </div>
-        {/*=========================================
-        Password
-        =========================================*/}
-        <div className="space-y-1">
-          <div className="flex justify-between items-end mb-1">
-            <label
-              htmlFor="login-password"
-              className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-400 ml-1"
-            >
-              Password
-            </label>
-            <Link
-              to="/forgot-password"
-              className="text-[10px] uppercase tracking-widest font-bold text-[#D4AF37] hover:underline"
-            >
-              Forgot?
-            </Link>
-          </div>
-          <div className="relative">
-            <Lock
-              className="absolute left-4 top-3.5 text-gray-400"
-              size={18}
-              aria-hidden="true"
-            />
-            <input
-              id="login-password"
-              name="password"
-              type={showPassword ? "text" : "password"}
-              value={formData.password}
-              placeholder="••••••••"
-              autoComplete="current-password"
-              onChange={handleChange}
-              disabled={loading}
-              className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-[#D4AF37] focus:bg-white transition-all disabled:opacity-60"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((current) => !current)}
-              disabled={loading}
-              className="absolute right-4 top-3.5 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
-              aria-label={showPassword ? "Hide password" : "Show password"}
-            >
-              {showPassword ? (
-                <EyeOff size={18} aria-hidden="true" />
-              ) : (
-                <Eye size={18} aria-hidden="true" />
-              )}
-            </button>
-          </div>
-        </div>
-        {/*=========================================
-        Error
-        =========================================*/}
-        {error && (
-          <div
-            role="alert"
-            className="bg-red-50 border border-red-100 text-red-600 text-xs p-3 rounded-xl text-center font-medium animate-in fade-in zoom-in duration-300"
-          >
-            {error}
-          </div>
-        )}
-        {/*=========================================
-        Submit
-        =========================================*/}
-        <button
-          type="submit"
-          disabled={loading || recoveryLoading}
-          className="w-full py-4 bg-[#1A1A1A] text-white rounded-2xl font-semibold tracking-wide hover:bg-black transition-all shadow-xl shadow-black/5 flex justify-center items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="animate-spin" size={20} aria-hidden="true" />
-              <span>Signing In...</span>
-            </>
-          ) : (
-            "Sign In to Studio"
-          )}
-        </button>
-        {/*=========================================
-        Resume email verification (works without password)
-        =========================================*/}
-        <div className="rounded-2xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.06] px-4 py-4 text-center">
-          <p className="text-xs font-semibold text-slate-700">
-            Registered but never entered your verification code?
-          </p>
-          <p className="mt-1 text-[11px] leading-5 text-slate-500">
-            Enter your registration email above, then request a fresh code.
-          </p>
-          <button
-            type="button"
-            onClick={handleResumeVerification}
-            disabled={loading || recoveryLoading}
-            className="mt-3 inline-flex min-h-9 items-center justify-center gap-2 rounded-xl border border-[#D4AF37]/50 bg-white px-4 py-2 text-xs font-bold text-[#8b6b20] transition hover:bg-[#D4AF37]/10 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {recoveryLoading ? (
-              <Loader2 size={15} className="animate-spin" aria-hidden="true" />
-            ) : (
-              <Mail size={15} aria-hidden="true" />
-            )}
-            {recoveryLoading ? "Requesting code..." : "Resend verification code"}
-          </button>
-        </div>
-        {/*=========================================
-        Registration
-        =========================================*/}
-        <div className="text-center pt-6 border-t border-gray-50">
-          <p className="text-sm text-gray-500">
-            Don't have an account?{" "}
-            <Link
-              to="/register"
-              className="text-[#D4AF37] font-bold hover:underline"
-            >
-              Join the Atelier
-            </Link>
-          </p>
-        </div>
+    <AuthLayout title="Sign in" subtitle="Continue to your designs and bookings.">
+      <form onSubmit={handleLogin} className="auth-form" noValidate aria-busy={loading}>
+        <AuthNotice>{location.state?.message}</AuthNotice>
+        <AuthField id="login-email" label="Email address" name="email" type="email" value={formData.email}
+          onChange={handleChange} autoComplete="email" inputMode="email" placeholder="you@example.com" required disabled={loading} />
+        <AuthField id="login-password" label="Password" name="password" type="password" value={formData.password}
+          onChange={handleChange} autoComplete="current-password" required disabled={loading}
+          action={<Link className="auth-link" to="/forgot-password" state={{ email: formData.email }}>Forgot password?</Link>} />
+        <AuthNotice error>{error}</AuthNotice>
+        <AuthSubmit busy={loading} busyLabel="Signing in…">Sign in</AuthSubmit>
+        <p className="auth-divider">New to DesignByYou? <Link to="/register" className="auth-link">Create an account</Link></p>
       </form>
     </AuthLayout>
   );

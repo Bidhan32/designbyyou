@@ -566,6 +566,7 @@ async function getUsableBankAccount(
           created_at DESC
 
         LIMIT 1
+        ${queryable === db ? "" : "FOR SHARE"}
       `,
     values,
   );
@@ -1700,32 +1701,6 @@ exports.requestPayout = async (req, res) => {
     );
   }
 
-  let readyManualBankAccount;
-
-  try {
-    readyManualBankAccount = await getUsableBankAccount(
-      designerId,
-
-      requestedBankAccountId || null,
-    );
-  } catch (error) {
-    return sendError(
-      res,
-
-      error.statusCode || 500,
-
-      error.statusCode
-        ? error.message
-        : "The manual bank payout account could not be prepared.",
-
-      error.code
-        ? {
-            code: error.code,
-          }
-        : undefined,
-    );
-  }
-
   const requestedAmount = centsToMoney(requestedCents);
 
   const payoutMethod = "manual";
@@ -1772,7 +1747,8 @@ exports.requestPayout = async (req, res) => {
 
       if (
         existingCents !== requestedCents ||
-        String(existing.payout_method || "").toLowerCase() !== payoutMethod
+        String(existing.payout_method || "").toLowerCase() !== payoutMethod ||
+        (requestedBankAccountId && requestedBankAccountId !== existing.bank_account_id)
       ) {
         await rollbackQuietly(client);
 
@@ -1813,6 +1789,11 @@ exports.requestPayout = async (req, res) => {
         wallet: serializeWallet(walletResult.rows[0]),
       });
     }
+
+    // Coordinate with bank-account replacement so the verified destination
+    // cannot change between validation and attaching it to the payout.
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))", ["designer-bank-account", designerId]);
+    const readyManualBankAccount = await getUsableBankAccount(designerId, requestedBankAccountId || null, client);
 
     await ensureWalletRow(client, designerId);
 
@@ -1952,6 +1933,8 @@ exports.requestPayout = async (req, res) => {
     });
   } catch (error) {
     await rollbackQuietly(client);
+
+    if (error.statusCode) return sendError(res, error.statusCode, error.message, error.code ? { code: error.code } : undefined);
 
     console.error("Payout request creation failed:", error);
 
@@ -2235,7 +2218,7 @@ exports.cancelPayoutRequest = async (req, res) => {
      * state may already have moved money.
      */
 
-    if (payoutRequest.payout_method !== "manual") {
+    if (payoutRequest.payout_method !== "manual" || payoutRequest.provider != null) {
       await rollbackQuietly(client);
 
       return sendError(
@@ -2256,6 +2239,11 @@ exports.cancelPayoutRequest = async (req, res) => {
         409,
         "Only a pending payout request can be cancelled.",
       );
+    }
+
+    if (payoutRequest.provider_transaction_id) {
+      await rollbackQuietly(client);
+      return sendError(res, 409, "This payout has an external transfer reference and requires reconciliation before funds can be restored.");
     }
 
     const amount = Number(payoutRequest.amount);

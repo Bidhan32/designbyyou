@@ -3,7 +3,7 @@
  * Uses an explicit Save so typing or changing fonts never creates dozens of
  * snapshots or redraws textures on every keypress.
  */
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   DEFAULT_GARMENT_TEXT_STYLE, GARMENT_TEXT_FONTS,
   normalizeGarmentTextStyle, sanitizeGarmentText,
@@ -59,11 +59,14 @@ export default function GarmentTextControls({ entry, disabled = false, onSave })
   const [error, setError] = useState("");
 
   // Reset the form after changing layers, regions, garments, or completing a save.
-  useEffect(() => {
+  const resetKey = JSON.stringify([entry?.id, entry?.source, entry?.text, entry?.textStyle]);
+  const [sourceKey, setSourceKey] = useState(resetKey);
+  if (sourceKey !== resetKey) {
+    setSourceKey(resetKey);
     setText(String(entry?.text || ""));
     setStyle(normalizeGarmentTextStyle(entry?.textStyle));
     setError("");
-  }, [entry?.id, entry?.source]);
+  }
 
   const cleaned = sanitizeGarmentText(text);
   const blocked = disabled || saving || !cleaned || typeof onSave !== "function";

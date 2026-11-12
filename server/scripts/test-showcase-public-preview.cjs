@@ -22,7 +22,7 @@ const context = {
 vm.createContext(context);
 vm.runInContext(mapText + functionText + '\nthis.getPreview = getPublicGarment3DPreview; this.models = SHOWCASE_3D_MODEL_IDS;', context);
 const modelIds = [...context.models];
-assert.equal(modelIds.length,11);
+assert.equal(modelIds.length,16);
 (async()=>{
   // All public models are included in bound SQL filter without URL or project input.
   resultRow = {model:'jeans', colours: { frontLeftLeg:'#123456', backRightLeg:'not-hex', notARegion:'#111111' },
@@ -46,5 +46,5 @@ assert.equal(modelIds.length,11);
   assert.equal(await context.getPreview('00000000-0000-0000-0000-000000000001'), null);
   resultRow=null;
   assert.equal(await context.getPreview('00000000-0000-0000-0000-000000000001'), null);
-  console.log('PASS: 11-model backend whitelist, published-only query, sanitized read-only Jeans preview and unknown-model rejection.');
+  console.log('PASS: 16-model backend whitelist, published-only query, sanitized read-only Jeans preview and unknown-model rejection.');
 })().catch((error)=>{console.error(error);process.exitCode=1;});

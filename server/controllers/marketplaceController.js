@@ -67,35 +67,6 @@ exports.getMarketplace = async (req, res) => {
 
     const search = String(req.query?.search || "").trim();
 
-    const minPriceText = String(req.query?.minPrice || "").trim();
-
-    const maxPriceText = String(req.query?.maxPrice || "").trim();
-
-    const minPrice = minPriceText ? Number(minPriceText) : null;
-
-    const maxPrice = maxPriceText ? Number(maxPriceText) : null;
-
-    if (minPrice !== null && (!Number.isFinite(minPrice) || minPrice < 0)) {
-      return res.status(400).json({
-        status: "fail",
-        message: "Minimum price must be a valid non-negative number.",
-      });
-    }
-
-    if (maxPrice !== null && (!Number.isFinite(maxPrice) || maxPrice < 0)) {
-      return res.status(400).json({
-        status: "fail",
-        message: "Maximum price must be a valid non-negative number.",
-      });
-    }
-
-    if (minPrice !== null && maxPrice !== null && minPrice > maxPrice) {
-      return res.status(400).json({
-        status: "fail",
-        message: "Minimum price cannot be greater than maximum price.",
-      });
-    }
-
     let query = `
       SELECT
         d.id,
@@ -104,13 +75,10 @@ exports.getMarketplace = async (req, res) => {
         d.slug,
         d.sku,
         d.description,
-        d.base_price,
-        d.discount_price,
         d.watermarked_preview_url,
         d.style_category,
         d.tags,
         d.product_type,
-        d.license_type,
         d.is_public,
         d.is_published,
 
@@ -143,30 +111,6 @@ exports.getMarketplace = async (req, res) => {
 
       query += `
         AND d.style_category ILIKE $${params.length}
-      `;
-    }
-
-    if (minPrice !== null) {
-      params.push(minPrice);
-
-      query += `
-        AND COALESCE(
-          d.discount_price,
-          d.base_price,
-          0
-        ) >= $${params.length}
-      `;
-    }
-
-    if (maxPrice !== null) {
-      params.push(maxPrice);
-
-      query += `
-        AND COALESCE(
-          d.discount_price,
-          d.base_price,
-          0
-        ) <= $${params.length}
       `;
     }
 
@@ -248,10 +192,7 @@ exports.getDesignDetails = async (req, res) => {
           d.slug,
           d.description,
           d.watermarked_preview_url,
-          d.base_price,
-          d.discount_price,
           d.product_type,
-          d.license_type,
           d.tags,
           d.style_category,
           d.is_public,

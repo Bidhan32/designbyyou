@@ -80,7 +80,6 @@ import {
 
   ChevronRight,
 
-  ExternalLink,
 
   Image as ImageIcon,
 
@@ -245,26 +244,6 @@ function isPublicImageUrl(value) {
   } catch {
 
     return false;
-
-  }
-
-}
-
-function safeExternalUrl(value) {
-
-  try {
-
-    const url = new URL(value);
-
-    return url.protocol === "https:" || url.protocol === "http:"
-
-      ? url.href
-
-      : null;
-
-  } catch {
-
-    return null;
 
   }
 
@@ -621,16 +600,6 @@ export default function CreatorShowcaseDetail() {
     cleanText(item?.owner_avatar) || cleanText(item?.designer_avatar);
 
   const bookingUrl = bookingUrlFor(item);
-
-  const designerStudioUrl =
-
-    designerOwned && item?.designer_id
-
-      ? `/creator/studio/${encodeURIComponent(item.designer_id)}`
-
-      : null;
-
-  const portfolioUrl = safeExternalUrl(item?.portfolio_url);
 
   const rating = Number.parseFloat(item?.designer_avg_rating);
 
@@ -2102,45 +2071,7 @@ export default function CreatorShowcaseDetail() {
 
                   )}
 
-                  {designerStudioUrl && (
 
-                    <Link
-
-                      to={designerStudioUrl}
-
-                      className={`${OUTLINE_BUTTON} w-full`}
-
-                    >
-
-                      View Designer Studio
-
-                      <ExternalLink size={14} />
-
-                    </Link>
-
-                  )}
-
-                  {portfolioUrl && (
-
-                    <a
-
-                      href={portfolioUrl}
-
-                      target="_blank"
-
-                      rel="noopener noreferrer"
-
-                      className={`${OUTLINE_BUTTON} w-full`}
-
-                    >
-
-                      Portfolio
-
-                      <ExternalLink size={14} />
-
-                    </a>
-
-                  )}
 
                 </section>
 
