@@ -12714,7 +12714,7 @@ function FashionEditor() {
             />
 
             {editorViewMode === "3d" && (
-              <div className="absolute inset-0 z-20 bg-slate-950">
+              <div className="fixed inset-0 z-[100] h-dvh bg-slate-950 lg:absolute lg:z-20 lg:h-auto">
                 <React.Suspense
                   fallback={
                     <div className="flex h-full items-center justify-center text-xs text-slate-300">
@@ -12723,6 +12723,7 @@ function FashionEditor() {
                   }
                 >
                   <Garment3DViewer
+                    onExit={() => setEditorViewMode("2d")}
                     templateId={selectedClothingTemplate?.id || ""}
                     colours={selectedClothingColours}
                     artwork={selectedClothingArtwork}

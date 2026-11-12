@@ -1,0 +1,37 @@
+/* Phones and tablets use one scroll surface; desktop keeps its side panel. */
+@media (max-width: 1023px) {
+  .garment-studio {
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  .garment-studio-body {
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior-y: contain;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .garment-studio-controls {
+    flex: 0 0 auto;
+    overflow: visible;
+    min-width: 0;
+  }
+  .garment-studio-tool-header { position: static; }
+  .garment-studio-controls [role="group"] {
+    max-height: none;
+    overflow: visible;
+  }
+  .garment-studio-preview {
+    height: clamp(280px, 52dvh, 560px);
+    min-width: 0;
+  }
+  .garment-studio button,
+  .garment-studio select,
+  .garment-studio input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]) {
+    min-height: 44px;
+  }
+  .garment-studio input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  .garment-studio textarea,
+  .garment-studio select { font-size: 16px; }
+  .garment-studio-preview .pointer-events-none { max-width: calc(100% - 24px); }
+}

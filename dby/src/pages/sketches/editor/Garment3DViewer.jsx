@@ -1,4 +1,5 @@
 import { projectedUvToArtworkOffset } from "./Garment3DViewer.helpers.js";
+import "./Garment3DViewer.css";
 /*
  * DesignByYou — 3D Garment Studio V3, Phase 3.2
  * Registry-driven 3D editor: universal batch colours, direct placement and artwork transform handles.
@@ -451,7 +452,7 @@ export default function Garment3DViewer({
   onArtworkChange = null, onArtworkUpload = null, onMultiRegionArtworkApply = null,
   onArtworkTransfer = null, onManageArtwork = null, garmentObjectId = "",
   disabled = false,
-  modelUrl = null, className = "", onError = null,
+  modelUrl = null, className = "", onError = null, onExit = null,
 }) {
   const modelConfig = getGarment3DConfig(templateId);
   const supported = Boolean(modelConfig?.url && getClothingTemplate(templateId));
@@ -509,6 +510,7 @@ export default function Garment3DViewer({
   const bulkInputRef = useRef(null);
   const artworkSectionRef = useRef(null);
   const controlsRef = useRef(null);
+  const mobileScrollRef = useRef(null);
   // Pure pointer-movement guard: orbit drag and touch scroll cannot become a fabric click.
   const regionClickGuardRef = useRef(null);
   if (!regionClickGuardRef.current) regionClickGuardRef.current = createGarment3DClickGuard();
@@ -1047,10 +1049,20 @@ export default function Garment3DViewer({
     setStudioTab(nextTab);
     setRegionPickerOpen(false);
     controlsRef.current?.scrollTo({ top: 0, behavior: "auto" });
+    if (window.matchMedia("(max-width: 1023px)").matches) {
+      window.requestAnimationFrame(() => controlsRef.current?.scrollIntoView({ block: "start" }));
+    }
   };
   const scrollToArtwork = () => changeStudioTab("add");
 
-  return <section className={`flex h-full min-h-0 w-full flex-col overflow-hidden bg-slate-900 text-slate-100 ${className}`} aria-label="DesignByYou 3D garment studio">
+  return <section className={`garment-studio flex h-full min-h-0 w-full flex-col overflow-hidden bg-slate-900 text-slate-100 ${className}`} aria-label="DesignByYou 3D garment studio">
+    <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-700 bg-slate-950 px-3 py-2 lg:hidden">
+      {onExit && <button type="button" className={BTN} onClick={onExit}>Back to 2D</button>}
+      {supported && <div className="flex gap-2">
+        <button type="button" className={BTN} onClick={() => mobileScrollRef.current?.scrollTo({ top: 0 })}>View garment</button>
+        <button type="button" className={BTN} onClick={() => controlsRef.current?.scrollIntoView({ block: "start" })}>Edit design</button>
+      </div>}
+    </div>
     <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-700 bg-slate-950 px-3 py-2">
       <div>
         <strong className="text-sm font-semibold tracking-tight">3D Design Studio <span className="ml-2 rounded-full border border-violet-500/30 bg-violet-950/60 px-2 py-0.5 text-[10px] font-semibold text-violet-200">Studio 4.6</span></strong>
@@ -1069,12 +1081,12 @@ export default function Garment3DViewer({
       )}
     {!supported ? <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center text-sm text-slate-300">
       This clothing template is currently 2D-only. Select a template with a registered 3D model to open the 3D Studio.
-    </div> : <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+    </div> : <div ref={mobileScrollRef} className="garment-studio-body flex min-h-0 flex-1 flex-col lg:flex-row">
       {/* On desktop, properties are on the LEFT. On mobile, model comes first. */}
       <aside ref={controlsRef} aria-label="3D garment properties"
-        className="order-2 min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain border-t border-slate-700 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 lg:order-1 lg:w-[350px] lg:min-w-[315px] lg:max-w-[390px] lg:flex-none lg:border-r lg:border-t-0"
+        className="garment-studio-controls order-2 min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain border-t border-slate-700 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 lg:order-1 lg:w-[350px] lg:min-w-[315px] lg:max-w-[390px] lg:flex-none lg:border-r lg:border-t-0"
         style={{ scrollbarWidth: "thin" }}>
-        <div className="sticky top-0 z-30 border-b border-slate-700/70 bg-slate-950/95 px-3 pb-3 pt-3 shadow-xl shadow-slate-950/30 backdrop-blur-xl">
+        <div className="garment-studio-tool-header sticky top-0 z-30 border-b border-slate-700/70 bg-slate-950/95 px-3 pb-3 pt-3 shadow-xl shadow-slate-950/30 backdrop-blur-xl">
           <nav className="grid grid-cols-4 gap-1 rounded-xl border border-slate-700/70 bg-slate-900/90 p-1" aria-label="3D studio editing tools">
             {STUDIO_TABS.map(({ id, label, Icon }) => (
               <button key={id} type="button" aria-current={studioTab === id ? "page" : undefined}
@@ -1409,7 +1421,7 @@ export default function Garment3DViewer({
         </div>
       </aside>
 
-      <div className="relative order-1 flex h-[clamp(255px,44dvh,520px)] shrink-0 flex-col bg-gradient-to-b from-slate-700 via-slate-800 to-slate-950 lg:order-2 lg:h-auto lg:min-h-0 lg:min-w-0 lg:flex-1">
+      <div className="garment-studio-preview relative order-1 flex h-[clamp(255px,44dvh,520px)] shrink-0 flex-col bg-gradient-to-b from-slate-700 via-slate-800 to-slate-950 lg:order-2 lg:h-auto lg:min-h-0 lg:min-w-0 lg:flex-1">
         <div className="relative min-h-0 flex-1"
           // Capture the original DOM pointer gesture before OrbitControls handles it.
           // We track motion even when a raycast moves off a mesh mid-orbit.
