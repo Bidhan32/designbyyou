@@ -2323,3 +2323,48 @@ exports.getTopDesigners = async (req, res) => {
   }
 
 };
+
+// Keep converted public appearances bounded and reuse them across thumbnail requests.
+const thumbnailAppearances = new Map();
+let thumbnailAppearanceBytes = 0;
+exports.getShowcasePreview = async (req, res) => {
+  const slug = String(req.params?.slug || "").trim();
+  if (!slug || slug.length > 300) return res.status(400).json({ message: "Invalid design slug." });
+  try {
+    // Always recheck visibility before consulting the cache (including cache hits).
+    const result = await db.query(`SELECT d.id, d.updated_at FROM designs d
+      JOIN users u ON u.id = d.owner_id
+      WHERE d.slug = $1 AND d.is_public = TRUE AND d.is_published = TRUE
+        AND d.source_type = 'fashion_editor'
+        AND (u.role = 'creator' OR (u.role = 'designer' AND u.approval_status = 'approved'))
+      LIMIT 1`, [slug]);
+    const design = result.rows[0];
+    if (!design) return res.status(404).json({ message: "Preview unavailable." });
+    const key = `${design.id}:${new Date(design.updated_at).toISOString()}`;
+    let entry = thumbnailAppearances.get(key);
+    if (entry && entry.expires <= Date.now()) {
+      thumbnailAppearanceBytes -= entry.bytes;
+      thumbnailAppearances.delete(key);
+      entry = null;
+    }
+    if (!entry) {
+      const preview = await getPublicGarment3DPreview(design.id);
+      const bytes = Buffer.byteLength(JSON.stringify(preview));
+      entry = { preview, bytes, expires: Date.now() + 300000 };
+      while (thumbnailAppearances.size && (thumbnailAppearanceBytes + bytes > 16 * 1024 * 1024 || thumbnailAppearances.size >= 80)) {
+        const oldest = thumbnailAppearances.keys().next().value;
+        thumbnailAppearanceBytes -= thumbnailAppearances.get(oldest).bytes;
+        thumbnailAppearances.delete(oldest);
+      }
+      // Another request may have populated this key while conversion was running.
+      if (thumbnailAppearances.has(key)) thumbnailAppearanceBytes -= thumbnailAppearances.get(key).bytes;
+      thumbnailAppearances.set(key, entry);
+      thumbnailAppearanceBytes += bytes;
+    }
+    res.set("Cache-Control", "private, no-store");
+    return res.status(200).json({ status: "success", data: { preview_3d: entry.preview } });
+  } catch (error) {
+    console.error("Showcase thumbnail preview failed:", error.message);
+    return res.status(500).json({ message: "Preview unavailable." });
+  }
+};

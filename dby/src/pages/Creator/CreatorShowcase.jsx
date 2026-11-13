@@ -156,13 +156,13 @@ import {
   Sparkles,
   Star,
   User,
-  Zap,
 } from "lucide-react";
 
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import API from "../../api/axios";
 import ShowcaseThumbnail from "./ShowcaseThumbnail";
+import ShowcaseDesignCard from "./ShowcaseDesignCard";
 
 /*=========================================================
 Configuration
@@ -1337,7 +1337,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
       FULL-WIDTH HERO
 
       IMPORTANT:
-      Hero is intentionally outside the max-w-[1800px]
+      Hero is intentionally outside the max-w-[1440px]
       content container.
 
       The Hero media therefore fills 100% of the available
@@ -1473,7 +1473,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
               min-h-[360px]
               w-full
               text-white
-              max-w-[1800px]
+              max-w-[1440px]
               flex-col
               justify-center
               px-7
@@ -1646,7 +1646,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
           relative
           z-10
           mx-auto
-          max-w-[1800px]
+          max-w-[1440px]
           px-4
 
           sm:px-6
@@ -2802,18 +2802,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
             </div>
           ) : (
             <>
-              <div
-                className="
-                  grid
-                  gap-5
-
-                  sm:grid-cols-2
-
-                  lg:grid-cols-3
-
-                  xl:grid-cols-4
-                "
-              >
+              <div className="showcase-design-grid">
                 {items.map((item, index) => {
                   const ownerName = getOwnerName(item);
 
@@ -2826,289 +2815,11 @@ export default function CreatorShowcase({ audience = "creator" }) {
                   const bookingUrl = isCreator ? buildBookingUrl(item) : null;
 
                   return (
-                    <article
-                      key={getDesignKey(item, index)}
-                      className="
-                          group
-                          overflow-hidden
-                          rounded-[1.75rem]
-                          border
-                          border-slate-200
-                          bg-white
-                          shadow-sm
-                          transition
-                          duration-500
-
-                          hover:-translate-y-1
-                          hover:border-[#e5c67d]/70
-                          hover:shadow-lg
-
-                          dark:border-white/10
-                          dark:bg-[#111]
-                          dark:shadow-none
-                          dark:hover:border-[#e5c67d]/50
-                          dark:hover:shadow-[0_24px_60px_rgba(0,0,0,0.45)]
-                        "
-                    >
-                      <button
-                        type="button"
-                        onClick={() => openDesign(item.slug)}
-                        disabled={!item.slug}
-                        className="
-                            relative
-                            block
-                            aspect-[4/5]
-                            w-full
-                            overflow-hidden
-                            text-left
-
-                            disabled:cursor-default
-                          "
-                      >
-                        <ShowcaseThumbnail key={`${item.slug}:${item.updated_at || item.created_at}`} item={item} />
-
-                        <div
-                          className="
-                              absolute
-                              inset-0
-                              bg-gradient-to-t
-                              from-black/80
-                              via-transparent
-                              to-transparent
-                            "
-                        />
-
-                        <span
-                          className="
-                              absolute
-                              left-4
-                              top-4
-                              rounded-full
-                              border
-                              border-white/15
-                              bg-black/45
-                              px-3
-                              py-1.5
-                              text-[8px]
-                              font-black
-                              uppercase
-                              tracking-[0.13em]
-                              text-white/75
-                              backdrop-blur
-                            "
-                        >
-                          {designerOwned ? "Designer" : "Creator"}
-                        </span>
-
-                        {item?.category_name && (
-                          <span
-                            className="
-                                absolute
-                                bottom-4
-                                left-4
-                                rounded-full
-                                bg-black/55
-                                px-3
-                                py-1.5
-                                text-[8px]
-                                font-bold
-                                text-[#e5c67d]
-                                backdrop-blur
-                              "
-                          >
-                            {item.category_name}
-                          </span>
-                        )}
-                      </button>
-
-                      <div className="p-5">
-                        <h3
-                          className="
-                              truncate
-                              font-serif
-                              text-xl
-                            "
-                        >
-                          {item.title || "Untitled Design"}
-                        </h3>
-
-                        <div
-                          className="
-                              mt-3
-                              flex
-                              items-center
-                              justify-between
-                              gap-3
-                            "
-                        >
-                          <div
-                            className="
-                                flex
-                                min-w-0
-                                items-center
-                                gap-2.5
-                              "
-                          >
-                            <div
-                              className="
-                                  flex
-                                  h-8
-                                  w-8
-                                  shrink-0
-                                  items-center
-                                  justify-center
-                                  overflow-hidden
-                                  rounded-full
-                                  border
-                                  border-slate-200
-                                  bg-slate-100
-
-                                  dark:border-white/10
-                                  dark:bg-white/[0.05]
-                                "
-                            >
-                              {ownerAvatar ? (
-                                <img
-                                  src={ownerAvatar}
-                                  alt=""
-                                  className="
-                                      h-full
-                                      w-full
-                                      object-cover
-                                    "
-                                />
-                              ) : (
-                                <User
-                                  size={13}
-                                  className="
-                                      text-slate-400
-
-                                      dark:text-white/35
-                                    "
-                                />
-                              )}
-                            </div>
-
-                            <div className="min-w-0">
-                              <p
-                                className="
-                                    truncate
-                                    text-[10px]
-                                    font-semibold
-                                    text-slate-700
-
-                                    dark:text-white/65
-                                  "
-                              >
-                                {ownerName}
-                              </p>
-
-                              <p
-                                className="
-                                    mt-0.5
-                                    truncate
-                                    text-[8px]
-                                    uppercase
-                                    tracking-[0.13em]
-                                    text-slate-400
-
-                                    dark:text-white/25
-                                  "
-                              >
-                                {item?.style_category || "Creative work"}
-                              </p>
-                            </div>
-                          </div>
-
-                          {rating && (
-                            <span
-                              className="
-                                  inline-flex
-                                  shrink-0
-                                  items-center
-                                  gap-1
-                                  text-[9px]
-                                  font-bold
-                                  text-[#e5c67d]
-                                "
-                            >
-                              <Star size={9} fill="currentColor" />
-
-                              {rating.toFixed(1)}
-                            </span>
-                          )}
-                        </div>
-
-                        <div
-                          className={`
-                              mt-5
-                              grid
-                              gap-2
-
-                              ${bookingUrl ? "grid-cols-2" : "grid-cols-1"}
-                            `}
-                        >
-                          <button
-                            type="button"
-                            disabled={!item.slug}
-                            onClick={() => openDesign(item.slug)}
-                            className="
-                                rounded-xl
-                                border
-                                border-slate-200
-                                bg-white
-                                py-3
-                                text-[8px]
-                                font-black
-                                uppercase
-                                tracking-[0.15em]
-                                text-slate-700
-                                transition
-
-                                hover:border-slate-400
-                                hover:text-slate-950
-
-                                dark:border-white/10
-                                dark:bg-transparent
-                                dark:text-white/65
-                                dark:hover:border-white/30
-                                dark:hover:text-white
-
-                                disabled:cursor-not-allowed
-                                disabled:opacity-40
-                              "
-                          >
-                            View Details
-                          </button>
-
-                          {bookingUrl && (
-                            <Link
-                              to={bookingUrl}
-                              className="
-                                  flex
-                                  items-center
-                                  justify-center
-                                  gap-1.5
-                                  rounded-xl
-                                  bg-[#e5c67d]
-                                  py-3
-                                  text-[8px]
-                                  font-black
-                                  uppercase
-                                  tracking-[0.15em]
-                                  text-black
-                                  transition
-
-                                  hover:bg-white
-                                "
-                            >
-                              <Zap size={11} />
-                              Book
-                            </Link>
-                          )}
-                        </div>
-                      </div>
-                    </article>
+                    <ShowcaseDesignCard key={getDesignKey(item, index)} item={item}
+                      ownerName={ownerName} ownerAvatar={ownerAvatar} designerOwned={designerOwned}
+                      rating={rating} bookingUrl={bookingUrl} onOpen={openDesign}>
+                      <ShowcaseThumbnail key={`${item.slug}:${item.updated_at || item.created_at}`} item={item} />
+                    </ShowcaseDesignCard>
                   );
                 })}
               </div>

@@ -23,8 +23,9 @@ globalThis.__thumbnailTest = {
     plugins: [{ name: 'preview-services', setup(build) {
       build.onResolve({ filter: /^react(\/.*)?$/ }, args => ({ path: args.path, external: true }));
       build.onResolve({ filter: /api\/axios$/ }, () => ({ path: 'api', namespace: 'mock' }));
+      build.onResolve({ filter: /preloadShowcaseGarment$/ }, () => ({ path: "preload", namespace: "mock" }));
       build.onResolve({ filter: /ShowcaseGarment3D$/ }, () => ({ path: 'renderer', namespace: 'mock' }));
-      build.onLoad({ filter: /.*/, namespace: 'mock' }, ({ path: name }) => ({ contents: name === 'api'
+      build.onLoad({ filter: /.*/, namespace: 'mock' }, ({ path: name }) => ({ contents: name === 'preload' ? 'export function preloadShowcaseGarment() {}' : name === 'api'
         ? 'export default {get: globalThis.__thumbnailTest.get};'
         : 'import {useEffect} from "react"; export default function Renderer({onSnapshot}) { useEffect(()=>{globalThis.__thumbnailTest.capture(onSnapshot)},[onSnapshot]); return null; }' }));
     } }],
@@ -37,7 +38,8 @@ globalThis.__thumbnailTest = {
   const render = async (items) => React.act(async () => root.render(React.createElement(React.Fragment, null,
     ...items.map(value => React.createElement(Thumbnail, { key: value.slug, item: value })))));
   await render([item('first'), item('second'), item('upload', 'upload')]);
-  assert.equal(calls.length, 1, 'Only one garment is requested/rendered at a time');
+  assert.equal(calls.length, 2, 'Downloads overlap instead of waiting for the first render');
+  assert.ok(calls.every(url => url.includes('/preview/')), 'Thumbnails use the compact endpoint');
   assert.equal(snapshots.length, 1);
   assert.equal(document.querySelectorAll('img').length, 1, 'Uploads show their original image while garments wait for 3D');
   await React.act(async () => snapshots.shift()('data:image/webp;base64,FIRST'));
@@ -52,5 +54,5 @@ globalThis.__thumbnailTest = {
   await render([item('after-cancel')]);
   assert.ok(calls.some(url => url.endsWith('/after-cancel')), 'Unmount releases the render queue');
   await React.act(async () => root.unmount());
-  console.log('PASS: sequential 3D rendering, static image replacement, cache reuse, upload/unsupported fallback, unmount cancellation.');
+  console.log('PASS: overlapping downloads with sequential 3D rendering, static image replacement, cache reuse, upload/unsupported fallback, unmount cancellation.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

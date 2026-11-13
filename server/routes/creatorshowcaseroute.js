@@ -72,6 +72,9 @@ router.use(protect);
 
 router.use(authorize("creator", "designer"));
 
+// Compact, read-only appearance for feed thumbnails; no galleries or editor source.
+router.get("/preview/:slug", showcaseController.getShowcasePreview);
+
 /*=========================================================
 GET SHOWCASE DISCOVERY
 

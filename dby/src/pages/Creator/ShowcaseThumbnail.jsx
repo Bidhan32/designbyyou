@@ -1,15 +1,11 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import API from "../../api/axios";
 
-const GarmentPreview = lazy(() => import("./ShowcaseGarment3D"));
-const thumbnails = new Map();
-let pending = Promise.resolve();
-
-// Share one rendering slot across the feed. Finished cards contain only an image.
-function enqueue(task) {
-  pending = pending.then(task, task).catch(() => {});
-}
-
+import { createQueue, peekThumbnail, readThumbnail, saveThumbnail } from "./showcaseThumbnailCache";
+const loadRenderer = () => import("./ShowcaseGarment3D");
+const GarmentPreview = lazy(loadRenderer);
+const download = createQueue(3);
+const render = createQueue(1);
 export default function ShowcaseThumbnail({ item }) {
   const host = useRef(null);
   const finish = useRef(null);
@@ -30,31 +26,38 @@ export default function ShowcaseThumbnail({ item }) {
     const schedule = () => {
       if (queued) return;
       queued = true;
-      enqueue(async () => {
+      void (async () => {
         if (!active) return;
-        if (thumbnails.has(key)) {
-          setImage(thumbnails.get(key));
-          return;
-        }
+        const cached = await readThumbnail(key);
+        if (!active) return;
+        if (cached) { setImage(cached); return; }
         let timeout;
         try {
-          const response = await API.get(`/creator-showcase/item/${encodeURIComponent(slug)}`, {
-            signal: controller.signal, timeout: 15000,
-          });
+          const response = await download(() => active ? API.get(`/creator-showcase/preview/${encodeURIComponent(slug)}`, {
+            signal: controller.signal, timeout: 10000,
+          }) : null);
           if (!active) return;
           const garment = response.data?.data?.preview_3d;
           if (!garment) { setFallback(true); return; }
-          const result = await new Promise((resolve) => {
+          // Overlap model downloads with other cards, but keep GPU work serial.
+          void loadRenderer().catch(() => {});
+          void import("./preloadShowcaseGarment").then(module => {
+            if (active) module.preloadShowcaseGarment(garment.model);
+          }).catch(() => {});
+          const result = await render(() => {
+            if (!active) return null;
+            const existing = peekThumbnail(key);
+            if (existing) return existing;
+            return new Promise((resolve) => {
             finish.current = resolve;
-            timeout = setTimeout(() => resolve(null), 20000);
+            timeout = setTimeout(() => resolve(null), 12000);
             setPreview(garment);
+            });
           });
           if (!active) return;
           setPreview(null);
           if (result) {
-            // Bound retained image memory when browsing many pages.
-            if (thumbnails.size >= 80) thumbnails.delete(thumbnails.keys().next().value);
-            thumbnails.set(key, result);
+            saveThumbnail(key, result);
             setImage(result);
           } else setFallback(true);
         } catch {
@@ -63,12 +66,12 @@ export default function ShowcaseThumbnail({ item }) {
           clearTimeout(timeout);
           finish.current = null;
         }
-      });
+      })();
     };
     const observer = typeof IntersectionObserver === "undefined" ? null :
       new IntersectionObserver(([entry]) => {
         if (entry.isIntersecting) { schedule(); observer.disconnect(); }
-      }, { rootMargin: "200px" });
+      }, { rootMargin: "500px" });
     if (observer && host.current) observer.observe(host.current);
     else schedule();
     return () => {
@@ -86,9 +89,9 @@ export default function ShowcaseThumbnail({ item }) {
         loading="lazy" decoding="async"
         className={`h-full w-full ${image ? "object-contain" : "object-cover"}`} /> :
         <div className="flex h-full items-center justify-center text-sm text-slate-500" role="status">
-          {isGarment && !fallback ? "Preparing 3D preview…" : "Preview unavailable"}
+          {isGarment && !fallback ? <><span aria-hidden="true" className="absolute inset-0 animate-pulse bg-slate-200 motion-reduce:animate-none dark:bg-slate-700" /><span className="relative">Loading preview…</span></> : "Preview unavailable"}
         </div>}
-      {preview && <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+      {preview && <div aria-hidden="true" className="pointer-events-none absolute left-0 top-0 h-[400px] w-[320px] opacity-0">
         <Suspense fallback={null}>
           <GarmentPreview preview={preview} onSnapshot={captured} onError={failed} />
         </Suspense>
