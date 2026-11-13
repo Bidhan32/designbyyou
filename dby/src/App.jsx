@@ -19,6 +19,7 @@ Version 2.2:
 
 import React, { lazy } from "react";
 import RouteContent from "./components/RouteContent";
+import CreatorScrollReset from "./components/CreatorScrollReset";
 
 import {
   BrowserRouter as Router,
@@ -390,6 +391,7 @@ Application
 function App() {
   return (
     <Router>
+      <CreatorScrollReset />
       <AuthProvider>
         <ToastProvider>
           <Elements stripe={stripePromise}>
