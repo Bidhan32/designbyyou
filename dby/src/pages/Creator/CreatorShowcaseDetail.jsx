@@ -70,7 +70,6 @@ import {
 
   Box,
 
-  Briefcase,
 
   CalendarDays,
 
@@ -105,11 +104,12 @@ import {
 
   UserRound,
 
-  Zap,
+  Share2,
 
 } from "lucide-react";
 
 import API from "../../api/axios";
+import "./ShowcaseDetail.css";
 import { getClothingTemplate } from "../sketches/templates/ClothingTemplates.js";
 import { getGarment3DConfig } from "../sketches/templates/GarmentTemplateRegistry.js";
 
@@ -441,7 +441,7 @@ function LoadingScreen() {
 
 }
 
-function ErrorScreen({ message }) {
+function ErrorScreen({ message, showcaseRoute, onRetry }) {
 
   return (
 
@@ -477,7 +477,8 @@ function ErrorScreen({ message }) {
 
         </p>
 
-        <Link to="/creator/showcase" className={`${GOLD_BUTTON} mt-7`}>
+        <button type="button" onClick={onRetry} className={`${OUTLINE_BUTTON} mt-5`}>Try again</button>
+        <Link to={showcaseRoute} className={`${GOLD_BUTTON} mt-3`}>
 
           <ArrowLeft size={16} />
 
@@ -499,7 +500,13 @@ function ErrorScreen({ message }) {
 
 ========================================================= */
 
-export default function CreatorShowcaseDetail() {
+export default function CreatorShowcaseDetail({ audience = "creator" }) {
+  const isCreator = audience === "creator";
+  const showcaseRoute = isCreator ? "/creator/showcase" : "/designer/explore";
+  const [retry, setRetry] = useState(0);
+  const [shareFeedback, setShareFeedback] = useState("");
+  const [failedImage, setFailedImage] = useState(null);
+  const [previewError, setPreviewError] = useState("");
 
   const { slug } = useParams();
 
@@ -599,7 +606,7 @@ export default function CreatorShowcaseDetail() {
 
     cleanText(item?.owner_avatar) || cleanText(item?.designer_avatar);
 
-  const bookingUrl = bookingUrlFor(item);
+  const bookingUrl = isCreator ? bookingUrlFor(item) : null;
 
   const rating = Number.parseFloat(item?.designer_avg_rating);
 
@@ -617,7 +624,7 @@ export default function CreatorShowcaseDetail() {
 
       : 0;
 
-  const canOpenInEditor = Boolean(cleanText(item?.design_id));
+  const canOpenInEditor = isCreator && Boolean(cleanText(item?.design_id));
 
   const tags = Array.isArray(item?.tags) ? item.tags.filter(Boolean) : [];
 
@@ -648,6 +655,9 @@ export default function CreatorShowcaseDetail() {
   useEffect(() => {
 
     setPreviewMode("3d");
+    setFailedImage(null);
+    setPreviewError("");
+    setShareFeedback("");
 
     setActiveImageIndex(0);
 
@@ -789,7 +799,7 @@ export default function CreatorShowcaseDetail() {
 
     return () => controller.abort();
 
-  }, [slug]);
+  }, [slug, retry]);
 
   /* =====================================================
 
@@ -890,6 +900,7 @@ export default function CreatorShowcaseDetail() {
   ===================================================== */
 
   const handleOpenInEditor = async () => {
+    if (!canOpenInEditor) return;
 
     if (openingEditor) {
 
@@ -1077,6 +1088,22 @@ export default function CreatorShowcaseDetail() {
 
   };
 
+  useEffect(() => {
+    const previous = document.title;
+    document.title = item?.title ? `${item.title} | DesignByYou` : "Showcase | DesignByYou";
+    return () => { document.title = previous; };
+  }, [item?.title]);
+
+  const shareDesign = async () => {
+    const url = new URL(`/${audience}/showcase/${encodeURIComponent(slug)}`, window.location.origin).href;
+    try {
+      if (navigator.share) await navigator.share({ title: item?.title || "Showcase design", url });
+      else { await navigator.clipboard.writeText(url); setShareFeedback("Link copied"); }
+    } catch (error) {
+      if (error?.name !== "AbortError") setShareFeedback("Could not share. Copy the page address instead.");
+    }
+  };
+
   /* =====================================================
 
      LOADING AND ERROR STATES
@@ -1091,7 +1118,7 @@ export default function CreatorShowcaseDetail() {
 
   if (error || !item) {
 
-    return <ErrorScreen message={error} />;
+    return <ErrorScreen message={error} showcaseRoute={showcaseRoute} onRetry={() => setRetry(value => value + 1)} />;
 
   }
 
@@ -1103,7 +1130,7 @@ export default function CreatorShowcaseDetail() {
 
   return (
 
-    <main className="min-h-screen overflow-x-hidden bg-slate-50 pb-20 text-slate-900 dark:bg-[#050506] dark:text-white">
+    <main className="showcase-detail min-h-screen overflow-x-hidden bg-slate-50 pb-20 text-slate-900 dark:bg-[#050506] dark:text-white">
 
       {/* =================================================
 
@@ -1111,13 +1138,13 @@ export default function CreatorShowcaseDetail() {
 
       ================================================= */}
 
-      <div className="sticky top-16 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#09090b]/95 sm:top-20">
+      <div className="showcase-detail-toolbar z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#09090b]/95 sm:top-20">
 
-        <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-[1240px] items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
 
           <Link
 
-            to="/creator/showcase"
+            to={showcaseRoute}
 
             className={`inline-flex min-w-0 items-center gap-2 text-xs font-semibold text-slate-600 hover:text-[#b68c23] dark:text-white/65 dark:hover:text-[#D4AF37] ${BUTTON_FOCUS}`}
 
@@ -1129,27 +1156,12 @@ export default function CreatorShowcaseDetail() {
 
           </Link>
 
-          <div className="flex min-w-0 items-center gap-2">
+          <button type="button" onClick={shareDesign} className={OUTLINE_BUTTON}><Share2 size={16} />{shareFeedback === "Link copied" ? "Link copied" : "Share"}</button>
 
-            {item.category_name && (
-
-              <span className="hidden max-w-[160px] truncate rounded-full border border-slate-200 px-3 py-1.5 text-[11px] text-slate-500 dark:border-white/15 dark:text-white/60 sm:inline">
-
-                {item.category_name}
-
-              </span>
-
-            )}
-
-            <span className="max-w-[140px] truncate rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-3 py-1.5 text-[11px] font-bold text-[#9e7414] dark:text-[#D4AF37] sm:max-w-[220px]">
-
-              {item.style_category || "Showcase Design"}
-
-            </span>
-
-          </div>
 
         </div>
+
+        {shareFeedback && <p role="status" className="mx-auto max-w-[1240px] px-4 pb-3 text-sm text-slate-600 dark:text-white/70">{shareFeedback}</p>}
 
       </div>
 
@@ -1159,13 +1171,13 @@ export default function CreatorShowcaseDetail() {
 
       ================================================= */}
 
-      <div className="mx-auto max-w-[1500px] px-4 pt-6 sm:px-6 sm:pt-9 lg:px-8">
+      <div className="mx-auto max-w-[1240px] px-4 pt-6 sm:px-6 sm:pt-9 lg:px-8">
 
         {/* Design heading */}
 
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4 sm:mb-8">
 
-          <div className="max-w-4xl">
+          <div className="min-w-0 max-w-4xl">
 
             <p className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-[#ad8723] dark:text-[#D4AF37]">
 
@@ -1175,7 +1187,7 @@ export default function CreatorShowcaseDetail() {
 
             </p>
 
-            <h1 className="font-serif text-3xl leading-tight tracking-tight sm:text-4xl lg:text-5xl">
+            <h1 className="break-words text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">
 
               {item.title || "Untitled Design"}
 
@@ -1233,7 +1245,7 @@ export default function CreatorShowcaseDetail() {
 
         </div>
 
-        <div className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-12 lg:gap-8">
+        <div className="showcase-detail-content">
 
           {/* =============================================
 
@@ -1241,11 +1253,11 @@ export default function CreatorShowcaseDetail() {
 
           ============================================= */}
 
-          <div className="min-w-0 space-y-6 lg:col-span-8">
+          <div className="showcase-detail-preview-column">
 
             <section
 
-              className={`${PANEL} min-w-0 overflow-hidden p-3 sm:p-4`}
+              className={`${PANEL} showcase-detail-preview min-w-0 overflow-hidden p-3 sm:p-4`}
 
               aria-label="Design preview"
 
@@ -1287,7 +1299,7 @@ export default function CreatorShowcaseDetail() {
 
                     <ImageIcon size={16} />
 
-                    2D Images
+                    Images
 
                   </button>
 
@@ -1337,11 +1349,13 @@ export default function CreatorShowcaseDetail() {
 
                 </p>
 
+                {!is3D && currentImage?.url && <a href={currentImage.url} target="_blank" rel="noopener noreferrer" className={OUTLINE_BUTTON}>Open full image</a>}
+
               </div>
 
               {/* Main preview area */}
 
-              <div className="relative h-[340px] min-w-0 overflow-hidden rounded-xl bg-slate-100 dark:bg-[#161619] sm:h-[460px] lg:h-[min(65vh,670px)]">
+              <div className="showcase-detail-viewer relative min-w-0 overflow-hidden rounded-xl bg-slate-100 dark:bg-[#161619]">
 
                 {is3D ? (
 
@@ -1367,7 +1381,7 @@ export default function CreatorShowcaseDetail() {
 
                   >
 
-                    <ShowcaseGarment3D preview={item.preview_3d} />
+                    <ShowcaseGarment3D preview={item.preview_3d} onError={() => { setPreviewMode("2d"); setPreviewError("3D preview unavailable. You can still view the design images."); }} />
 
                   </Suspense>
 
@@ -1399,11 +1413,12 @@ export default function CreatorShowcaseDetail() {
 
                   >
 
-                    {currentImage?.url ? (
+                    {currentImage?.url && failedImage !== currentImage.url ? (
 
                       <img
 
                         src={currentImage.url}
+                        onError={() => setFailedImage(currentImage.url)}
 
                         alt={`${
 
@@ -1501,6 +1516,8 @@ export default function CreatorShowcaseDetail() {
 
               </div>
 
+              {previewError && <p role="status" className="mt-3 text-sm text-slate-500 dark:text-white/60">{previewError}</p>}
+
               {/* Preview footer */}
 
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-slate-500 dark:text-white/45">
@@ -1523,6 +1540,46 @@ export default function CreatorShowcaseDetail() {
 
             </section>
 
+          <aside className="showcase-detail-sidebar">
+            <section className={`${PANEL} p-5 sm:p-6`}>
+              <p className="text-xs text-slate-500 dark:text-white/60">Designed by</p>
+              <div className="mt-3 flex min-w-0 items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                  {ownerAvatar && isPublicImageUrl(ownerAvatar) ? <img src={ownerAvatar} alt="" className="h-full w-full object-cover" /> : <UserRound size={22} />}
+                </div>
+                <div className="min-w-0">
+                  <h2 className="break-words text-lg font-semibold">{ownerName}</h2>
+                  <p className="mt-1 flex items-center gap-1 text-xs text-slate-500 dark:text-white/60"><ShieldCheck size={13} />{designerOwned ? "Approved designer" : "Creator"}</p>
+                </div>
+              </div>
+              {designerOwned && <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-white/60">
+                <span className="inline-flex items-center gap-1"><Star size={14} />{designerRating ? designerRating.toFixed(1) : "New designer"}</span>
+                <span>{completedBookings} completed bookings</span>
+                {item.city && <span className="inline-flex items-center gap-1"><MapPin size={13} />{item.city}</span>}
+              </div>}
+              {(bookingUrl || canOpenInEditor) && <div className="mt-5 space-y-3 border-t border-slate-200 pt-5 dark:border-white/10">
+                {bookingUrl && <>
+                  <Link to={bookingUrl} className={GOLD_BUTTON}>Book this designer<ArrowRight size={16} /></Link>
+                  <p className="text-xs leading-5 text-slate-500 dark:text-white/60">This design will be included with your booking request.</p>
+                </>}
+                {canOpenInEditor && <>
+                  <button type="button" disabled={openingEditor} onClick={handleOpenInEditor}
+                    className={bookingUrl ? `${OUTLINE_BUTTON} w-full` : GOLD_BUTTON}>
+                    {openingEditor ? <Loader2 size={16} className="shrink-0 animate-spin" /> : <MousePointer2 size={16} className="shrink-0" />}
+                    <span>{openingEditor ? "Opening editor…" : editorActionLabel}</span>
+                  </button>
+                  <p className="text-xs leading-5 text-slate-500 dark:text-white/60">Continue in your private workspace. Other creators’ published designs stay unchanged.</p>
+                </>}
+                {editorError && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">{editorError}</p>}
+              </div>}
+              {designerOwned && item.designer_bio && <details className="mt-5 border-t border-slate-200 pt-4 dark:border-white/10">
+                <summary className="cursor-pointer text-sm font-medium">About the designer</summary>
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-white/65">{item.designer_bio}</p>
+              </details>}
+            </section>
+            <Link to={showcaseRoute} className={`${OUTLINE_BUTTON} mt-4 w-full`}>Explore more designs<ArrowRight size={14} /></Link>
+          </aside>
+
             {/* =========================================
 
                 2D IMAGE GALLERY
@@ -1533,7 +1590,7 @@ export default function CreatorShowcaseDetail() {
 
               <section
 
-                className={`${PANEL} p-4 sm:p-5`}
+                className={`${PANEL} showcase-detail-gallery p-4 sm:p-5`}
 
                 aria-label="Gallery images and editor selection"
 
@@ -1561,13 +1618,13 @@ export default function CreatorShowcaseDetail() {
 
                           } selected for Fashion Editor`
 
-                        : "Select a thumbnail to view it; tick boxes to edit multiple images."}
+                        : isCreator ? "Select a thumbnail to view it; tick boxes to edit multiple images." : "Select a thumbnail to view the image."}
 
                     </p>
 
                   </div>
 
-                  <div className="flex gap-2">
+                  {isCreator && <div className="flex gap-2">
 
                     <button
 
@@ -1613,7 +1670,7 @@ export default function CreatorShowcaseDetail() {
 
                     </button>
 
-                  </div>
+                  </div>}
 
                 </div>
 
@@ -1621,7 +1678,7 @@ export default function CreatorShowcaseDetail() {
 
                   {showcaseImages.map((image, index) => {
 
-                    const selectable = isGalleryImageId(image.id);
+                    const selectable = isCreator && isGalleryImageId(image.id);
 
                     const checked =
 
@@ -1731,13 +1788,13 @@ export default function CreatorShowcaseDetail() {
 
                 </div>
 
-                <p className="mt-3 text-xs text-slate-500 dark:text-white/45">
+                {isCreator && <p className="mt-3 text-xs text-slate-500 dark:text-white/45">
 
                   Maximum 6 images per editing session. Original Showcase
 
                   designs remain unchanged.
 
-                </p>
+                </p>}
 
               </section>
 
@@ -1749,7 +1806,7 @@ export default function CreatorShowcaseDetail() {
 
             ========================================= */}
 
-            <section className={`${PANEL} space-y-6 p-5 sm:p-7`}>
+            <section className={`${PANEL} showcase-detail-description space-y-6 p-5 sm:p-7`}>
 
               <div>
 
@@ -1757,7 +1814,7 @@ export default function CreatorShowcaseDetail() {
 
                   <Sparkles size={16} className="text-[#D4AF37]" />
 
-                  The concept
+                  About this design
 
                 </h2>
 
@@ -1777,7 +1834,7 @@ export default function CreatorShowcaseDetail() {
 
                   <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-white/50">
 
-                    Creative tags
+                    Tags
 
                   </h3>
 
@@ -1817,285 +1874,7 @@ export default function CreatorShowcaseDetail() {
 
           ============================================= */}
 
-          <aside className="min-w-0 lg:col-span-4">
 
-            <div className="space-y-5 lg:sticky lg:top-36">
-
-              {/* Creator / Designer profile */}
-
-              <section className={`${PANEL} p-5 sm:p-6`}>
-
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#a77f19] dark:text-[#D4AF37]">
-
-                  {designerOwned ? "Featured Designer" : "Showcase Creator"}
-
-                </p>
-
-                <div className="mt-4 flex min-w-0 items-center gap-3">
-
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100 dark:border-white/10 dark:bg-white/[0.07]">
-
-                    {ownerAvatar && isPublicImageUrl(ownerAvatar) ? (
-
-                      <img
-
-                        src={ownerAvatar}
-
-                        alt={`${ownerName} profile`}
-
-                        className="h-full w-full object-cover"
-
-                      />
-
-                    ) : (
-
-                      <UserRound
-
-                        size={23}
-
-                        className="text-slate-400 dark:text-white/40"
-
-                      />
-
-                    )}
-
-                  </div>
-
-                  <div className="min-w-0">
-
-                    <h2 className="truncate font-serif text-xl">{ownerName}</h2>
-
-                    <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-[#9e7414] dark:text-[#D4AF37]">
-
-                      <ShieldCheck size={13} />
-
-                      {designerOwned ? "Approved Designer" : "Creator"}
-
-                    </p>
-
-                    {designerOwned && item.city && (
-
-                      <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-white/45">
-
-                        <MapPin size={12} />
-
-                        {item.city}
-
-                      </p>
-
-                    )}
-
-                  </div>
-
-                </div>
-
-                {designerOwned && item.designer_bio && (
-
-                  <p className="mt-5 rounded-xl bg-slate-50 p-4 text-xs leading-6 text-slate-600 dark:bg-white/[0.04] dark:text-white/60">
-
-                    {item.designer_bio}
-
-                  </p>
-
-                )}
-
-                {designerOwned && (
-
-                  <div className="mt-5 grid grid-cols-2 gap-3 border-t border-slate-200 pt-5 dark:border-white/10">
-
-                    <div className="rounded-xl bg-slate-50 p-3 text-center dark:bg-white/[0.05]">
-
-                      <Star size={16} className="mx-auto text-[#D4AF37]" />
-
-                      <p className="mt-1 font-serif text-xl">
-
-                        {designerRating ? designerRating.toFixed(1) : "New"}
-
-                      </p>
-
-                      <p className="text-[11px] text-slate-500 dark:text-white/45">
-
-                        Rating
-
-                      </p>
-
-                    </div>
-
-                    <div className="rounded-xl bg-slate-50 p-3 text-center dark:bg-white/[0.05]">
-
-                      <Briefcase size={16} className="mx-auto text-[#D4AF37]" />
-
-                      <p className="mt-1 font-serif text-xl">
-
-                        {completedBookings}
-
-                      </p>
-
-                      <p className="text-[11px] text-slate-500 dark:text-white/45">
-
-                        Completed
-
-                      </p>
-
-                    </div>
-
-                  </div>
-
-                )}
-
-              </section>
-
-              {/* =========================================
-
-                  OPEN IN FASHION EDITOR
-
-              ========================================= */}
-
-              {canOpenInEditor && (
-
-                <section className={`${PANEL} p-5 sm:p-6`}>
-
-                  <div className="flex items-center gap-2 text-sm font-bold">
-
-                    <Palette size={17} className="text-[#D4AF37]" />
-
-                    Open in Fashion Editor
-
-                  </div>
-
-                  <p className="mt-3 text-xs leading-6 text-slate-500 dark:text-white/55">
-
-                    {is3D
-
-                      ? `Explore the published 3D ${garment3DName}, then open this design in your private Fashion Editor workspace.`
-
-                      : hasGallery
-
-                        ? "Open the current gallery image, or select several images to place them on one private Fashion Editor canvas."
-
-                        : "Use this design as inspiration in your private Fashion Editor workspace. The published original stays unchanged."}
-
-                  </p>
-
-                  <button
-
-                    type="button"
-
-                    disabled={openingEditor}
-
-                    onClick={handleOpenInEditor}
-
-                    className={`${GOLD_BUTTON} mt-4`}
-
-                  >
-
-                    {openingEditor ? (
-
-                      <Loader2 size={16} className="animate-spin" />
-
-                    ) : (
-
-                      <MousePointer2 size={16} />
-
-                    )}
-
-                    <span className="min-w-0 truncate">
-
-                      {openingEditor
-
-                        ? "Opening Fashion Editor…"
-
-                        : editorActionLabel}
-
-                    </span>
-
-                    {!openingEditor && (
-
-                      <ArrowRight size={15} className="shrink-0" />
-
-                    )}
-
-                  </button>
-
-                  {editorError && (
-
-                    <p
-
-                      role="alert"
-
-                      className="mt-3 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-3 text-xs leading-5 text-rose-700 dark:text-rose-300"
-
-                    >
-
-                      {editorError}
-
-                    </p>
-
-                  )}
-
-                </section>
-
-              )}
-
-              {/* =========================================
-
-                  DESIGNER BOOKING ACTIONS
-
-              ========================================= */}
-
-              {designerOwned && (
-
-                <section className={`${PANEL} space-y-3 p-5 sm:p-6`}>
-
-                  <h2 className="text-sm font-bold">Inspired by this work?</h2>
-
-                  <p className="text-xs leading-6 text-slate-500 dark:text-white/55">
-
-                    Use this Showcase design as creative context for a custom
-
-                    booking with the Designer.
-
-                  </p>
-
-                  {bookingUrl && (
-
-                    <Link to={bookingUrl} className={GOLD_BUTTON}>
-
-                      <Zap size={15} />
-
-                      Start Booking
-
-                      <ArrowRight size={15} />
-
-                    </Link>
-
-                  )}
-
-
-
-                </section>
-
-              )}
-
-              {/* Explore other designs */}
-
-              <Link
-
-                to="/creator/showcase"
-
-                className={`${OUTLINE_BUTTON} w-full`}
-
-              >
-
-                Explore More Designs
-
-                <ArrowRight size={14} />
-
-              </Link>
-
-            </div>
-
-          </aside>
 
         </div>
 

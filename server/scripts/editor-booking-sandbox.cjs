@@ -13,6 +13,11 @@ const stripe = { paymentIntents: {
   async retrieve(id) { return intents.get(id); },
   async cancel(id) { const pi = intents.get(id); pi.status = "canceled"; return pi; },
 } };
+const refunds = new Map();
+stripe.refunds = {
+  async create(options) { const refund = { ...options, id: `re_mock_${refunds.size + 1}`, amount: intents.get(options.payment_intent).amount, currency: 'usd', status: 'succeeded' }; refunds.set(refund.id, refund); return refund; },
+  async retrieve(id) { return refunds.get(id); },
+};
 async function api(route, token, body, method = body === undefined ? "GET" : "POST") {
   const response = await fetch(origin + "/api/v1" + route, { method, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
   return { status: response.status, body: await response.json() };
@@ -80,6 +85,61 @@ async function fixture(role) {
     expect(await api("/p2p-bookings/verify-escrow", creator.token, { bookingId: booking.id }), 200);
     assert.equal((await isolated.pool.query("SELECT escrow_locked FROM bookings WHERE id=$1", [booking.id])).rows[0].escrow_locked, true);
     console.log("PASS Payment verification rejects unpaid/outsider requests and safely reconciles successful payments");
+
+    const transition = async (action, user, data = {}) => expect(await api(`/p2p-bookings/${booking.id}/${action}`, user.token, data), 200);
+    const state = async () => (await isolated.pool.query("SELECT * FROM bookings WHERE id=$1", [booking.id])).rows[0];
+    await isolated.pool.query("INSERT INTO designer_profiles(user_id,portfolio_url,tier,total_completed_bookings,commission_rate) VALUES($1,'https://example.invalid/portfolio','bronze',0,10) ON CONFLICT(user_id) DO NOTHING", [designer.id]);
+    expect(await api(`/p2p-bookings/${booking.id}/release`, creator.token, {}), 400);
+    await transition('accept', designer);
+    assert.equal((await state()).status, 'progress');
+    expect(await api(`/p2p-bookings/${booking.id}/submit-final`, designer.token, { file_url: 'https://example.invalid/final.png' }), 400);
+    await transition('submit-prototype', designer, { file_url: 'https://example.invalid/prototype.png', message: 'First prototype' });
+    assert.equal((await state()).status, 'review_prototype');
+    expect(await api(`/p2p-bookings/${booking.id}/approve-prototype`, outsider.token, {}), 403);
+    await transition('request-revision', creator, { notes: 'Please adjust the collar.' });
+    assert.equal((await state()).status, 'progress');
+    await transition('submit-prototype', designer, { file_url: 'https://example.invalid/prototype-v2.png' });
+    await transition('approve-prototype', creator);
+    assert.equal((await state()).status, 'final_production');
+    await transition('submit-final', designer, { file_url: 'https://example.invalid/final.png' });
+    assert.equal((await state()).status, 'review_final');
+    await transition('request-revision', creator, { notes: 'Please adjust the final hem.' });
+    assert.equal((await state()).status, 'final_production');
+    await transition('submit-final', designer, { file_url: 'https://example.invalid/final-v2.png' });
+    const releases = await Promise.all([transition('release', creator), transition('release', creator)]);
+    assert.equal(releases.filter(row => row.idempotent === false).length, 1);
+    assert.equal((await state()).status, 'completed');
+    assert.equal((await state()).escrow_locked, false);
+    const wallet = (await isolated.pool.query("SELECT * FROM designer_wallets WHERE user_id=$1", [designer.id])).rows[0];
+    assert.equal(Number(wallet.available_balance), 10);
+    assert.equal(Number(wallet.pending_escrow_balance), 0);
+    assert.equal(Number((await isolated.pool.query("SELECT count(*) FROM transactions WHERE reference_id=$1 AND transaction_type='escrow_release'", [booking.id])).rows[0].count), 1);
+    console.log('PASS Acceptance, prototype and final revisions, ownership, stage ordering and concurrent completion credit earnings once');
+    const unpaid = expect(await api('/p2p-bookings/create', creator.token, { ...body, client_request_id: crypto.randomUUID(), editor_project_id: undefined, editor_project_version: undefined }), 201).booking;
+    const resumed = expect(await api(`/p2p-bookings/${unpaid.id}/payment`, creator.token), 200);
+    assert.equal(resumed.booking.id, unpaid.id);
+    assert.equal(resumed.clientSecret, 'mock_secret');
+    expect(await api(`/p2p-bookings/${unpaid.id}/payment`, outsider.token), 404);
+    expect(await api(`/p2p-bookings/${unpaid.id}/payment`, designer.token), 403);
+    expect(await api(`/p2p-bookings/${unpaid.id}/cancel`, creator.token, { reason: 'Changed requirements' }), 200);
+    assert.equal((await isolated.pool.query('SELECT status FROM bookings WHERE id=$1', [unpaid.id])).rows[0].status, 'cancelled');
+    assert.equal(intents.get(unpaid.stripe_payment_intent_id).status, 'canceled');
+    console.log('PASS Unpaid cancellation cancels the original payment intent');
+
+    expect(await api(`/p2p-bookings/${unpaid.id}/payment`, creator.token), 409);
+    assert.equal(Number((await state()).creator_reward_points), 20);
+    const paid = expect(await api('/p2p-bookings/create', creator.token, { ...body, client_request_id: crypto.randomUUID(), editor_project_id: undefined, editor_project_version: undefined }), 201).booking;
+    const paidIntent = intents.get(paid.stripe_payment_intent_id); paidIntent.status = 'succeeded'; paidIntent.amount_received = paidIntent.amount;
+    expect(await api('/p2p-bookings/verify-escrow', creator.token, { bookingId: paid.id }), 200);
+    expect(await api(`/p2p-bookings/${paid.id}/reject`, designer.token, { reason: 'Unavailable for this project' }), 200);
+    expect(await api(`/p2p-bookings/${paid.id}/cancel`, creator.token, { reason: 'Already rejected' }), 200);
+    assert.equal(refunds.size, 1);
+    const cancelled = (await isolated.pool.query('SELECT * FROM bookings WHERE id=$1', [paid.id])).rows[0];
+    assert.equal(cancelled.status, 'cancelled'); assert.equal(cancelled.escrow_locked, false);
+    const finalWallet = (await isolated.pool.query('SELECT * FROM designer_wallets WHERE user_id=$1', [designer.id])).rows[0];
+    assert.equal(Number(finalWallet.pending_escrow_balance), 0);
+    assert.equal(Number(finalWallet.available_balance), 10);
+    console.log('PASS Private payment resume, cancelled-payment rejection, creator rewards and funded rejection/refund without duplicate refund or earnings');
     console.log("Editor booking sandbox: PASSED (real HTTP and disposable PostgreSQL; Stripe mocked, no charges).");
   } finally {
     if (server) await new Promise(resolve => server.close(resolve));

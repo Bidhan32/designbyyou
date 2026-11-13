@@ -5,14 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/prepare-public-entry.mjs",
     "check:bundle": "node scripts/check-route-bundles.mjs",
     "lint": "eslint .",
-    "test": "node --test scripts/test-session-request.mjs scripts/test-editor-regressions.mjs && node scripts/test-showcase-public-preview.cjs && node scripts/test-showcase-cache.mjs && node scripts/test-showcase-thumbnails.cjs && node scripts/test-garment-3d-selection.mjs && npm run test:auth:ui && npm run test:booking:ui && npm run test:projects",
+    "test": "node --test scripts/test-session-request.mjs scripts/test-editor-regressions.mjs && node scripts/test-showcase-public-preview.cjs && node scripts/test-showcase-detail.cjs && node scripts/test-homepage.cjs && node scripts/test-showcase-cache.mjs && node scripts/test-showcase-thumbnails.cjs && node scripts/test-garment-3d-selection.mjs && npm run test:auth:ui && npm run test:booking:ui && npm run test:projects",
     "preview": "vite preview",
-    "start": "serve --single --listen $PORT dist",
+    "start": "serve --config ../serve.json --listen $PORT dist",
     "test:auth:ui": "node scripts/test-auth-ui.cjs",
-    "test:booking:ui": "node scripts/test-editor-booking-ui.cjs",
+    "test:booking:ui": "node scripts/test-editor-booking-ui.cjs && node scripts/test-booking-checkout.cjs && node scripts/test-modal-focus.cjs",
     "test:projects": "node scripts/test-cloud-projects.cjs"
   },
   "dependencies": {

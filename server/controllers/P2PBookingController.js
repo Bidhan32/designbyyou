@@ -4536,3 +4536,33 @@ exports.requestCancellation = async (req, res) => {
 };
 
 exports.BOOKING_STATUS = BOOKING_STATUS;
+
+// Resume an existing creator-owned payment without creating another booking or intent.
+exports.getBookingPayment = async (req, res) => {
+  const id = String(req.params.id || '');
+  if (!isUuid(id)) return sendError(res, 400, 'A valid booking ID is required.');
+  try {
+    const result = await db.query(`SELECT b.*, u.full_name AS designer_name,
+      u.approval_status AS designer_approval, u.is_email_verified AS designer_verified
+      FROM bookings b JOIN users u ON u.id=b.designer_id
+      WHERE b.id=$1 AND b.creator_id=$2`, [id, getAuthenticatedUserId(req)]);
+    const row = result.rows[0];
+    if (!row) return sendError(res, 404, 'Booking not found.');
+    if (!['pending','awaiting_payment','funded','progress'].includes(normalizeStatus(row.status)) || !row.stripe_payment_intent_id)
+      return sendError(res, 409, 'This booking cannot accept payment. Open its details to view the current status.');
+    const intent = await getStripeClient().paymentIntents.retrieve(row.stripe_payment_intent_id);
+    if (intent.metadata?.booking_id !== row.id || intent.metadata?.creator_id !== row.creator_id || intent.metadata?.designer_id !== row.designer_id)
+      return sendError(res, 409, 'Payment ownership could not be verified.');
+    if (intent.status === 'canceled') return sendError(res, 409, 'This payment was cancelled.');
+    if (!['succeeded','processing'].includes(intent.status) && !row.escrow_locked &&
+      (!req.user.isEmailVerified || row.designer_approval !== 'approved' || !row.designer_verified))
+      return sendError(res, 409, 'This booking is not currently eligible for payment.');
+    const { designer_name, designer_approval, designer_verified, ...booking } = row;
+    res.set('Cache-Control', 'private, no-store');
+    return res.json({ status: 'success', booking, designerName: designer_name,
+      clientSecret: intent.client_secret, paymentIntentStatus: intent.status, payment: buildPaymentSummary(booking, intent) });
+  } catch (error) {
+    console.error('Booking payment resume failed:', error.message);
+    return sendError(res, 503, 'Could not load this payment. Please try again.');
+  }
+};

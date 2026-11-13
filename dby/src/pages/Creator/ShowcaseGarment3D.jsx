@@ -487,7 +487,7 @@ export default function ShowcaseGarment3D({ preview, onSnapshot, onError }) {
 
       <div className="relative min-h-0 flex-1">
 
-        <PreviewErrorBoundary key={configuration.url}>
+        <PreviewErrorBoundary key={configuration.url} onError={onError}>
 
           <Canvas
 

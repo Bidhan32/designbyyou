@@ -1,0 +1,25 @@
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const { JSDOM } = require('jsdom');
+const esbuild = require('esbuild');
+const dom = new JSDOM('<div id="root"></div><main><h1>Projects</h1></main>', { url: 'https://dby.test' });
+for (const key of ['window', 'document', 'HTMLElement', 'MouseEvent']) globalThis[key] = dom.window[key];
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+HTMLElement.prototype.scrollIntoView = () => {};
+const React = require('react');
+const { createRoot } = require('react-dom/client');
+(async () => {
+  const built = await esbuild.build({ entryPoints: [path.resolve(__dirname, '../src/components/SkipToContent.jsx')], bundle: true, write: false, platform: 'node', format: 'cjs', packages: 'external' });
+  const module = { exports: {} };
+  new Function('require', 'module', 'exports', built.outputFiles[0].text)(require, module, module.exports);
+  const root = createRoot(document.getElementById('root'));
+  await React.act(() => root.render(React.createElement(module.exports.default)));
+  const link = document.querySelector('a');
+  link.focus();
+  assert.equal(document.activeElement, link);
+  await React.act(() => link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })));
+  assert.equal(document.activeElement, document.querySelector('main'));
+  assert.equal(window.location.hash, '');
+  await React.act(() => root.unmount());
+  console.log('PASS: skip link transfers keyboard focus to main content without altering the route.');
+})().catch(error => { console.error(error); process.exitCode = 1; });

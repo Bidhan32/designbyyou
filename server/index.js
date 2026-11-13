@@ -218,6 +218,8 @@ if (NODE_ENV === "development") {
 Health Checks
 =========================================================*/
 
+app.get(["/ready", "/api/v1/ready"], require("./middlewares/readiness")(db, () => shuttingDown));
+
 app.get("/health", (req, res) => {
   return res.status(200).json({
     status: "UP",

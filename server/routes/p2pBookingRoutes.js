@@ -308,6 +308,7 @@ router.get("/pipeline", protect, p2pController.getUnifiedPeerPipeline);
    ========================================================= */
 
 router.get("/designers", ...creatorAccess, p2pController.getAvailableDesigners);
+router.get("/:id/payment", ...creatorAccess, p2pController.getBookingPayment);
 
 /* =========================================================
    Create New P2P Booking

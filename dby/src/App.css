@@ -1,5 +1,37 @@
 @import "tailwindcss";
 
+.skip-to-content {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 10000;
+  padding: 12px 20px;
+  border-radius: 8px;
+  background: #fff;
+  color: #111;
+  transform: translateY(-160%);
+}
+.skip-to-content:focus { transform: translateY(0); }
+/* Short landscape screens scroll the whole drawer instead of squeezing links
+   between a fixed profile header and footer. */
+@media (max-height: 640px) {
+  .mobile-navigation { overflow-y: auto; overscroll-behavior: contain; }
+  .mobile-navigation > * { flex-shrink: 0; }
+  .mobile-navigation > .overflow-y-auto { overflow: visible; flex: 0 0 auto; }
+}
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /*=========================================================
 Dark Mode Variant
 =========================================================*/

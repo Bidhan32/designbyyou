@@ -55,12 +55,15 @@ const AdminLayout = () => {
             </aside>
 
             {/* Main Content Area */}
-            <main className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
+            <main id="main-content" tabIndex={-1} className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
                 
                 {/* Header */}
                 <header className="h-20 border-b border-gray-100 bg-white/80 backdrop-blur-md flex-shrink-0 px-4 md:px-8 flex items-center justify-between z-30">
                     <div className="flex items-center gap-4">
                         <button 
+                            type="button"
+                            aria-label={isSidebarOpen ? 'Close navigation' : 'Open navigation'}
+                            aria-expanded={isSidebarOpen}
                             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                             className="p-2 hover:bg-gray-100 rounded-xl lg:hidden transition-colors"
                         >

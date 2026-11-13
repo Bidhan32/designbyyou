@@ -1,0 +1,42 @@
+name: Application quality
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dby
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dby/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: node scripts/test-accessibility-shell.cjs
+      - run: npm run build
+      - run: npm run check:bundle
+      - run: node scripts/test-static-serving.cjs
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: node --test scripts/test-readiness.cjs

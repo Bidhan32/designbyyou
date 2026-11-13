@@ -60,6 +60,8 @@ const BOOKING_STATUS = Object.freeze({
   REVIEW_FINAL: "review_final",
   REVIEW: "review",
   CANCELLATION_PENDING: "cancellation_pending",
+  REFUND_PENDING: "refund_pending",
+  REFUND_FAILED: "refund_failed",
   COMPLETED: "completed",
   DELIVERED: "delivered",
   CANCELLED: "cancelled",
@@ -401,6 +403,10 @@ function getStatusDetails(status) {
         accentClass: "text-violet-700 dark:text-violet-300",
       };
 
+    case BOOKING_STATUS.REFUND_PENDING:
+      return { ...getStatusDetails(BOOKING_STATUS.CANCELLATION_PENDING), label: "Refund processing", title: "The creator's refund is processing", description: "The refund has been requested. This booking is closed to further work while payment records are updated." };
+    case BOOKING_STATUS.REFUND_FAILED:
+      return { ...getStatusDetails(BOOKING_STATUS.CANCELLATION_PENDING), label: "Refund needs attention", title: "Refund needs administrator review", description: "The refund could not be completed. Contact support with this booking ID; do not make another payment.", spinning: false };
     case BOOKING_STATUS.CANCELLATION_PENDING:
       return {
         label: "Cancellation Processing",
@@ -1240,6 +1246,8 @@ function DesignerBookingDetail() {
       BOOKING_STATUS.DELIVERED,
       BOOKING_STATUS.CANCELLED,
       BOOKING_STATUS.CANCELLATION_PENDING,
+      BOOKING_STATUS.REFUND_PENDING,
+      BOOKING_STATUS.REFUND_FAILED,
     ].includes(status);
 
   const creatorName =
@@ -1654,6 +1662,8 @@ function DesignerBookingDetail() {
           {[
             BOOKING_STATUS.CANCELLED,
             BOOKING_STATUS.CANCELLATION_PENDING,
+            BOOKING_STATUS.REFUND_PENDING,
+            BOOKING_STATUS.REFUND_FAILED,
           ].includes(status) && (
             <div className="mt-5 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">
               <Ban size={18} className="mt-0.5 shrink-0" />

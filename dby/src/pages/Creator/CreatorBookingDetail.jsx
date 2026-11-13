@@ -43,6 +43,8 @@ const BOOKING_STATUS = Object.freeze({
   REVIEW_FINAL: "review_final",
   REVIEW: "review",
   CANCELLATION_PENDING: "cancellation_pending",
+  REFUND_PENDING: "refund_pending",
+  REFUND_FAILED: "refund_failed",
   COMPLETED: "completed",
   DELIVERED: "delivered",
   CANCELLED: "cancelled",
@@ -327,6 +329,10 @@ function getStatusDetails(status, designerName) {
           "border-violet-200 bg-violet-50/80 dark:border-violet-400/15 dark:bg-violet-400/5",
       };
 
+    case BOOKING_STATUS.REFUND_PENDING:
+      return { ...getStatusDetails(BOOKING_STATUS.CANCELLATION_PENDING), label: "Refund processing", title: "Your refund is processing", description: "The refund has been requested. This booking is closed to further work while payment records are updated." };
+    case BOOKING_STATUS.REFUND_FAILED:
+      return { ...getStatusDetails(BOOKING_STATUS.CANCELLATION_PENDING), label: "Refund needs attention", title: "Refund needs administrator review", description: "The refund could not be completed. Contact support with this booking ID; do not make another payment.", spinning: false };
     case BOOKING_STATUS.CANCELLATION_PENDING:
       return {
         label: "Cancellation Processing",
@@ -1153,13 +1159,13 @@ export default function CreatorBookingDetail() {
     : booking.delivery_message;
 
   const paymentCheckAvailable =
-    status === BOOKING_STATUS.AWAITING_PAYMENT &&
+    [BOOKING_STATUS.PENDING, BOOKING_STATUS.AWAITING_PAYMENT].includes(status) &&
     !booking.escrow_locked &&
     Boolean(booking.stripe_payment_intent_id);
 
   const cancellationAllowed =
     !TERMINAL_STATUSES.has(status) &&
-    status !== BOOKING_STATUS.CANCELLATION_PENDING;
+    ![BOOKING_STATUS.CANCELLATION_PENDING, BOOKING_STATUS.REFUND_PENDING, BOOKING_STATUS.REFUND_FAILED].includes(status);
 
   const whatsappContactEligible = WHATSAPP_CONTACT_STATUSES.has(status);
 
@@ -1284,6 +1290,14 @@ export default function CreatorBookingDetail() {
               </div>
             </div>
 
+            {paymentCheckAvailable && (
+              <Link
+                to={`/creator/bookings/new?booking_id=${encodeURIComponent(bookingId)}`}
+                className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-[#D4AF37] px-5 text-sm font-semibold text-black"
+              >
+                Continue payment
+              </Link>
+            )}
             {paymentCheckAvailable && (
               <button
                 type="button"

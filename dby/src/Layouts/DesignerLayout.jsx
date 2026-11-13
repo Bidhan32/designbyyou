@@ -1,4 +1,5 @@
 import RouteContent from "../components/RouteContent";
+import useModalFocus from "../components/useModalFocus";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { Link, Outlet, useLocation } from "react-router-dom";
@@ -665,6 +666,7 @@ function DesignerNavbar({ user, logout }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useModalFocus(mobileMenuOpen, () => setMobileMenuOpen(false));
 
   /* =======================================================
      Shared Fashion Persona
@@ -984,13 +986,11 @@ function DesignerNavbar({ user, logout }) {
       return undefined;
     }
 
-    const previousOverflow = document.body.style.overflow;
-
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    const closeOnDesktop = () => { if (desktop.matches) setMobileMenuOpen(false); };
+    closeOnDesktop();
+    desktop.addEventListener('change', closeOnDesktop);
+    return () => desktop.removeEventListener('change', closeOnDesktop);
   }, [mobileMenuOpen]);
 
   /* =======================================================
@@ -1291,7 +1291,7 @@ function DesignerNavbar({ user, logout }) {
               {dropdownOpen && (
                 <div
                   role="menu"
-                  className="absolute right-0 top-[calc(100%+12px)] w-[320px] overflow-hidden rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-sm backdrop-blur-2xl dark:border-white/10 dark:bg-[#0A0A0A]/95 shadow-sm"
+                  className="absolute right-0 top-[calc(100%+12px)] w-[320px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-sm backdrop-blur-2xl dark:border-white/10 dark:bg-[#0A0A0A]/95 shadow-sm"
                 >
                   {/* =======================================
                       Identity Header
@@ -1607,13 +1607,22 @@ function DesignerNavbar({ user, logout }) {
           <button
             type="button"
             aria-label="Close navigation"
+            data-modal-backdrop=""
+            tabIndex={-1}
+            aria-hidden="true"
             onClick={() => setMobileMenuOpen(false)}
             className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm dark:bg-black/65"
           />
 
           <aside
-            className="absolute bottom-0 right-0 top-[72px] flex w-full max-w-[400px] flex-col border-l border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#080808] shadow-sm sm:w-[390px]"
+            ref={mobileMenuRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Designer mobile navigation"
+            tabIndex={-1}
+            className="mobile-navigation absolute bottom-0 right-0 top-[72px] flex w-full max-w-[400px] flex-col border-l border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#080808] shadow-sm sm:w-[390px]"
           >
+            <button type="button" onClick={() => setMobileMenuOpen(false)} className="min-h-11 shrink-0 self-end px-5 text-sm font-semibold">Close navigation</button>
             {/* =============================================
                 Identity
                 ============================================= */}
@@ -2069,6 +2078,8 @@ export default function DesignerLayout() {
       <DesignerNavbar user={user} logout={logout} />
 
       <main
+        id="main-content"
+        tabIndex={-1}
         className="relative z-10 mx-auto w-full max-w-[1800px] flex-1 px-4 py-5 sm:px-6 sm:py-7 lg:px-7 lg:py-8 xl:px-8 xl:py-10 2xl:px-10"
       >
         <RouteContent><Outlet /></RouteContent>

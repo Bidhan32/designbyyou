@@ -88,6 +88,7 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import API from "../../api/axios";
+import useModalFocus from "../../components/useModalFocus";
 
 import { useAuth } from "../../context/AuthContext.helpers.js";
 
@@ -433,12 +434,16 @@ function CheckoutForm({
   verificationError,
 
   onPaymentSuccess,
+  paymentNeedsVerification,
+  onPaymentAccepted,
+  processing,
+  setProcessing,
 }) {
   const stripe = useStripe();
 
   const elements = useElements();
 
-  const [processing, setProcessing] = useState(false);
+  const submitLock = useRef(false);
 
   const [cardError, setCardError] = useState("");
 
@@ -447,7 +452,9 @@ function CheckoutForm({
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!stripe || !elements || processing || verifying) {
+    if (submitLock.current || processing || verifying) return;
+    if (paymentNeedsVerification) { await onPaymentSuccess(); return; }
+    if (!stripe || !elements) {
       return;
     }
 
@@ -459,11 +466,19 @@ function CheckoutForm({
       return;
     }
 
+    submitLock.current = true;
     setProcessing(true);
 
     setCardError("");
 
     try {
+      const existing = await stripe.retrievePaymentIntent(clientSecret);
+      if (existing.error) throw new Error(existing.error.message || "Could not check payment status. Please retry.");
+      if (["succeeded", "processing"].includes(existing.paymentIntent?.status)) {
+        onPaymentAccepted();
+        await onPaymentSuccess();
+        return;
+      }
       const result = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card,
@@ -484,6 +499,8 @@ function CheckoutForm({
         return;
       }
 
+      if (["succeeded", "processing"].includes(result?.paymentIntent?.status)) onPaymentAccepted();
+      if (result?.paymentIntent?.status === "processing") { await onPaymentSuccess(); return; }
       if (result?.paymentIntent?.status !== "succeeded") {
         setCardError(
           `Stripe returned payment status ${
@@ -500,6 +517,7 @@ function CheckoutForm({
         apiError(error, "The Stripe payment connection was interrupted."),
       );
     } finally {
+      submitLock.current = false;
       setProcessing(false);
     }
   };
@@ -587,7 +605,7 @@ function CheckoutForm({
 
       <button
         type="submit"
-        disabled={!stripe || !elements || processing || verifying}
+        disabled={(!paymentNeedsVerification && (!stripe || !elements)) || processing || verifying}
         className="flex h-[54px] w-full items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-5 text-xs font-semibold tracking-normal text-black shadow-sm transition hover:bg-[#E4C65D] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none dark:disabled:bg-white/5 dark:disabled:text-white/25"
       >
         {processing || verifying ? (
@@ -600,7 +618,7 @@ function CheckoutForm({
           ? "Securing Payment"
           : processing
             ? "Processing Stripe Payment"
-            : `Pay ${formatMoney(payment?.totalCharged, paymentCurrency)}`}
+            : paymentNeedsVerification ? "Check payment confirmation" : `Pay ${formatMoney(payment?.totalCharged, paymentCurrency)}`}
       </button>
 
       <p
@@ -618,7 +636,8 @@ Creator Create Booking
 =========================================================*/
 
 export default function CreatorCreateBooking() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const resumeBookingId = cleanParam(searchParams, "booking_id");
 
   const navigate = useNavigate();
 
@@ -708,10 +727,37 @@ export default function CreatorCreateBooking() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   const [verifying, setVerifying] = useState(false);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [paymentNeedsVerification, setPaymentNeedsVerification] = useState(false);
+  const createLock = useRef(false);
+  const verifyLock = useRef(false);
+  const checkoutRef = useModalFocus(checkoutOpen && Boolean(createdBooking && clientSecret && payment), () => setCheckoutOpen(false), !verifying && !paymentProcessing);
 
   const [verificationError, setVerificationError] = useState("");
 
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (!resumeBookingId || createdBooking?.id === resumeBookingId) return;
+    const controller = new AbortController();
+    API.get(`/p2p-bookings/${encodeURIComponent(resumeBookingId)}/payment`, { signal: controller.signal }).then(response => {
+      if (controller.signal.aborted) return;
+      const data = response.data;
+      setCreatedBooking(data.booking);
+      setClientSecret(data.clientSecret || "");
+      setPayment(data.payment);
+      setPaymentNeedsVerification(["succeeded", "processing"].includes(data.paymentIntentStatus));
+      setAgreedPrice(String(data.booking.agreed_price));
+      setBrief(data.booking.brief_text || "");
+      setDeadline(data.booking.deadline ? localDateInput(new Date(data.booking.deadline)) : "");
+      setSelectedDesigner({ id: data.booking.designer_id, full_name: data.designerName || "Your selected designer" });
+      if (data.booking.escrow_locked) setSuccess(true);
+      else setCheckoutOpen(true);
+    }).catch(error => {
+      if (!controller.signal.aborted) setFormError(apiError(error, "Could not resume this booking. Open it from My bookings and try again."));
+    });
+    return () => controller.abort();
+  }, [resumeBookingId, createdBooking?.id]);
 
   /*=======================================================
   Date Minimums
@@ -1034,6 +1080,7 @@ export default function CreatorCreateBooking() {
 
   const createBooking = async (event) => {
     event.preventDefault();
+    if (createLock.current || submitting || (resumeBookingId && !createdBooking)) return;
 
     /*
       Once a durable booking has been created, never create
@@ -1056,6 +1103,7 @@ export default function CreatorCreateBooking() {
       return;
     }
 
+    createLock.current = true;
     setSubmitting(true);
 
     setFormError("");
@@ -1104,6 +1152,8 @@ export default function CreatorCreateBooking() {
       }
 
       setCreatedBooking(booking);
+      setPaymentNeedsVerification(["succeeded", "processing"].includes(response.data.paymentIntentStatus));
+      setSearchParams(previous => { const next = new URLSearchParams(previous); next.set("booking_id", booking.id); return next; }, { replace: true });
 
       setClientSecret(secret);
 
@@ -1144,6 +1194,7 @@ export default function CreatorCreateBooking() {
         );
       }
     } finally {
+      createLock.current = false;
       setSubmitting(false);
     }
   };
@@ -1156,10 +1207,11 @@ export default function CreatorCreateBooking() {
   =======================================================*/
 
   const verifyEscrow = useCallback(async () => {
-    if (!createdBooking?.id) {
+    if (verifyLock.current || !createdBooking?.id) {
       return;
     }
 
+    verifyLock.current = true;
     setVerifying(true);
 
     setVerificationError("");
@@ -1200,6 +1252,7 @@ export default function CreatorCreateBooking() {
         ),
       );
     } finally {
+      verifyLock.current = false;
       setVerifying(false);
     }
   }, [createdBooking?.id]);
@@ -2277,7 +2330,7 @@ export default function CreatorCreateBooking() {
 
                   <button
                     type="submit"
-                    disabled={submitting || !selectedDesigner}
+                    disabled={submitting || !selectedDesigner || Boolean(resumeBookingId && !createdBooking)}
                     className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-6 text-xs font-semibold tracking-normal text-black shadow-sm transition hover:bg-[#E4C65D] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none dark:disabled:bg-white/5 dark:disabled:text-white/25"
                   >
                     {submitting ? (
@@ -2309,7 +2362,7 @@ export default function CreatorCreateBooking() {
         <div
           className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/80 p-4 backdrop-blur-md dark:bg-black/85"
           onMouseDown={() => {
-            if (!verifying) {
+            if (!verifying && !paymentProcessing) {
               setCheckoutOpen(false);
             }
           }}
@@ -2318,6 +2371,8 @@ export default function CreatorCreateBooking() {
             className="flex min-h-full items-center justify-center py-8"
           >
             <section
+              ref={checkoutRef}
+              tabIndex={-1}
               role="dialog"
               aria-modal="true"
               aria-label="Secure booking payment"
@@ -2354,7 +2409,7 @@ export default function CreatorCreateBooking() {
 
                   <button
                     type="button"
-                    disabled={verifying}
+                    disabled={verifying || paymentProcessing}
                     onClick={() => setCheckoutOpen(false)}
                     aria-label="Close checkout"
                     className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:text-white/50 dark:hover:bg-white/5 dark:hover:text-white/80"
@@ -2375,6 +2430,10 @@ export default function CreatorCreateBooking() {
                         verifying={verifying}
                         verificationError={verificationError}
                         onPaymentSuccess={verifyEscrow}
+                        processing={paymentProcessing}
+                        setProcessing={setPaymentProcessing}
+                        paymentNeedsVerification={paymentNeedsVerification}
+                        onPaymentAccepted={() => setPaymentNeedsVerification(true)}
                       />
                     </Elements>
                   ) : (

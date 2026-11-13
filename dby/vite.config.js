@@ -8,6 +8,15 @@ export default defineConfig({
     manifest: true,
   },
   plugins: [
+    {
+      name: 'public-homepage',
+      configureServer(server) {
+        server.middlewares.use((req, _res, next) => {
+          if (req.url?.split('?')[0] === '/') req.url = '/home.html';
+          next();
+        });
+      },
+    },
     react(),
      tailwindcss()
   ],

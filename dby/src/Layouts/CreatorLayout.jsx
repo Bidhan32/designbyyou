@@ -1,4 +1,5 @@
 import RouteContent from "../components/RouteContent";
+import useModalFocus from "../components/useModalFocus";
 "use strict";
 
 /*
@@ -462,6 +463,7 @@ export default function CreatorLayout() {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useModalFocus(mobileMenuOpen, () => setMobileMenuOpen(false));
 
   /*
   Reward total starts from AuthContext when available.
@@ -699,13 +701,11 @@ export default function CreatorLayout() {
       return undefined;
     }
 
-    const previousOverflow = document.body.style.overflow;
-
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    const closeOnDesktop = () => { if (desktop.matches) setMobileMenuOpen(false); };
+    closeOnDesktop();
+    desktop.addEventListener('change', closeOnDesktop);
+    return () => desktop.removeEventListener('change', closeOnDesktop);
   }, [mobileMenuOpen]);
 
   /*=======================================================
@@ -1074,7 +1074,7 @@ export default function CreatorLayout() {
             {profileDropdownOpen && (
               <div
                 role="menu"
-                className="absolute right-0 top-14 mt-2 w-[310px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0A0A0A] shadow-sm"
+                className="absolute right-0 top-14 mt-2 w-[310px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0A0A0A] shadow-sm"
               >
                 {/* Identity */}
 
@@ -1435,6 +1435,9 @@ export default function CreatorLayout() {
           <button
             type="button"
             aria-label="Close creator navigation"
+            data-modal-backdrop=""
+            tabIndex={-1}
+            aria-hidden="true"
             onClick={() => setMobileMenuOpen(false)}
             className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm dark:bg-black/70"
           />
@@ -1442,9 +1445,14 @@ export default function CreatorLayout() {
           {/* Drawer */}
 
           <aside
+            ref={mobileMenuRef}
+            role="dialog"
+            aria-modal="true"
+            tabIndex={-1}
             aria-label="Creator mobile navigation"
-            className="absolute bottom-0 right-0 top-20 flex w-full max-w-[420px] flex-col border-l border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#080808] shadow-sm sm:w-[400px]"
+            className="mobile-navigation absolute bottom-0 right-0 top-20 flex w-full max-w-[420px] flex-col border-l border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#080808] shadow-sm sm:w-[400px]"
           >
+            <button type="button" onClick={() => setMobileMenuOpen(false)} className="min-h-11 shrink-0 self-end px-5 text-sm font-semibold">Close navigation</button>
             {/*=============================================
             Identity
             =============================================*/}
@@ -1690,6 +1698,8 @@ export default function CreatorLayout() {
       ===================================================*/}
 
       <main
+        id="main-content"
+        tabIndex={-1}
         className="relative z-10 w-full flex-1"
       >
         <RouteContent><Outlet /></RouteContent>
