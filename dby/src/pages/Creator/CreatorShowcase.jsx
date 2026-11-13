@@ -162,6 +162,7 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 
 import API from "../../api/axios";
+import ShowcaseThumbnail from "./ShowcaseThumbnail";
 
 /*=========================================================
 Configuration
@@ -177,7 +178,7 @@ const TOP_DESIGNERS_ENDPOINT = "/creator-showcase/top-designers";
 
 const HERO_ENDPOINT = "/showcase-hero";
 
-const CREATE_ROUTE = "/creator/tools";
+
 
 /*=========================================================
 Fallback Images
@@ -633,7 +634,11 @@ function DiscoveryLoading() {
 Creator Showcase
 =========================================================*/
 
-export default function CreatorShowcase() {
+export default function CreatorShowcase({ audience = "creator" }) {
+  const isCreator = audience === "creator";
+  const createRoute = isCreator ? "/creator/tools" : "/designer/upload";
+  const [searchDraft, setSearchDraft] = useState("");
+  const [search, setSearch] = useState("");
   const navigate = useNavigate();
 
   /*=======================================================
@@ -786,6 +791,7 @@ export default function CreatorShowcase() {
 
       return {
         ...term,
+        design: matchingDesign,
 
         image:
           matchingDesign?.watermarked_preview_url ||
@@ -994,6 +1000,7 @@ export default function CreatorShowcase() {
           page: 1,
 
           limit: SHOWCASE_PAGE_SIZE,
+        search,
         };
 
         if (activeDiscoveryTerm) {
@@ -1050,7 +1057,7 @@ export default function CreatorShowcase() {
     return () => {
       controller.abort();
     };
-  }, [activeDiscoveryTerm]);
+  }, [activeDiscoveryTerm, search]);
 
   /*=======================================================
   Load Featured Designers
@@ -1179,6 +1186,7 @@ export default function CreatorShowcase() {
         page: nextPage,
 
         limit: SHOWCASE_PAGE_SIZE,
+          search,
       };
 
       if (activeDiscoveryTerm) {
@@ -1258,9 +1266,9 @@ export default function CreatorShowcase() {
       // Do not carry the New Arrivals scroll position into the detail page.
       window.scrollTo({ top: 0, left: 0, behavior: "instant" });
 
-      navigate(`/creator/showcase/${encodeURIComponent(safeSlug)}`);
+      navigate(`/${audience}/showcase/${encodeURIComponent(safeSlug)}`);
     },
-    [navigate],
+    [navigate, audience],
   );
 
   /*=======================================================
@@ -1580,7 +1588,7 @@ export default function CreatorShowcase() {
 
               <button
                 type="button"
-                onClick={() => navigate(CREATE_ROUTE)}
+                onClick={() => navigate(createRoute)}
                 className="
                   inline-flex
                   items-center
@@ -1604,7 +1612,7 @@ export default function CreatorShowcase() {
                 "
               >
                 <PencilRuler size={14} />
-                Create Your Own
+                {isCreator ? "Create Your Own" : "Share Your Design"}
               </button>
             </div>
 
@@ -1880,6 +1888,7 @@ export default function CreatorShowcase() {
                         sm:h-[300px]
                       "
                   >
+                    {term.design ? <ShowcaseThumbnail key={`${term.design.slug}:${term.design.updated_at || term.design.created_at}`} item={term.design} /> : (
                     <img
                       src={term.image}
                       alt=""
@@ -1895,6 +1904,7 @@ export default function CreatorShowcase() {
                           group-hover:scale-105
                         "
                     />
+                    )}
 
                     <div
                       className="
@@ -2259,7 +2269,7 @@ export default function CreatorShowcase() {
         FEATURED DESIGNERS
         =================================================*/}
 
-        <section
+        {isCreator && <section
           className="
             border-t
             border-slate-200
@@ -2578,7 +2588,7 @@ export default function CreatorShowcase() {
               })}
             </div>
           )}
-        </section>
+        </section>}
 
         {/*=================================================
         NEW ARRIVALS
@@ -2644,6 +2654,17 @@ export default function CreatorShowcase() {
               ) : null
             }
           />
+
+          <form className="mb-6 flex flex-wrap items-end gap-3" onSubmit={(event) => { event.preventDefault(); setSearch(searchDraft.trim()); }}>
+            <div className="min-w-0 flex-1">
+              <label htmlFor="showcase-search" className="mb-2 block text-sm font-medium">Search designs</label>
+              <input id="showcase-search" type="search" value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)}
+                placeholder="Search titles, styles or designers"
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 dark:border-white/20 dark:bg-slate-900 dark:text-white" />
+            </div>
+            <button type="submit" className="rounded-xl bg-slate-900 px-5 py-3 text-white dark:bg-white dark:text-slate-900">Search</button>
+            {search && <button type="button" className="px-3 py-3 text-sm underline" onClick={() => { setSearchDraft(""); setSearch(""); }}>Clear search</button>}
+          </form>
 
           {showcaseError && (
             <div
@@ -2802,7 +2823,7 @@ export default function CreatorShowcase() {
 
                   const rating = getDesignerRating(item);
 
-                  const bookingUrl = buildBookingUrl(item);
+                  const bookingUrl = isCreator ? buildBookingUrl(item) : null;
 
                   return (
                     <article
@@ -2844,44 +2865,7 @@ export default function CreatorShowcase() {
                             disabled:cursor-default
                           "
                       >
-                        {item.watermarked_preview_url ? (
-                          <img
-                            src={item.watermarked_preview_url}
-                            alt={item.title || "Showcase design"}
-                            loading="lazy"
-                            decoding="async"
-                            className="
-                                h-full
-                                w-full
-                                object-cover
-                                transition
-                                duration-700
-
-                                group-hover:scale-[1.05]
-                              "
-                          />
-                        ) : (
-                          <div
-                            className="
-                                flex
-                                h-full
-                                items-center
-                                justify-center
-                                bg-slate-100
-
-                                dark:bg-white/[0.03]
-                              "
-                          >
-                            <Sparkles
-                              size={30}
-                              className="
-                                  text-slate-300
-
-                                  dark:text-white/15
-                                "
-                            />
-                          </div>
-                        )}
+                        <ShowcaseThumbnail key={`${item.slug}:${item.updated_at || item.created_at}`} item={item} />
 
                         <div
                           className="

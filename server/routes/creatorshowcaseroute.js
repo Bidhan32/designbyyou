@@ -46,7 +46,7 @@ SECURITY
 Every route requires:
 
 1. valid authenticated session
-2. Creator role
+2. Creator or Designer role (read-only discovery)
 
 Creator accounts do not require admin approval simply to
 browse the Showcase.
@@ -65,12 +65,12 @@ const showcaseController = require("../controllers/creators/creatorshowcaseContr
 const { protect, authorize } = require("../middlewares/authMiddleware");
 
 /*=========================================================
-Global Creator Protection
+Shared Showcase Protection
 =========================================================*/
 
 router.use(protect);
 
-router.use(authorize("creator"));
+router.use(authorize("creator", "designer"));
 
 /*=========================================================
 GET SHOWCASE DISCOVERY

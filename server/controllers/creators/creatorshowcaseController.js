@@ -795,6 +795,7 @@ exports.getShowcase = async (req, res) => {
           d.tags,
 
           d.created_at,
+          d.updated_at,
 
           d.source_type,
 

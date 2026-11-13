@@ -8,7 +8,7 @@
     "build": "vite build",
     "check:bundle": "node scripts/check-route-bundles.mjs",
     "lint": "eslint .",
-    "test": "node --test scripts/test-session-request.mjs scripts/test-editor-regressions.mjs && node scripts/test-showcase-public-preview.cjs && node scripts/test-garment-3d-selection.mjs && npm run test:auth:ui && npm run test:booking:ui && npm run test:projects",
+    "test": "node --test scripts/test-session-request.mjs scripts/test-editor-regressions.mjs && node scripts/test-showcase-public-preview.cjs && node scripts/test-showcase-thumbnails.cjs && node scripts/test-garment-3d-selection.mjs && npm run test:auth:ui && npm run test:booking:ui && npm run test:projects",
     "preview": "vite preview",
     "start": "serve --single --listen $PORT dist",
     "test:auth:ui": "node scripts/test-auth-ui.cjs",

@@ -189,11 +189,11 @@ async function makeTexture(source, colour) {
 
 }
 
-function PublishedGarment({ preview, configuration }) {
+function PublishedGarment({ preview, configuration, onSnapshot }) {
 
   const { scene } = useGLTF(configuration.url);
 
-  const { invalidate } = useThree();
+  const { invalidate, gl, scene: renderScene, camera } = useThree();
 
   const prepared = useMemo(() => {
 
@@ -349,11 +349,20 @@ function PublishedGarment({ preview, configuration }) {
 
     });
 
-    void Promise.all(tasks);
+    void Promise.all(tasks).then(() => {
+      if (!active || !onSnapshot) return;
+      requestAnimationFrame(() => {
+        if (!active) return;
+        try {
+          gl.render(renderScene, camera);
+          onSnapshot(gl.domElement.toDataURL("image/webp", 0.85));
+        } catch { onSnapshot(null); }
+      });
+    });
 
     return () => { active = false; };
 
-  }, [prepared, preview, configuration, invalidate]);
+  }, [prepared, preview, configuration, invalidate, gl, renderScene, camera, onSnapshot]);
 
   useEffect(() => () => {
 
@@ -417,7 +426,7 @@ class PreviewErrorBoundary extends Component {
 
   static getDerivedStateFromError() { return { error: true }; }
 
-  componentDidCatch(error) { console.error("3D Showcase preview failed:", error); }
+  componentDidCatch(error) { console.error("3D Showcase preview failed:", error); this.props.onError?.(); }
 
   render() {
 
@@ -433,9 +442,9 @@ class PreviewErrorBoundary extends Component {
 
 }
 
-export default function ShowcaseGarment3D({ preview }) {
+export default function ShowcaseGarment3D({ preview, onSnapshot, onError }) {
 
-  const [view, setView] = useState("perspective");
+  const [view, setView] = useState("front");
 
   const [resetKey, setResetKey] = useState(0);
 
@@ -455,6 +464,23 @@ export default function ShowcaseGarment3D({ preview }) {
 
   if (!configuration) return null;
 
+  if (onSnapshot) return (
+    <PreviewErrorBoundary onError={onError}>
+      <Canvas dpr={1} frameloop="demand"
+        camera={{ position: CAMERA_POSITIONS.front, fov: 35, near: 0.1, far: 80 }}
+        gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}>
+        <color attach="background" args={["#eef0f3"]} />
+        <ambientLight intensity={1.4} />
+        <hemisphereLight args={["#ffffff", "#475569", 1.4]} />
+        <directionalLight position={[4, 6, 6]} intensity={2.5} />
+        <directionalLight position={[-5, 2, -4]} intensity={1.5} />
+        <Suspense fallback={null}>
+          <PublishedGarment preview={preview} configuration={configuration} onSnapshot={onSnapshot} />
+        </Suspense>
+      </Canvas>
+    </PreviewErrorBoundary>
+  );
+
   return (
 
     <section className="flex h-full min-h-0 w-full flex-col bg-gradient-to-b from-slate-200 via-slate-100 to-slate-300 dark:from-slate-700 dark:via-slate-800 dark:to-slate-950" aria-label={`Read-only interactive 3D ${configuration.label} preview`}>
@@ -467,7 +493,7 @@ export default function ShowcaseGarment3D({ preview }) {
 
             dpr={[1, 1.5]} frameloop="demand"
 
-            camera={{ position: CAMERA_POSITIONS.perspective, fov: 35, near: 0.1, far: 80 }}
+            camera={{ position: CAMERA_POSITIONS.front, fov: 35, near: 0.1, far: 80 }}
 
             gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
 

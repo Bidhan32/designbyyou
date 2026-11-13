@@ -517,7 +517,7 @@ export default function CreatorShowcaseDetail() {
 
   // Preview state
 
-  const [previewMode, setPreviewMode] = useState("2d");
+  const [previewMode, setPreviewMode] = useState("3d");
 
   // 2D gallery state
 
@@ -647,7 +647,7 @@ export default function CreatorShowcaseDetail() {
 
   useEffect(() => {
 
-    setPreviewMode("2d");
+    setPreviewMode("3d");
 
     setActiveImageIndex(0);
 

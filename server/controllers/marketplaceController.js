@@ -102,6 +102,7 @@ exports.getMarketplace = async (req, res) => {
 
       WHERE d.is_published = TRUE
         AND d.is_public = TRUE
+          AND (u.role = 'creator' OR (u.role = 'designer' AND u.approval_status = 'approved'))
     `;
 
     const params = [];
@@ -231,6 +232,7 @@ exports.getDesignDetails = async (req, res) => {
         WHERE d.slug = $1
           AND d.is_published = TRUE
           AND d.is_public = TRUE
+          AND (u.role = 'creator' OR (u.role = 'designer' AND u.approval_status = 'approved'))
 
         LIMIT 1
       `,
