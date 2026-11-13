@@ -18,6 +18,7 @@ const { uploadPreview } = require("../middlewares/upload");
 const { protect } = require("../middlewares/authMiddleware");
 
 const router = express.Router();
+router.use((req, res, next) => { res.set("Cache-Control", "no-store"); next(); });
 
 /*=========================================================
 Rate Limit Response Helper
@@ -273,4 +274,8 @@ Administrator creation must never be exposed through the
 public authentication router.
 =========================================================*/
 
+const sessions = require("../services/authSessions");
+router.get("/session", protect, sessions.status);
+router.post("/session/activity", protect, sessions.activity);
+router.post("/logout", protect, sessions.logout);
 module.exports = router;

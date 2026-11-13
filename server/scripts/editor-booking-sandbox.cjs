@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
 const path = require("node:path");
 const jwt = require("jsonwebtoken");
-const { sandboxDatabase } = require("./support/sandbox-database.cjs");
+const { sandboxDatabase, sandboxToken } = require("./support/sandbox-database.cjs");
 const { isolatedServer } = require("./support/isolated-app.cjs");
 require("dotenv").config({ path: path.resolve(__dirname, "../.env"), quiet: true });
 let isolated, server, origin, created = 0;
@@ -26,7 +26,7 @@ function expect(response, status) { assert.equal(response.status, status, JSON.s
 async function fixture(role) {
   const id = crypto.randomUUID();
   await isolated.pool.query("INSERT INTO users(id,role,full_name,email,password_hash,is_email_verified,approval_status,token_version) VALUES($1,$2,'Booking Test',$3,'unused',true,'approved',0)", [id, role, `${id}@example.invalid`]);
-  return { id, token: jwt.sign({ id, tokenVersion: 0 }, process.env.JWT_SECRET, { algorithm: "HS256", expiresIn: "15m" }) };
+  return { id, token: await sandboxToken(isolated.pool, id, process.env.JWT_SECRET) };
 }
 (async () => {
   try {

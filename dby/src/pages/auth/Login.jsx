@@ -33,7 +33,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
 
 
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() => sessionStorage.getItem("session-ended") || "");
   const [formData, setFormData] = useState({
     email: location.state?.email || "",
     password: "",

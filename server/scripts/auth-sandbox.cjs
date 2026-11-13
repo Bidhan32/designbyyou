@@ -6,7 +6,7 @@ const assert = require("node:assert/strict");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { isolatedServer } = require("./support/isolated-app.cjs");
-const { sandboxDatabase } = require("./support/sandbox-database.cjs");
+const { sandboxDatabase, sandboxToken } = require("./support/sandbox-database.cjs");
 require("dotenv").config({ path: path.resolve(__dirname, "../.env"), quiet: true });
 const reportPath = path.resolve(__dirname, "../auth-sandbox-report.json");
 const report = { started_at: new Date().toISOString(), result: "running", checks: [], scope: "Disposable database, real HTTP routes and bcrypt; email captured in memory; no payment or upload calls" };
@@ -19,13 +19,13 @@ async function api(route, body, token, method = body === undefined ? "GET" : "PO
   const r = await fetch(origin + "/api/v1" + route, { method, headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(30000) });
   return { status: r.status, body: await r.json() };
 }
-const signed = (id, version = 0, claims = {}) => jwt.sign({ id, tokenVersion: version, ...claims }, process.env.JWT_SECRET, { algorithm: "HS256", expiresIn: "15m" });
+const signed = (id, version = 0, claims = {}) => sandboxToken(isolated.pool, id, process.env.JWT_SECRET, version, claims);
 const hashOtp = code => crypto.createHmac("sha256", process.env.OTP_SECRET).update(code).digest("hex");
 async function row(id) { return (await isolated.pool.query("SELECT * FROM users WHERE id=$1", [id])).rows[0]; }
 async function fixture(role = "creator", approval = "approved") {
   const id = crypto.randomUUID(), email = `${id}@example.invalid`;
   await isolated.pool.query("INSERT INTO users (id,role,full_name,email,password_hash,is_email_verified,approval_status,token_version) VALUES ($1,$2,'Auth Test',$3,$4,true,$5,0)", [id, role, email, await bcrypt.hash(password, 4), approval]);
-  return { id, email, token: signed(id) };
+  return { id, email, token: await signed(id) };
 }
 function code(email) {
   const mail = mails.filter(m => m.email === email).at(-1); assert.ok(mail, "Expected captured email");
@@ -104,13 +104,13 @@ async function main() {
   });
   const creator = await fixture(), outsider = await fixture(), designer = await fixture("designer"), pending = await fixture("designer", "pending");
   await step("Fresh account state defeats forged roles, suspension, deletion, and old token versions", async () => {
-    expect(await api("/designer/me", undefined, signed(creator.id, 0, { role: "designer" })), 403);
+    expect(await api("/designer/me", undefined, await signed(creator.id, 0, { role: "designer" })), 403);
     expect(await api("/creators/editor-projects", undefined, designer.token), 403);
     await isolated.pool.query("UPDATE users SET approval_status='suspended' WHERE id=$1", [creator.id]);
     expect(await api("/auth/me", undefined, creator.token), 403);
     assert.equal(expect(await api("/auth/login", { email: creator.email, password }), 403).code, "ACCOUNT_SUSPENDED");
     await isolated.pool.query("UPDATE users SET approval_status='approved',token_version=1 WHERE id=$1", [creator.id]);
-    expect(await api("/auth/me", undefined, creator.token), 401); creator.token = signed(creator.id, 1);
+    expect(await api("/auth/me", undefined, creator.token), 401); creator.token = await signed(creator.id, 1);
     const deleted = await fixture(); await isolated.pool.query("DELETE FROM users WHERE id=$1", [deleted.id]);
     expect(await api("/auth/me", undefined, deleted.token), 401);
   });
@@ -140,6 +140,42 @@ async function main() {
     expect(await api(`/chat/history/${room}`, undefined, designer.token), 200);
     expect(await api(`/chat/history/${room}`, undefined, outsider.token), 403);
     expect(await api("/chat/send", { room_id: room, content: "Unauthorized" }, outsider.token), 403);
+  });
+  await step("Five-hour inactivity blocks reads and concurrent late heartbeats", async () => {
+    const u = await fixture(); const sid = jwt.decode(u.token).sid;
+    await isolated.pool.query("UPDATE auth_sessions SET last_active_at=NOW()-interval '5 hours' WHERE id=$1", [sid]);
+    expect(await api("/auth/me", undefined, u.token), 401);
+    const results = await Promise.all([api("/auth/session/activity", {}, u.token), api("/auth/session/activity", {}, u.token)]);
+    results.forEach(r => expect(r,401));
+  });
+  await step("Background reads do not renew idle time; explicit activity does", async () => {
+    const u = await fixture(); const sid = jwt.decode(u.token).sid;
+    await isolated.pool.query("UPDATE auth_sessions SET last_active_at=NOW()-interval '4 hours' WHERE id=$1", [sid]);
+    const before = (await isolated.pool.query("SELECT last_active_at FROM auth_sessions WHERE id=$1", [sid])).rows[0].last_active_at;
+    expect(await api("/auth/session", undefined, u.token),200);
+    expect(await api("/auth/me", undefined, u.token),200);
+    const after = (await isolated.pool.query("SELECT last_active_at FROM auth_sessions WHERE id=$1", [sid])).rows[0].last_active_at;
+    assert.equal(+before,+after);
+    expect(await api("/auth/session/activity", {}, u.token),200);
+    const renewed = (await isolated.pool.query("SELECT last_active_at FROM auth_sessions WHERE id=$1", [sid])).rows[0].last_active_at;
+    assert.ok(+renewed > +after);
+  });
+  await step("Logout revokes a copied token while another device remains signed in", async () => {
+    const u = await fixture(), second = await signed(u.id);
+    expect(await api("/auth/logout", {}, u.token),200);
+    expect(await api("/auth/me", undefined, u.token),401);
+    expect(await api("/auth/session/activity", {}, u.token),401);
+    expect(await api("/auth/me", undefined, second),200);
+    const legacy = jwt.sign({id:u.id,tokenVersion:0},process.env.JWT_SECRET,{expiresIn:'1h'});
+    expect(await api("/auth/me", undefined, legacy),401);
+    const mismatch = jwt.sign({...jwt.decode(second),id:creator.id,tokenVersion:1},process.env.JWT_SECRET);
+    expect(await api("/auth/me", undefined, mismatch),401);
+  });
+  await step("Absolute expiry cannot be renewed by user activity", async () => {
+    const u = await fixture(); const sid = jwt.decode(u.token).sid;
+    await isolated.pool.query("UPDATE auth_sessions SET expires_at=NOW()-interval '1 second' WHERE id=$1", [sid]);
+    expect(await api("/auth/session/activity", {}, u.token),401);
+    expect(await api("/auth/me", undefined, u.token),401);
   });
   report.result = "passed";
 }

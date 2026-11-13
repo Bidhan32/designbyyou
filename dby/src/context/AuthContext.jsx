@@ -15,6 +15,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import API from "../api/axios";
 import { requestSession } from "./sessionRequest";
+import { monitorSession } from "./sessionMonitor";
 
 /*=========================================================
 Context
@@ -41,6 +42,21 @@ export const AuthProvider = ({ children }) => {
 
   const [loading, setLoading] = useState(true);
   const [sessionError, setSessionError] = useState(null);
+  const [deadline, setDeadline] = useState(null);
+  const [clock, setClock] = useState(Date.now());
+  useEffect(() => {
+    if (!user) return;
+    const stop = monitorSession({ api: API, storage: localStorage, onDeadline: setDeadline });
+    const timer = window.setInterval(() => setClock(Date.now()), 30000);
+    return () => { stop(); window.clearInterval(timer); };
+  }, [user]);
+  useEffect(() => {
+    const sync = event => {
+      if (event.key === "token" || event.key === null) window.location.reload();
+    };
+    window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
+  }, []);
 
   /*=====================================================
     Restore Session
@@ -95,7 +111,8 @@ export const AuthProvider = ({ children }) => {
     =====================================================*/
 
   useEffect(() => {
-    const handleSessionInvalidated = () => {
+    const handleSessionInvalidated = (event) => {
+      sessionStorage.setItem("session-ended", event.detail?.message || "Your session ended. Please sign in again.");
       clearStoredAuth();
 
       setUser(null);
@@ -127,6 +144,8 @@ export const AuthProvider = ({ children }) => {
     }
 
     setSessionError(null);
+    sessionStorage.removeItem("session-ended");
+    setDeadline(null);
     localStorage.setItem("token", token);
 
     /*
@@ -144,7 +163,8 @@ export const AuthProvider = ({ children }) => {
     Logout
     =====================================================*/
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    const token = localStorage.getItem("token");
     clearStoredAuth();
 
     setUser(null);
@@ -154,7 +174,13 @@ export const AuthProvider = ({ children }) => {
             pending requests and protected-route state.
             */
 
-    window.location.assign("/login");
+    try {
+      if (token) await API.post("/auth/logout", {}, { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 });
+    } catch {
+      // Local logout still works offline; server expiry remains enforced.
+    } finally {
+      if (!localStorage.getItem("token")) window.location.assign("/login");
+    }
   }, []);
 
   /*=====================================================
@@ -203,7 +229,13 @@ export const AuthProvider = ({ children }) => {
     [user, loading, sessionError, loadUser, login, logout, refreshUser],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const remaining = deadline ? new Date(deadline).getTime() - clock : Infinity;
+  return <AuthContext.Provider value={value}>
+    {children}
+    {user && remaining <= 300000 && <div role="status" className="fixed bottom-4 left-4 right-4 z-[100] mx-auto max-w-lg rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-gray-900 shadow-lg">
+      Your session is ending soon. Save your work. Activity keeps you signed in for up to 24 hours; after that, sign in again.
+    </div>}
+  </AuthContext.Provider>;
 };
 
 /*=========================================================

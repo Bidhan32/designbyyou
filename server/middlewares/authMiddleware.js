@@ -442,6 +442,15 @@ exports.protect = async (req, res, next) => {
     7. ATTACH TRUSTED CURRENT ACCOUNT STATE
     =====================================================*/
 
+  let session;
+  try {
+    session = await require("../services/authSessions").check(decoded.sid, userId);
+  } catch (error) {
+    console.error("Session lookup failed:", error);
+    return sendAuthError(res, 503, "AUTH_SERVICE_UNAVAILABLE", "Authentication service is temporarily unavailable.");
+  }
+  if (!session) return sendAuthError(res, 401, "SESSION_ENDED", "Your session ended. Please sign in again.");
+
   req.user = {
     id: user.id,
 
@@ -465,6 +474,8 @@ exports.protect = async (req, res, next) => {
   };
 
   req.auth = {
+    sessionId: decoded.sid,
+    session,
     tokenIssuedAt: decoded.iat || null,
 
     tokenExpiresAt: decoded.exp || null,

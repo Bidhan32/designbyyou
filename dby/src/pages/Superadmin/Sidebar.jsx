@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAuth } from '../../context/AuthContext.helpers.js';
 import { NavLink, useLocation } from 'react-router-dom';
 import { 
     LayoutDashboard, 
@@ -11,6 +12,7 @@ import {
 
 const Sidebar = ({ closeSidebar }) => {
     const location = useLocation();
+    const { logout } = useAuth();
 
     const menuItems = [
         { name: 'Overview', path: '/superadmin/dashboard', icon: <LayoutDashboard size={18} /> },
@@ -18,12 +20,7 @@ const Sidebar = ({ closeSidebar }) => {
         { name: 'System Settings', path: '/superadmin/settings', icon: <Settings size={18} /> },
     ];
 
-    const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        localStorage.clear();
-        window.location.replace('/login');
-    };
+    const handleLogout = () => { void logout(); };
 
     const handleLinkClick = () => {
         if (window.innerWidth < 1024 && closeSidebar) {

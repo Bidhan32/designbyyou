@@ -47,6 +47,10 @@ async function sandboxDatabase() {
     let restored;
     try { restored = await inspectSchema(client); } finally { client.release(); }
     if (restored.missing.length || compareRestoredSchema(expected, restored).length) throw new Error("Disposable sandbox schema did not match the verified snapshot.");
+    const { loadMigrations, applyMigrations } = require("../../database/migration-engine.cjs");
+    const migrationClient = await pool.connect();
+    try { await applyMigrations(migrationClient, loadMigrations(path.join(directory, "migrations"))); }
+    finally { migrationClient.release(); }
     console.log(`Isolated database ready: ${name}`);
     return { pool, name, dispose };
   } catch (error) {
@@ -55,4 +59,9 @@ async function sandboxDatabase() {
   }
 }
 
-module.exports = { sandboxDatabase };
+async function sandboxToken(pool, id, secret, tokenVersion = 0, claims = {}) {
+  const sid = crypto.randomUUID();
+  await pool.query("INSERT INTO auth_sessions(id,user_id,expires_at) VALUES($1,$2,NOW()+interval '1 hour')", [sid,id]);
+  return require("jsonwebtoken").sign({ id, sid, tokenVersion, ...claims }, secret, { algorithm: "HS256", expiresIn: "1h" });
+}
+module.exports = { sandboxDatabase, sandboxToken };

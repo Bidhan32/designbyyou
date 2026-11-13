@@ -6,7 +6,7 @@ const assert = require("node:assert/strict");
 const Stripe = require("stripe");
 const jwt = require("jsonwebtoken");
 const { isolatedServer, assertTestKey } = require("./support/isolated-app.cjs");
-const { sandboxDatabase } = require("./support/sandbox-database.cjs");
+const { sandboxDatabase, sandboxToken } = require("./support/sandbox-database.cjs");
 require("dotenv").config({ path: path.resolve(__dirname, "../.env"), quiet: true });
 const run = crypto.randomUUID();
 const reportPath = path.resolve(__dirname, "../creator-wallet-sandbox-report.json");
@@ -25,7 +25,7 @@ function safeError(error) {
 async function step(name, fn) { await fn(); report.checks.push(name); console.log(`PASS ${name}`); }
 function expect(result, status) { assert.ok([status].flat().includes(result.status), `Expected HTTP ${status}, received ${result.status}: ${result.body.message || "unexpected response"}`); return result.body; }
 async function api(actor, route, body = {}) {
-  const token = actor ? jwt.sign({ id: actor, tokenVersion: 0 }, authSecret, { algorithm: "HS256", expiresIn: "1h" }) : null;
+  const token = actor ? await sandboxToken(isolated.pool, actor, authSecret) : null;
   const response = await fetch(`${origin}/api/v1/creator-finance${route}`, { method: "POST",
     headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });

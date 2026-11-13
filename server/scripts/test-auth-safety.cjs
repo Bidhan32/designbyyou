@@ -12,7 +12,7 @@ function response() { return { statusCode: 200, status(code) { this.statusCode =
 function challenge(payload = {}, expiresIn = "10m") {
   return jwt.sign({ id, email: "test@example.invalid", purpose: "email_verification_login", version: 0, ...payload }, process.env.JWT_SECRET, { algorithm: "HS256", expiresIn });
 }
-function token(payload = {}, options = {}) { return jwt.sign({ id, tokenVersion: 0, ...payload }, process.env.JWT_SECRET, { algorithm: "HS256", expiresIn: "1h", ...options }); }
+function token(payload = {}, options = {}) { return jwt.sign({ id, sid: crypto.randomUUID(), tokenVersion: 0, ...payload }, process.env.JWT_SECRET, { algorithm: "HS256", expiresIn: "1h", ...options }); }
 function setup(row = current, failDb = false) {
   const calls = [];
   const db = { async query(sql, values) { calls.push({ sql, values }); if (failDb) throw new Error("Injected DB outage"); return { rows: row ? [row] : [] }; } };
@@ -197,4 +197,21 @@ test("password change clears outstanding reset codes and increments the session 
   await users.updateSecurity({ user: { id }, body: { currentPassword: "Current-Test-123", newPassword: "Changed-Test-456" } }, res);
   assert.equal(res.statusCode, 200); assert.equal(res.body.requires_reauthentication, true);
   assert.match(calls[1], /FOR UPDATE/); assert.equal(calls.at(-1), "COMMIT");
+});
+
+test("issued sessions cap long JWT lifetimes at 24 hours without storing the bearer token", async () => {
+  const previous = process.env.JWT_EXPIRES_IN;
+  const writes = [];
+  const sessions = isolatedServer({ db: { async query(sql, values) { writes.push({sql,values}); return {rows:[]}; } }, stripe:{} }).load("services/authSessions.js");
+  try {
+    process.env.JWT_EXPIRES_IN = "30d";
+    const signed = await sessions.issue(id,"creator",0,process.env.JWT_SECRET);
+    const claims = jwt.verify(signed,process.env.JWT_SECRET);
+    assert.equal(claims.exp-claims.iat,86400);
+    assert.equal(writes[0].values[0],claims.sid);
+    assert.equal(writes[0].values.includes(signed),false);
+    process.env.JWT_EXPIRES_IN = "2h";
+    const short = jwt.verify(await sessions.issue(id,"creator",0,process.env.JWT_SECRET),process.env.JWT_SECRET);
+    assert.equal(short.exp-short.iat,7200);
+  } finally { if(previous === undefined) delete process.env.JWT_EXPIRES_IN; else process.env.JWT_EXPIRES_IN=previous; }
 });

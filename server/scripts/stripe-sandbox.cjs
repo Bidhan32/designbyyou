@@ -6,7 +6,7 @@ const assert = require("node:assert/strict");
 const Stripe = require("stripe");
 const jwt = require("jsonwebtoken");
 const { isolatedServer, assertTestKey } = require("./support/isolated-app.cjs");
-const { sandboxDatabase } = require("./support/sandbox-database.cjs");
+const { sandboxDatabase, sandboxToken } = require("./support/sandbox-database.cjs");
 
 require("dotenv").config({ path: path.resolve(__dirname, "../.env"), quiet: true });
 const run = crypto.randomUUID();
@@ -37,7 +37,7 @@ function expectStatus(response, expected, label) {
   return response.body;
 }
 async function request(route, { actor = "creator", method = "POST", body = {}, headers = {} } = {}) {
-  const token = actor ? jwt.sign({ id: actors[actor], tokenVersion: 0 }, authSecret, { algorithm: "HS256", expiresIn: "1h" }) : null;
+  const token = actor ? await sandboxToken(isolated.pool, actors[actor], authSecret) : null;
   const response = await fetch(`${origin}/api/v1/p2p-bookings${route}`, {
     method, headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...headers },
     ...(method === "GET" ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(30000),

@@ -2,7 +2,7 @@
 const fs = require("node:fs"), path = require("node:path"), crypto = require("node:crypto");
 const assert = require("node:assert/strict"), Stripe = require("stripe"), jwt = require("jsonwebtoken");
 const { isolatedServer, assertTestKey } = require("./support/isolated-app.cjs");
-const { sandboxDatabase } = require("./support/sandbox-database.cjs");
+const { sandboxDatabase, sandboxToken } = require("./support/sandbox-database.cjs");
 require("dotenv").config({ path: path.resolve(__dirname, "../.env"), quiet: true });
 const run = crypto.randomUUID(), reportPath = path.resolve(__dirname, "../subscription-sandbox-report.json");
 const report = { run, result: "running", started_at: new Date().toISOString(), checks: [], cleanup: [],
@@ -16,7 +16,7 @@ function safeError(e) { return e.type?.startsWith("Stripe") ? `${e.type}${e.code
 async function step(name, fn) { await fn(); report.checks.push(name); console.log(`PASS ${name}`); }
 function expect(r, status) { assert.ok([status].flat().includes(r.status), `Expected HTTP ${status}, received ${r.status}: ${r.body.message || "unexpected response"}`); return r.body; }
 async function api(actor, route, body = {}, method = "POST") {
-  const token = actor ? jwt.sign({ id: actor, tokenVersion: 0 }, authSecret, { algorithm: "HS256", expiresIn: "1h" }) : null;
+  const token = actor ? await sandboxToken(isolated.pool, actor, authSecret) : null;
   const r = await fetch(`${origin}/api/v1/subscription${route}`, { method,
     headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     ...(method === "GET" ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(30000) });

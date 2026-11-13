@@ -144,19 +144,8 @@ function getJwtSecret() {
   }
   return secret;
 }
-function signToken(id, role, tokenVersion) {
-  return jwt.sign(
-    {
-      id,
-      role,
-      tokenVersion,
-    },
-    getJwtSecret(),
-    {
-      expiresIn: process.env.JWT_EXPIRES_IN || "24h",
-      algorithm: "HS256",
-    },
-  );
+async function signToken(id, role, tokenVersion) {
+  return require("../services/authSessions").issue(id, role, tokenVersion, getJwtSecret());
 }
 /*=========================================================
 1. REGISTER
@@ -571,7 +560,7 @@ exports.verifyEmail = async (req, res) => {
       status: "success",
       message: "Email verified successfully. You can now sign in.",
       ...(loginChallenge && ["creator", "designer"].includes(normalizeRole(result.rows[0].role))
-        ? { token: signToken(result.rows[0].id, normalizeRole(result.rows[0].role), Number(result.rows[0].token_version)) }
+        ? { token: await signToken(result.rows[0].id, normalizeRole(result.rows[0].role), Number(result.rows[0].token_version)) }
         : {}),
     });
   } catch (error) {
@@ -877,7 +866,7 @@ exports.login = async (req, res) => {
         message: "Unable to load this account.",
       });
     }
-    const token = signToken(
+    const token = await signToken(
       preUser.id,
       role,
       Number(preUser.token_version ?? 0),

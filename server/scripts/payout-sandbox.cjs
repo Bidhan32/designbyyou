@@ -5,7 +5,7 @@ const crypto = require("node:crypto");
 const assert = require("node:assert/strict");
 const jwt = require("jsonwebtoken");
 const { isolatedServer } = require("./support/isolated-app.cjs");
-const { sandboxDatabase } = require("./support/sandbox-database.cjs");
+const { sandboxDatabase, sandboxToken } = require("./support/sandbox-database.cjs");
 require("dotenv").config({ path: path.resolve(__dirname, "../.env"), quiet: true });
 const reportPath = path.resolve(__dirname, "../payout-sandbox-report.json");
 const report = { started_at: new Date().toISOString(), result: "running", checks: [],
@@ -27,7 +27,7 @@ async function user(role = "designer", country = "Nepal") {
   return id;
 }
 async function api(actor, route, body = {}, method = "POST") {
-  const token = actor ? jwt.sign({ id: actor, tokenVersion: 0 }, authSecret, { algorithm: "HS256", expiresIn: "15m" }) : null;
+  const token = actor ? await sandboxToken(isolated.pool, actor, authSecret) : null;
   const response = await fetch(`${origin}/api/v1${route}`, { method,
     headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     ...(method === "GET" ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(30000) });

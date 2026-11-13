@@ -47,6 +47,7 @@ Session Failure Codes
 =========================================================*/
 
 const INVALID_SESSION_CODES = new Set([
+  "SESSION_ENDED",
   "TOKEN_EXPIRED",
   "INVALID_TOKEN",
   "SESSION_REVOKED",
@@ -92,7 +93,11 @@ API.interceptors.response.use(
         ACCOUNT_NOT_FOUND
         -------------------------------------------------*/
 
-    if (status === 401 && INVALID_SESSION_CODES.has(code)) {
+    const sentToken = error.config?.headers?.Authorization;
+    const currentToken = localStorage.getItem("token");
+    if (currentToken && sentToken === `Bearer ${currentToken}` &&
+        ((status === 401 && INVALID_SESSION_CODES.has(code)) ||
+         (status === 403 && code === "ACCOUNT_SUSPENDED"))) {
       localStorage.removeItem("token");
 
       localStorage.removeItem("user");
