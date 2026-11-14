@@ -44,6 +44,25 @@ async function load(relative) {
   assert.equal(store.getState().persistence.dirty, true);
   store.getState().markSaved(store.getState().revision); assert.equal(store.getState().persistence.dirty, false);
   console.log("PASS Edits made during a save remain dirty until their own save succeeds");
+  const { default: recovery } = await load("../src/pages/sketches/editor/useDraftRecovery.js");
+  const savedDrafts = new Map(); let controls;
+  const storage = { put: async row => savedDrafts.set(row.key, structuredClone(row)), remove: async key => savedDrafts.delete(key), list: async owner => [...savedDrafts.values()].filter(row => row.owner === owner) };
+  function RecoveryProbe({ owner }) { controls = recovery(store, owner, storage); return null; }
+  root = createRoot(host);
+  await act(async () => root.render(h(RecoveryProbe, {owner:"alice"})));
+  await act(async () => { store.getState().setDocumentName("Recover my offline work"); });
+  await act(async () => root.unmount());
+  assert.equal(savedDrafts.size,1);
+  root = createRoot(host);
+  await act(async () => root.render(h(RecoveryProbe, {owner:"bob"})));
+  assert.equal(controls.drafts.length,0);
+  await act(async () => root.render(h(RecoveryProbe, {owner:"alice"})));
+  assert.equal(controls.drafts.length,1);
+  assert.equal(controls.drafts[0].project.document.name,"Recover my offline work");
+  await act(async () => controls.discard(controls.drafts[0]));
+  assert.equal(savedDrafts.size,0);
+  await act(() => root.unmount());
+  console.log("PASS Draft capture survives editor unmount, reappears for its owner only, and can be explicitly removed");
   globalThis.__projectsAPI = { get: async () => ({ data: { data: [{ id: "123", title: "Summer shirt", updated_at: "2026-11-12T12:00:00Z" }] } }) };
   const { default: Projects } = await load("../src/pages/Creator/CreatorProjects.jsx");
   root = createRoot(host);

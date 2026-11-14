@@ -13,7 +13,7 @@
     "start": "serve --config ../serve.json --listen $PORT dist",
     "test:auth:ui": "node scripts/test-auth-ui.cjs",
     "test:booking:ui": "node scripts/test-editor-booking-ui.cjs && node scripts/test-booking-checkout.cjs && node scripts/test-modal-focus.cjs",
-    "test:projects": "node scripts/test-cloud-projects.cjs"
+    "test:projects": "node --test scripts/test-draft-recovery.mjs && node scripts/test-cloud-projects.cjs"
   },
   "dependencies": {
     "@avaturn/sdk": "^1.1.4",

@@ -22,6 +22,8 @@ import API from "/src/api/axios";
 import EditorCanvas from "./EditorCanvas";
 import FashionEditorBookingModal from "./FashionEditorBookingModal";
 import useCloudAutosave from "./useCloudAutosave";
+import useDraftRecovery from "./useDraftRecovery";
+import { useAuth } from "../../../context/AuthContext.helpers.js";
 import GarmentTemplateBrowser from "./GarmentTemplateBrowser";
 import GarmentTextControls, { GarmentTextStyleFields } from "./GarmentTextControls";
 import GarmentPatternControls from "./GarmentPatternControls";
@@ -2193,8 +2195,19 @@ function FashionEditor() {
   const [projectSaving, setProjectSaving] = useState(false);
   const [saveConflict, setSaveConflict] = useState(false);
   const cloudCreateKey = useRef(null);
+  const { user: signedInUser } = useAuth();
+  const [online, setOnline] = useState(() => navigator.onLine);
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => { window.removeEventListener("online", update); window.removeEventListener("offline", update); };
+  }, []);
   const initialProjectId = useRef(routeProjectId);
   useEffect(() => { if (!initialProjectId.current) newDocument(); }, [newDocument]);
+
+  const { drafts: recoveryDrafts, error: draftError, saved: markDraftSaved, discard: discardDraft } = useDraftRecovery(useFashionEditorStore, signedInUser?.id);
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
 
   const [showcaseShareOpen, setShowcaseShareOpen] = useState(false);
 
@@ -3083,6 +3096,10 @@ function FashionEditor() {
     async (projectOverride = null, options = {}) => {
       setMobileMenuOpen(false);
 
+      if (!navigator.onLine) {
+        if (!options.silent) showToast("You are offline. Download a copy or reconnect to save to cloud.", "error");
+        return null;
+      }
       if (saveInFlightRef.current || projectLoading) {
         return null;
       }
@@ -3188,7 +3205,10 @@ function FashionEditor() {
         );
 
         // A recovered create may contain an earlier revision; save current work next.
-        if (!response.data?.reused) markSaved(savedRevision);
+        if (!response.data?.reused) {
+          markSaved(savedRevision);
+          void markDraftSaved(project.document.id, savedRevision);
+        }
         setSaveConflict(false);
 
         setEditorError(null);
@@ -3256,6 +3276,7 @@ function FashionEditor() {
       setSaving,
       setSaveError,
       markSaved,
+      markDraftSaved,
       navigate,
       showToast,
     ],
@@ -3267,13 +3288,32 @@ function FashionEditor() {
 
   useCloudAutosave({
     dirty: persistence.dirty, revision, saving: projectSaving,
-    blocked: projectLoading || saveConflict || Boolean(routeProjectId && (String(routeProjectId) !== String(cloudProjectId) || !cloudProjectVersion)),
+    blocked: !online || projectLoading || saveConflict || Boolean(routeProjectId && (String(routeProjectId) !== String(cloudProjectId) || !cloudProjectVersion)),
     failed: Boolean(persistence.error), onSave: handleSaveProject,
   });
-  const cloudSaveLabel = projectLoading ? "Loading design…" : projectSaving ? "Saving to cloud…"
+  const cloudSaveLabel = !online ? "Offline — cloud save paused" : projectLoading ? "Loading design…" : projectSaving ? "Saving to cloud…"
     : saveConflict ? "Save conflict — download a copy before reloading"
     : persistence.error ? "Not saved — retrying…"
     : persistence.dirty ? "Changes pending…" : cloudProjectId ? "Saved to cloud" : "Autosave on";
+  const restoreDraft = (row) => {
+    if (row.owner !== signedInUser?.id || saveInFlightRef.current) return;
+    if (!confirmReplaceDocument()) return;
+    projectLoadControllerRef.current?.abort();
+    const recovered = structuredClone(row.project);
+    recovered.document.id = globalThis.crypto.randomUUID();
+    recovered.document.name = (recovered.document.name || "Untitled design") + " (recovered)";
+    loadProject(recovered);
+    useFashionEditorStore.setState(state => ({ persistence: { ...state.persistence, dirty: true } }));
+    cloudCreateKey.current = null;
+    setCloudProjectId(null);
+    setCloudProjectVersion(null);
+    setProjectLoading(false);
+    setSaveConflict(false);
+    setRecoveryOpen(false);
+    navigate(CREATOR_EDITOR_ROUTE, { replace: true });
+    window.requestAnimationFrame(fitCanvas);
+    showToast("Draft recovered as a separate copy. The original draft remains until you remove it.");
+  };
   const handleOpenProjects = async () => {
     if (saveInFlightRef.current) return;
     if (useFashionEditorStore.getState().persistence.dirty) {
@@ -3399,7 +3439,7 @@ function FashionEditor() {
           },
         );
 
-        if (!active) {
+        if (!active || abortController.signal.aborted) {
           return;
         }
 
@@ -3429,7 +3469,7 @@ function FashionEditor() {
 
         showToast("Cloud project loaded.");
       } catch (error) {
-        if (!active) {
+        if (!active || abortController.signal.aborted) {
           return;
         }
 
@@ -11442,6 +11482,20 @@ function FashionEditor() {
 
   return (
     <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-slate-950 text-slate-100">
+      {draftError && <div role="alert" className="shrink-0 bg-amber-100 p-3 text-sm text-amber-950">{draftError}</div>}
+      {recoveryDrafts.length > 0 && <div className="shrink-0 border-b border-slate-700 bg-slate-900 p-2 text-sm">
+        <button type="button" className="underline" aria-expanded={recoveryOpen} onClick={() => setRecoveryOpen(value => !value)}>
+          {recoveryDrafts.length} browser draft{recoveryDrafts.length === 1 ? "" : "s"} available — {recoveryOpen ? "hide" : "review"}
+        </button>
+        {recoveryOpen && <div className="max-h-48 overflow-y-auto p-2">
+          <p className="mb-2 text-slate-300">These drafts are stored on this browser. Recovery creates a separate cloud project when online.</p>
+          {recoveryDrafts.map(row => <div key={row.key} className="flex flex-wrap items-center gap-3 border-t border-slate-700 py-2">
+            <span className="min-w-0 flex-1 break-words">{row.project.document.name || "Untitled design"} · {new Date(row.updatedAt).toLocaleString()}</span>
+            <button type="button" disabled={projectSaving} className="rounded bg-white px-3 py-2 text-slate-900 disabled:opacity-50" onClick={() => restoreDraft(row)}>Recover copy</button>
+            <button type="button" className="px-3 py-2 underline" onClick={() => { if (window.confirm("Permanently remove this browser draft?")) void discardDraft(row); }}>Remove</button>
+          </div>)}
+        </div>}
+      </div>}
       <input
         ref={fileInputRef}
         type="file"
