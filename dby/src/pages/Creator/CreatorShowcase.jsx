@@ -158,7 +158,7 @@ import {
   User,
 } from "lucide-react";
 
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import API from "../../api/axios";
 import ShowcaseThumbnail from "./ShowcaseThumbnail";
@@ -1319,13 +1319,18 @@ export default function CreatorShowcase({ audience = "creator" }) {
               </button>
             </div>
 
-            <p
-              className="
-                mt-10 max-w-lg font-serif text-xl italic text-muted sm:text-2xl
-              "
-            >
-              “You don&apos;t just wear it. You create it.”
-            </p>
+            {isCreator && (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-line pt-3">
+                <p className="text-sm text-muted">Active members pay no booking connection fee.</p>
+                <Link
+                  to="/creator/wallet#subscription"
+                  className="inline-flex min-h-8 items-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-medium text-ink hover:bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2"
+                >
+                  View subscription
+                  <ChevronRight size={16} aria-hidden="true" />
+                </Link>
+              </div>
+            )}
           </div>
         </section>
       </div>
