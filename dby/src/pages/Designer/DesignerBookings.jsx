@@ -1,3 +1,4 @@
+import { deadlineMessage as getDeadlineMessage, paymentLabel } from "../../components/bookingProgress";
 /*
 =========================================================
 FashionVision Designer Bookings
@@ -49,6 +50,8 @@ const BOOKING_STATUS = Object.freeze({
   FINAL_PRODUCTION: "final_production",
   REVIEW_FINAL: "review_final",
   REVIEW: "review",
+  REFUND_PENDING: "refund_pending",
+  REFUND_FAILED: "refund_failed",
   CANCELLATION_PENDING: "cancellation_pending",
   COMPLETED: "completed",
   DELIVERED: "delivered",
@@ -73,6 +76,8 @@ const TAB_DEFINITIONS = Object.freeze([
       BOOKING_STATUS.REVIEW_FINAL,
       BOOKING_STATUS.REVIEW,
       BOOKING_STATUS.CANCELLATION_PENDING,
+      BOOKING_STATUS.REFUND_PENDING,
+      BOOKING_STATUS.REFUND_FAILED,
     ],
   },
   {
@@ -171,36 +176,6 @@ function formatDate(value) {
   });
 }
 
-function getDeadlineMessage(value) {
-  if (!value) {
-    return "Deadline not set";
-  }
-
-  const deadline = new Date(value);
-
-  if (Number.isNaN(deadline.getTime())) {
-    return "Deadline unavailable";
-  }
-
-  const difference = deadline.getTime() - Date.now();
-
-  const days = Math.ceil(difference / 86400000);
-
-  if (days < 0) {
-    return `${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"} overdue`;
-  }
-
-  if (days === 0) {
-    return "Due today";
-  }
-
-  if (days === 1) {
-    return "Due tomorrow";
-  }
-
-  return `${days} days remaining`;
-}
-
 function getApiErrorMessage(error) {
   return (
     error?.response?.data?.message ||
@@ -282,6 +257,13 @@ function getStatusDetails(status) {
         icon: FileCheck2,
       };
 
+    case BOOKING_STATUS.REFUND_PENDING:
+    case BOOKING_STATUS.REFUND_FAILED:
+      return {
+        ...getStatusDetails(BOOKING_STATUS.CANCELLATION_PENDING),
+        label: paymentLabel({status}),
+        description: status === BOOKING_STATUS.REFUND_FAILED ? "Support needs to review the refund." : "Wait for refund confirmation.",
+      };
     case BOOKING_STATUS.CANCELLATION_PENDING:
       return {
         label: "Cancellation Processing",
@@ -358,7 +340,7 @@ function getNextAction(status) {
     case BOOKING_STATUS.FINAL_PRODUCTION:
       return {
         label: "Submit Final Files",
-        detail: "Complete the booking",
+        detail: "Send the final files for creator approval",
         icon: UploadCloud,
         accentClass: "text-[#9b791d] dark:text-[#D4AF37]",
         panelClass: "border-[#D4AF37]/25 bg-[#D4AF37]/5",
@@ -902,7 +884,7 @@ function DesignerBookings() {
                               {formatDate(booking.deadline)}
                             </p>
                             <p className="mt-0.5 text-[11px] text-slate-500 dark:text-white/35">
-                              {getDeadlineMessage(booking.deadline)}
+                              {getDeadlineMessage(booking.deadline, booking.status)}
                             </p>
                           </div>
 
@@ -918,9 +900,7 @@ function DesignerBookings() {
                                   : "text-slate-600 dark:text-white/55"
                               }`}
                             >
-                              {booking.escrow_locked
-                                ? "Secured"
-                                : "Not secured"}
+                              {paymentLabel(booking)}
                             </p>
                           </div>
                         </div>

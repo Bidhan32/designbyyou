@@ -1,3 +1,5 @@
+import BookingNextStep from "../../components/BookingNextStep";
+import { deadlineMessage as getDeadlineMessage, canCancelBooking, paymentLabel } from "../../components/bookingProgress";
 import BookingDesignAttachment from "../../components/BookingDesignAttachment";
 /*
 =========================================================
@@ -217,36 +219,6 @@ function formatDateTime(value) {
     hour: "numeric",
     minute: "2-digit",
   });
-}
-
-function getDeadlineMessage(value) {
-  if (!value) {
-    return "No deadline has been set.";
-  }
-
-  const deadline = new Date(value);
-
-  if (Number.isNaN(deadline.getTime())) {
-    return "Deadline is unavailable.";
-  }
-
-  const days = Math.ceil((deadline.getTime() - Date.now()) / 86400000);
-
-  if (days < 0) {
-    const overdueDays = Math.abs(days);
-
-    return `${overdueDays} day${overdueDays === 1 ? "" : "s"} overdue`;
-  }
-
-  if (days === 0) {
-    return "Due today";
-  }
-
-  if (days === 1) {
-    return "Due tomorrow";
-  }
-
-  return `${days} days remaining`;
 }
 
 function getApiErrorMessage(error) {
@@ -533,7 +505,7 @@ function getAvailablePrimaryAction(status, escrowLocked) {
     };
   }
 
-  if (normalized === BOOKING_STATUS.FINAL_PRODUCTION) {
+  if (normalized === BOOKING_STATUS.FINAL_PRODUCTION && escrowLocked) {
     return {
       type: "final",
 
@@ -796,7 +768,7 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
 
                 <p>
                   {isReject
-                    ? "Rejecting closes an unfunded pending request. This action cannot be resumed from this page."
+                    ? "Rejecting ends this request. If payment was secured, its refund status will appear on the booking."
                     : "Funded cancellations may trigger Stripe refund and wallet reconciliation processing."}
                 </p>
               </div>
@@ -1236,19 +1208,8 @@ function DesignerBookingDetail() {
 
   const PrimaryIcon = primaryAction?.icon || ArrowRight;
 
-  const canReject =
-    status === BOOKING_STATUS.PENDING && !booking?.escrow_locked;
-
-  const canCancel =
-    Boolean(booking) &&
-    ![
-      BOOKING_STATUS.COMPLETED,
-      BOOKING_STATUS.DELIVERED,
-      BOOKING_STATUS.CANCELLED,
-      BOOKING_STATUS.CANCELLATION_PENDING,
-      BOOKING_STATUS.REFUND_PENDING,
-      BOOKING_STATUS.REFUND_FAILED,
-    ].includes(status);
+  const canReject = [BOOKING_STATUS.PENDING, BOOKING_STATUS.FUNDED].includes(status);
+  const canCancel = canCancelBooking(status) && !canReject;
 
   const creatorName =
     booking?.sender_name || booking?.creator_name || "Project Creator";
@@ -1350,7 +1311,7 @@ function DesignerBookingDetail() {
       Header
       =====================================================*/}
 
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/80 backdrop-blur-2xl dark:border-white/5 dark:bg-[#070707]/80">
+      <header className="lg:sticky lg:top-0 z-40 border-b border-slate-200/80 bg-white/80 backdrop-blur-2xl dark:border-white/5 dark:bg-[#070707]/80">
         <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-4 px-5 py-4 sm:px-8 lg:px-10">
           <Link
             to="/designer/bookings"
@@ -1376,7 +1337,7 @@ function DesignerBookingDetail() {
         </div>
       </header>
 
-      <div className="relative z-10 mx-auto max-w-[1280px] space-y-7 px-5 pt-8 sm:px-8 lg:px-10">
+      <div className="relative z-10 mx-auto max-w-[1280px] space-y-4 px-4 pt-3 sm:space-y-7 sm:pt-8 sm:px-8 lg:px-10">
         {/*=================================================
         Success message
         =================================================*/}
@@ -1506,9 +1467,9 @@ function DesignerBookingDetail() {
             Current phase
             =========================================*/}
 
-            <aside className="border-t border-slate-200 bg-slate-50/80 p-6 dark:border-white/5 dark:bg-white/[0.025] sm:p-8 xl:border-l xl:border-t-0">
+            <aside className="order-first border-b border-slate-200 bg-slate-50/80 p-4 xl:order-none xl:border-b-0 dark:border-white/5 dark:bg-white/[0.025] sm:p-8 xl:border-l xl:border-t-0">
               <div
-                className={`flex h-14 w-14 items-center justify-center rounded-2xl border border-current/15 bg-white shadow-sm dark:bg-black/20 ${statusDetails.accentClass}`}
+                className={`hidden h-14 w-14 items-center xl:flex justify-center rounded-2xl border border-current/15 bg-white shadow-sm dark:bg-black/20 ${statusDetails.accentClass}`}
               >
                 <StatusIcon
                   size={25}
@@ -1517,7 +1478,7 @@ function DesignerBookingDetail() {
               </div>
 
               <p
-                className={`mt-6 text-[10px] font-black uppercase tracking-[0.2em] ${statusDetails.accentClass}`}
+                className={`xl:mt-6 text-[10px] font-black uppercase tracking-[0.2em] ${statusDetails.accentClass}`}
               >
                 Current Phase
               </p>
@@ -1526,9 +1487,11 @@ function DesignerBookingDetail() {
                 {statusDetails.title}
               </h2>
 
-              <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-white/45">
+              <p className="mt-3 hidden text-sm leading-6 text-slate-500 dark:text-white/45 xl:block">
                 {statusDetails.description}
               </p>
+
+              <BookingNextStep booking={booking} role="designer" />
 
               <div className="mt-7 space-y-3">
                 {primaryAction && (
@@ -1975,7 +1938,7 @@ function DesignerBookingDetail() {
                       <LockKeyhole size={15} />
                     )}
 
-                    {booking.escrow_locked ? "Secured" : "Not secured"}
+                    {paymentLabel(booking)}
                   </span>
                 </div>
 
@@ -2016,7 +1979,7 @@ function DesignerBookingDetail() {
                   </p>
 
                   <p className="mt-1 text-xs text-slate-500 dark:text-white/40">
-                    {getDeadlineMessage(booking.deadline)}
+                    {getDeadlineMessage(booking.deadline, booking.status)}
                   </p>
                 </div>
 

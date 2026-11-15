@@ -1,3 +1,4 @@
+import { paymentLabel, canResumePayment } from "../../components/bookingProgress";
 "use strict";
 
 /*
@@ -1703,7 +1704,7 @@ export default function CreatorBookings() {
 
                 const statusDetails = getStatusDetails(status, designerName);
 
-                const actionDetails = getNextAction(status);
+                const actionDetails = getNextAction(canResumePayment(booking) ? BOOKING_STATUS.AWAITING_PAYMENT : status);
 
                 const StatusIcon = statusDetails.icon;
 
@@ -1949,7 +1950,7 @@ export default function CreatorBookings() {
                                   ${escrow.className}
                                 `}
                             >
-                              {escrow.label}
+                              {paymentLabel(booking)}
                             </p>
 
                             {booking?.refund_status && (

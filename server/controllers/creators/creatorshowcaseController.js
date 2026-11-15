@@ -2266,6 +2266,8 @@ exports.getTopDesigners = async (req, res) => {
 
                 'approved'
 
+              AND u.is_email_verified = TRUE
+
             ORDER BY
 
               COALESCE(

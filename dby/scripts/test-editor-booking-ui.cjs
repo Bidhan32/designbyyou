@@ -9,7 +9,13 @@ const React = require("react"), { act } = React, { createRoot } = require("react
 const h = React.createElement, host = document.getElementById("root");
 let root, closes = 0, saves = 0, posts = [], confirmations = 0, verificationAttempts = 0;
 globalThis.__booking = { API: {
-  get: async () => ({ data: { data: [{ id: "designer-1", full_name: "Test designer" }] } }),
+  get: async url => {
+    assert.equal(url, "/p2p-bookings/designers");
+    return { data: { data: [
+      { id: "designer-1", full_name: "First designer" },
+      { id: "designer-2", full_name: "Second designer" },
+    ] } };
+  },
   post: async (url, body) => {
     posts.push({ url, body });
     if (url.endsWith("/create")) {
@@ -32,6 +38,8 @@ async function load(relative) {
     define: { "import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY": '"pk_test_mock"', "import.meta.env.VITE_STRIPE_PUBLIC_KEY": '""', "import.meta.env.DEV": "true" },
     plugins: [{ name: "api-stub", setup(build) {
       build.onResolve({ filter: /api\/axios$/ }, () => ({ path: "api", namespace: "stub" }));
+      build.onResolve({ filter: /AuthContext\.helpers\.js$/ }, () => ({ path: "auth", namespace: "auth-stub" }));
+      build.onLoad({ filter: /.*/, namespace: "auth-stub" }, () => ({ contents: "export const useAuth = () => ({ user: { id: 'creator', role: 'creator' } });" }));
       build.onLoad({ filter: /.*/, namespace: "stub" }, () => ({ contents: "export default globalThis.__booking.API;" }));
     } }],
   });
@@ -45,9 +53,19 @@ async function input(id, value) {
 async function submit() { await act(async () => host.querySelector("form").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))); }
 async function click(text) { const node = [...host.querySelectorAll("button")].find(b => b.textContent === text); assert.ok(node, text); await act(async () => node.click()); }
 (async () => {
+  const Directory = await load("../src/pages/Creator/DesignerDirectory.jsx");
+  root = createRoot(host);
+  await act(async () => root.render(h(MemoryRouter, {}, h(Directory))));
+  const directoryIds = Array.from(host.querySelectorAll('a[href*="bookings/new?designer_id="]'),
+    link => new URL(link.href).searchParams.get("designer_id")).sort();
+  assert.deepEqual(directoryIds, ["designer-1", "designer-2"]);
+  await act(() => root.unmount());
   const Modal = await load("../src/pages/sketches/editor/FashionEditorBookingModal.jsx");
   root = createRoot(host);
   await act(async () => root.render(h(MemoryRouter, {}, h(Modal, { open: true, onClose: () => closes++, previewDataUrl: "data:image/png;base64,AAAA", onSaveProject: async (_, options) => { saves++; assert.equal(options.bookingPreview, "data:image/png;base64,AAAA"); return { id: "123", version: 7 }; } }))));
+  const editorIds = Array.from(document.querySelectorAll("#booking-designer option"), option => option.value).filter(Boolean).sort();
+  assert.deepEqual(editorIds, directoryIds);
+  console.log("PASS The unfiltered creator directory and Fashion Editor display the same two designer IDs");
   await submit(); assert.equal(saves, 0); assert.match(host.textContent, /Select an eligible designer/);
   await input("booking-designer", "designer-1"); await input("booking-brief", "Please make a prototype from my private design."); await input("booking-price", "100");
   await input("booking-deadline", new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10));

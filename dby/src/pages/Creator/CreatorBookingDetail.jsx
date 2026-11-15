@@ -1,3 +1,5 @@
+import BookingNextStep from "../../components/BookingNextStep";
+import { deadlineMessage as getDeadlineMessage, canResumePayment, canCancelBooking, paymentLabel } from "../../components/bookingProgress";
 import BookingDesignAttachment from "../../components/BookingDesignAttachment";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -56,11 +58,7 @@ const REVIEW_STATUSES = new Set([
   BOOKING_STATUS.REVIEW,
 ]);
 
-const TERMINAL_STATUSES = new Set([
-  BOOKING_STATUS.COMPLETED,
-  BOOKING_STATUS.DELIVERED,
-  BOOKING_STATUS.CANCELLED,
-]);
+
 
 /*
 =========================================================
@@ -151,38 +149,6 @@ function formatDate(value, includeTime = false) {
           year: "numeric",
         },
   );
-}
-
-function getDeadlineMessage(value) {
-  if (!value) {
-    return "No deadline was provided.";
-  }
-
-  const deadline = new Date(value);
-
-  if (Number.isNaN(deadline.getTime())) {
-    return "Deadline is unavailable.";
-  }
-
-  const difference = deadline.getTime() - Date.now();
-
-  const days = Math.ceil(difference / 86400000);
-
-  if (days < 0) {
-    const overdueDays = Math.abs(days);
-
-    return `${overdueDays} day${overdueDays === 1 ? "" : "s"} overdue`;
-  }
-
-  if (days === 0) {
-    return "Due today";
-  }
-
-  if (days === 1) {
-    return "Due tomorrow";
-  }
-
-  return `${days} days remaining`;
 }
 
 function getApiErrorMessage(error, fallback) {
@@ -1158,14 +1124,8 @@ export default function CreatorBookingDetail() {
     ? booking.prototype_message
     : booking.delivery_message;
 
-  const paymentCheckAvailable =
-    [BOOKING_STATUS.PENDING, BOOKING_STATUS.AWAITING_PAYMENT].includes(status) &&
-    !booking.escrow_locked &&
-    Boolean(booking.stripe_payment_intent_id);
-
-  const cancellationAllowed =
-    !TERMINAL_STATUSES.has(status) &&
-    ![BOOKING_STATUS.CANCELLATION_PENDING, BOOKING_STATUS.REFUND_PENDING, BOOKING_STATUS.REFUND_FAILED].includes(status);
+  const paymentCheckAvailable = canResumePayment(booking);
+  const cancellationAllowed = canCancelBooking(status);
 
   const whatsappContactEligible = WHATSAPP_CONTACT_STATUSES.has(status);
 
@@ -1177,13 +1137,7 @@ export default function CreatorBookingDetail() {
   const whatsappPartnerName =
     whatsappContact?.participant?.display_name || designerName;
 
-  const paymentStatusLabel = booking.escrow_locked
-    ? "Secured"
-    : [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.DELIVERED].includes(status)
-      ? "Released"
-      : status === BOOKING_STATUS.CANCELLED
-        ? "Closed"
-        : "Not secured";
+  const paymentStatusLabel = paymentLabel(booking);
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-slate-50 pb-20 text-slate-950 antialiased dark:bg-[#030303] dark:text-white">
@@ -1199,8 +1153,8 @@ export default function CreatorBookingDetail() {
 
       {/* Header */}
 
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/80 backdrop-blur-2xl dark:border-white/5 dark:bg-[#070707]/80">
-        <div className="mx-auto flex max-w-[1280px] flex-col gap-5 px-5 py-6 sm:px-8 lg:flex-row lg:items-center lg:justify-between lg:px-10">
+      <header className="lg:sticky lg:top-0 z-40 border-b border-slate-200/80 bg-white/80 backdrop-blur-2xl dark:border-white/5 dark:bg-[#070707]/80">
+        <div className="mx-auto flex max-w-[1280px] flex-col gap-2 px-4 py-3 sm:gap-5 sm:py-6 sm:px-8 lg:flex-row lg:items-center lg:justify-between lg:px-10">
           <div>
             <Link
               to="/creator/bookings"
@@ -1217,7 +1171,7 @@ export default function CreatorBookingDetail() {
               </span>
             </h1>
 
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-white/45">
+            <p className="mt-2 hidden max-w-2xl text-sm leading-6 sm:block text-slate-500 dark:text-white/45">
               Review your designer’s work and see what happens next.
             </p>
           </div>
@@ -1260,11 +1214,11 @@ export default function CreatorBookingDetail() {
         </div>
       </header>
 
-      <div className="relative z-10 mx-auto max-w-[1280px] px-5 pt-8 sm:px-8 lg:px-10">
+      <div className="relative z-10 mx-auto max-w-[1280px] px-4 pt-3 sm:pt-8 sm:px-8 lg:px-10">
         {/* Current stage */}
 
         <section
-          className={`mb-7 rounded-3xl border p-6 sm:p-7 ${statusDetails.panelClass}`}
+          className={`mb-4 rounded-3xl border p-4 sm:p-7 ${statusDetails.panelClass}`}
         >
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-4">
@@ -1290,6 +1244,9 @@ export default function CreatorBookingDetail() {
               </div>
             </div>
 
+            {reviewState && (
+              <a href="#booking-review" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white dark:bg-white dark:text-slate-900">{prototypeReview ? "Review prototype" : "Review final files"}</a>
+            )}
             {paymentCheckAvailable && (
               <Link
                 to={`/creator/bookings/new?booking_id=${encodeURIComponent(bookingId)}`}
@@ -1325,6 +1282,8 @@ export default function CreatorBookingDetail() {
             </div>
           )}
         </section>
+
+        <div className="mb-7"><BookingNextStep booking={booking} role="creator" /></div>
 
         {/* Cancelled */}
 
@@ -1362,7 +1321,7 @@ export default function CreatorBookingDetail() {
                 ===================================================== */}
 
             {reviewState && (
-              <section className="overflow-hidden rounded-3xl border border-[#D4AF37]/30 bg-white shadow-sm dark:bg-[#0B0B0B] dark:shadow-2xl">
+              <section id="booking-review" tabIndex={-1} className="scroll-mt-24 overflow-hidden rounded-3xl border border-[#D4AF37]/30 bg-white shadow-sm dark:bg-[#0B0B0B] dark:shadow-2xl">
                 <div className="border-b border-slate-200 bg-[#D4AF37]/5 p-6 dark:border-white/5 sm:p-7">
                   <div className="flex items-start gap-4">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#D4AF37]/25 bg-[#D4AF37]/10 text-[#9B791D] dark:text-[#D4AF37]">
@@ -1924,7 +1883,7 @@ export default function CreatorBookingDetail() {
                     </p>
 
                     <p className="mt-1 text-xs text-slate-500 dark:text-white/35">
-                      {getDeadlineMessage(booking.deadline)}
+                      {getDeadlineMessage(booking.deadline, booking.status)}
                     </p>
                   </div>
                 </div>

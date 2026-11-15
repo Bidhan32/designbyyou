@@ -35,8 +35,15 @@ async function fixture(role) {
     server = await new Promise(resolve => { const s = app.listen(0, "127.0.0.1", () => resolve(s)); });
     origin = `http://127.0.0.1:${server.address().port}`;
     const creator = await fixture("creator"), designer = await fixture("designer"), outsider = await fixture("creator");
+    const otherDesigner = await fixture("designer");
+    const unverified = await fixture("designer");
+    await isolated.pool.query("UPDATE users SET is_email_verified = false WHERE id = $1", [unverified.id]);
     const directory = expect(await api("/p2p-bookings/designers", creator.token), 200);
-    assert.ok(directory.data.some(row => row.id === designer.id));
+    const expectedDesigners = [designer.id, otherDesigner.id].sort();
+    assert.deepEqual(directory.data.map(row => row.id).sort(), expectedDesigners);
+    const showcase = expect(await api("/creator-showcase/top-designers", creator.token), 200);
+    assert.deepEqual(showcase.data.map(row => row.designer_id).sort(), expectedDesigners);
+    console.log("PASS Top Designers and the booking directory include both verified designers and exclude the unverified designer");
     const project = { schemaVersion: 2, document: { name: "Private booking design", width: 1200, height: 1200 }, layers: [], objects: {}, bookingPreview: "data:image/png;base64,AAAA" };
     const savedResponse = expect(await api("/creators/editor-projects", creator.token, { title: project.document.name, project_data: project }), 201);
     const saved = savedResponse.data?.project || savedResponse.data || savedResponse.project;
@@ -140,6 +147,18 @@ async function fixture(role) {
     assert.equal(Number(finalWallet.pending_escrow_balance), 0);
     assert.equal(Number(finalWallet.available_balance), 10);
     console.log('PASS Private payment resume, cancelled-payment rejection, creator rewards and funded rejection/refund without duplicate refund or earnings');
+    const designId = crypto.randomUUID();
+    await isolated.pool.query(
+      "INSERT INTO designs(id, owner_id, sku, slug, canvas_state, is_public, is_published) VALUES ($1,$2,'sample-shirt','sample-shirt','{}',true,true)",
+      [designId, otherDesigner.id],
+    );
+    const designBooking = { client_request_id: crypto.randomUUID(), booking_type: "marketplace", design_id: designId, brief_text: body.brief_text, agreed_price: 100, deadline: body.deadline };
+    const booked = expect(await api("/p2p-bookings/create", creator.token, { ...designBooking, receiver_id: otherDesigner.id }), 201).booking;
+    const checkout = expect(await api(`/p2p-bookings/${booked.id}/payment`, creator.token), 200);
+    assert.equal(checkout.booking.designer_id, otherDesigner.id);
+    assert.equal(booked.design_id, designId);
+    assert.equal(expect(await api("/p2p-bookings/create", creator.token, { ...designBooking, client_request_id: crypto.randomUUID(), receiver_id: designer.id }), 409).code, "DESIGN_UNAVAILABLE");
+    console.log("PASS Showcase checkout preserves the design and its owner and rejects a different designer");
     console.log("Editor booking sandbox: PASSED (real HTTP and disposable PostgreSQL; Stripe mocked, no charges).");
   } finally {
     if (server) await new Promise(resolve => server.close(resolve));
