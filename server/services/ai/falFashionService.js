@@ -94,8 +94,14 @@ async function generateFashionImage({
 
   const fal = await getFalClient();
 
-  const result = await fal.subscribe(DEFAULT_MODEL, {
-    input: {
+  // Submit exactly once. The SDK's queue.submit automatically retries POSTs.
+  const signal = AbortSignal.timeout(120000);
+  const submission = await fetch(`https://queue.fal.run/${DEFAULT_MODEL}`, {
+    method: "POST",
+    redirect: "error",
+    signal,
+    headers: { Authorization: `Key ${process.env.FAL_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
       image_url: source,
       prompt: safePrompt,
 
@@ -110,10 +116,13 @@ async function generateFashionImage({
       num_images: 1,
 
       safety_tolerance: "2",
-    },
-
-    logs: false,
+    }),
   });
+  if (!submission.ok) throw new Error("Preview submission could not be confirmed.");
+  const { request_id: requestId } = await submission.json();
+  if (!requestId) throw new Error("Preview submission returned no request ID.");
+  await fal.queue.subscribeToStatus(DEFAULT_MODEL, { requestId, logs: false, abortSignal: signal });
+  const result = await fal.queue.result(DEFAULT_MODEL, { requestId, abortSignal: signal });
 
   const images = Array.isArray(result?.data?.images)
     ? result.data.images

@@ -9,6 +9,7 @@ Version 1.0.0
 const {
   generateFashionImage,
 } = require("../services/ai/falFashionService");
+const { renderOnce } = require("../services/ai/fashionPreviewQuota");
 
 const {
   buildFashionPrompt,
@@ -175,22 +176,23 @@ exports.generateFashionPreview = async (
     Generate with FLUX Kontext
     =====================================================*/
 
-    const generation =
-      await generateFashionImage({
-        imageSource,
-
-        prompt,
-
-        aspectRatio:
-          cleanString(
-            body.aspectRatio,
-          ) || "1:1",
-
-        outputFormat:
-          cleanString(
-            body.outputFormat,
-          ) || "png",
-      });
+    if (prompt.length > 5000) {
+      return res.status(400).json({ success: false, message: "The AI fashion prompt is too long." });
+    }
+    if (!process.env.FAL_KEY) {
+      return res.status(503).json({ success: false, message: "AI fashion generation is currently unavailable." });
+    }
+    const input = {
+      imageSource,
+      prompt,
+      aspectRatio: cleanString(body.aspectRatio) || "1:1",
+      outputFormat: cleanString(body.outputFormat) || "png",
+    };
+    const admission = await renderOnce(req.user.id, input, generateFashionImage);
+    if (admission.status) {
+      return res.status(admission.status).json({ success: false, message: admission.message });
+    }
+    const generation = admission.result;
 
     /*=====================================================
     Success
