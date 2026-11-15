@@ -25,7 +25,10 @@ function setup() {
     if (/pg_advisory_unlock/.test(sql)) { if (unlockFails) throw new Error("Injected unlock failure"); return { rows: [] }; }
     throw new Error("Unexpected checkout transaction");
   }, release(discard) { calls.push({ release: true, discard }); } }; } };
-  const stripe = { customers: {
+  const stripe = { prices: { async retrieve(id) {
+    return { id, active: true, billing_scheme: "per_unit", unit_amount: 3500, currency: "usd",
+      recurring: { interval: "month", interval_count: { price_monthly: 1, price_quarterly: 3, price_yearly: 12 }[id], usage_type: "licensed" } };
+  } }, customers: {
     async retrieve() { return { id: "cus_owned", email: owner.email, name: owner.full_name, metadata }; },
     async update() { calls.push({ customerUpdate: true }); },
   }, subscriptions: { async list() { return { data: subscriptions, has_more: false }; } }, checkout: { sessions: {
@@ -40,9 +43,30 @@ function setup() {
     stats() { return { writes, portals, creates }; } };
 }
 async function checkout(s, plan = "monthly") { const res = response(); await s.controller.createCheckoutSession({ user: { id: s.owner.id }, body: { plan, client_request_id: randomUUID() } }, res); return res; }
-test("new checkout is paused by default before contacting Stripe", async () => {
-  const s = setup();
+test("eligible creators see the configured recurring prices and can checkout by default", async () => {
   delete process.env.CREATOR_SUBSCRIPTION_SIGNUPS_ENABLED;
+  try {
+    const s = setup();
+    const result = response();
+    await s.controller.getSubscriptionStatus({ user: { id: s.owner.id }, query: { offers: "1" } }, result);
+    assert.deepEqual(result.body.data.offers.map(offer => [offer.plan, offer.amount, offer.currency]), [
+      ["monthly", 35, "USD"], ["quarterly", 35, "USD"], ["yearly", 35, "USD"],
+    ]);
+    assert.equal((await checkout(s)).statusCode, 201);
+  } finally {
+    process.env.CREATOR_SUBSCRIPTION_SIGNUPS_ENABLED = "true";
+  }
+});
+test("a mismatched billing interval cannot be purchased", async () => {
+  const s = setup();
+  const monthly = await s.stripe.prices.retrieve("price_monthly");
+  s.stripe.prices.retrieve = async () => monthly;
+  assert.equal((await checkout(s, "quarterly")).statusCode, 503);
+  assert.equal(s.stats().creates, 0);
+});
+test("explicit pause blocks checkout before contacting Stripe", async () => {
+  const s = setup();
+  process.env.CREATOR_SUBSCRIPTION_SIGNUPS_ENABLED = "false";
   try {
     const result = await checkout(s);
     assert.equal(result.statusCode, 409);

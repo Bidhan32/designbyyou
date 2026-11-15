@@ -258,6 +258,27 @@ function getPlanPriceId(plan) {
   return priceId;
 }
 
+function signupsEnabled() {
+  return (process.env.CREATOR_SUBSCRIPTION_SIGNUPS_ENABLED ?? "true") === "true";
+}
+
+async function subscriptionOffer(plan, priceId) {
+  if (!priceId) return null;
+  const price = await getStripeClient().prices.retrieve(priceId);
+  const recurring = price.recurring;
+  const months = recurring?.interval === "year" ? 12 * recurring.interval_count
+    : recurring?.interval === "month" ? recurring.interval_count : 0;
+  if (!price.active || months !== { monthly: 1, quarterly: 3, yearly: 12 }[plan] ||
+      price.billing_scheme !== "per_unit" || recurring?.usage_type !== "licensed" ||
+      price.transform_quantity || !Number.isSafeInteger(price.unit_amount) || price.unit_amount <= 0) return null;
+
+  const currency = price.currency.toUpperCase();
+  const zeroDecimal = ["BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG", "RWF", "VND", "VUV", "XAF", "XOF", "XPF"];
+  const threeDecimal = ["BHD", "JOD", "KWD", "OMR", "TND"];
+  const divisor = zeroDecimal.includes(currency) ? 1 : threeDecimal.includes(currency) ? 1000 : 100;
+  return { plan, price_id: price.id, amount: price.unit_amount / divisor, currency };
+}
+
 function getPlanFromPriceId(priceId) {
   const normalizedPriceId = cleanText(priceId, 255);
 
@@ -1208,12 +1229,16 @@ exports.getSubscriptionStatus = async (req, res) => {
       }
     }
 
+    const data = serializeSubscriptionRow(creator, { providerSync });
+    if (req.query?.offers === "1" && !BLOCKING_SUBSCRIPTION_STATUSES.has(data.status)) {
+      data.signups_enabled = signupsEnabled();
+      if (data.signups_enabled) {
+        const offers = await Promise.allSettled(Array.from(CREATOR_SUBSCRIPTION_PLANS, plan => subscriptionOffer(plan, getPlanPriceId(plan))));
+        data.offers = offers.filter(result => result.status === "fulfilled" && result.value).map(result => result.value);
+      }
+    }
     return res.status(200).json({
-      status: "success",
-
-      data: serializeSubscriptionRow(creator, {
-        providerSync,
-      }),
+      status: "success", data,
     });
   } catch (error) {
     console.error("Creator subscription status fetch failed:", error);
@@ -1278,7 +1303,7 @@ protect
 =========================================================*/
 
 exports.createCheckoutSession = async (req, res) => {
-  if (process.env.CREATOR_SUBSCRIPTION_SIGNUPS_ENABLED !== "true") {
+  if (!signupsEnabled()) {
     return sendError(res, 409, "New subscriptions are currently paused.", {
       code: "SUBSCRIPTION_SIGNUPS_PAUSED",
     });
@@ -1330,6 +1355,12 @@ exports.createCheckoutSession = async (req, res) => {
   let checkoutClient;
   let checkoutLocked = false;
   try {
+    if (req.body?.expected_price_id && req.body.expected_price_id !== priceId) {
+      return sendError(res, 409, "The price changed. Refresh the plans before continuing.");
+    }
+    if (!await subscriptionOffer(plan, priceId)) {
+      return sendError(res, 503, "This billing interval is currently unavailable.");
+    }
     // Session lock only: no transaction or wallet row lock spans provider calls.
     checkoutClient = await db.connect();
     const lock = await checkoutClient.query("SELECT pg_try_advisory_lock(hashtext($1), hashtext($2)) AS locked", ["creator-subscription-checkout", creatorId]);

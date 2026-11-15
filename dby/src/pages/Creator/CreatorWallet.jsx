@@ -661,6 +661,8 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
   const [subscriptionError, setSubscriptionError] = useState("");
 
 
+  const subscriptionRequestRef = useRef(null);
+  const [checkoutPlanLoading, setCheckoutPlanLoading] = useState("");
   const [portalLoading, setPortalLoading] = useState(false);
 
   /*=======================================================
@@ -868,11 +870,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
 
       try {
         const response = await API.get("/subscription/status", {
-          params: refresh
-            ? {
-                refresh: 1,
-              }
-            : undefined,
+          params: { offers: 1, ...(refresh ? { refresh: 1 } : {}) },
 
           signal,
         });
@@ -1085,6 +1083,73 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
   /*=======================================================
   Billing Portal
   =======================================================*/
+
+  const handleSubscribe = async ({ plan, price_id }) => {
+    if (checkoutPlanLoading) {
+      return;
+    }
+
+    setSubscriptionError("");
+    setNotice(null);
+
+    setCheckoutPlanLoading(plan);
+
+    try {
+      if (
+        !subscriptionRequestRef.current ||
+        subscriptionRequestRef.current.plan !== plan
+      ) {
+        subscriptionRequestRef.current = {
+          plan,
+
+          id: createClientRequestId(),
+        };
+      }
+
+      const response = await API.post("/subscription/create-checkout-session", {
+        plan,
+        expected_price_id: price_id,
+        client_request_id: subscriptionRequestRef.current.id,
+      });
+
+      const url = response?.data?.url;
+
+      if (!url) {
+        throw new Error("Stripe Checkout URL was not returned.");
+      }
+
+      window.location.assign(url);
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error(
+          "Subscription Checkout failed:",
+          error?.response?.data || error,
+        );
+      }
+
+      const code = error?.response?.data?.code;
+
+      if (code === "CREATOR_SUBSCRIPTION_ALREADY_EXISTS") {
+        setNotice({
+          type: "info",
+          message:
+            "A Stripe subscription already exists for this account. Use Manage Billing instead.",
+        });
+
+        await fetchSubscription({
+          refresh: true,
+        });
+      } else {
+        setSubscriptionError(
+          error?.response?.data?.message ||
+            error?.message ||
+            "Unable to start subscription checkout.",
+        );
+      }
+    } finally {
+      setCheckoutPlanLoading("");
+    }
+  };
 
   const handleManageBilling = async () => {
     if (portalLoading) {
@@ -1896,12 +1961,29 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                 </div>
               )}
 
+              {subscription?.signups_enabled && (
+                <div className="mb-3 divide-y divide-line rounded-md border border-line">
+                  {subscription.offers?.length ? subscription.offers.map(offer => (
+                    <div key={offer.plan} className="flex flex-wrap items-center justify-between gap-3 p-3">
+                      <div>
+                        <h3 className="text-sm font-semibold">{getSubscriptionPlanLabel(offer.plan)}</h3>
+                        <p className="text-sm text-muted">{new Intl.NumberFormat(undefined, { style: "currency", currency: offer.currency, currencyDisplay: "code" }).format(offer.amount)} every {{ monthly: "month", quarterly: "3 months", yearly: "year" }[offer.plan]}</p>
+                      </div>
+                      <button type="button" disabled={Boolean(checkoutPlanLoading)} onClick={() => handleSubscribe(offer)}
+                        aria-label={`Subscribe to the ${offer.plan} plan`}
+                        className="h-9 rounded-md bg-action px-3 text-sm font-semibold text-on-action disabled:opacity-50">
+                        {checkoutPlanLoading === offer.plan ? "Opening checkout..." : "Subscribe"}
+                      </button>
+                    </div>
+                  )) : <p className="p-3 text-sm">Subscription prices are unavailable. <button type="button" className="underline" onClick={() => fetchSubscription({ refresh: true })}>Retry</button></p>}
+                </div>
+              )}
               {subscription && (
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="text-sm text-muted">
                     {currentSubscription.can_manage_billing
                       ? "Review invoices, update your payment method or manage your subscription in Stripe."
-                      : "New subscriptions are currently paused."}
+                      : currentSubscription.signups_enabled === false ? "New subscriptions are currently paused." : ""}
                   </p>
                   {currentSubscription.can_manage_billing && (
                     <button type="button" onClick={handleManageBilling} disabled={portalLoading}
