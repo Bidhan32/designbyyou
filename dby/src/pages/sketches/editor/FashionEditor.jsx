@@ -15,6 +15,7 @@ import React, {
   useState,
 } from "react";
 
+import { MousePointer2, Pencil, Eraser, Hand, Paintbrush, Minus, Shapes, Shirt, PaintBucket, Type, Image as ImageIcon, Grid2X2, Scan, Undo2, Redo2, ArrowLeftRight, SlidersHorizontal, X } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import API from "/src/api/axios";
@@ -446,94 +447,103 @@ const TOOL_DEFINITIONS = Object.freeze([
     id: EDITOR_TOOLS.SELECT,
     label: "Select",
     shortcut: "V",
-    symbol: "V",
+    icon: MousePointer2,
     enabled: true,
   },
   {
     id: EDITOR_TOOLS.PENCIL,
     label: "Pencil",
     shortcut: "P",
-    symbol: "P",
+    icon: Pencil,
     enabled: true,
   },
   {
     id: EDITOR_TOOLS.ERASER,
     label: "Eraser",
     shortcut: "E",
-    symbol: "E",
+    icon: Eraser,
     enabled: true,
   },
   {
     id: EDITOR_TOOLS.PAN,
     label: "Pan",
     shortcut: "H",
-    symbol: "H",
+    icon: Hand,
     enabled: true,
   },
   {
     id: EDITOR_TOOLS.BRUSH,
     label: "Brush",
     shortcut: "B",
-    symbol: "B",
+    icon: Paintbrush,
     enabled: true,
   },
   {
     id: EDITOR_TOOLS.LINE,
     label: "Line",
     shortcut: "L",
-    symbol: "L",
+    icon: Minus,
     enabled: true,
   },
   {
     id: EDITOR_TOOLS.SHAPE,
     label: "Shape",
     shortcut: "S",
-    symbol: "S",
+    icon: Shapes,
     enabled: true,
   },
   {
     id: EDITOR_TOOLS.CLOTHING,
     label: "Clothing",
     shortcut: "C",
-    symbol: "C",
+    icon: Shirt,
     enabled: true,
   },
   {
     id: EDITOR_TOOLS.FILL,
     label: "Fill",
     shortcut: "F",
-    symbol: "F",
+    icon: PaintBucket,
     enabled: true,
   },
   {
     id: EDITOR_TOOLS.TEXT,
     label: "Text",
     shortcut: "T",
-    symbol: "T",
+    icon: Type,
     enabled: true,
   },
   {
     id: EDITOR_TOOLS.IMAGE,
     label: "Image",
     shortcut: "I",
-    symbol: "I",
+    icon: ImageIcon,
     enabled: true,
   },
   {
     id: EDITOR_TOOLS.PATTERN,
     label: "Pattern",
     shortcut: "R",
-    symbol: "R",
+    icon: Grid2X2,
     enabled: true,
   },
   {
     id: EDITOR_TOOLS.PATTERN_MASK,
     label: "Pattern Mask",
     shortcut: "M",
-    symbol: "M",
+    icon: Scan,
     enabled: true,
   },
 ]);
+
+const MOBILE_PRIMARY_TOOLS = [
+  { id: EDITOR_TOOLS.SELECT, label: "Select" },
+  { id: EDITOR_TOOLS.PENCIL, label: "Draw" },
+  { id: EDITOR_TOOLS.CLOTHING, label: "Garment" },
+];
+const MOBILE_EXTRA_TOOLS = TOOL_DEFINITIONS.filter(tool =>
+  !MOBILE_PRIMARY_TOOLS.some(primary => primary.id === tool.id)
+);
 
 const SYMMETRY_MODE_OPTIONS = Object.freeze([
   {
@@ -1243,6 +1253,7 @@ function HeaderButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
+      aria-label={typeof children !== "string" && title ? title : undefined}
       className={[
         "inline-flex h-9 shrink-0 items-center justify-center rounded-md border px-3 text-xs font-semibold transition",
         active
@@ -1261,7 +1272,7 @@ function HeaderButton({
   );
 }
 
-function ToolButton({ tool, active, onClick, horizontal = false }) {
+function ToolButton({ tool, active, onClick }) {
   return (
     <button
       type="button"
@@ -1278,10 +1289,7 @@ function ToolButton({ tool, active, onClick, horizontal = false }) {
       }
       aria-pressed={active}
       className={[
-        "group shrink-0 rounded-md border transition",
-        horizontal
-          ? "flex h-9 min-w-[58px] flex-col items-center justify-center px-2"
-          : "flex h-9 w-14 flex-col items-center justify-center",
+        "flex h-8 w-full shrink-0 items-center gap-2 rounded-md border px-2 text-left transition focus-visible:outline-offset-[-2px]",
         active
           ? "border-line bg-action text-on-action"
           : "border-transparent bg-surface text-muted hover:border-line hover:bg-subtle hover:text-ink",
@@ -1292,9 +1300,9 @@ function ToolButton({ tool, active, onClick, horizontal = false }) {
         .filter(Boolean)
         .join(" ")}
     >
-      <span className="text-sm font-semibold">{tool.symbol}</span>
+      <tool.icon size={16} className="shrink-0" aria-hidden="true" />
 
-      <span className="mt-1 text-[11px] font-semibold uppercase tracking-wider">
+      <span className="whitespace-nowrap text-xs font-medium">
         {tool.label}
       </span>
     </button>
@@ -1712,8 +1720,8 @@ function ClothingMultiRegionColourPanel({
         </button>
         {disabled && <p className="mt-2 text-[10px] text-action">Unlock the garment and its layer to edit colors.</p>}
       </div>
-      <div className="mt-4 space-y-2 border-t border-line pt-3">
-        <strong className="block text-[11px] uppercase tracking-wide text-action">Apply artwork to selected regions</strong>
+      <details className="mt-4 space-y-2 border-t border-line pt-3">
+        <summary className="cursor-pointer text-xs font-semibold text-ink">Apply artwork to selected regions</summary>
         <p className="text-[10px] text-muted">Add a separate editable logo, text, or pattern layer to each selected garment part. Existing artwork stays intact (patterns replace the pattern on each selected part). One Apply = one Undo.</p>
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Batch 2D artwork type">
           {[{ id: "image", label: "Logo" }, { id: "pattern", label: "Pattern" }, { id: "text", label: "Text" }].map(({id, label}) =>
@@ -1744,9 +1752,9 @@ function ClothingMultiRegionColourPanel({
           </button>
         </>}
         <p className="text-[10px] text-muted">New artwork remains editable per region in 3D Studio. Existing single-region 2D artwork controls are unchanged.</p>
-      </div>
-      <div className="mt-4 space-y-2 border-t border-line pt-3" aria-label="Edit existing 2D garment text">
-        <strong className="block text-xs text-action">Phase 3.3 · Existing text layers</strong>
+      </details>
+      <details className="mt-4 space-y-2 border-t border-line pt-3">
+        <summary className="cursor-pointer text-xs font-semibold text-ink">Existing text layers</summary>
         <p className="text-[10px] text-muted">Choose a region and one of its saved text layers. Update its content or typography without affecting other layers.</p>
         <label className="block space-y-1 text-[10px] text-muted">Region
           <select className="w-full rounded-md border border-line bg-surface p-2 text-xs" value={editRegion}
@@ -1765,9 +1773,9 @@ function ClothingMultiRegionColourPanel({
             entry={currentText} disabled={disabled || applyingArtwork || transferBusy}
             onSave={saveExisting2DText}/>}
         </> : <p className="rounded-md border border-line bg-surface p-2 text-[10px] text-muted">No editable text on this region. Add text using the artwork controls above first.</p>}
-      </div>
-      <div className="mt-4 space-y-2 border-t border-line pt-3" aria-label="Edit existing 2D fabric patterns">
-        <strong className="block text-xs text-action">Phase 3.4 · Fabric Pattern Studio</strong>
+      </details>
+      <details className="mt-4 space-y-2 border-t border-line pt-3">
+        <summary className="cursor-pointer text-xs font-semibold text-ink">Fabric Pattern Studio</summary>
         <p className="text-[10px] text-muted">Edit the pattern in one region or copy its saved repeat design to your selected panels above. Text and logos are retained.</p>
         <label className="block space-y-1 text-[10px] text-muted">Pattern source region
           <select className="w-full rounded-md border border-line bg-surface p-2 text-xs" value={patternRegion}
@@ -1780,9 +1788,9 @@ function ClothingMultiRegionColourPanel({
           onSave={saveExisting2DPattern} onSync={syncPattern2D}
           syncTargets={patternTargets.length}/>
           : <p className="rounded border border-line bg-surface p-2 text-[10px] text-muted">This region has no fabric pattern yet. Upload one using the multi-region artwork tools above.</p>}
-      </div>
-      <div className="mt-4 space-y-2 border-t border-line pt-3" aria-label="2D copy mirror and synchronize garment artwork">
-        <strong className="block text-[11px] uppercase tracking-wide text-action">Phase 3.2 · Copy / Mirror / Sync artwork</strong>
+      </details>
+      <details className="mt-4 space-y-2 border-t border-line pt-3">
+        <summary className="cursor-pointer text-xs font-semibold text-ink">Copy / Mirror / Sync artwork</summary>
         <p className="text-[10px] text-muted">Choose the source region and layer, copy it, then use the region checkboxes above to select destinations. Paste appends; Sync replaces every destination's full artwork stack.</p>
         <label className="block space-y-1 text-[10px] text-muted">Copy from region
           <select className="w-full rounded border border-line bg-surface p-2 text-xs" value={resolvedSource}
@@ -1812,9 +1820,9 @@ function ClothingMultiRegionColourPanel({
             className="col-span-2 rounded border border-line bg-subtle px-2 py-2 text-xs text-action disabled:opacity-40">Sync now (replace target artwork)</button>
         </div>
         <p className="text-[10px] text-muted">Mirroring reverses horizontal position and rotation, not logo pixels or readable text. Sync is a one-time copy, not a permanent link. The source region is never overwritten.</p>
-      </div>
-      <section className="mt-4 space-y-3 border-t border-line pt-3" aria-label="Phase 3.5 2D artwork layer management">
-        <strong className="block text-xs text-action">Phase 3.5 · Manage &amp; clear artwork</strong>
+      </details>
+      <details className="mt-4 space-y-3 border-t border-line pt-3">
+        <summary className="cursor-pointer text-xs font-semibold text-ink">Manage &amp; clear artwork</summary>
         <p className="text-[10px] text-muted">Delete logos, text, or patterns in the selected regions above. Artwork resets never change garment colors; each confirmed change is one Undo step.</p>
         <p className="text-[10px] text-muted">Selected: {selected.length} region(s) · {selectionSummary.logos} logos · {selectionSummary.texts} text · {selectionSummary.pattern} patterns</p>
         <div className="grid grid-cols-2 gap-2">
@@ -1852,7 +1860,7 @@ function ClothingMultiRegionColourPanel({
           Reset all garment artwork ({allArtworkCount} layer{allArtworkCount === 1 ? "" : "s"})
         </button>
         {!onManageArtwork && <p className="text-[10px] text-action">Install the updated FashionEditor artwork management bridge.</p>}
-      </section>
+      </details>
     </details>
   );
 }
@@ -3291,10 +3299,9 @@ function FashionEditor() {
     blocked: !online || projectLoading || saveConflict || Boolean(routeProjectId && (String(routeProjectId) !== String(cloudProjectId) || !cloudProjectVersion)),
     failed: Boolean(persistence.error), onSave: handleSaveProject,
   });
-  const cloudSaveLabel = !online ? "Offline — cloud save paused" : projectLoading ? "Loading design…" : projectSaving ? "Saving to cloud…"
-    : saveConflict ? "Save conflict — download a copy before reloading"
-    : persistence.error ? "Not saved — retrying…"
-    : persistence.dirty ? "Changes pending…" : cloudProjectId ? "Saved to cloud" : "Autosave on";
+  const cloudSaveLabel = !online ? "Offline" : projectLoading ? "Loading" : projectSaving ? "Saving..."
+    : saveConflict ? "Save conflict" : persistence.error ? "Save failed"
+    : persistence.dirty ? "Changes pending" : cloudProjectId ? "Saved to cloud" : "Autosave on";
   const restoreDraft = (row) => {
     if (row.owner !== signedInUser?.id || saveInFlightRef.current) return;
     if (!confirmReplaceDocument()) return;
@@ -7366,7 +7373,7 @@ function FashionEditor() {
     }));
   }, [resetSymmetrySettingsAction]);
 
-  const openSymmetryProperties = useCallback(() => {
+  const openToolProperties = useCallback(() => {
     setUiState({
       rightPanelTab: "properties",
 
@@ -7456,6 +7463,7 @@ function FashionEditor() {
             onClick={() => {
               setPanelDrawerOpen(false);
             }}
+            aria-label="Close panel"
             title="Close panel"
             className="mr-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-line bg-surface text-lg text-muted hover:bg-subtle"
           >
@@ -7649,265 +7657,7 @@ function FashionEditor() {
 
         {rightPanelTab === "properties" && (
           <>
-            <PanelSection
-              title="Symmetry"
-              action={
-                <button
-                  type="button"
-                  onClick={handleToggleSymmetry}
-                  aria-pressed={Boolean(symmetry.enabled)}
-                  className={[
-                    "rounded-md border px-3 py-1 text-[10px] font-bold uppercase tracking-wide transition",
-                    symmetry.enabled
-                      ? "border-line bg-action text-on-action"
-                      : "border-line bg-surface text-muted hover:border-line hover:text-ink",
-                  ].join(" ")}
-                >
-                  {symmetry.enabled ? "On" : "Off"}
-                </button>
-              }
-            >
-              <div className="space-y-5">
-                <div>
-                  <span className="mb-2 block text-xs font-medium text-muted">
-                    Mirror mode
-                  </span>
 
-                  <div className="grid grid-cols-3 gap-2">
-                    {SYMMETRY_MODE_OPTIONS.map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => {
-                          handleSetSymmetryMode(option.value);
-                        }}
-                        aria-pressed={symmetry.mode === option.value}
-                        className={[
-                          "min-h-9 rounded-md border px-2 py-2 text-[10px] font-bold uppercase tracking-wide transition",
-                          symmetry.mode === option.value
-                            ? "border-line bg-subtle text-action"
-                            : "border-line bg-surface text-muted hover:border-line hover:text-ink",
-                        ].join(" ")}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {(symmetry.mode === "vertical" ||
-                  symmetry.mode === "four-way") && (
-                  <SliderField
-                    label="Vertical axis"
-                    value={Math.round(
-                      clamp(symmetry.axisX, 0, documentData.width),
-                    )}
-                    minimum={0}
-                    maximum={Math.max(1, numberOr(documentData.width, 1200))}
-                    step={1}
-                    suffix="px"
-                    onChange={(value) => {
-                      updateSymmetrySettings({
-                        axisX: value,
-                      });
-                    }}
-                  />
-                )}
-
-                {(symmetry.mode === "horizontal" ||
-                  symmetry.mode === "four-way") && (
-                  <SliderField
-                    label="Horizontal axis"
-                    value={Math.round(
-                      clamp(symmetry.axisY, 0, documentData.height),
-                    )}
-                    minimum={0}
-                    maximum={Math.max(1, numberOr(documentData.height, 1600))}
-                    step={1}
-                    suffix="px"
-                    onChange={(value) => {
-                      updateSymmetrySettings({
-                        axisY: value,
-                      });
-                    }}
-                  />
-                )}
-
-                <button
-                  type="button"
-                  onClick={handleCenterSymmetryAxes}
-                  className="min-h-9 w-full rounded-md border border-line bg-surface px-3 py-2 text-xs font-semibold text-ink hover:border-line hover:bg-subtle"
-                >
-                  Center symmetry axes
-                </button>
-
-                <div className="space-y-2">
-                  <label className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-line bg-surface px-3 py-2">
-                    <span className="text-xs font-medium text-muted">
-                      Show guide
-                    </span>
-
-                    <input
-                      type="checkbox"
-                      checked={symmetry.showGuide !== false}
-                      onChange={(event) => {
-                        updateSymmetrySettings({
-                          showGuide: event.target.checked,
-                        });
-                      }}
-                      className="h-4 w-4 accent-action"
-                    />
-                  </label>
-
-                  <label className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-line bg-surface px-3 py-2">
-                    <span className="text-xs font-medium text-muted">
-                      Snap near axis
-                    </span>
-
-                    <input
-                      type="checkbox"
-                      checked={symmetry.snapToAxis === true}
-                      onChange={(event) => {
-                        updateSymmetrySettings({
-                          snapToAxis: event.target.checked,
-                        });
-                      }}
-                      className="h-4 w-4 accent-action"
-                    />
-                  </label>
-
-                  <label className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-line bg-surface px-3 py-2">
-                    <span className="text-xs font-medium text-muted">
-                      Link mirrored copies
-                    </span>
-
-                    <input
-                      type="checkbox"
-                      checked={symmetry.linkedMirrors === true}
-                      onChange={(event) => {
-                        updateSymmetrySettings({
-                          linkedMirrors: event.target.checked,
-                        });
-                      }}
-                      className="h-4 w-4 accent-action"
-                    />
-                  </label>
-                </div>
-
-                <div className="grid grid-cols-[1fr_72px] items-center gap-3">
-                  <label className="block">
-                    <span className="mb-2 block text-xs font-medium text-muted">
-                      Guide colour
-                    </span>
-
-                    <input
-                      type="color"
-                      value={
-                        symmetry.guideColor || DEFAULT_SYMMETRY_GUIDE_COLOUR
-                      }
-                      onChange={(event) => {
-                        updateSymmetrySettings({
-                          guideColor: event.target.value,
-                        });
-                      }}
-                      className="h-11 w-full cursor-pointer rounded-md border border-line bg-surface p-1"
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className="mb-2 block text-xs font-medium text-muted">
-                      Opacity
-                    </span>
-
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="1"
-                      value={Math.round(
-                        clamp(symmetry.guideOpacity, 0, 1) * 100,
-                      )}
-                      onChange={(event) => {
-                        updateSymmetrySettings({
-                          guideOpacity: clamp(
-                            Number(event.target.value) / 100,
-                            0,
-                            1,
-                          ),
-                        });
-                      }}
-                      className="h-11 w-full rounded-md border border-line bg-surface px-2 text-xs text-ink outline-none focus:border-line"
-                    />
-                  </label>
-                </div>
-
-                <div>
-                  <span className="mb-2 block text-xs font-medium text-muted">
-                    Mirrored tools
-                  </span>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    {SYMMETRY_TOOL_OPTIONS.map((option) => {
-                      const available = option.available;
-
-                      const enabled = symmetry[option.settingKey] !== false;
-
-                      return (
-                        <button
-                          key={option.id}
-                          type="button"
-                          disabled={!available}
-                          onClick={() => {
-                            handleSetSymmetryToolEnabled(option.id, !enabled);
-                          }}
-                          aria-pressed={available && enabled}
-                          title={
-                            available
-                              ? `Toggle ${option.label} symmetry`
-                              : "Mirrored erasing will be added when EraserTool is integrated."
-                          }
-                          className={[
-                            "min-h-9 rounded-md border px-3 py-2 text-xs font-semibold transition",
-                            available && enabled
-                              ? "border-line bg-subtle text-action"
-                              : "border-line bg-surface text-muted",
-                            available
-                              ? "hover:border-line hover:text-ink"
-                              : "cursor-not-allowed opacity-40",
-                          ].join(" ")}
-                        >
-                          {option.label}
-                          {!available ? " · Next" : ""}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={openSymmetryProperties}
-                    className="min-h-9 rounded-md border border-line bg-surface px-3 py-2 text-xs font-semibold text-ink hover:border-line hover:bg-subtle"
-                  >
-                    Keep panel open
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleResetSymmetry}
-                    className="min-h-9 rounded-md border border-line bg-surface px-3 py-2 text-xs font-semibold text-muted hover:border-line hover:text-ink"
-                  >
-                    Reset
-                  </button>
-                </div>
-
-                <p className="rounded-md border border-line bg-subtle p-3 text-[10px] leading-relaxed text-muted">
-                  Symmetry currently works with Pencil, Brush, Line and Shape.
-                  Turn it on, choose a mode, then draw on the canvas.
-                </p>
-              </div>
-            </PanelSection>
 
             {activeTool === EDITOR_TOOLS.PENCIL && (
               <PanelSection title="Pencil">
@@ -11343,6 +11093,259 @@ function FashionEditor() {
               </PanelSection>
             )}
 
+            <PanelSection
+              title="Symmetry"
+              action={
+                <button
+                  type="button"
+                  onClick={handleToggleSymmetry}
+                  aria-pressed={Boolean(symmetry.enabled)}
+                  className={[
+                    "rounded-md border px-3 py-1 text-[10px] font-bold uppercase tracking-wide transition",
+                    symmetry.enabled
+                      ? "border-line bg-action text-on-action"
+                      : "border-line bg-surface text-muted hover:border-line hover:text-ink",
+                  ].join(" ")}
+                >
+                  {symmetry.enabled ? "On" : "Off"}
+                </button>
+              }
+            >
+              {symmetry.enabled && <div className="space-y-4">
+                <div>
+                  <span className="mb-2 block text-xs font-medium text-muted">
+                    Mirror mode
+                  </span>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    {SYMMETRY_MODE_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          handleSetSymmetryMode(option.value);
+                        }}
+                        aria-pressed={symmetry.mode === option.value}
+                        className={[
+                          "min-h-9 rounded-md border px-2 py-2 text-[10px] font-bold uppercase tracking-wide transition",
+                          symmetry.mode === option.value
+                            ? "border-line bg-subtle text-action"
+                            : "border-line bg-surface text-muted hover:border-line hover:text-ink",
+                        ].join(" ")}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {(symmetry.mode === "vertical" ||
+                  symmetry.mode === "four-way") && (
+                  <SliderField
+                    label="Vertical axis"
+                    value={Math.round(
+                      clamp(symmetry.axisX, 0, documentData.width),
+                    )}
+                    minimum={0}
+                    maximum={Math.max(1, numberOr(documentData.width, 1200))}
+                    step={1}
+                    suffix="px"
+                    onChange={(value) => {
+                      updateSymmetrySettings({
+                        axisX: value,
+                      });
+                    }}
+                  />
+                )}
+
+                {(symmetry.mode === "horizontal" ||
+                  symmetry.mode === "four-way") && (
+                  <SliderField
+                    label="Horizontal axis"
+                    value={Math.round(
+                      clamp(symmetry.axisY, 0, documentData.height),
+                    )}
+                    minimum={0}
+                    maximum={Math.max(1, numberOr(documentData.height, 1600))}
+                    step={1}
+                    suffix="px"
+                    onChange={(value) => {
+                      updateSymmetrySettings({
+                        axisY: value,
+                      });
+                    }}
+                  />
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleCenterSymmetryAxes}
+                  className="min-h-9 w-full rounded-md border border-line bg-surface px-3 py-2 text-xs font-semibold text-ink hover:border-line hover:bg-subtle"
+                >
+                  Center symmetry axes
+                </button>
+
+                <div className="space-y-2">
+                  <label className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-line bg-surface px-3 py-2">
+                    <span className="text-xs font-medium text-muted">
+                      Show guide
+                    </span>
+
+                    <input
+                      type="checkbox"
+                      checked={symmetry.showGuide !== false}
+                      onChange={(event) => {
+                        updateSymmetrySettings({
+                          showGuide: event.target.checked,
+                        });
+                      }}
+                      className="h-4 w-4 accent-action"
+                    />
+                  </label>
+
+                  <label className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-line bg-surface px-3 py-2">
+                    <span className="text-xs font-medium text-muted">
+                      Snap near axis
+                    </span>
+
+                    <input
+                      type="checkbox"
+                      checked={symmetry.snapToAxis === true}
+                      onChange={(event) => {
+                        updateSymmetrySettings({
+                          snapToAxis: event.target.checked,
+                        });
+                      }}
+                      className="h-4 w-4 accent-action"
+                    />
+                  </label>
+
+                  <label className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-line bg-surface px-3 py-2">
+                    <span className="text-xs font-medium text-muted">
+                      Link mirrored copies
+                    </span>
+
+                    <input
+                      type="checkbox"
+                      checked={symmetry.linkedMirrors === true}
+                      onChange={(event) => {
+                        updateSymmetrySettings({
+                          linkedMirrors: event.target.checked,
+                        });
+                      }}
+                      className="h-4 w-4 accent-action"
+                    />
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-[1fr_72px] items-center gap-3">
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-medium text-muted">
+                      Guide colour
+                    </span>
+
+                    <input
+                      type="color"
+                      value={
+                        symmetry.guideColor || DEFAULT_SYMMETRY_GUIDE_COLOUR
+                      }
+                      onChange={(event) => {
+                        updateSymmetrySettings({
+                          guideColor: event.target.value,
+                        });
+                      }}
+                      className="h-11 w-full cursor-pointer rounded-md border border-line bg-surface p-1"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-medium text-muted">
+                      Opacity
+                    </span>
+
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={Math.round(
+                        clamp(symmetry.guideOpacity, 0, 1) * 100,
+                      )}
+                      onChange={(event) => {
+                        updateSymmetrySettings({
+                          guideOpacity: clamp(
+                            Number(event.target.value) / 100,
+                            0,
+                            1,
+                          ),
+                        });
+                      }}
+                      className="h-11 w-full rounded-md border border-line bg-surface px-2 text-xs text-ink outline-none focus:border-line"
+                    />
+                  </label>
+                </div>
+
+                <div>
+                  <span className="mb-2 block text-xs font-medium text-muted">
+                    Mirrored tools
+                  </span>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {SYMMETRY_TOOL_OPTIONS.map((option) => {
+                      const available = option.available;
+
+                      const enabled = symmetry[option.settingKey] !== false;
+
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          disabled={!available}
+                          onClick={() => {
+                            handleSetSymmetryToolEnabled(option.id, !enabled);
+                          }}
+                          aria-pressed={available && enabled}
+                          title={
+                            available
+                              ? `Toggle ${option.label} symmetry`
+                              : "Mirrored erasing will be added when EraserTool is integrated."
+                          }
+                          className={[
+                            "min-h-9 rounded-md border px-3 py-2 text-xs font-semibold transition",
+                            available && enabled
+                              ? "border-line bg-subtle text-action"
+                              : "border-line bg-surface text-muted",
+                            available
+                              ? "hover:border-line hover:text-ink"
+                              : "cursor-not-allowed opacity-40",
+                          ].join(" ")}
+                        >
+                          {option.label}
+                          {!available ? " · Next" : ""}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+
+                  <button
+                    type="button"
+                    onClick={handleResetSymmetry}
+                    className="min-h-9 rounded-md border border-line bg-surface px-3 py-2 text-xs font-semibold text-muted hover:border-line hover:text-ink"
+                  >
+                    Reset
+                  </button>
+                </div>
+
+                <p className="rounded-md border border-line bg-subtle p-3 text-[10px] leading-relaxed text-muted">
+                  Symmetry currently works with Pencil, Brush, Line and Shape.
+                  Turn it on, choose a mode, then draw on the canvas.
+                </p>
+              </div>}
+            </PanelSection>
+
             <PanelSection title="Colours">
               <div className="space-y-4">
                 <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
@@ -11548,7 +11551,7 @@ function FashionEditor() {
 
       <header className="relative z-[70] flex h-14 shrink-0 items-center justify-between gap-2 border-b border-line bg-surface px-2 sm:px-4">
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-action text-xs font-semibold text-on-action">
+          <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-md bg-action text-xs sm:flex sm:items-center sm:justify-center font-semibold text-on-action">
             FV
           </div>
 
@@ -11573,49 +11576,28 @@ function FashionEditor() {
             <span className="sm:hidden">Showcase</span>
           </button>
 
-          <button type="button" onClick={handleOpenProjects} disabled={projectLoading || projectSaving} className="shrink-0 rounded-md border border-line px-2 py-1.5 text-xs text-ink disabled:opacity-50">My projects</button>
+          <button type="button" onClick={handleOpenProjects} disabled={projectLoading || projectSaving} className="hidden shrink-0 rounded-md border border-line px-2 py-1.5 text-xs text-ink disabled:opacity-50 sm:block">My projects</button>
           <div className="hidden h-6 w-px bg-subtle lg:block" />
 
-          <div className="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
+          <div className="flex min-w-0 flex-1 flex-col items-stretch sm:flex-row sm:items-center sm:gap-2">
             <DocumentNameField
               documentData={documentData}
               setDocumentName={setDocumentName}
             />
 
-            {persistence.dirty && (
-              <span
-                className="h-2 w-2 shrink-0 rounded-full bg-action text-on-action"
-                title="Unsaved changes"
-              />
-            )}
-
-            <span className="hidden shrink-0 rounded-md border border-line bg-surface px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-muted sm:inline-flex">
-              {cloudSaveLabel}
-            </span>
+            <div className="flex min-w-0 items-center gap-1 px-2 text-[11px] text-muted">
+              <span role="status">{cloudSaveLabel}</span>
+              {saveConflict && online ? (
+                <button type="button" className="underline" onClick={handleDownloadProject}>Download copy</button>
+              ) : persistence.error && online && !projectSaving && !projectLoading && (
+                <button type="button" className="underline" onClick={() => handleSaveProject()}>Retry</button>
+              )}
+            </div>
           </div>
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <div className="hidden items-center gap-1.5 xl:flex">
-            <HeaderButton onClick={handleNewDocument} disabled={projectLoading}>
-              New
-            </HeaderButton>
-
-            <HeaderButton onClick={handleOpenProject} disabled={projectLoading}>
-              Open File
-            </HeaderButton>
-
-            <HeaderButton
-              onClick={() => handleSaveProject()}
-              disabled={projectLoading || projectSaving}
-            >
-              {projectSaving
-                ? "Saving…"
-                : cloudProjectId
-                  ? "Save"
-                  : "Save Cloud"}
-            </HeaderButton>
-
             <HeaderButton
               onClick={handleOpenShowcaseShare}
               disabled={
@@ -11638,10 +11620,6 @@ function FashionEditor() {
               Book a Designer
             </HeaderButton>
 
-            <HeaderButton onClick={handleExportPng} disabled={exporting}>
-              {exporting ? "Exporting…" : "Export PNG"}
-            </HeaderButton>
-
             <HeaderButton
               onClick={handleOpenOrGenerateAiFashionPreview}
               disabled={projectLoading}
@@ -11658,16 +11636,16 @@ function FashionEditor() {
             title="Undo"
             className="w-9 px-0"
           >
-            ↶
+            <Undo2 size={16} aria-hidden="true" />
           </HeaderButton>
 
           <HeaderButton
             onClick={redo}
             disabled={!canRedo}
             title="Redo"
-            className="hidden w-9 px-0 sm:inline-flex"
+            className="w-9 px-0"
           >
-            ↷
+            <Redo2 size={16} aria-hidden="true" />
           </HeaderButton>
 
           <HeaderButton
@@ -11698,7 +11676,7 @@ function FashionEditor() {
             title="Layers and properties"
             className="hidden sm:inline-flex"
           >
-            Panel
+            {isDesktopPanel && ui.rightPanelOpen !== false ? "Hide panel" : "Show panel"}
           </HeaderButton>
 
           <HeaderButton
@@ -11707,9 +11685,8 @@ function FashionEditor() {
             }}
             active={mobileMenuOpen}
             title="File menu"
-            className="xl:hidden"
           >
-            Menu
+            File
           </HeaderButton>
         </div>
 
@@ -11721,16 +11698,19 @@ function FashionEditor() {
               onClick={() => {
                 setMobileMenuOpen(false);
               }}
-              className="fixed inset-0 z-[80] cursor-default bg-black/40 xl:hidden"
+              className="fixed inset-0 z-[80] cursor-default bg-black/40"
             />
 
             <div
               role="menu"
               aria-label="Fashion Editor file menu"
-              className="fixed right-2 top-[calc(3.5rem+6px)] z-[90] max-h-[calc(100dvh-4.5rem)] w-[min(20rem,calc(100vw-1rem))] overflow-y-auto rounded-md border border-line bg-surface p-2 xl:hidden"
+              className="fixed right-2 top-[calc(3.5rem+6px)] z-[90] max-h-[calc(100dvh-4.5rem)] w-[min(20rem,calc(100vw-1rem))] overflow-y-auto rounded-md border border-line bg-surface p-2"
             >
+              <button type="button" onClick={handleOpenProjects} disabled={projectLoading || projectSaving}
+                className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm hover:bg-subtle sm:hidden">My projects</button>
               <button
                 type="button"
+                disabled={projectLoading}
                 onClick={handleNewDocument}
                 className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm text-ink hover:bg-subtle"
               >
@@ -11739,10 +11719,11 @@ function FashionEditor() {
 
               <button
                 type="button"
+                disabled={projectLoading}
                 onClick={handleOpenProject}
                 className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm text-ink hover:bg-subtle"
               >
-                Open project
+                Open project file
               </button>
 
               <button
@@ -11848,43 +11829,37 @@ function FashionEditor() {
               {symmetry.enabled ? "Mirror On" : "Mirror Off"}
             </HeaderButton>
 
-            <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
-              Mode
-              <select
-                value={symmetry.mode}
-                onChange={(event) => {
-                  handleSetSymmetryMode(event.target.value);
+            {symmetry.enabled && <>
+              <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
+                Mode
+                <select
+                  value={symmetry.mode}
+                  onChange={(event) => {
+                    handleSetSymmetryMode(event.target.value);
+                  }}
+                  className="h-9 rounded-md border border-line bg-surface px-2 text-xs text-ink outline-none focus:border-line"
+                >
+                  {SYMMETRY_MODE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <HeaderButton
+                onClick={() => {
+                  updateSymmetrySettings({
+                    showGuide: symmetry.showGuide === false,
+                  });
                 }}
-                className="h-9 rounded-md border border-line bg-surface px-2 text-xs text-ink outline-none focus:border-line"
+                active={symmetry.showGuide !== false}
+                title="Show or hide symmetry guide"
+                className="hidden sm:inline-flex"
               >
-                {SYMMETRY_MODE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <HeaderButton
-              onClick={() => {
-                updateSymmetrySettings({
-                  showGuide: symmetry.showGuide === false,
-                });
-              }}
-              active={symmetry.showGuide !== false}
-              title="Show or hide symmetry guide"
-              className="hidden sm:inline-flex"
-            >
-              Guide
-            </HeaderButton>
-
-            <HeaderButton
-              onClick={openSymmetryProperties}
-              title="Open full symmetry settings"
-              className="hidden lg:inline-flex"
-            >
-              Settings
-            </HeaderButton>
+                Guide
+              </HeaderButton>
+            </>}
 
             <div className="h-5 w-px shrink-0 bg-subtle" />
           </>
@@ -12651,7 +12626,7 @@ function FashionEditor() {
         {/* Tablet/Desktop toolbar */}
 
         {ui.leftPanelOpen !== false && (
-          <aside className="hidden w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto border-r border-line bg-surface py-3 md:flex">
+          <aside aria-label="Drawing tools" className="hidden w-36 shrink-0 flex-col items-center gap-0.5 overflow-x-hidden overflow-y-auto border-r border-line bg-surface p-1.5 md:flex">
             {TOOL_DEFINITIONS.map((tool) => (
               <ToolButton
                 key={tool.id}
@@ -12663,7 +12638,7 @@ function FashionEditor() {
 
             <div className="my-1 h-px w-10 bg-subtle" />
 
-            <div className="relative h-12 w-12">
+            <div className="relative h-12 w-12 shrink-0">
               <button
                 type="button"
                 title="Primary colour"
@@ -12706,7 +12681,7 @@ function FashionEditor() {
                 title="Swap colours"
                 className="absolute bottom-0 left-0 text-[10px] font-bold text-muted hover:text-ink"
               >
-                ↔
+                <ArrowLeftRight size={14} aria-hidden="true" />
               </button>
             </div>
           </aside>
@@ -12716,11 +12691,17 @@ function FashionEditor() {
             cloud saves, artwork capture and existing tools remain intact. */}
         <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-subtle">
           <div className="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-line bg-surface px-3">
-            <span className="truncate text-[11px] font-semibold text-muted">
-              {editorViewMode === "3d"
-                ? "3D Garment Studio"
-                : "2D Design Canvas"}
-            </span>
+            {editorViewMode === "2d" && !objectCount && !projectLoading ? (
+              <button type="button" onClick={() => handleEditorToolSelection(EDITOR_TOOLS.CLOTHING)}
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line px-2 text-xs font-semibold hover:bg-subtle">
+                <Shirt size={16} aria-hidden="true" /> Add a garment
+              </button>
+            ) : editorViewMode === "2d" ? (
+              <button type="button" onClick={openToolProperties}
+                className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-semibold hover:bg-subtle">
+                <SlidersHorizontal size={16} aria-hidden="true" /> Tool settings
+              </button>
+            ) : <span className="text-xs text-muted">Garment studio</span>}
             <div
               className="flex shrink-0 gap-1 rounded-md border border-line bg-surface p-0.5"
               role="group"
@@ -12736,7 +12717,7 @@ function FashionEditor() {
                     : "text-muted hover:bg-subtle"
                 }`}
               >
-                2D
+                2D canvas
               </button>
               <button
                 type="button"
@@ -12748,7 +12729,7 @@ function FashionEditor() {
                     : "text-muted hover:bg-subtle"
                 }`}
               >
-                3D
+                3D view
               </button>
             </div>
           </div>
@@ -12813,31 +12794,22 @@ function FashionEditor() {
 
       {/* Mobile bottom toolbar */}
 
-      <nav className="shrink-0 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
-        <div className="flex h-[68px] items-center gap-2 overflow-x-auto overscroll-x-contain px-2">
-          {TOOL_DEFINITIONS.map((tool) => (
-            <ToolButton
-              key={tool.id}
-              tool={tool}
-              active={activeTool === tool.id}
-              onClick={handleEditorToolSelection}
-              horizontal
-            />
+      <nav aria-label="Canvas tools" className="shrink-0 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
+        <div className="grid grid-cols-5 gap-1 p-1.5 text-xs font-semibold">
+          {MOBILE_PRIMARY_TOOLS.map(tool => (
+            <button key={tool.id} type="button" aria-pressed={activeTool === tool.id}
+              onClick={() => handleEditorToolSelection(tool.id)}
+              className="h-9 rounded-md text-muted hover:bg-subtle aria-pressed:bg-action aria-pressed:text-on-action">
+              {tool.label}
+            </button>
           ))}
-
-          <button
-            type="button"
-            onClick={() => {
-              setPanelDrawerOpen(true);
-            }}
-            className="flex h-9 min-w-[58px] shrink-0 flex-col items-center justify-center rounded-md border border-line bg-surface px-2 text-muted"
-          >
-            <span className="text-sm font-semibold">☰</span>
-
-            <span className="mt-1 text-[11px] font-semibold uppercase tracking-wider">
-              Panel
-            </span>
-          </button>
+          <button type="button" onClick={openLayersPanel} className="h-9 rounded-md text-muted hover:bg-subtle">Layers</button>
+          <select aria-label="More drawing tools" value={MOBILE_EXTRA_TOOLS.some(tool => tool.id === activeTool) ? activeTool : ""}
+            onChange={event => handleEditorToolSelection(event.target.value)}
+            className="h-9 min-w-0 rounded-md border border-line bg-surface text-xs text-ink">
+            <option value="" disabled>More</option>
+            {MOBILE_EXTRA_TOOLS.map(tool => <option key={tool.id} value={tool.id} disabled={!tool.enabled}>{tool.label}</option>)}
+          </select>
         </div>
       </nav>
 
