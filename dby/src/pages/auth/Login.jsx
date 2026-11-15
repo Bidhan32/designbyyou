@@ -149,7 +149,7 @@ const Login = () => {
         .toUpperCase();
       const backendMessage = responseData?.message;
       if (code === "ADMIN_MFA_REQUIRED") {
-        setNeedsCode(true);
+        setNeedsCode(status !== 503);
         setAuthenticatorCode("");
         setError(backendMessage);
         return;

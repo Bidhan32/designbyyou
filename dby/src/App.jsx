@@ -107,6 +107,7 @@ const SuperAdminDashboard = lazy(() => import("./pages/Superadmin/SuperadminDash
 const UserManagement = lazy(() => import("./pages/Superadmin/UserManagement"));
 
 const DesignerApprovals = lazy(() => import("./pages/Superadmin/DesignerApprovals"));
+const AdminFinance = lazy(() => import("./pages/Superadmin/AdminFinance"));
 
 const SystemSettings = lazy(() => import("./pages/Superadmin/Settings"));
 
@@ -448,6 +449,7 @@ Normal admins, creators and designers cannot enter.
                   <Route path="dashboard" element={<SuperAdminDashboard />} />
 
                   <Route path="users" element={<UserManagement />} />
+                  <Route path="finance" element={<AdminFinance />} />
 
                   <Route
                     path="designer-approvals"

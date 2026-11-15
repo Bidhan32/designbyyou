@@ -41,7 +41,12 @@ const finance = "/designer-finance";
 const adminBase = "/superadmin/finance/manual-payouts";
 const bankBody = (suffix = "1234") => ({ country_code: "NP", currency: "USD", account_holder_name: "Synthetic Designer", bank_name: "Sandbox Bank", account_number: `00000000${suffix}` });
 async function saveBank(id, suffix) { return expect(await api(id, `${finance}/payout-accounts/bank`, bankBody(suffix), "PUT"), [200, 201]).data; }
-async function verifyBank(bank) { expect(await api(admin, `/superadmin/finance/bank-accounts/${bank}/verification`, { status: "verified" }, "PATCH"), 200); }
+const bankQueue = "/superadmin/finance/bank-accounts";
+async function verifyBank(bank) {
+  const entry = expect(await api(admin, bankQueue, {}, "GET"), 200).data.find(row => row.id === bank);
+  assert.ok(entry?.review_version);
+  expect(await api(admin, `${bankQueue}/${bank}/verification`, { status: "verified", review_version: entry.review_version }, "PATCH"), 200);
+}
 async function fixture(available = 100) {
   const id = await user(); const bank = await saveBank(id); await verifyBank(bank.id);
   await isolated.pool.query("UPDATE designer_wallets SET available_balance=$1 WHERE user_id=$2", [available, id]);
@@ -105,6 +110,23 @@ async function main() {
   await step("Anonymous and creator accounts cannot request designer payouts or administer them", async () => {
     expect(await api(null, `${finance}/payouts`), 401); expect(await api(creator, `${finance}/payouts`), 403);
     expect(await api(creator, `${adminBase}/${crypto.randomUUID()}/processing`), 403);
+  });
+  await step("Finance lists are restricted and masked, and changed bank details require a new review", async () => {
+    expect(await api(null, bankQueue, {}, "GET"), 401);
+    expect(await api(creator, bankQueue, {}, "GET"), 403);
+    const id = await user();
+    const bank = await saveBank(id);
+    const first = expect(await api(admin, bankQueue, {}, "GET"), 200).data.find(row => row.id === bank.id);
+    assert.ok(first);
+    for (const field of ["account_number", "details_ciphertext", "details_iv", "iban"]) assert.ok(!(field in first));
+    const detail = `${bankQueue}/${bank.id}?version=${encodeURIComponent(first.review_version)}`;
+    expect(await api(creator, detail, {}, "GET"), 403);
+    expect(await api(admin, detail, {}, "GET"), 200);
+    await saveBank(id, "9876");
+    expect(await api(admin, detail, {}, "GET"), 409);
+    expect(await api(admin, `${bankQueue}/${bank.id}/verification`, { status: "verified", review_version: first.review_version }, "PATCH"), 409);
+    expect(await api(admin, "/superadmin/finance/transactions?limit=25&offset=0", {}, "GET"), 200);
+    expect(await api(admin, adminBase+"?status=pending&limit=25&offset=0", {}, "GET"), 200);
   });
   await step("UAE and Nepal designers both receive manual payout routing; Connect is disabled", async () => {
     for (const country of ["Nepal", "United Arab Emirates"]) {

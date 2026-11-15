@@ -1543,12 +1543,11 @@ exports.getFinancialTransactions = async (req, res) => {
           FROM transactions
 
           ORDER BY
-              created_at DESC
-              NULLS LAST
+              created_at DESC NULLS LAST, id
 
-          LIMIT $1
+          LIMIT $1 OFFSET $2
         `,
-      [limit],
+      [limit, financeOffset(req.query.offset)],
     );
 
     return res.status(200).json({
@@ -1802,12 +1801,12 @@ exports.getManualPayoutRequests = async (req, res) => {
               ${statusFilter}
 
           ORDER BY
-              pr.requested_at DESC
+              pr.requested_at DESC, pr.id
 
           LIMIT
-              $${params.length}
+              $${params.length} OFFSET $${params.length + 1}
         `,
-      params,
+      [...params, financeOffset(req.query.offset)],
     );
 
     return res.status(200).json({
@@ -2065,6 +2064,41 @@ exports.getManualPayoutRequest = async (req, res) => {
   }
 };
 
+function financeOffset(value) {
+  const offset = Number(value);
+  return Number.isSafeInteger(offset) && offset >= 0 ? offset : 0;
+}
+
+exports.getPendingBankAccounts = async (req, res) => {
+  const { rows } = await db.query(`
+    SELECT b.id, b.country_code, b.currency, b.bank_name, b.account_holder_name,
+      b.account_number_last4, b.iban_last4, b.updated_at::text AS review_version,
+      u.full_name, u.email
+    FROM designer_bank_accounts b JOIN users u ON u.id=b.designer_id
+    WHERE b.is_active AND b.verification_status='pending'
+    ORDER BY b.updated_at,b.id LIMIT 25 OFFSET $1`, [financeOffset(req.query.offset)]);
+  res.json({ data: rows });
+};
+
+exports.getPendingBankDetails = async (req, res) => {
+  const id = req.params.bankAccountId;
+  if (!isUuid(id)) return res.status(400).json({ message: "Invalid bank account." });
+  const { rows: [account] } = await db.query(`
+    SELECT designer_id, details_ciphertext, details_iv, details_auth_tag, encryption_version
+    FROM designer_bank_accounts WHERE id=$1 AND is_active AND verification_status='pending'
+      AND updated_at::text=$2`, [id, req.query.version]);
+  if (!account) return res.status(409).json({ message: "The bank account changed. Refresh the queue." });
+  const details = decryptBankDetails({ ciphertext: account.details_ciphertext, iv: account.details_iv,
+    authTag: account.details_auth_tag, version: account.encryption_version }, { designerId: account.designer_id, bankAccountId: id });
+  res.json({ data: { bank_details: pickTransferDetails(details) } });
+};
+
+function pickTransferDetails(details) {
+  const fields = ["country_code","currency","account_holder_name","bank_name","account_number","iban","swift_bic",
+    "routing_number","sort_code","branch_code","bank_address","intermediary_bank"];
+  return Object.fromEntries(fields.map(field => [field, details[field] || null]));
+}
+
 exports.updateDesignerBankAccountVerification = async (req, res) => {
   const bankAccountId = String(req.params.bankAccountId || "").trim();
 
@@ -2091,7 +2125,7 @@ exports.updateDesignerBankAccountVerification = async (req, res) => {
 
     const accountResult = await client.query(
       `
-          SELECT *
+          SELECT *, updated_at::text AS review_version
 
           FROM designer_bank_accounts
 
@@ -2112,6 +2146,12 @@ exports.updateDesignerBankAccountVerification = async (req, res) => {
       return res.status(404).json({
         message: "Designer bank account not found.",
       });
+    }
+
+    if (!bankAccount.is_active || bankAccount.review_version !== req.body.review_version ||
+        (requestedStatus === "verified" && bankAccount.verification_status !== "pending")) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ message: "The bank account changed. Refresh before reviewing it." });
     }
 
     if (requestedStatus === "rejected") {

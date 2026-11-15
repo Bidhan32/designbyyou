@@ -81,6 +81,9 @@ router.use(protect);
 router.use(authorize("superadmin"));
 const adminMfa = require("../services/adminMfa");
 router.post("/verify-authenticator", adminMfa.refresh);
+router.use("/finance", (req, res, next) => { res.set("Cache-Control", "no-store"); next(); });
+router.get("/finance/bank-accounts", superCtrl.getPendingBankAccounts);
+router.get("/finance/bank-accounts/:bankAccountId", adminMfa.requireFresh, superCtrl.getPendingBankDetails);
 // All administrative writes and individual bank-detail reads need recent proof.
 router.use((req, res, next) => ["GET", "HEAD"].includes(req.method) ? next() : adminMfa.requireFresh(req,res,next));
 router.use("/finance/manual-payouts/:payoutId", adminMfa.requireFresh);

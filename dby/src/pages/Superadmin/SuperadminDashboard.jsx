@@ -410,10 +410,9 @@ const SuperAdminDashboard = () => {
               value={formatMoney(finance?.wallets?.pending_payout_balance)}
             />
 
-            <DataRow
-              label="Pending Payout Requests"
-              value={numberValue(finance?.payouts?.pending_payout_requests)}
-            />
+            <Link className="flex items-center justify-between gap-2 py-3 text-sm hover:underline" to="/superadmin/finance?tab=payouts">
+              Review pending payouts <span className="font-mono">{finance?.payouts?.pending_payout_requests ?? "Count unavailable"}</span>
+            </Link>
 
             <DataRow
               label="Processing Payout Requests"
