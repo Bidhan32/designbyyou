@@ -1,0 +1,23 @@
+:root {
+  color-scheme: light;
+  --ui-canvas: #fafafa;
+  --ui-surface: #ffffff;
+  --ui-subtle: #f4f4f5;
+  --ui-line: #e4e4e7;
+  --ui-ink: #09090b;
+  --ui-muted: #71717a;
+  --ui-action: #18181b;
+  --ui-on-action: #ffffff;
+  --ui-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+:root.dark, :root[data-theme="dark"] {
+  color-scheme: dark;
+  --ui-canvas: #09090b;
+  --ui-surface: #121215;
+  --ui-subtle: #1c1c20;
+  --ui-line: #27272a;
+  --ui-ink: #f4f4f5;
+  --ui-muted: #a1a1aa;
+  --ui-action: #10b981;
+  --ui-on-action: #09090b;
+}

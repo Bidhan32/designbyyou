@@ -266,9 +266,9 @@ function getStatusDetails(status) {
         icon: Hourglass,
 
         badgeClass:
-          "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
 
-        accentClass: "text-amber-700 dark:text-amber-300",
+        accentClass: "text-action",
       };
 
     case BOOKING_STATUS.AWAITING_PAYMENT:
@@ -283,9 +283,9 @@ function getStatusDetails(status) {
         icon: LockKeyhole,
 
         badgeClass:
-          "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-400/20 dark:bg-orange-400/10 dark:text-orange-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
 
-        accentClass: "text-orange-700 dark:text-orange-300",
+        accentClass: "text-action",
       };
 
     case BOOKING_STATUS.FUNDED:
@@ -300,9 +300,9 @@ function getStatusDetails(status) {
         icon: ShieldCheck,
 
         badgeClass:
-          "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
 
-        accentClass: "text-emerald-700 dark:text-emerald-300",
+        accentClass: "text-action",
       };
 
     case BOOKING_STATUS.ACCEPTED:
@@ -318,9 +318,9 @@ function getStatusDetails(status) {
         icon: PlayCircle,
 
         badgeClass:
-          "border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#8F7118] dark:text-[#E4C760]",
+          "border-line bg-subtle text-action",
 
-        accentClass: "text-[#987719] dark:text-[#D4AF37]",
+        accentClass: "text-action",
       };
 
     case BOOKING_STATUS.REVIEW_PROTOTYPE:
@@ -335,9 +335,9 @@ function getStatusDetails(status) {
         icon: Clock3,
 
         badgeClass:
-          "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-400/20 dark:bg-indigo-400/10 dark:text-indigo-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
 
-        accentClass: "text-indigo-700 dark:text-indigo-300",
+        accentClass: "text-action",
       };
 
     case BOOKING_STATUS.FINAL_PRODUCTION:
@@ -352,9 +352,9 @@ function getStatusDetails(status) {
         icon: UploadCloud,
 
         badgeClass:
-          "border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#8F7118] dark:text-[#E4C760]",
+          "border-line bg-subtle text-action",
 
-        accentClass: "text-[#987719] dark:text-[#D4AF37]",
+        accentClass: "text-action",
       };
 
     case BOOKING_STATUS.REVIEW_FINAL:
@@ -370,9 +370,9 @@ function getStatusDetails(status) {
         icon: FileCheck2,
 
         badgeClass:
-          "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
 
-        accentClass: "text-violet-700 dark:text-violet-300",
+        accentClass: "text-action",
       };
 
     case BOOKING_STATUS.REFUND_PENDING:
@@ -391,9 +391,9 @@ function getStatusDetails(status) {
         icon: Loader2,
 
         badgeClass:
-          "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
 
-        accentClass: "text-rose-700 dark:text-rose-300",
+        accentClass: "text-action",
 
         spinning: true,
       };
@@ -411,9 +411,9 @@ function getStatusDetails(status) {
         icon: CheckCircle2,
 
         badgeClass:
-          "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
 
-        accentClass: "text-emerald-700 dark:text-emerald-300",
+        accentClass: "text-action",
       };
 
     case BOOKING_STATUS.CANCELLED:
@@ -427,9 +427,9 @@ function getStatusDetails(status) {
         icon: Ban,
 
         badgeClass:
-          "border-slate-200 bg-slate-100 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/45",
+          "border-line bg-subtle text-muted",
 
-        accentClass: "text-slate-600 dark:text-white/50",
+        accentClass: "text-muted",
       };
 
     default:
@@ -443,9 +443,9 @@ function getStatusDetails(status) {
         icon: Clock3,
 
         badgeClass:
-          "border-slate-200 bg-slate-100 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/50",
+          "border-line bg-subtle text-muted",
 
-        accentClass: "text-slate-600 dark:text-white/50",
+        accentClass: "text-muted",
       };
   }
 }
@@ -597,7 +597,7 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65 p-4">
       <button
         type="button"
         aria-label="Close modal"
@@ -607,23 +607,23 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
 
       <form
         onSubmit={handleSubmit}
-        className="relative z-10 max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[#0B0B0B]"
+        className="relative z-10 max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-md border border-line bg-surface"
       >
-        <div className="border-b border-slate-200 p-6 dark:border-white/10">
+        <div className="border-b border-line p-4">
           <div className="flex items-start justify-between gap-5">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#9B791D] dark:text-[#D4AF37]">
+              <p className="text-[10px] font-semibold uppercase tracking-normal text-action">
                 Booking{" "}
                 {String(booking?.id || "")
                   .slice(0, 8)
                   .toUpperCase()}
               </p>
 
-              <h2 className="mt-2 font-serif text-3xl font-light text-slate-950 dark:text-white">
+              <h2 className="mt-2 font-sans text-3xl font-light text-ink">
                 {title}
               </h2>
 
-              <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-white/45">
+              <p className="mt-2 text-sm leading-6 text-muted">
                 {subtitle}
               </p>
             </div>
@@ -632,22 +632,22 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 dark:border-white/10 dark:text-white/45 dark:hover:bg-white/5"
+              className="flex h-9 w-10 shrink-0 items-center justify-center rounded-md border border-line text-muted transition hover:bg-subtle disabled:opacity-50"
             >
               <X size={18} />
             </button>
           </div>
         </div>
 
-        <div className="space-y-5 p-6">
+        <div className="space-y-5 p-4">
           {isSubmission ? (
             <>
               <label className="block">
-                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/40">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
                   {mode === "prototype"
                     ? "2D Prototype URL"
                     : "2D Final Deliverable URL"}{" "}
-                  <span className="text-rose-500">*</span>
+                  <span className="text-action">*</span>
                 </span>
 
                 <input
@@ -660,19 +660,19 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
                       : "https://example.com/final-deliverable.png"
                   }
                   required
-                  className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25 dark:focus:border-[#D4AF37]/60 dark:focus:bg-white/[0.07]"
+                  className="mt-2 h-12 w-full rounded-md border border-line bg-canvas px-4 text-sm text-ink outline-none transition placeholder:text-muted focus:border-line focus:bg-surface focus:ring-4 focus:ring-action dark:bg-subtle dark:focus:bg-subtle"
                 />
 
-                <p className="mt-2 text-[11px] leading-5 text-slate-400 dark:text-white/30">
+                <p className="mt-2 text-[11px] leading-5 text-muted">
                   This is the main 2D image, preview or deliverable the creator
                   will review.
                 </p>
               </label>
 
               <label className="block">
-                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/40">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
                   3D Model URL{" "}
-                  <span className="font-semibold normal-case tracking-normal text-slate-400 dark:text-white/25">
+                  <span className="font-semibold normal-case tracking-normal text-muted">
                     (optional)
                   </span>
                 </span>
@@ -686,18 +686,18 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
                       ? "https://example.com/prototype.glb"
                       : "https://example.com/final.glb"
                   }
-                  className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25 dark:focus:border-[#D4AF37]/60 dark:focus:bg-white/[0.07]"
+                  className="mt-2 h-12 w-full rounded-md border border-line bg-canvas px-4 text-sm text-ink outline-none transition placeholder:text-muted focus:border-line focus:bg-surface focus:ring-4 focus:ring-action dark:bg-subtle dark:focus:bg-subtle"
                 />
 
-                <p className="mt-2 text-[11px] leading-5 text-slate-400 dark:text-white/30">
+                <p className="mt-2 text-[11px] leading-5 text-muted">
                   Optional HTTP/HTTPS link to a GLB or GLTF model.
                 </p>
               </label>
 
               <label className="block">
-                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/40">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
                   Virtual Try-On Garment Image URL{" "}
-                  <span className="font-semibold normal-case tracking-normal text-slate-400 dark:text-white/25">
+                  <span className="font-semibold normal-case tracking-normal text-muted">
                     (optional)
                   </span>
                 </span>
@@ -711,10 +711,10 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
                       ? "https://example.com/prototype-garment.png"
                       : "https://example.com/final-garment.png"
                   }
-                  className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25 dark:focus:border-[#D4AF37]/60 dark:focus:bg-white/[0.07]"
+                  className="mt-2 h-12 w-full rounded-md border border-line bg-canvas px-4 text-sm text-ink outline-none transition placeholder:text-muted focus:border-line focus:bg-surface focus:ring-4 focus:ring-action dark:bg-subtle dark:focus:bg-subtle"
                 />
 
-                <p className="mt-2 text-[11px] leading-5 text-slate-400 dark:text-white/30">
+                <p className="mt-2 text-[11px] leading-5 text-muted">
                   Optional public HTTP/HTTPS image of the garment for Creator
                   Virtual Try-On. Use a clean garment-focused image that FASHN
                   can access.
@@ -722,7 +722,7 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
               </label>
 
               <label className="block">
-                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/40">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
                   Delivery message
                 </span>
 
@@ -735,15 +735,15 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
                       ? "Explain the prototype choices and what feedback you need."
                       : "Summarize the final files, formats and usage notes."
                   }
-                  className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25 dark:focus:border-[#D4AF37]/60 dark:focus:bg-white/[0.07]"
+                  className="mt-2 w-full resize-none rounded-md border border-line bg-canvas px-4 py-3 text-sm leading-6 text-ink outline-none transition placeholder:text-muted focus:border-line focus:bg-surface focus:ring-4 focus:ring-action dark:bg-subtle dark:focus:bg-subtle"
                 />
               </label>
             </>
           ) : (
             <label className="block">
-              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/40">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
                 {isReject ? "Rejection reason" : "Cancellation reason"}{" "}
-                <span className="text-rose-500">*</span>
+                <span className="text-action">*</span>
               </span>
 
               <textarea
@@ -756,13 +756,13 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
                     ? "Explain why this request is not a suitable fit."
                     : "Explain why the booking must be cancelled."
                 }
-                className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-rose-400 focus:bg-white focus:ring-4 focus:ring-rose-500/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25 dark:focus:border-rose-400 dark:focus:bg-white/[0.07]"
+                className="mt-2 w-full resize-none rounded-md border border-line bg-canvas px-4 py-3 text-sm leading-6 text-ink outline-none transition placeholder:text-muted focus:border-line focus:bg-surface focus:ring-4 focus:ring-action dark:bg-subtle dark:focus:bg-subtle"
               />
             </label>
           )}
 
           {(isReject || isCancel) && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">
+            <div className="rounded-md border border-line bg-canvas p-4 text-sm leading-6 text-action dark:bg-subtle">
               <div className="flex items-start gap-3">
                 <AlertCircle size={18} className="mt-0.5 shrink-0" />
 
@@ -776,12 +776,12 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
           )}
         </div>
 
-        <div className="flex flex-col-reverse gap-3 border-t border-slate-200 p-6 dark:border-white/10 sm:flex-row sm:justify-end">
+        <div className="flex flex-col-reverse gap-3 border-t border-line p-4 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 px-5 text-xs font-black uppercase tracking-[0.16em] text-slate-600 transition hover:bg-slate-100 disabled:opacity-50 dark:border-white/10 dark:text-white/55 dark:hover:bg-white/5"
+            className="inline-flex h-9 items-center justify-center rounded-md border border-line px-5 text-xs font-semibold uppercase tracking-[0.16em] text-muted transition hover:bg-subtle disabled:opacity-50"
           >
             Keep Booking
           </button>
@@ -789,10 +789,10 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
           <button
             type="submit"
             disabled={!canSubmit || submitting}
-            className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-xs font-black uppercase tracking-[0.16em] text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
+            className={`inline-flex h-9 items-center justify-center gap-2 rounded-md px-5 text-xs font-semibold uppercase tracking-[0.16em] text-ink transition disabled:cursor-not-allowed disabled:opacity-50 ${
               isReject || isCancel
-                ? "bg-rose-600 hover:bg-rose-700"
-                : "bg-[#A98520] hover:bg-[#8E701B]"
+                ? "bg-action hover:bg-action text-on-action hover:text-on-action"
+                : "bg-action hover:bg-action text-on-action hover:text-on-action"
             }`}
           >
             {submitting ? (
@@ -1236,13 +1236,13 @@ function DesignerBookingDetail() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-6 text-slate-950 dark:bg-[#030303] dark:text-white">
+      <main className="flex min-h-screen items-center justify-center bg-canvas px-6 text-ink">
         <div className="text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-[#D4AF37]/20 bg-[#D4AF37]/10 text-[#9B791D] dark:text-[#D4AF37]">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-md border border-line bg-subtle text-action">
             <Loader2 size={28} className="animate-spin" />
           </div>
 
-          <p className="mt-5 text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 dark:text-white/40">
+          <p className="mt-5 text-[10px] font-semibold uppercase tracking-normal text-muted">
             Loading booking workspace
           </p>
         </div>
@@ -1256,33 +1256,33 @@ function DesignerBookingDetail() {
 
   if (!booking) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-6 text-slate-950 dark:bg-[#030303] dark:text-white">
-        <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-xl dark:border-white/10 dark:bg-[#0A0A0A]">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-400/10 dark:text-rose-300">
+      <main className="flex min-h-screen items-center justify-center bg-canvas px-6 text-ink">
+        <div className="w-full max-w-lg rounded-md border border-line bg-surface p-4 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-md bg-canvas text-action dark:bg-subtle">
             <AlertCircle size={28} />
           </div>
 
-          <h1 className="mt-6 font-serif text-3xl font-light">
+          <h1 className="mt-6 font-sans text-3xl font-light">
             Booking unavailable
           </h1>
 
-          <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-white/45">
+          <p className="mt-3 text-sm leading-6 text-muted">
             {error || "This booking could not be loaded."}
           </p>
 
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
             <Link
               to="/designer/bookings"
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-5 text-xs font-black uppercase tracking-[0.16em] text-slate-700 transition hover:bg-slate-100 dark:border-white/10 dark:text-white/65 dark:hover:bg-white/5"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line px-5 text-xs font-semibold uppercase tracking-[0.16em] text-ink transition hover:bg-subtle dark:text-muted"
             >
               <ArrowLeft size={15} />
-              Back to Pipeline
+              Back to bookings
             </Link>
 
             <button
               type="button"
               onClick={() => fetchBooking()}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#A98520] px-5 text-xs font-black uppercase tracking-[0.16em] text-white transition hover:bg-[#8E701B]"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-5 text-xs font-semibold uppercase tracking-[0.16em] text-on-action transition hover:bg-action hover:text-on-action"
             >
               <RefreshCw size={15} />
               Retry
@@ -1294,31 +1294,30 @@ function DesignerBookingDetail() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-50 pb-20 text-slate-950 antialiased dark:bg-[#030303] dark:text-white">
+    <main className="relative min-h-screen overflow-hidden bg-canvas pb-20 text-ink antialiased">
       {/*=====================================================
       Background
       =====================================================*/}
 
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute -right-[12rem] -top-[14rem] h-[36rem] w-[36rem] rounded-full bg-[#D4AF37]/10 blur-[160px] dark:bg-[#D4AF37]/15" />
 
-        <div className="absolute -bottom-[17rem] -left-[15rem] h-[40rem] w-[40rem] rounded-full bg-indigo-500/5 blur-[180px] dark:bg-indigo-500/10" />
 
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(15,23,42,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.025)_1px,transparent_1px)] bg-[size:38px_38px] dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.018)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.018)_1px,transparent_1px)]" />
+
+
       </div>
 
       {/*=====================================================
       Header
       =====================================================*/}
 
-      <header className="lg:sticky lg:top-0 z-40 border-b border-slate-200/80 bg-white/80 backdrop-blur-2xl dark:border-white/5 dark:bg-[#070707]/80">
+      <header className="lg:sticky lg:top-0 z-40 border-b border-line bg-subtle">
         <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-4 px-5 py-4 sm:px-8 lg:px-10">
           <Link
             to="/designer/bookings"
-            className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 transition hover:text-[#9B791D] dark:text-white/45 dark:hover:text-[#D4AF37]"
+            className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted transition hover:text-action"
           >
             <ArrowLeft size={16} />
-            Booking Pipeline
+            Bookings
           </Link>
 
           <button
@@ -1329,7 +1328,7 @@ function DesignerBookingDetail() {
               })
             }
             disabled={refreshing}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-[10px] font-black uppercase tracking-[0.16em] text-slate-600 transition hover:border-[#D4AF37]/50 hover:text-[#9B791D] disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/55 dark:hover:text-[#D4AF37]"
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted transition hover:border-line hover:text-action disabled:opacity-50 dark:bg-subtle"
           >
             <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
             Refresh
@@ -1343,7 +1342,7 @@ function DesignerBookingDetail() {
         =================================================*/}
 
         {successMessage && (
-          <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200">
+          <div className="flex items-start gap-3 rounded-md border border-line bg-canvas p-4 text-action dark:bg-subtle">
             <CheckCircle2 size={19} className="mt-0.5 shrink-0" />
 
             <div className="flex-1">
@@ -1353,7 +1352,7 @@ function DesignerBookingDetail() {
             <button
               type="button"
               onClick={() => setSuccessMessage("")}
-              className="text-emerald-700/70 hover:text-emerald-900 dark:text-emerald-200/70"
+              className="text-muted hover:text-action"
             >
               <X size={17} />
             </button>
@@ -1365,7 +1364,7 @@ function DesignerBookingDetail() {
         =================================================*/}
 
         {error && (
-          <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-800 shadow-sm dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">
+          <div className="flex items-start gap-3 rounded-md border border-line bg-canvas p-4 text-action dark:bg-subtle">
             <AlertCircle size={19} className="mt-0.5 shrink-0" />
 
             <div className="flex-1">
@@ -1375,7 +1374,7 @@ function DesignerBookingDetail() {
             <button
               type="button"
               onClick={() => setError("")}
-              className="text-rose-700/70 hover:text-rose-900 dark:text-rose-200/70"
+              className="text-muted hover:text-action"
             >
               <X size={17} />
             </button>
@@ -1386,12 +1385,12 @@ function DesignerBookingDetail() {
         Booking hero
         =================================================*/}
 
-        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-sm backdrop-blur dark:border-white/5 dark:bg-[#0A0A0A]/90 dark:shadow-2xl">
+        <section className="overflow-hidden rounded-md border border-line bg-subtle">
           <div className="grid gap-0 xl:grid-cols-[1fr_350px]">
-            <div className="p-6 sm:p-8 lg:p-10">
+            <div className="p-4 lg:p-4">
               <div className="flex flex-wrap items-center gap-2.5">
                 <span
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.17em] ${statusDetails.badgeClass}`}
+                  className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.17em] ${statusDetails.badgeClass}`}
                 >
                   <StatusIcon
                     size={13}
@@ -1404,29 +1403,29 @@ function DesignerBookingDetail() {
                 <button
                   type="button"
                   onClick={copyBookingId}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.15em] text-slate-500 transition hover:border-[#D4AF37]/40 hover:text-[#9B791D] dark:border-white/10 dark:bg-white/[0.03] dark:text-white/35 dark:hover:text-[#D4AF37]"
+                  className="inline-flex items-center gap-2 rounded-md border border-line bg-canvas px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.15em] text-muted transition hover:border-line hover:text-action dark:bg-subtle"
                 >
                   {String(booking.id).slice(0, 8).toUpperCase()}
 
                   {copied ? <Check size={12} /> : <Copy size={12} />}
                 </button>
 
-                <span className="rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/5 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.17em] text-[#8F7118] dark:text-[#D4AF37]">
+                <span className="rounded-md border border-line bg-subtle px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.17em] text-action">
                   {booking.booking_type || "commission"}
                 </span>
               </div>
 
-              <h1 className="mt-6 max-w-4xl font-serif text-4xl font-light tracking-tight sm:text-5xl lg:text-6xl">
+              <h1 className="mt-6 max-w-4xl font-sans text-4xl font-light tracking-tight sm:text-5xl lg:text-6xl">
                 {projectTitle}
               </h1>
 
-              <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-500 dark:text-white/45 sm:text-base">
+              <p className="mt-5 max-w-3xl text-sm leading-7 text-muted sm:text-base">
                 {booking.brief_text || "No project brief was supplied."}
               </p>
 
-              <div className="mt-8 flex flex-wrap items-center gap-5 border-t border-slate-200 pt-6 dark:border-white/10">
+              <div className="mt-8 flex flex-wrap items-center gap-5 border-t border-line pt-6">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5">
+                  <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-line bg-canvas dark:bg-subtle">
                     {creatorAvatar ? (
                       <img
                         src={creatorAvatar}
@@ -1434,14 +1433,14 @@ function DesignerBookingDetail() {
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <span className="text-sm font-bold text-slate-500 dark:text-white/45">
+                      <span className="text-sm font-bold text-muted">
                         {getFirstName(creatorName).charAt(0).toUpperCase()}
                       </span>
                     )}
                   </div>
 
                   <div>
-                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-white/30">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                       Project Creator
                     </p>
 
@@ -1449,10 +1448,10 @@ function DesignerBookingDetail() {
                   </div>
                 </div>
 
-                <div className="hidden h-10 w-px bg-slate-200 sm:block dark:bg-white/10" />
+                <div className="hidden h-10 w-px bg-subtle sm:block" />
 
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-white/30">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                     Created
                   </p>
 
@@ -1467,9 +1466,9 @@ function DesignerBookingDetail() {
             Current phase
             =========================================*/}
 
-            <aside className="order-first border-b border-slate-200 bg-slate-50/80 p-4 xl:order-none xl:border-b-0 dark:border-white/5 dark:bg-white/[0.025] sm:p-8 xl:border-l xl:border-t-0">
+            <aside className="order-first border-b border-line bg-subtle p-4 xl:order-none xl:border-b-0 sm:p-4 xl:border-l xl:border-t-0">
               <div
-                className={`hidden h-14 w-14 items-center xl:flex justify-center rounded-2xl border border-current/15 bg-white shadow-sm dark:bg-black/20 ${statusDetails.accentClass}`}
+                className={`hidden h-14 w-14 items-center xl:flex justify-center rounded-md border border-current/15 bg-surface dark:bg-subtle ${statusDetails.accentClass}`}
               >
                 <StatusIcon
                   size={25}
@@ -1478,7 +1477,7 @@ function DesignerBookingDetail() {
               </div>
 
               <p
-                className={`xl:mt-6 text-[10px] font-black uppercase tracking-[0.2em] ${statusDetails.accentClass}`}
+                className={`xl:mt-6 text-[10px] font-semibold uppercase tracking-normal ${statusDetails.accentClass}`}
               >
                 Current Phase
               </p>
@@ -1487,7 +1486,7 @@ function DesignerBookingDetail() {
                 {statusDetails.title}
               </h2>
 
-              <p className="mt-3 hidden text-sm leading-6 text-slate-500 dark:text-white/45 xl:block">
+              <p className="mt-3 hidden text-sm leading-6 text-muted xl:block">
                 {statusDetails.description}
               </p>
 
@@ -1503,7 +1502,7 @@ function DesignerBookingDetail() {
                         : () => setModalMode(primaryAction.type)
                     }
                     disabled={submitting}
-                    className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#A98520] px-5 text-xs font-black uppercase tracking-[0.16em] text-white shadow-lg shadow-[#D4AF37]/10 transition hover:-translate-y-0.5 hover:bg-[#8E701B] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-action px-5 text-xs font-semibold uppercase tracking-[0.16em] text-on-action transition hover:-translate-y-0.5 hover:bg-action disabled:cursor-not-allowed disabled:opacity-50 hover:text-on-action"
                   >
                     {submitting ? (
                       <Loader2 size={17} className="animate-spin" />
@@ -1520,7 +1519,7 @@ function DesignerBookingDetail() {
                     type="button"
                     onClick={() => setModalMode("reject")}
                     disabled={submitting}
-                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white px-5 text-xs font-black uppercase tracking-[0.16em] text-rose-600 transition hover:bg-rose-50 disabled:opacity-50 dark:border-rose-400/20 dark:bg-transparent dark:text-rose-300 dark:hover:bg-rose-400/10"
+                    className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-line bg-surface px-5 text-xs font-semibold uppercase tracking-[0.16em] text-action transition hover:bg-canvas disabled:opacity-50 dark:bg-transparent dark:hover:bg-subtle"
                   >
                     <XCircle size={16} />
                     Reject Request
@@ -1532,7 +1531,7 @@ function DesignerBookingDetail() {
                     type="button"
                     onClick={() => setModalMode("cancel")}
                     disabled={submitting}
-                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-xs font-black uppercase tracking-[0.16em] text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 dark:border-white/10 dark:bg-transparent dark:text-white/40 dark:hover:border-rose-400/20 dark:hover:bg-rose-400/10 dark:hover:text-rose-300"
+                    className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-line bg-surface px-5 text-xs font-semibold uppercase tracking-[0.16em] text-muted transition hover:border-line hover:bg-canvas hover:text-action disabled:opacity-50 dark:bg-transparent dark:hover:bg-subtle"
                   >
                     <Ban size={16} />
                     Cancel Booking
@@ -1541,7 +1540,7 @@ function DesignerBookingDetail() {
               </div>
 
               {primaryAction && (
-                <p className="mt-4 text-center text-[11px] leading-5 text-slate-400 dark:text-white/30">
+                <p className="mt-4 text-center text-[11px] leading-5 text-muted">
                   {primaryAction.helper}
                 </p>
               )}
@@ -1553,19 +1552,19 @@ function DesignerBookingDetail() {
         Workflow
         =================================================*/}
 
-        <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur dark:border-white/5 dark:bg-[#0A0A0A]/90 sm:p-8">
+        <section className="rounded-md border border-line bg-subtle p-4">
           <div className="flex items-center justify-between gap-5">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#9B791D] dark:text-[#D4AF37]">
+              <p className="text-[10px] font-semibold uppercase tracking-normal text-action">
                 Milestone Journey
               </p>
 
-              <h2 className="mt-2 font-serif text-3xl font-light">
+              <h2 className="mt-2 font-sans text-3xl font-light">
                 Booking workflow
               </h2>
             </div>
 
-            <Sparkles className="text-[#D4AF37]" size={22} />
+            <Sparkles className="text-action" size={22} />
           </div>
 
           <div className="mt-8 grid gap-4 md:grid-cols-5">
@@ -1584,34 +1583,34 @@ function DesignerBookingDetail() {
               return (
                 <div
                   key={step.id}
-                  className={`relative rounded-2xl border p-4 transition ${
+                  className={`relative rounded-md border p-4 transition ${
                     active
-                      ? "border-[#D4AF37]/45 bg-[#D4AF37]/10"
+                      ? "border-line bg-subtle"
                       : reached
-                        ? "border-emerald-200 bg-emerald-50 dark:border-emerald-400/15 dark:bg-emerald-400/5"
-                        : "border-slate-200 bg-slate-50 dark:border-white/5 dark:bg-white/[0.025]"
+                        ? "border-line bg-canvas dark:bg-subtle"
+                        : "border-line bg-canvas dark:bg-subtle"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <div
-                      className={`flex h-8 w-8 items-center justify-center rounded-full border text-xs font-black ${
+                      className={`flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold ${
                         active
-                          ? "border-[#D4AF37]/40 bg-[#D4AF37] text-black"
+                          ? "border-line bg-action text-on-action"
                           : reached
-                            ? "border-emerald-300 bg-emerald-500 text-white dark:border-emerald-400"
-                            : "border-slate-200 bg-white text-slate-400 dark:border-white/10 dark:bg-black/20 dark:text-white/30"
+                            ? "border-line bg-action text-on-action"
+                            : "border-line bg-surface text-muted dark:bg-subtle"
                       }`}
                     >
                       {reached ? <Check size={14} /> : index + 1}
                     </div>
 
                     <span
-                      className={`text-[10px] font-black uppercase tracking-[0.16em] ${
+                      className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${
                         active
-                          ? "text-[#8F7118] dark:text-[#D4AF37]"
+                          ? "text-action"
                           : reached
-                            ? "text-emerald-700 dark:text-emerald-300"
-                            : "text-slate-400 dark:text-white/30"
+                            ? "text-action"
+                            : "text-muted"
                       }`}
                     >
                       {step.label}
@@ -1628,7 +1627,7 @@ function DesignerBookingDetail() {
             BOOKING_STATUS.REFUND_PENDING,
             BOOKING_STATUS.REFUND_FAILED,
           ].includes(status) && (
-            <div className="mt-5 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">
+            <div className="mt-5 flex items-start gap-3 rounded-md border border-line bg-canvas p-4 text-sm leading-6 text-action dark:bg-subtle">
               <Ban size={18} className="mt-0.5 shrink-0" />
 
               <p>
@@ -1650,14 +1649,14 @@ function DesignerBookingDetail() {
             Project scope
             =========================================*/}
 
-            <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur dark:border-white/5 dark:bg-[#0A0A0A]/90 sm:p-8">
+            <section className="rounded-md border border-line bg-subtle p-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/10 text-[#9B791D] dark:text-[#D4AF37]">
+                <div className="flex h-11 w-11 items-center justify-center rounded-md border border-line bg-subtle text-action">
                   <FileText size={20} />
                 </div>
 
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/30">
+                  <p className="text-[10px] font-semibold uppercase tracking-normal text-muted">
                     Project Scope
                   </p>
 
@@ -1665,26 +1664,26 @@ function DesignerBookingDetail() {
                 </div>
               </div>
 
-              <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-7 text-slate-600 dark:border-white/5 dark:bg-white/[0.025] dark:text-white/55">
+              <div className="mt-6 rounded-md border border-line bg-canvas p-4 text-sm leading-7 text-muted dark:bg-subtle">
                 {booking.brief_text || "No project brief was supplied."}
               </div>
 
               <BookingDesignAttachment bookingId={id} />
 
               {booking.revision_notes && (
-                <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-400/20 dark:bg-amber-400/10">
+                <div className="mt-5 rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
                   <div className="flex items-start gap-3">
                     <MessageSquareText
                       size={19}
-                      className="mt-0.5 shrink-0 text-amber-700 dark:text-amber-300"
+                      className="mt-0.5 shrink-0 text-action"
                     />
 
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-action">
                         Revision Requested
                       </p>
 
-                      <p className="mt-2 text-sm leading-6 text-amber-800/85 dark:text-amber-100/80">
+                      <p className="mt-2 text-sm leading-6 text-muted">
                         {booking.revision_notes}
                       </p>
                     </div>
@@ -1697,14 +1696,14 @@ function DesignerBookingDetail() {
             Submitted Deliverables
             =========================================*/}
 
-            <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur dark:border-white/5 dark:bg-[#0A0A0A]/90 sm:p-8">
+            <section className="rounded-md border border-line bg-subtle p-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-400/20 dark:bg-indigo-400/10 dark:text-indigo-300">
+                <div className="flex h-11 w-11 items-center justify-center rounded-md border border-line bg-canvas text-action dark:bg-subtle">
                   <PackageCheck size={20} />
                 </div>
 
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/30">
+                  <p className="text-[10px] font-semibold uppercase tracking-normal text-muted">
                     Deliverables
                   </p>
 
@@ -1712,7 +1711,7 @@ function DesignerBookingDetail() {
                 </div>
               </div>
 
-              <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-500 dark:text-white/40">
+              <p className="mt-4 max-w-2xl text-sm leading-6 text-muted">
                 Each milestone keeps the required 2D deliverable and, when
                 supplied, an interactive 3D model and Virtual Try-On garment
                 image.
@@ -1722,13 +1721,13 @@ function DesignerBookingDetail() {
               Prototype
               =====================================*/}
 
-              <article className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/5 dark:bg-white/[0.025]">
+              <article className="mt-6 rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-400/10 dark:text-indigo-300">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-subtle text-action">
                     <PlayCircle size={19} />
                   </div>
 
-                  <span className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
                     Prototype
                   </span>
                 </div>
@@ -1737,7 +1736,7 @@ function DesignerBookingDetail() {
                   Phase-one submission
                 </h3>
 
-                <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-white/40">
+                <p className="mt-2 text-sm leading-6 text-muted">
                   {booking.prototype_message ||
                     "No prototype has been submitted yet."}
                 </p>
@@ -1747,13 +1746,13 @@ function DesignerBookingDetail() {
                     href={booking.prototype_file_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-5 inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-white px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-50 dark:border-indigo-400/20 dark:bg-white/[0.03] dark:text-indigo-300 dark:hover:bg-indigo-400/10"
+                    className="mt-5 inline-flex items-center gap-2 rounded-md border border-line bg-surface px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-action transition hover:border-line hover:bg-canvas dark:bg-subtle dark:hover:bg-subtle"
                   >
                     Open 2D Prototype
                     <ExternalLink size={13} />
                   </a>
                 ) : (
-                  <p className="mt-5 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-white/25">
+                  <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">
                     2D prototype not submitted
                   </p>
                 )}
@@ -1763,7 +1762,7 @@ function DesignerBookingDetail() {
                     href={booking.prototype_tryon_image_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-3 flex w-fit items-center gap-2 rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/5 px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-[#8F7118] transition hover:border-[#D4AF37]/45 hover:bg-[#D4AF37]/10 dark:text-[#D4AF37]"
+                    className="mt-3 flex w-fit items-center gap-2 rounded-md border border-line bg-subtle px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-action transition hover:border-line hover:bg-subtle"
                   >
                     Open Try-On Garment
                     <Sparkles size={13} />
@@ -1782,22 +1781,22 @@ function DesignerBookingDetail() {
 
                 <div className="mt-5 flex flex-wrap gap-3">
                   {booking.prototype_file_url && (
-                    <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-white/30">
-                      <CheckCircle2 size={13} className="text-emerald-500" />
+                    <div className="flex items-center gap-2 text-[10px] text-muted">
+                      <CheckCircle2 size={13} className="text-action" />
                       2D prototype available
                     </div>
                   )}
 
                   {booking.prototype_model_url && (
-                    <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-white/30">
-                      <CheckCircle2 size={13} className="text-cyan-500" />
+                    <div className="flex items-center gap-2 text-[10px] text-muted">
+                      <CheckCircle2 size={13} className="text-action" />
                       Interactive 3D model available
                     </div>
                   )}
 
                   {booking.prototype_tryon_image_url && (
-                    <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-white/30">
-                      <CheckCircle2 size={13} className="text-[#B89122]" />
+                    <div className="flex items-center gap-2 text-[10px] text-muted">
+                      <CheckCircle2 size={13} className="text-action" />
                       Virtual Try-On garment available
                     </div>
                   )}
@@ -1808,20 +1807,20 @@ function DesignerBookingDetail() {
               Final delivery
               =====================================*/}
 
-              <article className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/5 dark:bg-white/[0.025]">
+              <article className="mt-5 rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 text-violet-700 dark:bg-violet-400/10 dark:text-violet-300">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-subtle text-action">
                     <FileCheck2 size={19} />
                   </div>
 
-                  <span className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
                     Final
                   </span>
                 </div>
 
                 <h3 className="mt-5 text-base font-semibold">Final delivery</h3>
 
-                <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-white/40">
+                <p className="mt-2 text-sm leading-6 text-muted">
                   {booking.delivery_message ||
                     "Final files have not been submitted yet."}
                 </p>
@@ -1831,13 +1830,13 @@ function DesignerBookingDetail() {
                     href={booking.delivery_file_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-5 inline-flex items-center gap-2 rounded-xl border border-violet-200 bg-white px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-violet-700 transition hover:border-violet-300 hover:bg-violet-50 dark:border-violet-400/20 dark:bg-white/[0.03] dark:text-violet-300 dark:hover:bg-violet-400/10"
+                    className="mt-5 inline-flex items-center gap-2 rounded-md border border-line bg-surface px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-action transition hover:border-line hover:bg-canvas dark:bg-subtle dark:hover:bg-subtle"
                   >
                     Open Final 2D
                     <ExternalLink size={13} />
                   </a>
                 ) : (
-                  <p className="mt-5 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-white/25">
+                  <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">
                     Final 2D deliverable not submitted
                   </p>
                 )}
@@ -1847,7 +1846,7 @@ function DesignerBookingDetail() {
                     href={booking.delivery_tryon_image_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-3 flex w-fit items-center gap-2 rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/5 px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-[#8F7118] transition hover:border-[#D4AF37]/45 hover:bg-[#D4AF37]/10 dark:text-[#D4AF37]"
+                    className="mt-3 flex w-fit items-center gap-2 rounded-md border border-line bg-subtle px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-action transition hover:border-line hover:bg-subtle"
                   >
                     Open Try-On Garment
                     <Sparkles size={13} />
@@ -1866,22 +1865,22 @@ function DesignerBookingDetail() {
 
                 <div className="mt-5 flex flex-wrap gap-3">
                   {booking.delivery_file_url && (
-                    <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-white/30">
-                      <CheckCircle2 size={13} className="text-emerald-500" />
+                    <div className="flex items-center gap-2 text-[10px] text-muted">
+                      <CheckCircle2 size={13} className="text-action" />
                       Final 2D deliverable available
                     </div>
                   )}
 
                   {booking.delivery_model_url && (
-                    <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-white/30">
-                      <CheckCircle2 size={13} className="text-cyan-500" />
+                    <div className="flex items-center gap-2 text-[10px] text-muted">
+                      <CheckCircle2 size={13} className="text-action" />
                       Interactive final 3D model available
                     </div>
                   )}
 
                   {booking.delivery_tryon_image_url && (
-                    <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-white/30">
-                      <CheckCircle2 size={13} className="text-[#B89122]" />
+                    <div className="flex items-center gap-2 text-[10px] text-muted">
+                      <CheckCircle2 size={13} className="text-action" />
                       Virtual Try-On garment available
                     </div>
                   )}
@@ -1899,37 +1898,37 @@ function DesignerBookingDetail() {
             Booking summary
             =========================================*/}
 
-            <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur dark:border-white/5 dark:bg-[#0A0A0A]/90">
+            <section className="rounded-md border border-line bg-subtle p-4">
               <div className="flex items-center gap-3">
                 <BadgeDollarSign
                   size={20}
-                  className="text-[#9B791D] dark:text-[#D4AF37]"
+                  className="text-action"
                 />
 
                 <h2 className="text-lg font-semibold">Booking summary</h2>
               </div>
 
               <div className="mt-6 space-y-4">
-                <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-4 dark:border-white/10">
-                  <span className="text-sm text-slate-500 dark:text-white/40">
+                <div className="flex items-center justify-between gap-4 border-b border-line pb-4">
+                  <span className="text-sm text-muted">
                     Agreed value
                   </span>
 
-                  <strong className="font-mono text-lg text-[#9B791D] dark:text-[#D4AF37]">
+                  <strong className="font-mono text-lg text-action">
                     {formatCurrency(booking.agreed_price)}
                   </strong>
                 </div>
 
-                <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-4 dark:border-white/10">
-                  <span className="text-sm text-slate-500 dark:text-white/40">
+                <div className="flex items-center justify-between gap-4 border-b border-line pb-4">
+                  <span className="text-sm text-muted">
                     Payment status
                   </span>
 
                   <span
                     className={`inline-flex items-center gap-2 text-sm font-semibold ${
                       booking.escrow_locked
-                        ? "text-emerald-700 dark:text-emerald-300"
-                        : "text-slate-600 dark:text-white/55"
+                        ? "text-action"
+                        : "text-muted"
                     }`}
                   >
                     {booking.escrow_locked ? (
@@ -1943,7 +1942,7 @@ function DesignerBookingDetail() {
                 </div>
 
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-sm text-slate-500 dark:text-white/40">
+                  <span className="text-sm text-muted">
                     Booking type
                   </span>
 
@@ -1958,11 +1957,11 @@ function DesignerBookingDetail() {
             Schedule
             =========================================*/}
 
-            <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur dark:border-white/5 dark:bg-[#0A0A0A]/90">
+            <section className="rounded-md border border-line bg-subtle p-4">
               <div className="flex items-center gap-3">
                 <CalendarDays
                   size={20}
-                  className="text-[#9B791D] dark:text-[#D4AF37]"
+                  className="text-action"
                 />
 
                 <h2 className="text-lg font-semibold">Schedule</h2>
@@ -1970,7 +1969,7 @@ function DesignerBookingDetail() {
 
               <div className="mt-6 space-y-5">
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-white/30">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                     Deadline
                   </p>
 
@@ -1978,13 +1977,13 @@ function DesignerBookingDetail() {
                     {formatDate(booking.deadline)}
                   </p>
 
-                  <p className="mt-1 text-xs text-slate-500 dark:text-white/40">
+                  <p className="mt-1 text-xs text-muted">
                     {getDeadlineMessage(booking.deadline, booking.status)}
                   </p>
                 </div>
 
-                <div className="border-t border-slate-200 pt-5 dark:border-white/10">
-                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-white/30">
+                <div className="border-t border-line pt-5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                     Scheduled start
                   </p>
 
@@ -2000,20 +1999,20 @@ function DesignerBookingDetail() {
             =========================================*/}
 
             {whatsappContactEligible && (
-              <section className="overflow-hidden rounded-3xl border border-emerald-200 bg-white/90 shadow-sm backdrop-blur dark:border-emerald-400/15 dark:bg-[#0A0A0A]/90">
-                <div className="border-b border-emerald-100 bg-emerald-50/70 p-6 dark:border-emerald-400/10 dark:bg-emerald-400/[0.06]">
+              <section className="overflow-hidden rounded-md border border-line bg-subtle">
+                <div className="border-b border-line bg-subtle p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-emerald-200 bg-white text-emerald-700 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-line bg-surface text-action dark:bg-subtle">
                         <MessageCircle size={20} />
                       </div>
 
                       <div>
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
+                        <p className="text-[11px] font-semibold uppercase tracking-normal text-action">
                           Booking communication
                         </p>
 
-                        <h2 className="mt-1 font-serif text-xl font-light text-slate-950 dark:text-white">
+                        <h2 className="mt-1 font-serif text-xl font-light text-ink">
                           WhatsApp Contact
                         </h2>
                       </div>
@@ -2025,7 +2024,7 @@ function DesignerBookingDetail() {
                       disabled={whatsappLoading}
                       title="Refresh WhatsApp availability"
                       aria-label="Refresh WhatsApp contact availability"
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-200 bg-white text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-400/20 dark:bg-white/5 dark:text-emerald-300 dark:hover:bg-emerald-400/10"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-line bg-surface text-action transition hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50 dark:bg-subtle dark:hover:bg-subtle"
                     >
                       <RefreshCw
                         size={14}
@@ -2035,30 +2034,30 @@ function DesignerBookingDetail() {
                   </div>
                 </div>
 
-                <div className="p-6">
+                <div className="p-4">
                   {whatsappLoading ? (
-                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500 dark:border-white/5 dark:bg-white/[0.025] dark:text-white/40">
+                    <div className="flex items-center gap-3 rounded-md border border-line bg-canvas p-4 text-sm text-muted dark:bg-subtle">
                       <Loader2
                         size={17}
-                        className="shrink-0 animate-spin text-emerald-600 dark:text-emerald-300"
+                        className="shrink-0 animate-spin text-action"
                       />
 
                       <p>Checking private booking contact availability...</p>
                     </div>
                   ) : whatsappError ? (
-                    <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-400/20 dark:bg-rose-400/10">
+                    <div className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
                       <div className="flex items-start gap-3">
                         <AlertCircle
                           size={17}
-                          className="mt-0.5 shrink-0 text-rose-700 dark:text-rose-300"
+                          className="mt-0.5 shrink-0 text-action"
                         />
 
                         <div>
-                          <p className="text-sm font-semibold text-rose-900 dark:text-rose-100">
+                          <p className="text-sm font-semibold text-action">
                             Contact could not be loaded
                           </p>
 
-                          <p className="mt-1 text-xs leading-5 text-rose-700/80 dark:text-rose-200/70">
+                          <p className="mt-1 text-xs leading-5 text-muted">
                             {whatsappError}
                           </p>
                         </div>
@@ -2066,19 +2065,19 @@ function DesignerBookingDetail() {
                     </div>
                   ) : whatsappAvailable ? (
                     <div className="space-y-4">
-                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-400/15 dark:bg-emerald-400/[0.06]">
+                      <div className="rounded-md border border-line bg-subtle p-4">
                         <div className="flex items-start gap-3">
                           <CheckCircle2
                             size={18}
-                            className="mt-0.5 shrink-0 text-emerald-700 dark:text-emerald-300"
+                            className="mt-0.5 shrink-0 text-action"
                           />
 
                           <div>
-                            <p className="text-sm font-semibold text-emerald-950 dark:text-emerald-100">
+                            <p className="text-sm font-semibold text-action">
                               {whatsappPartnerName} is available on WhatsApp
                             </p>
 
-                            <p className="mt-1 text-xs leading-5 text-emerald-800/70 dark:text-emerald-200/60">
+                            <p className="mt-1 text-xs leading-5 text-muted">
                               The Creator has chosen to share WhatsApp contact
                               through this booking. The raw phone number is not
                               displayed on this page.
@@ -2093,7 +2092,7 @@ function DesignerBookingDetail() {
                           onClick={() =>
                             handleOpenWhatsApp(whatsappContact?.message_url)
                           }
-                          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-[9px] font-black uppercase tracking-[0.17em] text-white shadow-[0_12px_28px_rgba(5,150,105,0.16)] transition hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-500/15 dark:bg-emerald-500 dark:hover:bg-emerald-400"
+                          className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-action px-4 text-[11px] font-semibold uppercase tracking-[0.17em] text-on-action transition hover:bg-action focus:outline-none focus:ring-4 focus:ring-action hover:text-on-action"
                         >
                           <MessageCircle size={16} />
                           Message on WhatsApp
@@ -2108,7 +2107,7 @@ function DesignerBookingDetail() {
                           disabled={
                             !isSafeWhatsAppUrl(whatsappContact?.video_call_url)
                           }
-                          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 text-[9px] font-black uppercase tracking-[0.17em] text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200 dark:hover:bg-emerald-400/15"
+                          className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-line bg-surface px-4 text-[11px] font-semibold uppercase tracking-[0.17em] text-action transition hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50 dark:bg-subtle dark:hover:bg-subtle"
                         >
                           <Video size={16} />
                           Open WhatsApp for Video Call
@@ -2116,20 +2115,20 @@ function DesignerBookingDetail() {
                         </button>
                       </div>
 
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/5 dark:bg-white/[0.025]">
-                        <p className="text-xs leading-5 text-slate-500 dark:text-white/40">
+                      <div className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
+                        <p className="text-xs leading-5 text-muted">
                           {whatsappContact?.video_call_instruction ||
                             "Open the WhatsApp chat, then use WhatsApp's video icon to start a video call."}
                         </p>
                       </div>
 
-                      <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-400/15 dark:bg-amber-400/[0.06]">
+                      <div className="flex items-start gap-3 rounded-md border border-line bg-subtle p-4">
                         <ShieldCheck
                           size={17}
-                          className="mt-0.5 shrink-0 text-amber-700 dark:text-amber-300"
+                          className="mt-0.5 shrink-0 text-action"
                         />
 
-                        <p className="text-xs leading-5 text-amber-800/80 dark:text-amber-100/60">
+                        <p className="text-xs leading-5 text-muted">
                           Use WhatsApp for communication or call coordination
                           only. Keep acceptance, revisions, milestone
                           submissions, cancellations, payments and final
@@ -2138,19 +2137,19 @@ function DesignerBookingDetail() {
                       </div>
                     </div>
                   ) : (
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/5 dark:bg-white/[0.025]">
+                    <div className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
                       <div className="flex items-start gap-3">
                         <LockKeyhole
                           size={17}
-                          className="mt-0.5 shrink-0 text-slate-500 dark:text-white/35"
+                          className="mt-0.5 shrink-0 text-muted"
                         />
 
                         <div>
-                          <p className="text-sm font-semibold text-slate-800 dark:text-white/70">
+                          <p className="text-sm font-semibold text-ink dark:text-muted">
                             WhatsApp contact unavailable
                           </p>
 
-                          <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-white/40">
+                          <p className="mt-1 text-xs leading-5 text-muted">
                             {whatsappContact?.message ||
                               "WhatsApp contact is not available for this booking."}
                           </p>
@@ -2167,20 +2166,20 @@ function DesignerBookingDetail() {
             =========================================*/}
 
             {(booking.cancellation_reason || booking.cancelled_at) && (
-              <section className="rounded-3xl border border-rose-200 bg-rose-50 p-6 shadow-sm dark:border-rose-400/20 dark:bg-rose-400/10">
-                <div className="flex items-center gap-3 text-rose-700 dark:text-rose-300">
+              <section className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
+                <div className="flex items-center gap-3 text-action">
                   <Ban size={20} />
 
                   <h2 className="text-lg font-semibold">Cancellation record</h2>
                 </div>
 
-                <p className="mt-4 text-sm leading-6 text-rose-800/80 dark:text-rose-100/75">
+                <p className="mt-4 text-sm leading-6 text-muted">
                   {booking.cancellation_reason ||
                     "No cancellation reason was recorded."}
                 </p>
 
                 {booking.cancelled_at && (
-                  <p className="mt-4 text-[10px] font-black uppercase tracking-[0.16em] text-rose-700/70 dark:text-rose-200/60">
+                  <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">
                     Closed {formatDateTime(booking.cancelled_at)}
                   </p>
                 )}

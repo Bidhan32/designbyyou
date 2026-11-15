@@ -88,6 +88,7 @@ async function main() {
   process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID = portalConfig.id;
   process.env.NODE_ENV = "test"; process.env.JWT_SECRET = authSecret;
   process.env.STRIPE_WEBHOOK_SECRET = secret; process.env.STRIPE_CONNECT_WEBHOOK_SECRET = secret;
+  process.env.CREATOR_SUBSCRIPTION_SIGNUPS_ENABLED = "true";
   process.env.FRONTEND_URL = "http://127.0.0.1:5173";
   const pool = isolated.pool;
   const db = { query: pool.query.bind(pool), async connect() {

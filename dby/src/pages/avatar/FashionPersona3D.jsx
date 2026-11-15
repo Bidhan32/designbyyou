@@ -1143,10 +1143,10 @@ function AvatarLoading() {
   return (
     <Html center>
       <div
-        className="flex min-w-[180px] flex-col items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/80 px-5 py-4 text-center text-white shadow-2xl backdrop-blur-xl"
+        className="flex min-w-[180px] flex-col items-center gap-3 rounded-md border border-line bg-subtle px-5 py-4 text-center text-ink"
       >
         <div
-          className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white"
+          className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-white"
         />
 
         <div>
@@ -1157,7 +1157,7 @@ function AvatarLoading() {
           </p>
 
           <p
-            className="mt-1 text-xs text-slate-400"
+            className="mt-1 text-xs text-muted"
           >
             Preparing the 3D model...
           </p>
@@ -1177,13 +1177,13 @@ function MissingModel({
 }) {
   return (
     <div
-      className="flex h-full min-h-[320px] w-full items-center justify-center p-6"
+      className="flex h-full min-h-[320px] w-full items-center justify-center p-4"
     >
       <div
-        className="max-w-sm rounded-3xl border border-white/10 bg-slate-950/70 p-6 text-center text-white shadow-xl backdrop-blur-xl"
+        className="max-w-sm rounded-md border border-line bg-subtle p-4 text-center text-ink"
       >
         <div
-          className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-xl"
+          className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-subtle text-xl"
         >
           3D
         </div>
@@ -1195,7 +1195,7 @@ function MissingModel({
         </p>
 
         <p
-          className="mt-2 text-sm leading-6 text-slate-400"
+          className="mt-2 text-sm leading-6 text-muted"
         >
           {message}
         </p>
@@ -1678,7 +1678,7 @@ export default function FashionPersona3D({
             =================================================== */}
 
         <div
-          className="pointer-events-none absolute left-4 top-4 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80 backdrop-blur-xl"
+          className="pointer-events-none absolute left-4 top-4 rounded-md border border-line bg-subtle px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted"
         >
           Fashion Persona 3D
         </div>

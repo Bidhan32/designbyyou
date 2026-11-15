@@ -409,27 +409,27 @@ export default function CreatorPatternExtractor() {
   const selection = draftCrop || crop;
 
   return (
-    <main className="min-h-screen bg-slate-50 pb-20 text-slate-900 dark:bg-[#090909] dark:text-white">
-      <header className="border-b border-slate-200 bg-white dark:border-white/10 dark:bg-[#111111]">
+    <main className="min-h-screen bg-canvas pb-20 text-ink dark:bg-surface">
+      <header className="border-b border-line bg-surface">
         <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-10">
-          <Link to="/creator/tools" className="inline-flex items-center gap-2 text-xs text-slate-500 hover:text-[#b58a32] dark:text-white/60">
-            <ArrowLeft size={15}/> Back to Creative Hub
+          <Link to="/creator/tools" className="inline-flex items-center gap-2 text-xs text-muted hover:text-action">
+            <ArrowLeft size={15}/> Back to tools
           </Link>
-          <p className="mt-5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.23em] text-[#a67c2c] dark:text-[#e5c67d]">
+          <p className="mt-5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-normal text-action">
             <WandSparkles size={16}/> DesignByYou AI Creative Tools
           </p>
-          <h1 className="mt-3 font-serif text-3xl tracking-tight sm:text-5xl">AI Pattern Extractor</h1>
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 dark:text-white/60">
+          <h1 className="mt-3 font-sans text-3xl tracking-tight sm:text-5xl">AI Pattern Extractor</h1>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-muted">
             Select an area containing printed fabric, then reconstruct its motifs as 2D textile artwork. Do not select the entire garment. AI output may differ from the original print.
           </p>
         </div>
       </header>
 
       <div className="mx-auto grid max-w-7xl gap-6 px-5 pt-7 sm:px-8 lg:grid-cols-[350px_minmax(0,1fr)] lg:px-10">
-        <section className="h-fit rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#151515]">
-          <h2 className="flex items-center gap-2 font-serif text-xl"><ImagePlus size={18} className="text-[#b58a32]"/> Source Fabric</h2>
+        <section className="h-fit rounded-md border border-line bg-surface p-4">
+          <h2 className="flex items-center gap-2 font-serif text-xl"><ImagePlus size={18} className="text-action"/> Source Fabric</h2>
           <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="Upload fabric photo" onChange={(e) => acceptFile(e.target.files?.[0])}/>
-          <div className={`mt-4 overflow-hidden rounded-xl border-2 border-dashed ${draggingFile ? "border-[#c9a353] bg-[#e5c67d]/10" : "border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.035]"}`}
+          <div className={`mt-4 overflow-hidden rounded-md border-2 border-dashed ${draggingFile ? "border-line bg-subtle" : "border-line bg-canvas dark:bg-subtle"}`}
             onDragOver={(e) => {e.preventDefault(); setDraggingFile(true);}}
             onDragLeave={(e) => {e.preventDefault(); setDraggingFile(false);}}
             onDrop={(e) => {e.preventDefault(); setDraggingFile(false); acceptFile(e.dataTransfer.files?.[0]);}}>
@@ -438,122 +438,122 @@ export default function CreatorPatternExtractor() {
                 <div ref={imageSurfaceRef} className={`relative inline-block max-w-full overflow-hidden ${!job || job.status === "pending" ? "cursor-crosshair touch-none" : ""}`}
                   onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={() => {dragStartRef.current = null; setDraftCrop(null);}}>
                   <img src={preview} alt="Uploaded fabric or garment" draggable={false} className="block max-h-[360px] max-w-full select-none object-contain"/>
-                  {selection && <div className="pointer-events-none absolute border-2 border-[#e5c67d] bg-[#e5c67d]/20 shadow-[0_0_0_999px_rgba(0,0,0,0.22)]"
+                  {selection && <div className="pointer-events-none absolute border-2 border-line bg-subtle"
                     style={{left: `${selection.x * 100}%`, top: `${selection.y * 100}%`, width: `${selection.width * 100}%`, height: `${selection.height * 100}%`}}/>}
                 </div>
               </div>
             ) : (
               <div className="flex min-h-[230px] flex-col items-center justify-center gap-2 px-5 text-center">
-                <UploadCloud size={32} className="text-[#b58a32]"/>
+                <UploadCloud size={32} className="text-action"/>
                 <p className="text-sm font-semibold">Drop your fabric image here</p>
-                <p className="text-xs text-slate-500 dark:text-white/50">JPG, PNG or WebP · Maximum 12 MB</p>
+                <p className="text-xs text-muted">JPG, PNG or WebP · Maximum 12 MB</p>
               </div>
             )}
           </div>
           <button type="button" onClick={() => inputRef.current?.click()} disabled={busy || restoring || Boolean(job && job.status !== "pending")}
-            className="mt-3 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 text-xs font-semibold hover:border-[#b58a32] disabled:opacity-40 dark:border-white/20">
+            className="mt-3 flex min-h-9 w-full items-center justify-center gap-2 rounded-md border border-line text-xs font-semibold hover:border-line disabled:opacity-40">
             <UploadCloud size={15}/> {file ? "Change Image" : "Choose Image"}
           </button>
-          {file && <p className="mt-2 truncate text-xs text-slate-500" title={file.name}>{file.name} · {(file.size / 1024 / 1024).toFixed(2)} MB</p>}
-            {file && (!job || job.status === "pending") && <div className="mt-3 flex items-center justify-between gap-2 text-xs text-slate-600 dark:text-white/65">
+          {file && <p className="mt-2 truncate text-xs text-muted" title={file.name}>{file.name} · {(file.size / 1024 / 1024).toFixed(2)} MB</p>}
+            {file && (!job || job.status === "pending") && <div className="mt-3 flex items-center justify-between gap-2 text-xs text-muted">
               <span><Scissors size={13} className="inline"/> Required: drag a rectangle around the printed fabric only. Avoid garment edges, collars, buttons and belts.</span>
-              {crop && <button type="button" onClick={() => setCrop(null)} className="shrink-0 font-semibold text-[#9a752c] underline">Clear crop</button>}
+              {crop && <button type="button" onClick={() => setCrop(null)} className="shrink-0 font-semibold text-action underline">Clear crop</button>}
             </div>}
-            {file && !crop && <p className="mt-2 rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200" role="status">
+            {file && !crop && <p className="mt-2 rounded-md bg-canvas p-3 text-xs text-action dark:bg-subtle" role="status">
               Select a printed fabric patch first. Only the selected region will be sent to AI, so avoid including the full garment.
             </p>}
-            {file && crop && <div className="mt-3 rounded-xl border border-[#c9a353]/50 bg-[#e5c67d]/10 p-3">
+            {file && crop && <div className="mt-3 rounded-md border border-line bg-subtle p-3">
               <p className="text-xs font-semibold">Selected fabric patch — this is the only image sent to AI</p>
-              {cropPreview ? <img src={cropPreview} alt="Preview of the exact fabric crop sent to AI" className="mx-auto mt-3 max-h-48 w-full rounded-lg object-contain" />
-                : <p className={`mt-2 text-xs ${cropError ? "text-rose-600" : "text-slate-500"}`}>{cropError || "Preparing crop preview..."}</p>}
-              <p className="mt-2 text-[11px] leading-5 text-slate-600 dark:text-white/65">
+              {cropPreview ? <img src={cropPreview} alt="Preview of the exact fabric crop sent to AI" className="mx-auto mt-3 max-h-48 w-full rounded-md object-contain" />
+                : <p className={`mt-2 text-xs ${cropError ? "text-action" : "text-muted"}`}>{cropError || "Preparing crop preview..."}</p>}
+              <p className="mt-2 text-[11px] leading-5 text-muted">
                 Check this crop carefully: if it contains a dress outline, seams or accessories, select a different patch. Small original details cannot be recovered by upscaling.
               </p>
               <button type="button" onClick={() => void downloadSelectedCrop()} disabled={!cropPreview || Boolean(cropError)}
-                className="mt-2 flex min-h-9 w-full items-center justify-center gap-2 rounded-lg border border-[#c9a353] px-3 text-xs font-semibold text-[#866320] hover:bg-[#e5c67d]/20 disabled:opacity-40 dark:text-[#f3d693]">
+                className="mt-2 flex min-h-9 w-full items-center justify-center gap-2 rounded-md border border-line px-3 text-xs font-semibold text-action hover:bg-subtle disabled:opacity-40">
                 <Download size={14}/> Download exact source crop (no AI credit)
               </button>
             </div>}
-          {job?.status === "pending" && !file && <p className="mt-2 text-xs text-amber-700 dark:text-amber-200">Reattach your original fabric image to submit this saved job.</p>}
+          {job?.status === "pending" && !file && <p className="mt-2 text-xs text-action">Reattach your original fabric image to submit this saved job.</p>}
 
-          <div className="mt-6 border-t border-slate-200 pt-5 dark:border-white/10">
+          <div className="mt-6 border-t border-line pt-5">
             <h2 className="font-serif text-lg">Extraction Mode</h2>
             <div className="mt-3 grid gap-2">
               {[{value: "faithful", title: "Original print", description: "Preserve source colors and motifs."},
                 {value: "seamless", title: "Repeatable tile (experimental)", description: "Ask AI for a repeating design; verify seams."}].map((option) => (
-                <label key={option.value} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 ${mode === option.value ? "border-[#c9a353] bg-[#e5c67d]/10" : "border-slate-200 dark:border-white/10"}`}>
-                  <input type="radio" name="pattern-mode" value={option.value} checked={mode === option.value} onChange={() => setMode(option.value)} disabled={Boolean(job || pendingAttempt) || busy || restoring} className="mt-1 accent-[#b58a32]"/>
-                  <span><span className="block text-xs font-semibold">{option.title}</span><span className="mt-1 block text-[11px] text-slate-500 dark:text-white/55">{option.description}</span></span>
+                <label key={option.value} className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 ${mode === option.value ? "border-line bg-subtle" : "border-line"}`}>
+                  <input type="radio" name="pattern-mode" value={option.value} checked={mode === option.value} onChange={() => setMode(option.value)} disabled={Boolean(job || pendingAttempt) || busy || restoring} className="mt-1 accent-action"/>
+                  <span><span className="block text-xs font-semibold">{option.title}</span><span className="mt-1 block text-[11px] text-muted">{option.description}</span></span>
                 </label>
               ))}
             </div>
             <label htmlFor="pattern-instructions" className="mt-4 block text-xs font-semibold">Optional instructions</label>
             <textarea id="pattern-instructions" rows={3} maxLength={500} value={instructions} onChange={(e) => setInstructions(e.target.value)}
               disabled={Boolean(job || pendingAttempt) || busy || restoring} placeholder="e.g. Extract the blue floral section and preserve the small white petals."
-              className="mt-2 w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs leading-5 outline-none focus:border-[#b58a32] disabled:opacity-60 dark:border-white/15 dark:bg-[#111111]"/>
-            <p className="mt-2 text-xs text-slate-500 dark:text-white/50">AI reconstruction: 1 estimated FASHN credit (Fast / 1K). Up to four new jobs per Creator per hour. The exact-crop download above is free.</p>
+              className="mt-2 w-full resize-y rounded-md border border-line bg-surface px-3 py-2 text-xs leading-5 outline-none focus:border-line disabled:opacity-60"/>
+            <p className="mt-2 text-xs text-muted">AI reconstruction: 1 estimated FASHN credit (Fast / 1K). Up to four new jobs per Creator per hour. The exact-crop download above is free.</p>
           </div>
 
           <button type="button" disabled={!canGenerate} onClick={() => void generate()}
-            className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#e5c67d] px-4 text-sm font-bold text-black transition hover:bg-[#f4d995] disabled:cursor-not-allowed disabled:opacity-40">
+            className="mt-5 flex min-h-9 w-full items-center justify-center gap-2 rounded-md bg-subtle px-4 text-sm font-bold text-ink transition hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40">
             {busy ? <Loader2 size={18} className="animate-spin"/> : <Sparkles size={18}/>}
               {busy ? "Submitting..." : job?.status === "pending" ? "Start Saved Extraction" : "AI Reconstruct Flat Pattern"}
           </button>
-            {!crop && file && !job && <p className="mt-2 text-center text-xs text-amber-700 dark:text-amber-300">Select a fabric crop to enable AI extraction.</p>}
+            {!crop && file && !job && <p className="mt-2 text-center text-xs text-action">Select a fabric crop to enable AI extraction.</p>}
             {statusText && <p className="mt-2 text-center text-xs" role="status">{statusText}</p>}
-          {pendingAttempt && !job && <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+          {pendingAttempt && !job && <div className="mt-3 rounded-md border border-line bg-canvas p-3 text-xs text-action dark:bg-subtle">
             Previous creation attempt is unconfirmed. The same request ID will be reused to avoid duplicate jobs.
             <button type="button" onClick={discardAttempt} className="mt-2 block font-semibold underline">Discard unconfirmed attempt</button>
           </div>}
-          {error && <div role="alert" className="mt-3 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-200">
+          {error && <div role="alert" className="mt-3 flex items-start gap-2 rounded-md border border-line bg-canvas p-3 text-xs text-action dark:bg-subtle">
             <AlertCircle size={16} className="shrink-0"/><span className="flex-1">{error}</span>
             <button type="button" onClick={() => setError("")} aria-label="Dismiss error"><X size={15}/></button>
           </div>}
-          {job && <div className="mt-4 rounded-xl bg-slate-50 p-3 dark:bg-white/5">
+          {job && <div className="mt-4 rounded-md bg-canvas p-3 dark:bg-subtle">
             <p className="flex items-center justify-between text-xs"><span className="font-semibold">Job status</span><span>{STATUS_LABEL[job.status] || job.status}</span></p>
-            <p className="mt-2 break-all text-[10px] text-slate-500 dark:text-white/45">Job ID: {job.id}</p>
-            {active && <p className="mt-2 flex items-center gap-2 text-xs text-slate-500"><Loader2 size={13} className="animate-spin"/> Checking status every 8 seconds</p>}
-            {job.status === "submission_unknown" && <p className="mt-2 text-xs text-amber-700 dark:text-amber-200">Submission outcome is uncertain. Do not retry; investigate the provider request.</p>}
-            {job.status === "failed" && <p className="mt-2 text-xs text-amber-700 dark:text-amber-200">AI generation failed. A new job requires a new request.</p>}
-            {!["submitting", "submission_unknown"].includes(job.status) && !active && <button type="button" onClick={() => void refresh(job.id).catch((e) => setError(errorMessage(e)))} className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-[#9a752c]"><RefreshCw size={13}/> Refresh status</button>}
-            {["completed", "failed"].includes(job.status) && <button type="button" onClick={reset} className="ml-4 mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-[#9a752c]"><RefreshCw size={13}/> Start new extraction</button>}
+            <p className="mt-2 break-all text-[10px] text-muted">Job ID: {job.id}</p>
+            {active && <p className="mt-2 flex items-center gap-2 text-xs text-muted"><Loader2 size={13} className="animate-spin"/> Checking status every 8 seconds</p>}
+            {job.status === "submission_unknown" && <p className="mt-2 text-xs text-action">Submission outcome is uncertain. Do not retry; investigate the provider request.</p>}
+            {job.status === "failed" && <p className="mt-2 text-xs text-action">AI generation failed. A new job requires a new request.</p>}
+            {!["submitting", "submission_unknown"].includes(job.status) && !active && <button type="button" onClick={() => void refresh(job.id).catch((e) => setError(errorMessage(e)))} className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-action"><RefreshCw size={13}/> Refresh status</button>}
+            {["completed", "failed"].includes(job.status) && <button type="button" onClick={reset} className="ml-4 mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-action"><RefreshCw size={13}/> Start new extraction</button>}
           </div>}
-            <p className="mt-5 flex items-start gap-2 text-[11px] leading-5 text-slate-500 dark:text-white/50"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-[#b58a32]"/>
+            <p className="mt-5 flex items-start gap-2 text-[11px] leading-5 text-muted"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-action"/>
               The crop download preserves source pixels; AI reconstructions may still contain clothing shapes or modified motifs and must be reviewed. Results are temporary. This is not a cutting-pattern tool.</p>
         </section>
 
         <section className="min-w-0">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-            <div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#a67c2c] dark:text-[#e5c67d]">Fabric artwork studio</p>
-              <h2 className="mt-1.5 font-serif text-2xl">Your Extracted Pattern</h2>
-              <p className="mt-1 text-xs text-slate-500 dark:text-white/50">Compare the source with the reconstructed print.</p></div>
+            <div><p className="text-[10px] font-bold uppercase tracking-normal text-action">Fabric artwork studio</p>
+              <h2 className="mt-1.5 font-sans text-2xl">Your Extracted Pattern</h2>
+              <p className="mt-1 text-xs text-muted">Compare the source with the reconstructed print.</p></div>
             {image && <div className="flex gap-2">
               <button type="button" onClick={() => {try {pngDownload(image);} catch(e) {setError(errorMessage(e));}}}
-                className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#e5c67d] px-4 text-xs font-bold text-black hover:bg-[#f4d995]"><Download size={15}/> Download PNG</button>
-              <button type="button" onClick={clearImage} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-rose-200 px-3 text-xs font-semibold text-rose-700 dark:border-rose-500/30 dark:text-rose-300"><Trash2 size={14}/> Clear</button>
+                className="inline-flex min-h-9 items-center gap-2 rounded-md bg-subtle px-4 text-xs font-bold text-ink hover:bg-subtle"><Download size={15}/> Download PNG</button>
+              <button type="button" onClick={clearImage} className="inline-flex min-h-9 items-center gap-2 rounded-md border border-line px-3 text-xs font-semibold text-action"><Trash2 size={14}/> Clear</button>
             </div>}
           </div>
-          {notice && <div role="status" className="mb-4 flex items-center gap-2 rounded-xl border border-[#e5c67d]/40 bg-[#e5c67d]/10 p-3 text-xs"><CheckCircle2 size={16}/><span>{notice}</span></div>}
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#151515]">
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-white/10">
+          {notice && <div role="status" className="mb-4 flex items-center gap-2 rounded-md border border-line bg-subtle p-3 text-xs"><CheckCircle2 size={16}/><span>{notice}</span></div>}
+          <div className="overflow-hidden rounded-md border border-line bg-surface">
+            <div className="flex items-center justify-between border-b border-line px-4 py-3">
               <h3 className="font-serif text-lg">Pattern Output</h3>
-              <span className="text-[11px] text-slate-500 dark:text-white/50">{job ? STATUS_LABEL[job.status] : "Not generated"}</span>
+              <span className="text-[11px] text-muted">{job ? STATUS_LABEL[job.status] : "Not generated"}</span>
             </div>
             <div className="flex min-h-[350px] items-center justify-center p-4" style={CHECKER}>
               {image ? <img src={image} alt="AI-reconstructed flat textile pattern" className="max-h-[520px] w-full object-contain"/>
-                : loadingImage || active || busy ? <div className="flex flex-col items-center gap-3 rounded-xl bg-white/90 p-6 text-center text-slate-700"><Loader2 className="animate-spin text-[#b58a32]" size={28}/><p className="text-sm">{loadingImage ? "Retrieving generated pattern..." : "Preparing your fabric print..."}</p></div>
-                : <div className="flex max-w-sm flex-col items-center gap-3 rounded-xl bg-white/90 p-6 text-center text-slate-600"><ScanLine size={30} className="text-[#b58a32]"/><p className="text-sm">{cleared ? "Preview cleared" : job?.status === "completed" ? "Your output is ready to load" : "Upload a fabric photograph to begin"}</p>
-                    {job?.status === "completed" && <button type="button" onClick={() => void loadResult(true)} className="rounded-lg bg-[#e5c67d] px-4 py-2 text-xs font-bold text-black">{loadingImage ? "Loading..." : "Load Result"}</button>}</div>}
+                : loadingImage || active || busy ? <div className="flex flex-col items-center gap-3 rounded-md bg-subtle p-4 text-center text-ink"><Loader2 className="animate-spin text-action" size={28}/><p className="text-sm">{loadingImage ? "Retrieving generated pattern..." : "Preparing your fabric print..."}</p></div>
+                : <div className="flex max-w-sm flex-col items-center gap-3 rounded-md bg-subtle p-4 text-center text-muted"><ScanLine size={30} className="text-action"/><p className="text-sm">{cleared ? "Preview cleared" : job?.status === "completed" ? "Your output is ready to load" : "Upload a fabric photograph to begin"}</p>
+                    {job?.status === "completed" && <button type="button" onClick={() => void loadResult(true)} className="rounded-md bg-subtle px-4 py-2 text-xs font-bold text-ink">{loadingImage ? "Loading..." : "Load Result"}</button>}</div>}
             </div>
           </div>
-          {image && mode === "seamless" && <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-[#151515]">
-            <h3 className="flex items-center gap-2 font-serif text-lg"><Grid3X3 size={18} className="text-[#b58a32]"/> 3 × 3 Repeat Preview</h3>
-            <p className="mt-1 text-xs text-slate-500 dark:text-white/50">Check for visible joins; AI may not create mathematically seamless edges.</p>
-            <div className="mt-3 grid grid-cols-3 overflow-hidden rounded-lg border border-slate-200 dark:border-white/10">
+          {image && mode === "seamless" && <div className="mt-5 overflow-hidden rounded-md border border-line bg-surface p-4">
+            <h3 className="flex items-center gap-2 font-serif text-lg"><Grid3X3 size={18} className="text-action"/> 3 × 3 Repeat Preview</h3>
+            <p className="mt-1 text-xs text-muted">Check for visible joins; AI may not create mathematically seamless edges.</p>
+            <div className="mt-3 grid grid-cols-3 overflow-hidden rounded-md border border-line">
               {Array.from({length: 9}, (_, i) => <img key={i} src={image} alt={i === 0 ? "Repeated textile tile preview" : ""} className="aspect-square w-full object-fill" draggable={false}/>)}
             </div>
           </div>}
-          <p className="mt-5 text-[11px] leading-5 text-slate-500 dark:text-white/45">AI-extracted patterns are reconstructed artwork. Fine print details may change; confirm rights before commercial reproduction. Outputs are not guaranteed color-accurate or print-ready.</p>
+          <p className="mt-5 text-[11px] leading-5 text-muted">AI-extracted patterns are reconstructed artwork. Fine print details may change; confirm rights before commercial reproduction. Outputs are not guaranteed color-accurate or print-ready.</p>
         </section>
       </div>
     </main>

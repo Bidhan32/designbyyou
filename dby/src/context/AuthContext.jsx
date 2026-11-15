@@ -232,7 +232,7 @@ export const AuthProvider = ({ children }) => {
   const remaining = deadline ? new Date(deadline).getTime() - clock : Infinity;
   return <AuthContext.Provider value={value}>
     {children}
-    {user && remaining <= 300000 && <div role="status" className="fixed bottom-4 left-4 right-4 z-[100] mx-auto max-w-lg rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-gray-900 shadow-lg">
+    {user && remaining <= 300000 && <div role="status" className="fixed bottom-4 left-4 right-4 z-[100] mx-auto max-w-lg rounded-md border border-line bg-canvas p-4 text-sm text-ink">
       Your session is ending soon. Save your work. Activity keeps you signed in for up to 24 hours; after that, sign in again.
     </div>}
   </AuthContext.Provider>;

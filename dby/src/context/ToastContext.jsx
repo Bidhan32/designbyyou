@@ -31,18 +31,18 @@ export const ToastProvider = ({ children }) => {
                 {toasts.map((toast) => (
                     <div
                         key={toast.id}
-                        className="pointer-events-auto w-full bg-white border border-gray-100 shadow-xl rounded-2xl p-4 flex items-start gap-3 transform translate-y-0 animate-slide-in transition-all duration-300"
+                        className="pointer-events-auto w-full bg-surface border border-line rounded-md p-4 flex items-start gap-3 transform translate-y-0 animate-slide-in transition-all duration-300"
                     >
                         {/* Dynamic Icon Configuration */}
                         <div className="shrink-0 mt-0.5">
-                            {toast.type === 'success' && <CheckCircle2 size={18} className="text-emerald-600" />}
-                            {toast.type === 'error' && <AlertCircle size={18} className="text-rose-600" />}
-                            {toast.type === 'cart' && <ShoppingBag size={18} className="text-[#D4AF37]" />}
+                            {toast.type === 'success' && <CheckCircle2 size={18} className="text-action" />}
+                            {toast.type === 'error' && <AlertCircle size={18} className="text-action" />}
+                            {toast.type === 'cart' && <ShoppingBag size={18} className="text-action" />}
                         </div>
 
                         {/* Content */}
                         <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-gray-900 leading-relaxed">
+                            <p className="text-xs font-medium text-ink leading-relaxed">
                                 {toast.message}
                             </p>
                         </div>
@@ -50,7 +50,7 @@ export const ToastProvider = ({ children }) => {
                         {/* Dismiss Button */}
                         <button 
                             onClick={() => removeToast(toast.id)}
-                            className="shrink-0 text-gray-300 hover:text-gray-900 transition-colors cursor-pointer"
+                            className="shrink-0 text-muted hover:text-ink transition-colors cursor-pointer"
                         >
                             <X size={14} />
                         </button>

@@ -45,15 +45,15 @@ export const ProtectedRoute = ({ children, requiredRole }) => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white">
+      <div className="flex min-h-screen items-center justify-center bg-surface">
         <div className="flex flex-col items-center gap-3">
           <Loader2
-            className="animate-spin text-[#D4AF37]"
+            className="animate-spin text-action"
             size={28}
             aria-hidden="true"
           />
 
-          <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-gray-400">
+          <span className="text-[10px] font-bold uppercase tracking-normal text-muted">
             Restoring Session
           </span>
         </div>
@@ -76,11 +76,11 @@ export const ProtectedRoute = ({ children, requiredRole }) => {
 
   if (!user && sessionError) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white p-6">
-        <div role="alert" className="max-w-md space-y-4 text-center text-gray-700">
+      <div className="flex min-h-screen items-center justify-center bg-surface p-4">
+        <div role="alert" className="max-w-md space-y-4 text-center text-ink">
           <p>{sessionError}</p>
           <button type="button" onClick={() => void retrySession()}
-            className="rounded-lg bg-gray-900 px-4 py-2 text-white">Retry connection</button>
+            className="rounded-md bg-action px-4 py-2 text-on-action">Retry connection</button>
         </div>
       </div>
     );

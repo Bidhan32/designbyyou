@@ -414,11 +414,11 @@ function makeImageId() {
 
 function FieldLabel({ children, optional = false }) {
   return (
-    <div className="mb-2 flex items-center justify-between gap-3 text-xs font-semibold tracking-normal text-slate-500 dark:text-white/40">
+    <div className="mb-2 flex items-center justify-between gap-3 text-xs font-semibold tracking-normal text-muted">
       <span>{children}</span>
 
       {optional && (
-        <span className="text-xs font-medium tracking-wider text-slate-400 dark:text-white/25">
+        <span className="text-xs font-medium tracking-wider text-muted">
           Optional
         </span>
       )}
@@ -438,7 +438,7 @@ function SelectField({
         value={value}
         onChange={onChange}
         disabled={disabled}
-        className="h-[52px] w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-4 pr-11 text-sm text-slate-900 outline-none transition focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 disabled:opacity-60 dark:border-white/10 dark:bg-[#111111] dark:text-white dark:[color-scheme:dark]"
+        className="h-[52px] w-full appearance-none rounded-md border border-line bg-canvas px-4 pr-11 text-sm text-ink outline-none transition focus:border-line focus:ring-4 focus:ring-action disabled:opacity-60 dark:bg-surface dark:[color-scheme:dark]"
       >
         {children}
       </select>
@@ -446,17 +446,17 @@ function SelectField({
       <ChevronDown
         size={15}
         aria-hidden="true"
-        className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+        className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted"
       />
     </div>
   );
 }
 
 const textFieldClass =
-  "h-[52px] w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 disabled:opacity-60 dark:border-white/10 dark:bg-[#111111] dark:text-white dark:placeholder:text-white/25";
+  "h-[52px] w-full rounded-md border border-line bg-canvas px-4 text-sm text-ink outline-none transition placeholder:text-muted focus:border-line focus:ring-4 focus:ring-action disabled:opacity-60 dark:bg-surface";
 
 const miniButtonClass =
-  "inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-black/65 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-white transition hover:bg-white hover:text-black disabled:opacity-40";
+  "inline-flex items-center justify-center gap-1.5 rounded-md border border-line bg-black/65 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-ink transition hover:bg-surface hover:text-ink disabled:opacity-40";
 
 /* =========================================================
    Main Creator Studio
@@ -1573,37 +1573,37 @@ export default function CreatorUpload() {
      ======================================================= */
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-50 pb-24 text-slate-950 dark:bg-[#030303] dark:text-white">
+    <div className="relative min-h-screen overflow-hidden bg-canvas pb-24 text-ink">
       {/* Ambient background */}
 
       <div
         aria-hidden="true"
         className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
       >
-        <div className="absolute -right-64 -top-64 h-[42rem] w-[42rem] rounded-full bg-[#D4AF37]/10 blur-[180px]" />
 
-        <div className="absolute -bottom-64 -left-64 h-[36rem] w-[36rem] rounded-full bg-violet-500/[0.06] blur-[170px]" />
+
+
       </div>
 
       <main className="relative z-10 mx-auto max-w-[1100px] px-4 pt-9 sm:px-6 lg:px-10 lg:pt-12">
         {/* Header */}
 
-        <section className="relative mb-7 overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/90 p-6 shadow-sm backdrop-blur-xl sm:p-8 lg:p-10 dark:border-white/[0.06] dark:bg-[#090909]/90">
+        <section className="relative mb-7 overflow-hidden rounded-md border border-line bg-subtle p-4 lg:p-4">
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="inline-flex items-center gap-2 text-xs font-semibold tracking-normal text-[#98751A] dark:text-[#D4AF37]">
+              <p className="inline-flex items-center gap-2 text-xs font-semibold tracking-normal text-action">
                 <Sparkles size={12} />
                 Upload a design
               </p>
 
-              <h1 className="mt-4 font-semibold font-semibold tracking-tight text-3xl sm:text-4xl">
+              <h1 className="mt-4 font-semibold tracking-tight text-3xl sm:text-4xl">
                 Upload your{" "}
-                <span className="italic text-[#A17D1C] dark:text-[#D4AF37]">
+                <span className="italic text-action">
                   design
                 </span>
               </h1>
 
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-500 dark:text-white/40">
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-muted">
                 Add up to six images to a single creation.
                 Save it privately or share it in the
                 Showcase. Creative details are optional.
@@ -1615,7 +1615,7 @@ export default function CreatorUpload() {
               onClick={() =>
                 navigate(CREATOR_HUB_ROUTE)
               }
-              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 px-5 text-xs font-semibold tracking-wider text-slate-500 transition hover:border-[#D4AF37] dark:border-white/10 dark:text-white/45"
+              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-line px-5 text-xs font-semibold tracking-wider text-muted transition hover:border-line"
             >
               <ArrowLeft size={13} />
               Create
@@ -1625,18 +1625,18 @@ export default function CreatorUpload() {
 
         {/* Information */}
 
-        <section className="mb-7 flex items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50/70 p-4 dark:border-violet-400/15 dark:bg-violet-500/[0.06]">
+        <section className="mb-7 flex items-start gap-3 rounded-md border border-line bg-subtle p-4">
           <Layers3
             size={17}
-            className="mt-0.5 shrink-0 text-violet-600 dark:text-violet-300"
+            className="mt-0.5 shrink-0 text-action"
           />
 
           <div>
-            <p className="text-xs font-semibold text-violet-800 dark:text-violet-200">
+            <p className="text-xs font-semibold text-action">
               One creation, multiple images
             </p>
 
-            <p className="mt-1 text-xs leading-5 text-violet-700/70 dark:text-violet-200/55">
+            <p className="mt-1 text-xs leading-5 text-muted">
               Choose several pictures at once or add them
               individually using the same artwork area.
               Select a cover and arrange the gallery
@@ -1650,7 +1650,7 @@ export default function CreatorUpload() {
         {success && (
           <div
             role="status"
-            className="mb-7 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/[0.08] dark:text-emerald-200"
+            className="mb-7 flex items-start gap-3 rounded-md border border-line bg-canvas p-4 text-sm text-action dark:bg-subtle"
           >
             <CheckCircle2 size={18} />
 
@@ -1662,7 +1662,7 @@ export default function CreatorUpload() {
               </p>
 
               <p className="mt-1 text-xs opacity-70">
-                Returning to Creator Hub…
+                Returning to tools…
               </p>
             </div>
           </div>
@@ -1673,7 +1673,7 @@ export default function CreatorUpload() {
         {errorMsg && (
           <div
             role="alert"
-            className="mb-7 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/[0.08] dark:text-rose-200"
+            className="mb-7 flex items-start gap-3 rounded-md border border-line bg-canvas p-4 text-sm text-action dark:bg-subtle"
           >
             <AlertCircle
               size={18}
@@ -1688,23 +1688,23 @@ export default function CreatorUpload() {
 
         <form
           onSubmit={submit}
-          className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/90 shadow-sm dark:border-white/[0.06] dark:bg-[#090909]"
+          className="overflow-hidden rounded-md border border-line bg-subtle dark:bg-surface"
         >
           {/* Gallery Upload Area */}
 
-          <section className="border-b border-slate-200 p-6 sm:p-8 dark:border-white/[0.06]">
+          <section className="border-b border-line p-4">
             <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold tracking-normal text-[#98751A] dark:text-[#D4AF37]">
+                <p className="text-xs font-semibold tracking-normal text-action">
                   Images
                 </p>
 
-                <h2 className="mt-2 font-serif text-2xl">
+                <h2 className="mt-2 font-sans text-2xl">
                   Your images
                 </h2>
               </div>
 
-              <span className="inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-3 py-1.5 text-xs font-semibold tracking-wider text-[#98751A] dark:text-[#D4AF37]">
+              <span className="inline-flex items-center gap-2 rounded-md border border-line bg-subtle px-3 py-1.5 text-xs font-semibold tracking-wider text-action">
                 {gallery.length}/{MAX_IMAGES} images
 
                 {gallery.length > 0 && (
@@ -1740,21 +1740,18 @@ export default function CreatorUpload() {
                 onDrop={handleDrop}
                 disabled={loading || success}
                 className={`
-                  flex min-h-[340px] w-full flex-col
-                  items-center justify-center
-                  rounded-[1.75rem] border-2 border-dashed
-                  px-6 text-center transition
+                  flex min-h-[340px] w-full flex-col items-center justify-center rounded-md border-2 border-dashed px-6 text-center transition
 
                   ${
                     dragActive
-                      ? "border-[#D4AF37] bg-[#D4AF37]/10"
-                      : "border-slate-200 bg-slate-50 hover:border-[#D4AF37]/40 dark:border-white/10 dark:bg-white/[0.02]"
+                      ? "border-line bg-subtle"
+                      : "border-line bg-canvas hover:border-line dark:bg-subtle"
                   }
 
                   disabled:opacity-50
                 `}
               >
-                <span className="grid h-16 w-16 place-items-center rounded-2xl border border-[#D4AF37]/20 bg-[#D4AF37]/10 text-[#98751A] dark:text-[#D4AF37]">
+                <span className="grid h-16 w-16 place-items-center rounded-md border border-line bg-subtle text-action">
                   {dragActive ? (
                     <UploadCloud size={27} />
                   ) : (
@@ -1762,20 +1759,20 @@ export default function CreatorUpload() {
                   )}
                 </span>
 
-                <h3 className="mt-5 font-serif text-2xl">
+                <h3 className="mt-5 font-sans text-2xl">
                   {dragActive
                     ? "Drop your artwork"
                     : "Add artwork (optional)"}
                 </h3>
 
-                <p className="mt-3 max-w-md text-xs leading-6 text-slate-500 dark:text-white/35">
+                <p className="mt-3 max-w-md text-xs leading-6 text-muted">
                   Choose several images together or add
                   one at a time. Drag and drop also works.
                   Artwork from Studio appears here
                   automatically.
                 </p>
 
-                <span className="mt-5 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold tracking-wider text-slate-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-white/35">
+                <span className="mt-5 inline-flex items-center gap-2 rounded-md border border-line bg-surface px-4 py-2 text-xs font-semibold tracking-wider text-muted dark:bg-subtle">
                   <FileImage size={12} />
                   JPG · PNG · WEBP · 5 MB each · Up to 6
                 </span>
@@ -1784,7 +1781,7 @@ export default function CreatorUpload() {
               /* Gallery With Selected Images */
 
               <div
-                className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-black dark:border-white/10"
+                className="overflow-hidden rounded-md border border-line bg-canvas"
                 onDragEnter={handleDragEnter}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -1794,13 +1791,11 @@ export default function CreatorUpload() {
 
                 <div
                   className={`
-                    relative flex min-h-[320px]
-                    items-center justify-center
-                    overflow-hidden
+                    relative flex min-h-[320px] items-center justify-center overflow-hidden
 
                     ${
                       dragActive
-                        ? "ring-4 ring-inset ring-[#D4AF37]"
+                        ? "ring-4 ring-inset ring-action"
                         : ""
                     }
                   `}
@@ -1820,7 +1815,7 @@ export default function CreatorUpload() {
                     className="max-h-[620px] min-h-[320px] w-full object-contain"
                   />
 
-                  <span className="absolute left-4 top-4 rounded-full bg-black/70 px-3 py-2 text-xs font-semibold tracking-wider text-white">
+                  <span className="absolute left-4 top-4 rounded-md bg-black/70 px-3 py-2 text-xs font-semibold tracking-wider text-ink">
                     {activeImage?.id === coverImage?.id
                       ? "Cover image"
                       : "Gallery preview"}
@@ -1869,7 +1864,7 @@ export default function CreatorUpload() {
 
                 {/* Preview Metadata */}
 
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/10 bg-[#080808] px-5 py-3 text-xs text-white/45">
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line bg-canvas px-5 py-3 text-xs text-muted">
                   <span className="max-w-[18rem] truncate">
                     {activeImage?.file?.name ||
                       "Studio artwork"}
@@ -1894,7 +1889,7 @@ export default function CreatorUpload() {
                   )}
 
                   {strokeCount > 0 && (
-                    <span className="inline-flex items-center gap-1 text-violet-300">
+                    <span className="inline-flex items-center gap-1 text-action">
                       <Layers3 size={11} />
 
                       {strokeCount} Studio strokes
@@ -1904,18 +1899,18 @@ export default function CreatorUpload() {
 
                 {/* Gallery Thumbnails */}
 
-                <div className="grid grid-cols-2 gap-3 bg-[#0d0d0d] p-4 sm:grid-cols-3 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-3 bg-surface p-4 sm:grid-cols-3 lg:grid-cols-4">
                   {gallery.map(
                     (image, index) => (
                       <div
                         key={image.id}
                         className={`
-                          overflow-hidden rounded-xl border
+                          overflow-hidden rounded-md border
 
                           ${
                             image.id === activeImage?.id
-                              ? "border-[#D4AF37]"
-                              : "border-white/10"
+                              ? "border-line"
+                              : "border-line"
                           }
                         `}
                       >
@@ -1926,7 +1921,7 @@ export default function CreatorUpload() {
                               image.id
                             )
                           }
-                          className="relative block aspect-[4/3] w-full bg-black"
+                          className="relative block aspect-[4/3] w-full bg-canvas"
                           aria-label={`Preview image ${index + 1}`}
                         >
                           <img
@@ -1935,12 +1930,12 @@ export default function CreatorUpload() {
                             className="h-full w-full object-cover"
                           />
 
-                          <span className="absolute left-2 top-2 rounded-md bg-black/75 px-2 py-1 text-xs text-white">
+                          <span className="absolute left-2 top-2 rounded-md bg-black/75 px-2 py-1 text-xs text-ink">
                             {index + 1}
                           </span>
 
                           {coverImage?.id === image.id && (
-                            <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-md bg-[#D4AF37] px-2 py-1 text-xs font-bold text-black">
+                            <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-md bg-action px-2 py-1 text-xs font-bold text-on-action">
                               <Star
                                 size={10}
                                 fill="currentColor"
@@ -1953,7 +1948,7 @@ export default function CreatorUpload() {
 
                         {/* Thumbnail Controls */}
 
-                        <div className="flex items-center justify-between gap-1 bg-[#151515] px-2 py-2">
+                        <div className="flex items-center justify-between gap-1 bg-surface px-2 py-2">
                           <button
                             type="button"
                             disabled={
@@ -1968,7 +1963,7 @@ export default function CreatorUpload() {
                               )
                             }
                             aria-label={`Move image ${index + 1} earlier`}
-                            className="rounded p-1 text-white/70 hover:text-[#D4AF37] disabled:opacity-25"
+                            className="rounded p-1 text-muted hover:text-action disabled:opacity-25"
                           >
                             <ArrowUp size={13} />
                           </button>
@@ -1987,7 +1982,7 @@ export default function CreatorUpload() {
                               )
                             }
                             aria-label={`Move image ${index + 1} later`}
-                            className="rounded p-1 text-white/70 hover:text-[#D4AF37] disabled:opacity-25"
+                            className="rounded p-1 text-muted hover:text-action disabled:opacity-25"
                           >
                             <ArrowDown size={13} />
                           </button>
@@ -2003,7 +1998,7 @@ export default function CreatorUpload() {
                               }
                               title="Set as cover"
                               aria-label={`Set image ${index + 1} as cover`}
-                              className="rounded p-1 text-white/70 hover:text-[#D4AF37]"
+                              className="rounded p-1 text-muted hover:text-action"
                             >
                               <Star size={13} />
                             </button>
@@ -2019,7 +2014,7 @@ export default function CreatorUpload() {
                             }
                             title="Remove image"
                             aria-label={`Remove image ${index + 1}`}
-                            className="rounded p-1 text-rose-300 hover:text-rose-100"
+                            className="rounded p-1 text-action hover:text-action"
                           >
                             <X size={14} />
                           </button>
@@ -2035,7 +2030,7 @@ export default function CreatorUpload() {
                       type="button"
                       onClick={openPicker}
                       disabled={loading || success}
-                      className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/20 text-white/60 hover:border-[#D4AF37] hover:text-[#D4AF37] disabled:opacity-50"
+                      className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-md border border-dashed border-line text-muted hover:border-line hover:text-action disabled:opacity-50"
                     >
                       <Plus size={19} />
 
@@ -2046,7 +2041,7 @@ export default function CreatorUpload() {
                   )}
                 </div>
 
-                <p className="bg-[#0d0d0d] px-4 pb-4 text-xs text-white/40">
+                <p className="bg-surface px-4 pb-4 text-xs text-muted">
                   Click a thumbnail to preview. Use the star
                   to choose a cover, and arrows to change
                   the sequence. All images save as one
@@ -2058,13 +2053,13 @@ export default function CreatorUpload() {
 
           {/* Creative Details */}
 
-          <section className="p-6 sm:p-8">
-            <div className="mb-7 border-b border-slate-200 pb-5 dark:border-white/[0.06]">
-              <p className="text-xs font-semibold tracking-normal text-[#98751A] dark:text-[#D4AF37]">
+          <section className="p-4">
+            <div className="mb-7 border-b border-line pb-5">
+              <p className="text-xs font-semibold tracking-normal text-action">
                 Design details
               </p>
 
-              <h2 className="mt-2 font-serif text-2xl">
+              <h2 className="mt-2 font-sans text-2xl">
                 About your design
               </h2>
             </div>
@@ -2095,8 +2090,8 @@ export default function CreatorUpload() {
 
               {/* Format */}
 
-              <details className="rounded-xl border border-slate-200 p-4 dark:border-white/10">
-                    <summary className="cursor-pointer text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4">More details <span className="font-normal text-slate-500 dark:text-white/60">(optional)</span></summary>
+              <details className="rounded-md border border-line p-4">
+                    <summary className="cursor-pointer text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4">More details <span className="font-normal text-muted">(optional)</span></summary>
                     <div className="mt-5 space-y-5">
 <div>
                 <FieldLabel optional>
@@ -2173,7 +2168,7 @@ export default function CreatorUpload() {
                 </SelectField>
 
                 {categoriesError && (
-                  <div className="mt-2 flex items-center justify-between gap-2 text-xs text-rose-500">
+                  <div className="mt-2 flex items-center justify-between gap-2 text-xs text-action">
                     <span>
                       {categoriesError}
                     </span>
@@ -2192,7 +2187,7 @@ export default function CreatorUpload() {
                 )}
 
                 {selectedCategory?.description && (
-                  <p className="mt-2 text-xs text-slate-400 dark:text-white/30">
+                  <p className="mt-2 text-xs text-muted">
                     {selectedCategory.description}
                   </p>
                 )}
@@ -2200,11 +2195,11 @@ export default function CreatorUpload() {
 
               {/* Discovery */}
 
-              <div className="rounded-[1.5rem] border border-[#D4AF37]/20 bg-[#D4AF37]/[0.035] p-5 sm:p-6">
+              <div className="rounded-md border border-line bg-subtle p-4">
                 <div className="mb-5 flex items-start gap-3">
                   <Palette
                     size={18}
-                    className="mt-1 text-[#A17D1C] dark:text-[#D4AF37]"
+                    className="mt-1 text-action"
                   />
 
                   <div>
@@ -2212,7 +2207,7 @@ export default function CreatorUpload() {
                       Help people find your design
                     </h3>
 
-                    <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-white/35">
+                    <p className="mt-1 text-xs leading-5 text-muted">
                       Optional selections help people
                       find public creations.
                     </p>
@@ -2220,7 +2215,7 @@ export default function CreatorUpload() {
                 </div>
 
                 {discoveryLoading ? (
-                  <div className="inline-flex items-center gap-2 text-xs text-slate-400">
+                  <div className="inline-flex items-center gap-2 text-xs text-muted">
                     <Loader2
                       size={14}
                       className="animate-spin"
@@ -2229,7 +2224,7 @@ export default function CreatorUpload() {
                     Loading discovery options…
                   </div>
                 ) : discoveryError ? (
-                  <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700 dark:border-rose-400/15 dark:bg-rose-400/[0.06] dark:text-rose-200">
+                  <div className="flex items-center justify-between gap-3 rounded-md border border-line bg-canvas p-4 text-xs text-action dark:bg-subtle">
                     <span>
                       {discoveryError}
                     </span>
@@ -2329,7 +2324,7 @@ export default function CreatorUpload() {
                         Occasion
                       </FieldLabel>
 
-                      <p className="mb-3 text-xs text-slate-400 dark:text-white/30">
+                      <p className="mb-3 text-xs text-muted">
                         Select any occasions this design
                         fits; multiple selections are allowed.
                       </p>
@@ -2354,15 +2349,12 @@ export default function CreatorUpload() {
                                 disabled={loading || success}
                                 aria-pressed={chosen}
                                 className={`
-                                  min-h-[76px]
-                                  rounded-xl border
-                                  p-3 text-left
-                                  transition
+                                  min-h-[76px] rounded-md border p-3 text-left transition
 
                                   ${
                                     chosen
-                                      ? "border-[#D4AF37]/60 bg-[#D4AF37]/10 text-[#8A6814] dark:text-[#E4C65D]"
-                                      : "border-slate-200 bg-white text-slate-500 dark:border-white/10 dark:bg-white/[0.025] dark:text-white/40"
+                                      ? "border-line bg-subtle text-action"
+                                      : "border-line bg-surface text-muted dark:bg-subtle"
                                   }
                                 `}
                               >
@@ -2389,7 +2381,7 @@ export default function CreatorUpload() {
                     {/* Selected Terms */}
 
                     {!!selectedTermIds.length && (
-                      <div className="flex flex-wrap gap-2 border-t border-[#D4AF37]/15 pt-4">
+                      <div className="flex flex-wrap gap-2 border-t border-line pt-4">
                         {[
                           selectedStyle,
                           selectedGarment,
@@ -2399,7 +2391,7 @@ export default function CreatorUpload() {
                           .map((term) => (
                             <span
                               key={term.id}
-                              className="rounded-full bg-[#D4AF37]/10 px-3 py-1.5 text-xs font-bold text-[#8A6814] dark:text-[#D4AF37]"
+                              className="rounded-md bg-subtle px-3 py-1.5 text-xs font-bold text-action"
                             >
                               {term.emoji
                                 ? `${term.emoji} `
@@ -2420,10 +2412,10 @@ export default function CreatorUpload() {
                   Tags
                 </FieldLabel>
 
-                <div className="flex min-h-[52px] items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 focus-within:border-[#D4AF37]/60 dark:border-white/10 dark:bg-[#111111]">
+                <div className="flex min-h-[52px] items-center gap-2 rounded-md border border-line bg-canvas px-3 focus-within:border-line dark:bg-surface">
                   <Tag
                     size={14}
-                    className="shrink-0 text-slate-400"
+                    className="shrink-0 text-muted"
                   />
 
                   <input
@@ -2464,7 +2456,7 @@ export default function CreatorUpload() {
                       }
                     }}
                     placeholder="silk, layered, modern…"
-                    className="h-12 min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none dark:text-white"
+                    className="h-12 min-w-0 flex-1 bg-transparent text-sm text-ink outline-none"
                   />
 
                   <button
@@ -2476,13 +2468,13 @@ export default function CreatorUpload() {
                       !normalizeTag(tagInput)
                     }
                     aria-label="Add tag"
-                    className="rounded-lg bg-slate-200 p-2 text-slate-600 disabled:opacity-40 dark:bg-white/10 dark:text-white"
+                    className="rounded-md bg-subtle p-2 text-muted disabled:opacity-40 dark:text-ink"
                   >
                     <Plus size={13} />
                   </button>
                 </div>
 
-                <div className="mt-2 flex justify-between text-xs text-slate-400">
+                <div className="mt-2 flex justify-between text-xs text-muted">
                   <span>
                     Press Enter or comma to add
                   </span>
@@ -2497,7 +2489,7 @@ export default function CreatorUpload() {
                     {tags.map((tag) => (
                       <span
                         key={tag}
-                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-white/50"
+                        className="inline-flex items-center gap-2 rounded-md border border-line bg-canvas px-3 py-1.5 text-xs text-muted dark:bg-subtle"
                       >
                         #{tag}
 
@@ -2541,10 +2533,10 @@ export default function CreatorUpload() {
                   }
                   disabled={loading || success}
                   placeholder="Describe the silhouette, materials, inspiration, mood, construction ideas, or visual direction…"
-                  className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-7 text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-[#111111] dark:text-white dark:placeholder:text-white/25"
+                  className="w-full resize-y rounded-md border border-line bg-canvas p-4 text-sm leading-7 text-ink outline-none placeholder:text-muted focus:border-line focus:ring-4 focus:ring-action dark:bg-surface"
                 />
 
-                <p className="mt-2 text-right text-xs text-slate-400">
+                <p className="mt-2 text-right text-xs text-muted">
                   {form.description.length}/
                   {MAX_DESCRIPTION_LENGTH}
                 </p>
@@ -2558,7 +2550,7 @@ export default function CreatorUpload() {
                   Visibility
                 </FieldLabel>
 
-                <p className="mb-3 text-xs leading-5 text-slate-500 dark:text-white/35">
+                <p className="mb-3 text-xs leading-5 text-muted">
                   Private is the default. You can change
                   visibility later from your Creator profile.
                 </p>
@@ -2587,24 +2579,22 @@ export default function CreatorUpload() {
                           disabled={loading || success}
                           aria-pressed={chosen}
                           className={`
-                            rounded-2xl border
-                            p-5 text-left
-                            transition
+                            rounded-md border p-4 text-left transition
 
                             ${
                               chosen
-                                ? "border-[#D4AF37]/60 bg-[#D4AF37]/10"
-                                : "border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.025]"
+                                ? "border-line bg-subtle"
+                                : "border-line bg-canvas dark:bg-subtle"
                             }
                           `}
                         >
                           <div className="flex justify-between">
-                            <span className="grid h-11 w-11 place-items-center rounded-xl border border-[#D4AF37]/20 text-[#98751A] dark:text-[#D4AF37]">
+                            <span className="grid h-11 w-11 place-items-center rounded-md border border-line text-action">
                               <Icon size={18} />
                             </span>
 
                             {chosen && (
-                              <span className="grid h-6 w-6 place-items-center rounded-full bg-[#D4AF37] text-black">
+                              <span className="grid h-6 w-6 place-items-center rounded-full bg-action text-on-action">
                                 <Check size={13} />
                               </span>
                             )}
@@ -2614,7 +2604,7 @@ export default function CreatorUpload() {
                             {label}
                           </p>
 
-                          <p className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-white/35">
+                          <p className="mt-1.5 text-xs leading-5 text-muted">
                             {description}
                           </p>
                         </button>
@@ -2623,7 +2613,7 @@ export default function CreatorUpload() {
                   )}
                 </div>
 
-                <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-xs leading-5 text-slate-500 dark:border-white/10 dark:bg-white/[0.025] dark:text-white/40">
+                <div className="mt-3 flex items-start gap-2.5 rounded-md border border-line bg-canvas p-3.5 text-xs leading-5 text-muted dark:bg-subtle">
                   {form.visibility === "public" ? (
                     <Globe2
                       size={14}
@@ -2646,10 +2636,10 @@ export default function CreatorUpload() {
 
           {/* Footer */}
 
-          <footer className="border-t border-slate-200 bg-slate-50/70 p-5 sm:p-6 dark:border-white/[0.06] dark:bg-white/[0.015]">
+          <footer className="border-t border-line bg-subtle p-4">
             {loading && (
               <div className="mb-5">
-                <div className="mb-2 flex justify-between text-xs font-bold text-slate-400">
+                <div className="mb-2 flex justify-between text-xs font-bold text-muted">
                   <span>
                     Saving Creator Studio creation
                   </span>
@@ -2659,9 +2649,9 @@ export default function CreatorUpload() {
                   </span>
                 </div>
 
-                <div className="h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-white/[0.06]">
+                <div className="h-1.5 overflow-hidden rounded-full bg-subtle">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-[#A98520] to-[#D4AF37] transition-all"
+                    className="h-full rounded-full bg-surface transition-all"
                     style={{
                       width: `${uploadProgress}%`,
                     }}
@@ -2671,7 +2661,7 @@ export default function CreatorUpload() {
             )}
 
             <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-              <p className="inline-flex items-start gap-2 text-xs leading-5 text-slate-400 dark:text-white/30">
+              <p className="inline-flex items-start gap-2 text-xs leading-5 text-muted">
                 <Layers3
                   size={13}
                   className="mt-0.5 shrink-0"
@@ -2691,7 +2681,7 @@ export default function CreatorUpload() {
               <button
                 type="submit"
                 disabled={loading || success}
-                className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-7 text-xs font-semibold tracking-normal text-black shadow-sm transition hover:bg-[#E4C65D] disabled:opacity-50"
+                className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-action px-7 text-xs font-semibold tracking-normal text-on-action transition hover:bg-action disabled:opacity-50 hover:text-on-action"
               >
                 {loading ? (
                   <>

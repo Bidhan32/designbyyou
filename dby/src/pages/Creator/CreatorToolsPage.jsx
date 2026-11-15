@@ -573,11 +573,11 @@ function ToolThumbnail({ tool }) {
 
   return (
 
-    <div className="relative aspect-[16/9] w-full overflow-hidden bg-gradient-to-br from-[#25221d] via-[#181818] to-[#0c0c0c]">
+    <div className="relative aspect-[16/9] w-full overflow-hidden bg-surface">
 
       {/* Fallback */}
 
-      <div className="absolute inset-0 flex items-center justify-center gap-2 text-white/45">
+      <div className="absolute inset-0 flex items-center justify-center gap-2 text-muted">
 
         <Icon size={27} strokeWidth={1.5} aria-hidden="true" />
 
@@ -615,28 +615,6 @@ function ToolThumbnail({ tool }) {
 
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/25 to-transparent" />
-
-      {/* Availability Badge */}
-
-      <span
-
-        className={`absolute right-2.5 top-2.5 rounded-full border px-2.5 py-1 text-xs font-semibold backdrop-blur-md ${
-
-          tool.available
-
-            ? "border-[#e5c67d]/50 bg-[#17130b]/85 text-[#f3d693]"
-
-            : "border-white/15 bg-black/65 text-white/85"
-
-        }`}
-
-      >
-
-        {tool.available ? "Available" : "Coming Soon"}
-
-      </span>
-
     </div>
 
   );
@@ -651,13 +629,11 @@ function ToolThumbnail({ tool }) {
 
 function ToolCard({ tool }) {
 
-  const Icon = tool.icon;
-
   const ready = Boolean(tool.available && tool.path);
 
   return (
 
-    <article className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:border-[#d7b66b]/70 hover:shadow-sm dark:border-white/10 dark:bg-[#151515] dark:shadow-none dark:hover:border-[#d7b66b]/45">
+    <article className="group flex h-full min-w-0 flex-col overflow-hidden rounded-md border border-line bg-surface transition-all duration-300 hover:border-line">
 
       {/* Tool Image */}
 
@@ -669,7 +645,7 @@ function ToolCard({ tool }) {
 
           aria-label={`Open ${tool.title}`}
 
-          className="block overflow-hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#e5c67d]"
+          className="block overflow-hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-action"
 
         >
 
@@ -687,27 +663,7 @@ function ToolCard({ tool }) {
 
       <div className="flex flex-1 flex-col px-4 pb-4 pt-3.5">
 
-        {/* Icon and Category */}
-
-        <div className="flex items-center gap-2.5">
-
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#e5c67d]/15 text-[#ab802c] dark:text-[#e5c67d]">
-
-            <Icon size={17} strokeWidth={1.8} aria-hidden="true" />
-
-          </span>
-
-          <span className="min-w-0 text-xs font-bold tracking-normal text-[#a78032] dark:text-[#e5c67d]">
-
-            {tool.eyebrow}
-
-          </span>
-
-        </div>
-
-        {/* Tool Title */}
-
-        <h3 className="mt-3 font-serif text-[19px] font-semibold leading-6 tracking-tight text-slate-900 dark:text-white">
+        <h3 className="text-base font-semibold leading-6 tracking-tight text-ink">
 
           {tool.title}
 
@@ -715,33 +671,13 @@ function ToolCard({ tool }) {
 
         {/* Description */}
 
-        <p className="mt-2 flex-1 text-[12px] leading-[1.65] text-slate-600 dark:text-white/55">
+        <p className="mt-2 flex-1 text-[12px] leading-[1.65] text-muted">
 
           {tool.description}
 
         </p>
 
-        {/* Outcome */}
-
-        <div className="mt-3 flex items-start gap-1.5 text-xs font-medium leading-4 text-slate-500 dark:text-white/50">
-
-          <Sparkles
-
-            size={13}
-
-            className="mt-0.5 shrink-0 text-[#bc913c]"
-
-            aria-hidden="true"
-
-          />
-
-          <span>{tool.outcome}</span>
-
-        </div>
-
-        {/* Action */}
-
-        <div className="mt-3 border-t border-slate-100 pt-3 dark:border-white/10">
+        <div className="mt-3 border-t border-line pt-3">
 
           {ready ? (
 
@@ -749,7 +685,7 @@ function ToolCard({ tool }) {
 
               to={tool.path}
 
-              className="inline-flex min-h-9 w-full items-center justify-between gap-2 rounded-lg bg-[#e5c67d] px-3.5 text-[12px] font-bold text-[#17130b] transition hover:bg-[#f4d995] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b58a32]"
+              className="inline-flex min-h-9 w-full items-center justify-between gap-2 rounded-md border border-line bg-surface px-3.5 text-sm font-semibold text-ink transition hover:bg-subtle focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-action"
 
             >
 
@@ -761,7 +697,7 @@ function ToolCard({ tool }) {
 
           ) : (
 
-            <div className="flex min-h-9 items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5 text-xs text-slate-500 dark:border-white/10 dark:bg-white/[0.035] dark:text-white/45">
+            <div className="flex min-h-9 items-center justify-between gap-2 rounded-md border border-line bg-canvas px-3.5 text-xs text-muted dark:bg-subtle">
 
               <span>In Development</span>
 
@@ -795,19 +731,19 @@ function SectionHeading({ eyebrow, title, description, count }) {
 
       <div>
 
-        <p className="text-xs font-bold tracking-normal text-[#ad8433] dark:text-[#e5c67d]">
+        <p className="text-xs font-bold tracking-normal text-action">
 
           {eyebrow}
 
         </p>
 
-        <h2 className="mt-1.5 font-serif text-2xl tracking-tight sm:text-[29px]">
+        <h2 className="mt-1.5 font-sans text-2xl tracking-tight sm:text-[29px]">
 
           {title}
 
         </h2>
 
-        <p className="mt-1.5 max-w-xl text-[12px] leading-5 text-slate-500 dark:text-white/50">
+        <p className="mt-1.5 max-w-xl text-[12px] leading-5 text-muted">
 
           {description}
 
@@ -815,7 +751,7 @@ function SectionHeading({ eyebrow, title, description, count }) {
 
       </div>
 
-      <span className="text-xs text-slate-400 dark:text-white/40">
+      <span className="text-xs text-muted">
 
         {count} {count === 1 ? "tool" : "tools"}
 
@@ -901,7 +837,7 @@ export default function CreatorToolsPage() {
 
   return (
 
-    <main className="min-h-screen overflow-x-hidden bg-slate-50 pb-16 text-slate-900 dark:bg-[#090909] dark:text-white">
+    <main className="min-h-screen overflow-x-hidden bg-canvas pb-16 text-ink dark:bg-surface">
 
       {/* ===================================================
 
@@ -911,12 +847,12 @@ export default function CreatorToolsPage() {
 
       <header className="mx-auto max-w-7xl px-5 pt-8 sm:px-8 lg:px-10">
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Create</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-white/70">Start with a garment, upload a design, or choose an image tool below.</p>
-        <Link to="/creator/projects" className="mt-6 flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-slate-400 focus-visible:outline-2 focus-visible:outline-offset-4 dark:border-white/15 dark:bg-white/5 dark:hover:border-white/40 sm:p-5">
-          <FolderOpen size={24} className="shrink-0 text-slate-500 dark:text-slate-400" aria-hidden="true" />
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Start with a garment, upload a design, or choose an image tool below.</p>
+        <Link to="/creator/projects" className="mt-6 flex items-center gap-4 rounded-md border border-line bg-surface p-4 transition hover:border-line focus-visible:outline-2 focus-visible:outline-offset-4 dark:bg-subtle sm:p-4">
+          <FolderOpen size={24} className="shrink-0 text-muted" aria-hidden="true" />
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold">My projects</h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Continue working on a saved design.</p>
+            <p className="mt-1 text-sm text-muted">Continue working on a saved design.</p>
           </div>
           <ArrowUpRight size={20} className="shrink-0" aria-hidden="true" />
         </Link>
@@ -940,19 +876,19 @@ export default function CreatorToolsPage() {
 
           <div>
 
-            <p className="text-xs font-bold tracking-normal text-[#ad8433] dark:text-[#e5c67d]">
+            <p className="text-xs font-bold tracking-normal text-action">
 
               Creative tools
 
             </p>
 
-            <h2 className="mt-1.5 font-serif text-2xl sm:text-[29px]">
+            <h2 className="mt-1.5 font-sans text-2xl sm:text-[29px]">
 
               Choose a tool
 
             </h2>
 
-            <p className="mt-1.5 text-[12px] text-slate-500 dark:text-white/50">
+            <p className="mt-1.5 text-[12px] text-muted">
 
               Start a design, upload your work, or transform an image.
 
@@ -970,7 +906,7 @@ export default function CreatorToolsPage() {
 
               aria-hidden="true"
 
-              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted"
 
             />
 
@@ -986,7 +922,7 @@ export default function CreatorToolsPage() {
 
               aria-label="Search creative tools"
 
-              className="min-h-10 w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-10 text-[13px] text-slate-900 outline-none transition focus:border-[#b58a32] focus:ring-2 focus:ring-[#e5c67d]/20 dark:border-white/10 dark:bg-[#161616] dark:text-white"
+              className="min-h-10 w-full rounded-md border border-line bg-surface py-2 pl-10 pr-10 text-[13px] text-ink outline-none transition focus:border-line focus:ring-2 focus:ring-action"
 
             />
 
@@ -1000,7 +936,7 @@ export default function CreatorToolsPage() {
 
                 onClick={() => setSearch("")}
 
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded text-muted hover:text-ink"
 
               >
 
@@ -1046,13 +982,13 @@ export default function CreatorToolsPage() {
 
                 onClick={() => setActiveFilter(filter.id)}
 
-                className={`rounded-full border px-3.5 py-2 text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b58a32] ${
+                className={`rounded-md border px-3.5 py-2 text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-action ${
 
                   selected
 
-                    ? "border-[#e5c67d] bg-[#e5c67d] text-black"
+                    ? "border-line bg-subtle text-ink"
 
-                    : "border-slate-200 bg-white text-slate-600 hover:border-[#d4ae57] dark:border-white/10 dark:bg-[#161616] dark:text-white/65"
+                    : "border-line bg-surface text-muted hover:border-line"
 
                 }`}
 
@@ -1072,7 +1008,7 @@ export default function CreatorToolsPage() {
 
         <p
 
-          className="mt-3 text-xs text-slate-400 dark:text-white/40"
+          className="mt-3 text-xs text-muted"
 
           aria-live="polite"
 
@@ -1162,13 +1098,13 @@ export default function CreatorToolsPage() {
 
         {filteredTools.length === 0 && (
 
-          <div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center dark:border-white/10 dark:bg-[#151515]">
+          <div className="mt-8 rounded-md border border-dashed border-line bg-surface px-5 py-12 text-center">
 
             <ImageOff
 
               size={27}
 
-              className="mx-auto text-slate-400"
+              className="mx-auto text-muted"
 
               aria-hidden="true"
 
@@ -1176,7 +1112,7 @@ export default function CreatorToolsPage() {
 
             <h3 className="mt-3 font-serif text-xl">No matching tools</h3>
 
-            <p className="mt-2 text-[13px] text-slate-500 dark:text-white/55">
+            <p className="mt-2 text-[13px] text-muted">
 
               Try another search or reset the filters.
 
@@ -1194,7 +1130,7 @@ export default function CreatorToolsPage() {
 
               }}
 
-              className="mt-4 rounded-full bg-[#e5c67d] px-5 py-2.5 text-xs font-bold text-black hover:bg-[#f4d995]"
+              className="mt-4 rounded-md bg-subtle px-5 py-2.5 text-xs font-bold text-ink hover:bg-subtle"
 
             >
 

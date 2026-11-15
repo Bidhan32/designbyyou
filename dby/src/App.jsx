@@ -156,6 +156,7 @@ const CreatorOrdersHistory = lazy(() => import("./pages/Creator/CreatorOrdersHis
 
 const CreatorUpload = lazy(() => import("./pages/Creator/CreatorUpload"));
 
+const CreatorRewards = lazy(() => import("./pages/Creator/CreatorRewards"));
 const CreatorWallet = lazy(() => import("./pages/Creator/CreatorWallet"));
 
 const CreatorShowcase = lazy(() => import("./pages/Creator/CreatorShowcase"));
@@ -220,15 +221,15 @@ Shared Loading Screen
 
 function SessionLoadingScreen() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#030303]">
+    <div className="flex min-h-screen items-center justify-center bg-surface dark:bg-canvas">
       <div className="flex flex-col items-center gap-4">
         <Loader2
-          className="animate-spin text-[#D4AF37]"
+          className="animate-spin text-action"
           size={30}
           aria-hidden="true"
         />
 
-        <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-400 dark:text-white/40">
+        <span className="text-[10px] font-bold uppercase tracking-normal text-muted">
           Restoring Session
         </span>
       </div>
@@ -322,21 +323,21 @@ function UnauthorizedPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white px-6 dark:bg-[#030303]">
+    <div className="flex min-h-screen items-center justify-center bg-surface px-6 dark:bg-canvas">
       <div className="w-full max-w-md text-center">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-rose-50 dark:bg-rose-500/10">
-          <ShieldAlert className="text-rose-500" size={30} aria-hidden="true" />
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-canvas dark:bg-subtle">
+          <ShieldAlert className="text-action" size={30} aria-hidden="true" />
         </div>
 
-        <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.4em] text-[#D4AF37]">
+        <p className="mb-3 text-[10px] font-bold uppercase tracking-normal text-action">
           Access Restricted
         </p>
 
-        <h1 className="mb-4 text-3xl font-serif text-gray-900 dark:text-white">
+        <h1 className="mb-4 text-3xl font-serif text-ink">
           This studio isn't available to your account
         </h1>
 
-        <p className="mb-8 text-sm leading-6 text-gray-500 dark:text-white/50">
+        <p className="mb-8 text-sm leading-6 text-muted">
           Your account is signed in, but your current role does not have
           permission to open this section.
         </p>
@@ -344,7 +345,7 @@ function UnauthorizedPage() {
         <Link
           to={homePath}
           replace="true"
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1A1A1A] px-6 py-3 text-xs font-bold uppercase tracking-widest text-white transition-all hover:bg-black dark:bg-white dark:text-black"
+          className="inline-flex items-center justify-center gap-2 rounded-md bg-surface px-6 py-3 text-xs font-bold uppercase tracking-widest text-ink transition-all hover:bg-canvas"
         >
           <ArrowLeft size={15} aria-hidden="true" />
 
@@ -365,19 +366,19 @@ function NotFoundPage() {
   };
 
   return (
-    <div className="flex h-screen flex-col items-center justify-center gap-4 bg-white font-serif dark:bg-[#030303]">
-      <h1 className="text-6xl font-bold text-gray-100 dark:text-white/10">
+    <div className="flex h-screen flex-col items-center justify-center gap-4 bg-surface font-serif dark:bg-canvas">
+      <h1 className="text-6xl font-bold text-ink dark:text-muted">
         404
       </h1>
 
-      <p className="text-[10px] font-bold uppercase tracking-[0.5em] text-gray-400 dark:text-white/35">
-        Atelier Not Found
+      <p className="text-[10px] font-bold uppercase tracking-[0.5em] text-muted">
+        Page not found
       </p>
 
       <button
         type="button"
         onClick={goBack}
-        className="mt-8 cursor-pointer border-b border-[#D4AF37] pb-1 text-[10px] font-bold uppercase tracking-widest text-[#D4AF37] transition-all hover:border-black hover:text-black dark:hover:border-white dark:hover:text-white"
+        className="mt-8 cursor-pointer border-b border-line pb-1 text-[10px] font-bold uppercase tracking-widest text-action transition-all hover:border-line hover:text-ink"
       >
         Return to Gallery
       </button>
@@ -705,6 +706,7 @@ Normal admins, creators and designers cannot enter.
                   <Route path="directory" element={<DesignerDirectory />} />
 
                   <Route path="wallet" element={<CreatorWallet />} />
+                  <Route path="rewards" element={<CreatorRewards />} />
 
                   <Route path="profile" element={<CreatorProfile />} />
 

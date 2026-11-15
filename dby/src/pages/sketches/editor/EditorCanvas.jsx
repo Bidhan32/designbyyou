@@ -2644,7 +2644,7 @@ function EditorCanvas(
       )}
 
       {isTouchGesturing && (
-        <div className="pointer-events-none absolute left-1/2 top-3 z-20 -translate-x-1/2 rounded-full border border-slate-700 bg-slate-950/85 px-3 py-1.5 text-[10px] font-semibold text-slate-300 shadow-lg backdrop-blur">
+        <div className="pointer-events-none absolute left-1/2 top-3 z-20 -translate-x-1/2 rounded-md border border-line bg-subtle px-3 py-1.5 text-[10px] font-semibold text-muted">
           Pinch to zoom · move two fingers to pan
         </div>
       )}

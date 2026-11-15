@@ -6,7 +6,7 @@
   const status = document.getElementById('demo-status');
   const steps = [...document.querySelectorAll('button[data-step]')];
   const swatches = [...document.querySelectorAll('[data-colour]')];
-  const labels = ['Start with a silhouette', 'Find your colour', 'Make your mark', 'A concept to come back to'];
+  const labels = ['Start with a silhouette', 'Choose a colour', 'Add artwork', 'Preview the saved project'];
   const colours = {
     moss: ['#78855c', '#65734d', '#bfc7a5', 'Moss / 01', 'moss green'],
     clay: ['#ae6b51', '#965a43', '#e0b29b', 'Clay / 02', 'terracotta'],
@@ -21,13 +21,13 @@
     studio.dataset.step = String(step);
     steps.forEach(button => button.setAttribute('aria-pressed', String(Number(button.dataset.step) === step)));
     document.getElementById('annotation').textContent = labels[step];
-    status.textContent = `${['Sketch', 'Colour', 'Detail', 'Keep'][step]} stage. ${labels[step]}. Illustrative demonstration only.`;
+    status.textContent = `${['Sketch', 'Colour', 'Detail', 'Save'][step]} stage. ${labels[step]}. Illustrative demonstration only.`;
   };
   const stop = () => {
     clearTimeout(timer);
     playing = false;
     play.setAttribute('aria-pressed', 'false');
-    play.textContent = 'Replay demo ▷';
+    play.textContent = 'Replay demo';
   };
   const advance = () => {
     if (!playing) return;
@@ -40,7 +40,7 @@
     playing = true;
     update(0);
     play.setAttribute('aria-pressed', 'true');
-    play.textContent = 'Pause demo Ⅱ';
+    play.textContent = 'Pause demo';
     timer = setTimeout(advance, 1800);
   });
   steps.forEach(button => button.addEventListener('click', () => { stop(); update(Number(button.dataset.step)); }));

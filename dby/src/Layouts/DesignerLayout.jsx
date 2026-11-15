@@ -240,10 +240,10 @@ function getDesignerTierMeta(tier) {
         label: "Diamond",
         shortLabel: "Diamond",
         badgeClass:
-          "border-cyan-300/40 bg-cyan-50 text-cyan-700 dark:border-cyan-300/20 dark:bg-cyan-300/10 dark:text-cyan-200",
-        iconClass: "text-cyan-600 dark:text-cyan-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
+        iconClass: "text-action",
         panelClass:
-          "border-cyan-200 bg-gradient-to-br from-cyan-50 to-white dark:border-cyan-300/15 dark:from-cyan-300/[0.08] dark:to-white/[0.02]",
+          "border-line bg-surface",
       };
 
     case "gold":
@@ -252,10 +252,10 @@ function getDesignerTierMeta(tier) {
         label: "Gold",
         shortLabel: "Gold",
         badgeClass:
-          "border-[#D4AF37]/40 bg-[#D4AF37]/10 text-[#8A6912] dark:border-[#D4AF37]/25 dark:bg-[#D4AF37]/10 dark:text-[#F0D783]",
-        iconClass: "text-[#A27D17] dark:text-[#D4AF37]",
+          "border-line bg-subtle text-action",
+        iconClass: "text-action",
         panelClass:
-          "border-[#D4AF37]/30 bg-gradient-to-br from-[#D4AF37]/10 to-white dark:border-[#D4AF37]/20 dark:from-[#D4AF37]/10 dark:to-white/[0.02]",
+          "border-line bg-surface",
       };
 
     case "silver":
@@ -264,10 +264,10 @@ function getDesignerTierMeta(tier) {
         label: "Silver",
         shortLabel: "Silver",
         badgeClass:
-          "border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-300/20 dark:bg-slate-300/10 dark:text-slate-200",
-        iconClass: "text-slate-500 dark:text-slate-300",
+          "border-line bg-subtle text-ink",
+        iconClass: "text-muted",
         panelClass:
-          "border-slate-200 bg-gradient-to-br from-slate-100 to-white dark:border-slate-300/15 dark:from-slate-300/[0.08] dark:to-white/[0.02]",
+          "border-line bg-surface",
       };
 
     case "bronze":
@@ -276,10 +276,10 @@ function getDesignerTierMeta(tier) {
         label: "Bronze",
         shortLabel: "Bronze",
         badgeClass:
-          "border-amber-700/25 bg-amber-700/10 text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300",
-        iconClass: "text-amber-700 dark:text-amber-300",
+          "border-line bg-subtle text-action",
+        iconClass: "text-action",
         panelClass:
-          "border-amber-200 bg-gradient-to-br from-amber-50 to-white dark:border-amber-400/15 dark:from-amber-400/[0.07] dark:to-white/[0.02]",
+          "border-line bg-surface",
       };
 
     default:
@@ -288,10 +288,10 @@ function getDesignerTierMeta(tier) {
         label: "Tier unavailable",
         shortLabel: "Tier",
         badgeClass:
-          "border-slate-200 bg-slate-100 text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/35",
-        iconClass: "text-slate-400 dark:text-white/30",
+          "border-line bg-subtle text-muted",
+        iconClass: "text-muted",
         panelClass:
-          "border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.03]",
+          "border-line bg-canvas dark:bg-subtle",
       };
   }
 }
@@ -424,30 +424,14 @@ function DesktopNavigationItem({ item, pathname }) {
   const active = isPathActive(pathname, item.path);
 
   let activeClass = `
-    border-slate-200
-    bg-slate-100
-    text-slate-950
-
-    dark:border-white/10
-    dark:bg-white/[0.07]
-    dark:text-white
+    border-line bg-subtle text-ink
   `;
 
   let inactiveClass = `
-    border-transparent
-    text-slate-500
-
-    hover:border-slate-200
-    hover:bg-slate-100
-    hover:text-slate-950
-
-    dark:text-white/40
-    dark:hover:border-white/10
-    dark:hover:bg-white/[0.05]
-    dark:hover:text-white
+    border-transparent text-muted hover:border-line hover:bg-subtle hover:text-ink
   `;
 
-  let indicatorClass = "bg-[#D4AF37]";
+  let indicatorClass = "bg-action text-on-action";
 
   /* =======================================================
      Optional Gold Accent
@@ -455,24 +439,11 @@ function DesktopNavigationItem({ item, pathname }) {
 
   if (item.accent === "gold") {
     activeClass = `
-      border-[#D4AF37]/35
-      bg-[#D4AF37]/10
-      text-[#87670E]
-
-      dark:text-[#F0D783]
+      border-line bg-subtle text-action
     `;
 
     inactiveClass = `
-      border-transparent
-      text-slate-500
-
-      hover:border-[#D4AF37]/25
-      hover:bg-[#D4AF37]/5
-      hover:text-[#87670E]
-
-      dark:text-white/40
-      dark:hover:bg-[#D4AF37]/10
-      dark:hover:text-[#F0D783]
+      border-transparent text-muted hover:border-line hover:bg-subtle hover:text-action
     `;
   }
 
@@ -482,27 +453,14 @@ function DesktopNavigationItem({ item, pathname }) {
 
   if (item.accent === "violet") {
     activeClass = `
-      border-violet-400/30
-      bg-violet-500/10
-      text-violet-600
-
-      dark:text-violet-200
+      border-line bg-subtle text-action
     `;
 
     inactiveClass = `
-      border-transparent
-      text-slate-500
-
-      hover:border-violet-300/25
-      hover:bg-violet-50
-      hover:text-violet-600
-
-      dark:text-white/40
-      dark:hover:bg-violet-500/10
-      dark:hover:text-violet-200
+      border-transparent text-muted hover:border-line hover:bg-canvas hover:text-action dark:hover:bg-subtle
     `;
 
-    indicatorClass = "bg-violet-500";
+    indicatorClass = "bg-action text-on-action";
   }
 
   return (
@@ -510,30 +468,7 @@ function DesktopNavigationItem({ item, pathname }) {
       to={item.path}
       title={item.label}
       className={`
-        group
-        relative
-        inline-flex
-        h-10
-        shrink-0
-        items-center
-        justify-center
-        gap-1.5
-        rounded-xl
-        border
-        px-2
-        text-xs
-        font-semibold
-        
-        tracking-normal
-        transition-all
-        duration-300
-
-        xl:gap-2
-        xl:px-3
-        xl:text-xs
-        xl:tracking-normal
-
-        2xl:px-3.5
+        group relative inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border px-2 text-xs font-semibold tracking-normal transition-all duration-300 xl:gap-2 xl:px-3 xl:text-xs xl:tracking-normal 2xl:px-3.5
 
         ${active ? activeClass : inactiveClass}
       `}
@@ -563,42 +498,30 @@ function MobileNavigationItem({ item, pathname }) {
   const active = isPathActive(pathname, item.path);
 
   let activeClass =
-    "border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#8A6912] dark:text-[#F0D783]";
+    "border-line bg-subtle text-action";
 
   let inactiveClass =
-    "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-100 dark:text-white/50 dark:hover:border-white/10 dark:hover:bg-white/[0.05] dark:hover:text-white";
+    "border-transparent text-muted hover:border-line hover:bg-subtle dark:hover:text-ink";
 
   if (item.accent === "violet") {
     activeClass =
-      "border-violet-400/30 bg-violet-500/10 text-violet-600 dark:text-violet-200";
+      "border-line bg-subtle text-action";
 
     inactiveClass =
-      "border-violet-300/10 text-violet-600 hover:border-violet-300/30 hover:bg-violet-50 dark:text-violet-300/70 dark:hover:bg-violet-500/10 dark:hover:text-violet-200";
+      "border-line text-action hover:border-line hover:bg-canvas dark:text-muted dark:hover:bg-subtle dark:hover:text-action";
   }
 
   return (
     <Link
       to={item.path}
       className={`
-        flex
-        min-h-12
-        items-center
-        gap-3
-        rounded-xl
-        border
-        px-4
-        py-3
-        text-xs
-        font-semibold
-        
-        tracking-normal
-        transition-all
+        flex min-h-9 items-center gap-3 rounded-md border px-4 py-3 text-xs font-semibold tracking-normal transition-all
 
         ${active ? activeClass : inactiveClass}
       `}
     >
       <div
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-white/[0.04]"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-subtle"
       >
         <Icon size={14} />
       </div>
@@ -620,9 +543,9 @@ function DropdownLink({ to, icon: Icon, label, accent = "" }) {
       <Link
         to={to}
         role="menuitem"
-        className="flex min-h-11 items-center gap-3 rounded-xl px-3.5 text-xs font-semibold tracking-normal text-violet-600 transition-all hover:bg-violet-50 dark:text-violet-300 dark:hover:bg-violet-500/10"
+        className="flex min-h-9 items-center gap-3 rounded-md px-3.5 text-xs font-semibold tracking-normal text-action transition-all hover:bg-canvas dark:hover:bg-subtle"
       >
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/10">
+        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-subtle">
           <Icon size={13} />
         </div>
 
@@ -635,10 +558,10 @@ function DropdownLink({ to, icon: Icon, label, accent = "" }) {
     <Link
       to={to}
       role="menuitem"
-      className="flex min-h-11 items-center gap-3 rounded-xl px-3.5 text-xs font-semibold tracking-normal text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-950 dark:text-white/45 dark:hover:bg-white/[0.05] dark:hover:text-white"
+      className="flex min-h-9 items-center gap-3 rounded-md px-3.5 text-xs font-semibold tracking-normal text-muted transition-all hover:bg-canvas hover:text-ink dark:hover:bg-subtle"
     >
       <div
-        className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-[#98761A] dark:bg-white/[0.04] dark:text-[#D4AF37]"
+        className="flex h-7 w-7 items-center justify-center rounded-md bg-subtle text-action"
       >
         <Icon size={13} />
       </div>
@@ -1074,7 +997,7 @@ function DesignerNavbar({ user, logout }) {
           =================================================== */}
 
       <header
-        className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 shadow-sm backdrop-blur-2xl dark:border-white/[0.06] dark:bg-[#050505]/90 shadow-sm"
+        className="sticky top-0 z-50 border-b border-line bg-subtle"
       >
         <div
           className="mx-auto flex h-[72px] w-full max-w-[1800px] items-center justify-between gap-3 px-4 sm:px-5 lg:gap-2 lg:px-4 xl:gap-4 xl:px-7 2xl:px-10"
@@ -1089,7 +1012,7 @@ function DesignerNavbar({ user, logout }) {
             className="group flex min-w-0 shrink-0 items-center gap-2.5 xl:gap-3"
           >
             <div
-              className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#D4AF37] text-xs font-semibold text-black shadow-sm transition-all duration-300 group- group-hover:shadow-sm"
+              className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-action text-xs font-semibold text-on-action transition-all duration-300 group-"
             >
               D
               
@@ -1097,14 +1020,14 @@ function DesignerNavbar({ user, logout }) {
 
             <div className="min-w-0">
               <span
-                className="block truncate font-serif text-[14px] font-light tracking-normal text-slate-950 dark:text-white xl:text-base xl:tracking-normal 2xl:text-lg"
+                className="block truncate font-serif text-[14px] font-light tracking-normal text-ink xl:text-base xl:tracking-normal 2xl:text-lg"
               >
                 DesignBy
                 <span className="font-bold">You</span>
               </span>
 
               <span
-                className="hidden text-[6px] font-semibold tracking-normal text-slate-400 dark:text-white/20 xl:block"
+                className="hidden text-[6px] font-semibold tracking-normal text-muted xl:block"
               >
                 Designer Network
               </span>
@@ -1141,20 +1064,12 @@ function DesignerNavbar({ user, logout }) {
               title="Financial Wallet"
               aria-label="Financial Wallet"
               className={`
-                flex
-                h-10
-                w-10
-                shrink-0
-                items-center
-                justify-center
-                rounded-xl
-                border
-                transition-all
+                flex h-9 w-10 shrink-0 items-center justify-center rounded-md border transition-all
 
                 ${
                   isPathActive(pathname, "/designer/wallet")
-                    ? "border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#98761A] dark:text-[#D4AF37]"
-                    : "border-slate-200 bg-slate-50 text-slate-500 hover:border-[#D4AF37]/30 hover:text-[#98761A] dark:border-white/10 dark:bg-white/[0.035] dark:text-white/35 dark:hover:text-[#D4AF37]"
+                    ? "border-line bg-subtle text-action"
+                    : "border-line bg-canvas text-muted hover:border-line hover:text-action dark:bg-subtle"
                 }
               `}
             >
@@ -1186,19 +1101,7 @@ function DesignerNavbar({ user, logout }) {
                   : "Designer tier"
               }
               className={`
-                inline-flex
-                h-10
-                shrink-0
-                items-center
-                justify-center
-                gap-1.5
-                rounded-xl
-                border
-                px-2.5
-                transition-all
-
-                disabled:cursor-wait
-                disabled:opacity-70
+                inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border px-2.5 transition-all disabled:cursor-wait disabled:opacity-70
 
                 ${tierMeta.badgeClass}
 
@@ -1231,21 +1134,12 @@ function DesignerNavbar({ user, logout }) {
                 aria-haspopup="menu"
                 aria-expanded={dropdownOpen}
                 className={`
-                  flex
-                  h-11
-                  items-center
-                  gap-1.5
-                  rounded-full
-                  border
-                  py-1
-                  pl-1
-                  pr-2
-                  transition-all
+                  flex h-9 items-center gap-1.5 rounded-md border py-1 pl-1 pr-2 transition-all
 
                   ${
                     dropdownOpen
-                      ? "border-[#D4AF37]/30 bg-[#D4AF37]/5 shadow-sm"
-                      : "border-slate-200 bg-slate-50 hover:border-[#D4AF37]/30 dark:border-white/10 dark:bg-white/[0.035]"
+                      ? "border-line bg-subtle"
+                      : "border-line bg-canvas hover:border-line dark:bg-subtle"
                   }
                 `}
               >
@@ -1261,11 +1155,11 @@ function DesignerNavbar({ user, logout }) {
                 <div
                   className="hidden max-w-[115px] text-left 2xl:block"
                 >
-                  <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
+                  <p className="truncate text-xs font-bold text-ink">
                     {user?.full_name || "Designer"}
                   </p>
 
-                  <p className="mt-0.5 text-xs font-semibold tracking-normal text-slate-400 dark:text-white/25">
+                  <p className="mt-0.5 text-xs font-semibold tracking-normal text-muted">
                     {designerTier ? `${tierMeta.label} Designer` : "Designer"}
                   </p>
                 </div>
@@ -1273,13 +1167,9 @@ function DesignerNavbar({ user, logout }) {
                 <ChevronDown
                   size={12}
                   className={`
-                    shrink-0
-                    text-slate-400
-                    transition-transform
+                    shrink-0 text-muted transition-transform
 
-                    dark:text-white/30
-
-                    ${dropdownOpen ? "rotate-180 text-[#D4AF37]" : ""}
+                    ${dropdownOpen ? "rotate-180 text-action" : ""}
                   `}
                 />
               </button>
@@ -1291,14 +1181,14 @@ function DesignerNavbar({ user, logout }) {
               {dropdownOpen && (
                 <div
                   role="menu"
-                  className="absolute right-0 top-[calc(100%+12px)] w-[320px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-sm backdrop-blur-2xl dark:border-white/10 dark:bg-[#0A0A0A]/95 shadow-sm"
+                  className="absolute right-0 top-[calc(100%+12px)] w-[320px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-md border border-line bg-subtle p-2"
                 >
                   {/* =======================================
                       Identity Header
                       ======================================= */}
 
                   <div
-                    className="mb-2 flex items-center gap-3 rounded-xl bg-slate-50 p-4 dark:bg-white/[0.035]"
+                    className="mb-2 flex items-center gap-3 rounded-md bg-canvas p-4 dark:bg-subtle"
                   >
                     <ProfileIdentity
                       user={user}
@@ -1310,28 +1200,18 @@ function DesignerNavbar({ user, logout }) {
                     />
 
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-serif text-sm text-slate-950 dark:text-white">
+                      <p className="truncate font-serif text-sm text-ink">
                         {user?.full_name || "Designer"}
                       </p>
 
-                      <p className="mt-1 truncate text-xs text-slate-400 dark:text-white/30">
+                      <p className="mt-1 truncate text-xs text-muted">
                         {user?.email || "Designer account"}
                       </p>
 
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         <span
                           className={`
-                            inline-flex
-                            items-center
-                            gap-1.5
-                            rounded-full
-                            border
-                            px-2
-                            py-1
-                            text-xs
-                            font-semibold
-                            
-                            tracking-normal
+                            inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-semibold tracking-normal
 
                             ${tierMeta.badgeClass}
                           `}
@@ -1344,7 +1224,7 @@ function DesignerNavbar({ user, logout }) {
                         </span>
 
                         {identityAvatar?.exists && (
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-300/20 bg-violet-500/10 px-2 py-1 text-xs font-semibold tracking-normal text-violet-600 dark:text-violet-300">
+                          <span className="inline-flex items-center gap-1.5 rounded-md border border-line bg-subtle px-2 py-1 text-xs font-semibold tracking-normal text-action">
                             <Sparkles size={8} />
                             Fashion Persona
                           </span>
@@ -1359,10 +1239,7 @@ function DesignerNavbar({ user, logout }) {
 
                   <div
                     className={`
-                      mb-2
-                      rounded-xl
-                      border
-                      p-4
+                      mb-2 rounded-md border p-4
 
                       ${tierMeta.panelClass}
                     `}
@@ -1370,17 +1247,7 @@ function DesignerNavbar({ user, logout }) {
                     <div className="flex items-start gap-3">
                       <div
                         className={`
-                          flex
-                          h-10
-                          w-10
-                          shrink-0
-                          items-center
-                          justify-center
-                          rounded-xl
-                          border
-                          bg-white/70
-
-                          dark:bg-black/20
+                          flex h-10 w-10 shrink-0 items-center justify-center rounded-md border bg-subtle
 
                           ${tierMeta.badgeClass}
                         `}
@@ -1393,18 +1260,18 @@ function DesignerNavbar({ user, logout }) {
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/30">
+                        <p className="text-xs font-semibold tracking-normal text-muted">
                           Designer Level
                         </p>
 
-                        <p className="mt-1 font-serif text-lg text-slate-950 dark:text-white">
+                        <p className="mt-1 font-serif text-lg text-ink">
                           {designerTier
                             ? `${tierMeta.label} Designer`
                             : "Tier unavailable"}
                         </p>
 
                         {tierProgress.known && (
-                          <p className="mt-1 text-xs text-slate-500 dark:text-white/35">
+                          <p className="mt-1 text-xs text-muted">
                             {tierProgress.completedBookings} completed booking
                             {tierProgress.completedBookings === 1 ? "" : "s"}
                           </p>
@@ -1420,7 +1287,7 @@ function DesignerNavbar({ user, logout }) {
                         }
                         disabled={tierRefreshing}
                         aria-label="Refresh Designer tier"
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 transition hover:border-[#D4AF37]/30 hover:text-[#98761A] disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/30 dark:hover:text-[#D4AF37]"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-line bg-surface text-muted transition hover:border-line hover:text-action disabled:opacity-50 dark:bg-subtle"
                       >
                         <RefreshCw
                           size={12}
@@ -1432,31 +1299,31 @@ function DesignerNavbar({ user, logout }) {
                     {tierProgress.known && (
                       <div className="mt-4">
                         {tierProgress.maxTier ? (
-                          <div className="rounded-lg border border-cyan-200/70 bg-white/60 px-3 py-2 text-xs font-semibold tracking-normal text-cyan-700 dark:border-cyan-300/15 dark:bg-black/15 dark:text-cyan-200">
+                          <div className="rounded-md border border-line bg-subtle px-3 py-2 text-xs font-semibold tracking-normal text-action">
                             Highest Designer tier achieved
                           </div>
                         ) : (
                           <>
                             <div className="flex items-center justify-between gap-3">
-                              <p className="text-xs font-semibold tracking-normal text-slate-500 dark:text-white/35">
+                              <p className="text-xs font-semibold tracking-normal text-muted">
                                 Progress to {tierProgress.nextTier}
                               </p>
 
-                              <p className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/25">
+                              <p className="text-xs font-semibold tracking-normal text-muted">
                                 {tierProgress.remaining} remaining
                               </p>
                             </div>
 
-                            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10">
+                            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-subtle">
                               <div
-                                className="h-full rounded-full bg-[#D4AF37] transition-all duration-500"
+                                className="h-full rounded-full bg-action transition-all duration-500 text-on-action"
                                 style={{
                                   width: `${tierProgress.progressPercent}%`,
                                 }}
                               />
                             </div>
 
-                            <p className="mt-2 text-xs leading-4 text-slate-400 dark:text-white/25">
+                            <p className="mt-2 text-xs leading-4 text-muted">
                               Reach {tierProgress.target} completed bookings to
                               unlock the {tierProgress.nextTier} tier.
                             </p>
@@ -1501,12 +1368,12 @@ function DesignerNavbar({ user, logout }) {
 
                   {/* Logout */}
 
-                  <div className="mt-2 border-t border-slate-100 pt-2 dark:border-white/[0.06]">
+                  <div className="mt-2 border-t border-line pt-2">
                     <button
                       type="button"
                       onClick={handleLogout}
                       role="menuitem"
-                      className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3.5 text-left text-xs font-semibold tracking-normal text-rose-500 transition-all hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                      className="flex min-h-9 w-full items-center gap-3 rounded-md px-3.5 text-left text-xs font-semibold tracking-normal text-action transition-all hover:bg-canvas dark:hover:bg-subtle"
                     >
                       <LogOut size={14} />
                       Sign Out
@@ -1538,17 +1405,7 @@ function DesignerNavbar({ user, logout }) {
                 designerTier ? `${tierMeta.label} Designer` : "Designer tier"
               }
               className={`
-                inline-flex
-                h-10
-                items-center
-                justify-center
-                gap-1.5
-                rounded-xl
-                border
-                px-2.5
-                transition
-
-                disabled:opacity-60
+                inline-flex h-9 items-center justify-center gap-1.5 rounded-md border px-2.5 transition disabled:opacity-60
 
                 ${tierMeta.badgeClass}
               `}
@@ -1576,19 +1433,12 @@ function DesignerNavbar({ user, logout }) {
                   : "Open designer navigation"
               }
               className={`
-                flex
-                h-10
-                w-10
-                items-center
-                justify-center
-                rounded-xl
-                border
-                transition-all
+                flex h-9 w-10 items-center justify-center rounded-md border transition-all
 
                 ${
                   mobileMenuOpen
-                    ? "border-[#D4AF37]/40 bg-[#D4AF37]/10 text-[#98761A] dark:text-[#D4AF37]"
-                    : "border-slate-200 bg-slate-50 text-slate-600 hover:border-[#D4AF37]/30 dark:border-white/10 dark:bg-white/[0.035] dark:text-white/55"
+                    ? "border-line bg-subtle text-action"
+                    : "border-line bg-canvas text-muted hover:border-line dark:bg-subtle"
                 }
               `}
             >
@@ -1611,7 +1461,7 @@ function DesignerNavbar({ user, logout }) {
             tabIndex={-1}
             aria-hidden="true"
             onClick={() => setMobileMenuOpen(false)}
-            className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm dark:bg-black/65"
+            className="absolute inset-0 bg-subtle dark:bg-black/65"
           />
 
           <aside
@@ -1620,14 +1470,14 @@ function DesignerNavbar({ user, logout }) {
             aria-modal="true"
             aria-label="Designer mobile navigation"
             tabIndex={-1}
-            className="mobile-navigation absolute bottom-0 right-0 top-[72px] flex w-full max-w-[400px] flex-col border-l border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#080808] shadow-sm sm:w-[390px]"
+            className="mobile-navigation absolute bottom-0 right-0 top-[72px] flex w-full max-w-[400px] flex-col border-l border-line bg-surface dark:bg-canvas sm:w-[390px]"
           >
-            <button type="button" onClick={() => setMobileMenuOpen(false)} className="min-h-11 shrink-0 self-end px-5 text-sm font-semibold">Close navigation</button>
+            <button type="button" onClick={() => setMobileMenuOpen(false)} className="min-h-9 shrink-0 self-end px-5 text-sm font-semibold">Close navigation</button>
             {/* =============================================
                 Identity
                 ============================================= */}
 
-            <div className="border-b border-slate-100 p-5 dark:border-white/[0.06]">
+            <div className="border-b border-line p-4">
               <div className="flex items-center gap-4">
                 <ProfileIdentity
                   user={user}
@@ -1639,28 +1489,18 @@ function DesignerNavbar({ user, logout }) {
                 />
 
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-serif text-base text-slate-950 dark:text-white">
+                  <p className="truncate font-serif text-base text-ink">
                     {user?.full_name || "Designer"}
                   </p>
 
-                  <p className="mt-1 truncate text-xs text-slate-400 dark:text-white/30">
+                  <p className="mt-1 truncate text-xs text-muted">
                     {user?.email || "Designer account"}
                   </p>
 
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     <span
                       className={`
-                        inline-flex
-                        items-center
-                        gap-1
-                        rounded-full
-                        border
-                        px-2
-                        py-1
-                        text-xs
-                        font-semibold
-                        
-                        tracking-normal
+                        inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-semibold tracking-normal
 
                         ${tierMeta.badgeClass}
                       `}
@@ -1673,7 +1513,7 @@ function DesignerNavbar({ user, logout }) {
                     </span>
 
                     {identityAvatar?.exists && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-violet-400/20 bg-violet-500/10 px-2 py-1 text-xs font-semibold tracking-normal text-violet-600 dark:text-violet-300">
+                      <span className="inline-flex items-center gap-1 rounded-md border border-line bg-subtle px-2 py-1 text-xs font-semibold tracking-normal text-action">
                         <Sparkles size={8} />
                         Fashion Persona
                       </span>
@@ -1688,10 +1528,7 @@ function DesignerNavbar({ user, logout }) {
 
               <div
                 className={`
-                  mt-4
-                  rounded-2xl
-                  border
-                  p-4
+                  mt-4 rounded-md border p-4
 
                   ${tierMeta.panelClass}
                 `}
@@ -1699,17 +1536,7 @@ function DesignerNavbar({ user, logout }) {
                 <div className="flex items-center gap-3">
                   <div
                     className={`
-                      flex
-                      h-10
-                      w-10
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-xl
-                      border
-                      bg-white/70
-
-                      dark:bg-black/20
+                      flex h-10 w-10 shrink-0 items-center justify-center rounded-md border bg-subtle
 
                       ${tierMeta.badgeClass}
                     `}
@@ -1722,18 +1549,18 @@ function DesignerNavbar({ user, logout }) {
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/30">
+                    <p className="text-xs font-semibold tracking-normal text-muted">
                       Designer Level
                     </p>
 
-                    <p className="mt-1 font-serif text-base text-slate-950 dark:text-white">
+                    <p className="mt-1 font-serif text-base text-ink">
                       {designerTier
                         ? `${tierMeta.label} Designer`
                         : "Tier unavailable"}
                     </p>
 
                     {tierProgress.known && (
-                      <p className="mt-1 text-xs text-slate-500 dark:text-white/35">
+                      <p className="mt-1 text-xs text-muted">
                         {tierProgress.completedBookings} completed booking
                         {tierProgress.completedBookings === 1 ? "" : "s"}
                       </p>
@@ -1749,7 +1576,7 @@ function DesignerNavbar({ user, logout }) {
                     }
                     disabled={tierRefreshing}
                     aria-label="Refresh Designer tier"
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/30"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-line bg-surface text-muted disabled:opacity-50 dark:bg-subtle"
                   >
                     <RefreshCw
                       size={12}
@@ -1761,24 +1588,24 @@ function DesignerNavbar({ user, logout }) {
                 {tierProgress.known && (
                   <div className="mt-4">
                     {tierProgress.maxTier ? (
-                      <p className="text-xs font-semibold tracking-normal text-cyan-700 dark:text-cyan-200">
+                      <p className="text-xs font-semibold tracking-normal text-action">
                         Highest Designer tier achieved
                       </p>
                     ) : (
                       <>
                         <div className="flex items-center justify-between gap-3">
-                          <p className="text-xs font-semibold tracking-normal text-slate-500 dark:text-white/35">
+                          <p className="text-xs font-semibold tracking-normal text-muted">
                             Progress to {tierProgress.nextTier}
                           </p>
 
-                          <p className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/25">
+                          <p className="text-xs font-semibold tracking-normal text-muted">
                             {tierProgress.remaining} remaining
                           </p>
                         </div>
 
-                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10">
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-subtle">
                           <div
-                            className="h-full rounded-full bg-[#D4AF37] transition-all duration-500"
+                            className="h-full rounded-full bg-action transition-all duration-500 text-on-action"
                             style={{
                               width: `${tierProgress.progressPercent}%`,
                             }}
@@ -1795,11 +1622,11 @@ function DesignerNavbar({ user, logout }) {
                 Navigation
                 ============================================= */}
 
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
               {/* Create */}
 
               <div className="mb-5">
-                <p className="mb-2 px-2 text-xs font-semibold tracking-normal text-slate-400 dark:text-white/20">
+                <p className="mb-2 px-2 text-xs font-semibold tracking-normal text-muted">
                   Create
                 </p>
 
@@ -1822,8 +1649,8 @@ function DesignerNavbar({ user, logout }) {
 
               {/* Explore & Manage */}
 
-              <div className="mb-5 border-t border-slate-100 pt-5 dark:border-white/[0.06]">
-                <p className="mb-2 px-2 text-xs font-semibold tracking-normal text-slate-400 dark:text-white/20">
+              <div className="mb-5 border-t border-line pt-5">
+                <p className="mb-2 px-2 text-xs font-semibold tracking-normal text-muted">
                   Explore & Manage
                 </p>
 
@@ -1849,8 +1676,8 @@ function DesignerNavbar({ user, logout }) {
 
               {/* Account */}
 
-              <div className="border-t border-slate-100 pt-5 dark:border-white/[0.06]">
-                <p className="mb-2 px-2 text-xs font-semibold tracking-normal text-slate-400 dark:text-white/20">
+              <div className="border-t border-line pt-5">
+                <p className="mb-2 px-2 text-xs font-semibold tracking-normal text-muted">
                   Account
                 </p>
 
@@ -1876,11 +1703,11 @@ function DesignerNavbar({ user, logout }) {
                 Sign Out
                 ============================================= */}
 
-            <div className="border-t border-slate-100 bg-slate-50/70 p-4 dark:border-white/[0.06] dark:bg-white/[0.015]">
+            <div className="border-t border-line bg-subtle p-4">
               <button
                 type="button"
                 onClick={handleLogout}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 text-xs font-semibold tracking-normal text-rose-600 transition-all hover:bg-rose-500 hover:text-white dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400"
+                className="flex h-9 w-full items-center justify-center gap-2 rounded-md border border-line bg-canvas text-xs font-semibold tracking-normal text-action transition-all hover:bg-action hover:text-on-action dark:bg-subtle"
               >
                 <LogOut size={14} />
                 Sign Out
@@ -1902,10 +1729,10 @@ function DesignerFooter() {
 
   return (
     <footer
-      className="relative mt-auto overflow-hidden border-t border-slate-200 bg-white dark:border-white/[0.06] dark:bg-[#030303]"
+      className="relative mt-auto overflow-hidden border-t border-line bg-surface dark:bg-canvas"
     >
       <div
-        className="pointer-events-none absolute bottom-0 left-1/2 h-px w-[70%] -translate-x-1/2 bg-gradient-to-r from-transparent via-[#D4AF37]/30 to-transparent"
+        className="pointer-events-none absolute bottom-0 left-1/2 h-px w-[70%] -translate-x-1/2 bg-surface"
       />
 
       <div
@@ -1916,18 +1743,18 @@ function DesignerFooter() {
         >
           <div>
             <div className="flex items-center justify-center gap-2 lg:justify-start">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#D4AF37] text-xs font-semibold text-black">
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-action text-xs font-semibold text-on-action">
                 D
               </div>
 
-              <p className="font-serif text-sm tracking-normal text-slate-950 dark:text-white">
+              <p className="font-serif text-sm tracking-normal text-ink">
                 DesignBy
                 <span className="font-bold">You</span>
               </p>
             </div>
 
             <p
-              className="mt-2 max-w-lg text-center text-xs font-bold leading-5 tracking-normal text-slate-400 dark:text-white/25 lg:text-left"
+              className="mt-2 max-w-lg text-center text-xs font-bold leading-5 tracking-normal text-muted lg:text-left"
             >
               Fashion creation, collaboration and portfolio infrastructure for
               independent designers.
@@ -1935,32 +1762,32 @@ function DesignerFooter() {
           </div>
 
           <div
-            className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3 text-xs font-semibold tracking-normal text-slate-400 dark:text-white/30"
+            className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3 text-xs font-semibold tracking-normal text-muted"
           >
             <Link
               to="/designer/explore"
-              className="transition hover:text-[#98761A] dark:hover:text-[#D4AF37]"
+              className="transition hover:text-action"
             >
               Exhibition
             </Link>
 
             <Link
               to="/designer/inventory"
-              className="transition hover:text-[#98761A] dark:hover:text-[#D4AF37]"
+              className="transition hover:text-action"
             >
               Portfolio
             </Link>
 
             <Link
               to="/designer/avatar-studio"
-              className="transition hover:text-violet-600 dark:hover:text-violet-300"
+              className="transition hover:text-action"
             >
               Avatar Studio
             </Link>
 
             <Link
               to="/designer/profile-view"
-              className="transition hover:text-[#98761A] dark:hover:text-[#D4AF37]"
+              className="transition hover:text-action"
             >
               Profile
             </Link>
@@ -1968,13 +1795,13 @@ function DesignerFooter() {
         </div>
 
         <div
-          className="mt-7 flex flex-col gap-2 border-t border-slate-100 pt-5 text-center dark:border-white/[0.05] sm:flex-row sm:items-center sm:justify-between sm:text-left"
+          className="mt-7 flex flex-col gap-2 border-t border-line pt-5 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left"
         >
-          <p className="text-xs font-bold tracking-normal text-slate-400 dark:text-white/20">
+          <p className="text-xs font-bold tracking-normal text-muted">
             © {currentYear} DesignByYou
           </p>
 
-          <p className="text-xs font-bold tracking-normal text-slate-300 dark:text-white/15">
+          <p className="text-xs font-bold tracking-normal text-muted">
             Designer Network
           </p>
         </div>
@@ -1990,20 +1817,20 @@ function DesignerFooter() {
 function DesignerLoadingScreen() {
   return (
     <div
-      className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-6 dark:bg-[#030303]"
+      className="flex min-h-screen flex-col items-center justify-center bg-canvas px-6"
     >
       <div className="relative flex h-16 w-16 items-center justify-center">
         <div
-          className="absolute inset-0 animate-spin rounded-full border border-slate-200 border-t-[#D4AF37] dark:border-white/10 dark:border-t-[#D4AF37]"
+          className="absolute inset-0 animate-spin rounded-full border border-line border-t-[#D4AF37]"
         />
 
         <Loader2
           size={20}
-          className="animate-spin text-[#B18A24] dark:text-[#D4AF37]"
+          className="animate-spin text-action"
         />
       </div>
 
-      <p className="mt-5 text-xs font-semibold tracking-normal text-[#98761A] dark:text-[#D4AF37]">
+      <p className="mt-5 text-xs font-semibold tracking-normal text-action">
         Preparing Designer Experience
       </p>
     </div>
@@ -2017,26 +1844,26 @@ function DesignerLoadingScreen() {
 function DesignerAccessRestricted() {
   return (
     <div
-      className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-6 text-center selection:bg-[#D4AF37] selection:text-black dark:bg-[#030303]"
+      className="flex min-h-screen flex-col items-center justify-center bg-canvas p-4 text-center selection:bg-action selection:text-on-action"
     >
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[#D4AF37]/20 bg-[#D4AF37]/10">
-        <Sparkles size={22} className="text-[#B18A24] dark:text-[#D4AF37]" />
+      <div className="flex h-14 w-14 items-center justify-center rounded-md border border-line bg-subtle">
+        <Sparkles size={22} className="text-action" />
       </div>
 
-      <h1 className="mt-6 font-semibold text-3xl font-semibold tracking-tight text-slate-950 dark:text-white text-3xl sm:text-4xl">
+      <h1 className="mt-6 font-semibold text-3xl tracking-tight text-ink sm:text-4xl">
         Designer access{" "}
-        <span className="italic text-[#B18A24] dark:text-[#D4AF37]">
+        <span className="italic text-action">
           required
         </span>
       </h1>
 
-      <p className="mt-4 max-w-md text-xs font-bold leading-6 tracking-normal text-slate-400 dark:text-white/30">
+      <p className="mt-4 max-w-md text-xs font-bold leading-6 tracking-normal text-muted">
         This area is available only to authenticated designer accounts.
       </p>
 
       <Link
         to="/"
-        className="mt-7 inline-flex h-11 items-center justify-center rounded-xl bg-[#D4AF37] px-6 text-xs font-semibold tracking-normal text-black transition-all hover:bg-slate-950 hover:text-white dark:hover:bg-white dark:hover:text-black"
+        className="mt-7 inline-flex h-9 items-center justify-center rounded-md bg-action px-6 text-xs font-semibold tracking-normal text-on-action transition-all hover:bg-surface hover:text-ink"
       >
         Return Home
       </Link>
@@ -2073,7 +1900,7 @@ export default function DesignerLayout() {
 
   return (
     <div
-      className="relative flex min-h-screen flex-col bg-slate-50 text-slate-950 antialiased selection:bg-[#D4AF37] selection:text-black dark:bg-[#030303] dark:text-white"
+      className="relative flex min-h-screen flex-col bg-canvas text-ink antialiased selection:bg-action selection:text-on-action"
     >
       <DesignerNavbar user={user} logout={logout} />
 

@@ -570,35 +570,35 @@ export default function CreatorTextToImage() {
   // ======================================================
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 dark:bg-[#090909] dark:text-white sm:px-8">
+    <main className="min-h-screen bg-canvas px-4 py-8 text-ink dark:bg-surface sm:px-8">
       <div className="mx-auto max-w-6xl">
         {/* Back Navigation */}
 
         <Link
           to="/creator/tools"
-          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 transition hover:text-[#ae852e] dark:text-white/60"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-muted transition hover:text-action"
         >
           <ArrowLeft size={16} aria-hidden="true" />
-          Back to Creative Hub
+          Back to tools
         </Link>
 
         {/* Header */}
 
         <header className="mt-7 flex flex-wrap items-start gap-4">
-          <div className="rounded-2xl bg-[#e5c67d]/20 p-3 text-[#ab802c]">
+          <div className="rounded-md bg-subtle p-3 text-action">
             <WandSparkles size={27} aria-hidden="true" />
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#a78032] dark:text-[#e5c67d]">
+            <p className="text-[10px] font-bold uppercase tracking-normal text-action">
               FASHN AI · Creative tools
             </p>
 
-            <h1 className="mt-1 font-serif text-3xl tracking-tight sm:text-4xl">
+            <h1 className="mt-1 font-sans text-3xl tracking-tight sm:text-4xl">
               AI Text to Image
             </h1>
 
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-white/55">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
               Describe your fashion idea, generate an image, and download it to
               your device. Your results stay in your private generation history.
             </p>
@@ -612,12 +612,12 @@ export default function CreatorTextToImage() {
 
           <form
             onSubmit={submit}
-            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#151515] sm:p-7"
+            className="rounded-md border border-line bg-surface p-4"
           >
             <div className="flex items-center gap-2">
               <Sparkles
                 size={18}
-                className="text-[#b38a35]"
+                className="text-action"
                 aria-hidden="true"
               />
 
@@ -641,10 +641,10 @@ export default function CreatorTextToImage() {
               rows={7}
               maxLength={1200}
               placeholder="A full-body fashion photograph of a model wearing an emerald-green satin evening gown..."
-              className="mt-3 w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 outline-none transition focus:border-[#c9a14c] focus:ring-2 focus:ring-[#e5c67d]/20 dark:border-white/10 dark:bg-[#0d0d0d]"
+              className="mt-3 w-full resize-y rounded-md border border-line bg-canvas p-4 text-sm leading-6 outline-none transition focus:border-line focus:ring-2 focus:ring-action dark:bg-surface"
             />
 
-            <div className="mt-1 flex justify-between text-xs text-slate-400">
+            <div className="mt-1 flex justify-between text-xs text-muted">
               <span>
                 Be specific about the garment, fabric, colors and setting.
               </span>
@@ -664,7 +664,7 @@ export default function CreatorTextToImage() {
                   key={example.label}
                   type="button"
                   onClick={() => updatePrompt(example.prompt)}
-                  className="rounded-full border border-[#d7b66b]/50 bg-[#e5c67d]/10 px-3 py-2 text-xs font-medium text-[#9b7424] transition hover:bg-[#e5c67d]/20 dark:text-[#e5c67d]"
+                  className="rounded-md border border-line bg-subtle px-3 py-2 text-xs font-medium text-action transition hover:bg-subtle"
                 >
                   {example.label}
                 </button>
@@ -692,7 +692,7 @@ export default function CreatorTextToImage() {
 
                     requestKey.current = null;
                   }}
-                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm dark:border-white/10 dark:bg-[#202020]"
+                  className="mt-2 w-full rounded-md border border-line bg-surface p-3 text-sm"
                 >
                   {RATIOS.map((ratio) => (
                     <option key={ratio} value={ratio}>
@@ -720,7 +720,7 @@ export default function CreatorTextToImage() {
 
                     requestKey.current = null;
                   }}
-                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm dark:border-white/10 dark:bg-[#202020]"
+                  className="mt-2 w-full rounded-md border border-line bg-surface p-3 text-sm"
                 >
                   {MODES.map((mode) => (
                     <option key={mode.value} value={mode.value}>
@@ -733,7 +733,7 @@ export default function CreatorTextToImage() {
 
             {/* Information */}
 
-            <p className="mt-4 text-xs leading-5 text-slate-500 dark:text-white/50">
+            <p className="mt-4 text-xs leading-5 text-muted">
               One image per generation. Testing limit: five requests per Creator
               per rolling 24 hours (unless changed on the server). Images are
               not automatically published to Showcase.
@@ -744,7 +744,7 @@ export default function CreatorTextToImage() {
             {error && (
               <div
                 role="alert"
-                className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
+                className="mt-4 rounded-md border border-line bg-canvas p-3 text-sm text-action dark:bg-subtle"
               >
                 {error}
               </div>
@@ -755,7 +755,7 @@ export default function CreatorTextToImage() {
             <button
               type="submit"
               disabled={busy || prompt.trim().length < 12}
-              className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#e5c67d] px-5 text-sm font-bold text-[#17130b] transition hover:bg-[#f4d995] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b58a32] disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-6 flex min-h-9 w-full items-center justify-center gap-2 rounded-md bg-subtle px-5 text-sm font-bold text-ink transition hover:bg-subtle focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-action disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy ? (
                 <Loader2
@@ -775,7 +775,7 @@ export default function CreatorTextToImage() {
             </button>
 
             {activeJobId && (
-              <p className="mt-3 text-center text-xs text-slate-500 dark:text-white/50">
+              <p className="mt-3 text-center text-xs text-muted">
                 You can browse previous results while your image generates.
               </p>
             )}
@@ -787,7 +787,7 @@ export default function CreatorTextToImage() {
 
           <section
             aria-label="AI image result"
-            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#151515] sm:p-7"
+            className="rounded-md border border-line bg-surface p-4"
           >
             {/* Result Header */}
 
@@ -803,7 +803,7 @@ export default function CreatorTextToImage() {
                     onClick={clearAndCreateNew}
                     disabled={busy}
                     title="Clear preview and start a new generation"
-                    className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#e5c67d]/60 bg-[#e5c67d]/10 px-3 text-xs font-semibold text-[#9b7424] transition hover:bg-[#e5c67d]/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b58a32] disabled:cursor-not-allowed disabled:opacity-50 dark:text-[#e5c67d]"
+                    className="inline-flex min-h-9 items-center justify-center gap-2 rounded-md border border-line bg-subtle px-3 text-xs font-semibold text-action transition hover:bg-subtle focus-visible:outline focus-visible:outline-2 focus-visible:outline-action disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <RefreshCw size={15} aria-hidden="true" />
                     Clear &amp; Create New
@@ -811,11 +811,11 @@ export default function CreatorTextToImage() {
 
                   {/* Status */}
 
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:bg-white/10 dark:text-white/75">
+                  <span className="inline-flex items-center gap-1.5 rounded-md bg-subtle px-3 py-1.5 text-xs font-semibold text-muted">
                     {selectedStatus === "completed" ? (
-                      <CheckCircle2 size={14} className="text-emerald-600" />
+                      <CheckCircle2 size={14} className="text-action" />
                     ) : selectedStatus === "failed" ? (
-                      <X size={14} className="text-red-500" />
+                      <X size={14} className="text-action" />
                     ) : (
                       <Clock3 size={14} />
                     )}
@@ -828,7 +828,7 @@ export default function CreatorTextToImage() {
 
             {/* Image Preview */}
 
-            <div className="mt-4 flex min-h-[380px] items-center justify-center overflow-hidden rounded-xl bg-slate-100 dark:bg-[#0b0b0b]">
+            <div className="mt-4 flex min-h-[380px] items-center justify-center overflow-hidden rounded-md bg-subtle dark:bg-surface">
               {resultUrl ? (
                 <img
                   src={resultUrl}
@@ -836,10 +836,10 @@ export default function CreatorTextToImage() {
                   className="max-h-[570px] w-full object-contain"
                 />
               ) : isActive(job) ? (
-                <div className="px-6 text-center text-slate-500 dark:text-white/60">
+                <div className="px-6 text-center text-muted">
                   <Loader2
                     size={32}
-                    className="mx-auto animate-spin text-[#ab802c]"
+                    className="mx-auto animate-spin text-action"
                     aria-hidden="true"
                   />
 
@@ -852,7 +852,7 @@ export default function CreatorTextToImage() {
                   </p>
                 </div>
               ) : job?.status === "failed" ? (
-                <div className="px-6 text-center text-red-600 dark:text-red-400">
+                <div className="px-6 text-center text-action">
                   <X className="mx-auto" size={34} aria-hidden="true" />
 
                   <p className="mt-3 text-sm">
@@ -861,7 +861,7 @@ export default function CreatorTextToImage() {
                   </p>
                 </div>
               ) : (
-                <div className="px-6 text-center text-slate-400">
+                <div className="px-6 text-center text-muted">
                   <ImageIcon className="mx-auto" size={39} aria-hidden="true" />
 
                   <p className="mt-4 text-sm">
@@ -874,7 +874,7 @@ export default function CreatorTextToImage() {
             {/* Generation Metadata */}
 
             {job?.created_at && (
-              <p className="mt-3 text-xs text-slate-400">
+              <p className="mt-3 text-xs text-muted">
                 {formatDate(job.created_at)}
                 {" · "}
                 {job.aspect_ratio}
@@ -895,7 +895,7 @@ export default function CreatorTextToImage() {
                   type="button"
                   disabled={downloadingId === job.id}
                   onClick={() => downloadImage(job)}
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#e5c67d] px-4 text-sm font-bold text-[#17130b] transition hover:bg-[#f4d995] disabled:opacity-60"
+                  className="inline-flex min-h-9 items-center justify-center gap-2 rounded-md bg-subtle px-4 text-sm font-bold text-ink transition hover:bg-subtle disabled:opacity-60"
                 >
                   {downloadingId === job.id ? (
                     <Loader2 size={17} className="animate-spin" />
@@ -909,7 +909,7 @@ export default function CreatorTextToImage() {
                   href={resultUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition hover:border-[#d4ae57] dark:border-white/20 dark:text-white"
+                  className="inline-flex min-h-9 items-center justify-center gap-2 rounded-md border border-line px-4 text-sm font-semibold text-ink transition hover:border-line"
                 >
                   <ExternalLink size={17} aria-hidden="true" />
                   View Full Image
@@ -922,7 +922,7 @@ export default function CreatorTextToImage() {
             {downloadError && (
               <p
                 role="alert"
-                className="mt-3 text-xs leading-5 text-red-600 dark:text-red-400"
+                className="mt-3 text-xs leading-5 text-action"
               >
                 {downloadError}
               </p>
@@ -933,7 +933,7 @@ export default function CreatorTextToImage() {
             {progressError && activeJobId && (
               <p
                 role="status"
-                className="mt-3 text-xs leading-5 text-amber-700 dark:text-amber-300"
+                className="mt-3 text-xs leading-5 text-action"
               >
                 {progressError}
               </p>
@@ -941,7 +941,7 @@ export default function CreatorTextToImage() {
 
             {/* Privacy Notice */}
 
-            <p className="mt-4 text-xs leading-5 text-slate-400">
+            <p className="mt-4 text-xs leading-5 text-muted">
               Generated images are saved to your history and are not published
               to Showcase automatically. Anyone with a direct image link may be
               able to view that image.
@@ -958,11 +958,11 @@ export default function CreatorTextToImage() {
             <div className="flex items-center gap-2">
               <History
                 size={19}
-                className="text-[#ab802c]"
+                className="text-action"
                 aria-hidden="true"
               />
 
-              <h2 className="font-serif text-2xl">Recent Generations</h2>
+              <h2 className="font-sans text-2xl">Recent Generations</h2>
             </div>
 
             {/* Refresh History */}
@@ -983,7 +983,7 @@ export default function CreatorTextToImage() {
                 }
               }}
               disabled={historyLoading}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold hover:border-[#d4ae57] disabled:opacity-50 dark:border-white/15"
+              className="inline-flex items-center gap-2 rounded-md border border-line px-3 py-2 text-xs font-semibold hover:border-line disabled:opacity-50"
             >
               <RefreshCw
                 size={15}
@@ -997,7 +997,7 @@ export default function CreatorTextToImage() {
           {/* History Error */}
 
           {historyError && (
-            <p role="alert" className="mt-3 text-sm text-red-600">
+            <p role="alert" className="mt-3 text-sm text-action">
               {historyError}
             </p>
           )}
@@ -1005,11 +1005,11 @@ export default function CreatorTextToImage() {
           {/* History Content */}
 
           {historyLoading && history.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-500">
+            <p className="mt-4 text-sm text-muted">
               Loading your history...
             </p>
           ) : history.length === 0 ? (
-            <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-500 dark:border-white/10 dark:bg-[#151515]">
+            <div className="mt-4 rounded-md border border-dashed border-line bg-surface px-6 py-10 text-center text-sm text-muted">
               No generations yet. Create your first fashion image above.
             </div>
           ) : (
@@ -1022,10 +1022,10 @@ export default function CreatorTextToImage() {
                 return (
                   <article
                     key={item.id}
-                    className={`overflow-hidden rounded-xl border bg-white transition dark:bg-[#151515] ${
+                    className={`overflow-hidden rounded-md border bg-surface transition ${
                       selected
-                        ? "border-[#d7b66b] ring-1 ring-[#e5c67d]/60"
-                        : "border-slate-200 dark:border-white/10"
+                        ? "border-line ring-1 ring-action"
+                        : "border-line"
                     }`}
                   >
                     {/* Select Historical Result */}
@@ -1047,7 +1047,7 @@ export default function CreatorTextToImage() {
                           className="aspect-[3/4] w-full object-cover"
                         />
                       ) : (
-                        <div className="flex aspect-[3/4] items-center justify-center bg-slate-100 text-xs text-slate-400 dark:bg-[#202020]">
+                        <div className="flex aspect-[3/4] items-center justify-center bg-subtle text-xs text-muted dark:bg-surface">
                           {isActive(item) ? (
                             <Loader2 size={22} className="animate-spin" />
                           ) : (
@@ -1061,7 +1061,7 @@ export default function CreatorTextToImage() {
                           {item.prompt}
                         </p>
 
-                        <p className="mt-2 text-[11px] capitalize text-slate-400">
+                        <p className="mt-2 text-[11px] capitalize text-muted">
                           {item.status}
                           {" · "}
                           {formatDate(item.created_at)}
@@ -1072,12 +1072,12 @@ export default function CreatorTextToImage() {
                     {/* Download Historical Image */}
 
                     {imageUrl && (
-                      <div className="border-t border-slate-100 p-3 dark:border-white/10">
+                      <div className="border-t border-line p-3">
                         <button
                           type="button"
                           onClick={() => downloadImage(item)}
                           disabled={downloadingId === item.id}
-                          className="inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-lg bg-[#e5c67d]/20 text-xs font-bold text-[#997325] transition hover:bg-[#e5c67d]/30 disabled:opacity-60 dark:text-[#e5c67d]"
+                          className="inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-md bg-subtle text-xs font-bold text-action transition hover:bg-subtle disabled:opacity-60"
                         >
                           {downloadingId === item.id ? (
                             <Loader2 size={14} className="animate-spin" />

@@ -6,9 +6,9 @@
   left: 8px;
   z-index: 10000;
   padding: 12px 20px;
-  border-radius: 8px;
-  background: #fff;
-  color: #111;
+  border-radius: 6px;
+  background: var(--ui-surface);
+  color: var(--ui-ink);
   transform: translateY(-160%);
 }
 .skip-to-content:focus { transform: translateY(0); }
@@ -20,7 +20,7 @@
   .mobile-navigation > .overflow-y-auto { overflow: visible; flex: 0 0 auto; }
 }
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
-  outline: 3px solid #2563eb;
+  outline: 3px solid var(--ui-action);
   outline-offset: 3px;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -42,146 +42,15 @@ Dark Mode Variant
 Theme
 =========================================================*/
 
-@theme {
-  --color-fashionGold: #d4af37;
-  --color-darkElite: #1a1a1a;
-}
-
-/*=========================================================
-Reusable Components
-=========================================================*/
-
-@layer components {
-  /*-------------------------------------------------------
-  Authentication Label
-  -------------------------------------------------------*/
-
-  .auth-label {
-    @apply mb-1 block text-[10px] font-black uppercase tracking-[0.15em] text-gray-400;
-  }
-
-  .dark .auth-label {
-    color: rgba(255, 255, 255, 0.42);
-  }
-
-  /*-------------------------------------------------------
-  Authentication Input
-  -------------------------------------------------------*/
-
-  .auth-input {
-    @apply w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition-all;
-    color: #0f172a;
-    caret-color: #0f172a;
-  }
-
-  .auth-input::placeholder {
-    color: #94a3b8;
-  }
-
-  .auth-input:focus {
-    background-color: #ffffff;
-    border-color: #d4af37;
-    color: #0f172a;
-    caret-color: #0f172a;
-    box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.08);
-  }
-
-  .dark .auth-input {
-    background-color: #111111;
-    border-color: rgba(255, 255, 255, 0.1);
-    color: #ffffff;
-    caret-color: #ffffff;
-    color-scheme: dark;
-  }
-
-  .dark .auth-input::placeholder {
-    color: rgba(255, 255, 255, 0.25);
-  }
-
-  .dark .auth-input:focus {
-    background-color: #151515;
-    border-color: rgba(212, 175, 55, 0.6);
-    color: #ffffff;
-    caret-color: #ffffff;
-    box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.1);
-  }
-
-  /*-------------------------------------------------------
-  Authentication Input V2
-  -------------------------------------------------------*/
-
-  .auth-input-v2 {
-    @apply w-full rounded-xl border border-transparent bg-gray-50 py-3.5 pl-10 pr-4 text-sm outline-none transition-all;
-    color: #1a1a1a;
-    caret-color: #1a1a1a;
-  }
-
-  .auth-input-v2::placeholder {
-    color: #d1d5db;
-  }
-
-  .auth-input-v2:focus {
-    background-color: #ffffff;
-    border-color: #d4af37;
-    color: #1a1a1a;
-    caret-color: #1a1a1a;
-    box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.08);
-  }
-
-  .dark .auth-input-v2 {
-    background-color: #111111;
-    border-color: rgba(255, 255, 255, 0.1);
-    color: #ffffff;
-    caret-color: #ffffff;
-    color-scheme: dark;
-  }
-
-  .dark .auth-input-v2::placeholder {
-    color: rgba(255, 255, 255, 0.25);
-  }
-
-  .dark .auth-input-v2:focus {
-    background-color: #151515;
-    border-color: rgba(212, 175, 55, 0.6);
-    color: #ffffff;
-    caret-color: #ffffff;
-    box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.1);
-  }
-}
-
-/*=========================================================
-Browser Autofill
-=========================================================*/
-
-/*
-Chrome / Edge autofill can force its own background and
-text colors.
-
-These rules keep autofilled email/password fields readable
-in both light and dark themes.
-*/
-
-.auth-input:-webkit-autofill,
-.auth-input:-webkit-autofill:hover,
-.auth-input:-webkit-autofill:focus,
-.auth-input-v2:-webkit-autofill,
-.auth-input-v2:-webkit-autofill:hover,
-.auth-input-v2:-webkit-autofill:focus {
-  -webkit-text-fill-color: #0f172a;
-  caret-color: #0f172a;
-  box-shadow: 0 0 0 1000px #f9fafb inset;
-  transition: background-color 9999s ease-out 0s;
-}
-
-.dark .auth-input:-webkit-autofill,
-.dark .auth-input:-webkit-autofill:hover,
-.dark .auth-input:-webkit-autofill:focus,
-.dark .auth-input-v2:-webkit-autofill,
-.dark .auth-input-v2:-webkit-autofill:hover,
-.dark .auth-input-v2:-webkit-autofill:focus {
-  -webkit-text-fill-color: #ffffff;
-  caret-color: #ffffff;
-  box-shadow: 0 0 0 1000px #111111 inset;
+@theme inline {
+  --color-canvas: var(--ui-canvas);
+  --color-surface: var(--ui-surface);
+  --color-subtle: var(--ui-subtle);
+  --color-line: var(--ui-line);
+  --color-ink: var(--ui-ink);
+  --color-muted: var(--ui-muted);
+  --color-action: var(--ui-action);
+  --color-on-action: var(--ui-on-action);
 }
 
 /*=========================================================
@@ -266,7 +135,7 @@ Standard Custom Scrollbar
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background-color: #e2e8f0;
-  border-radius: 10px;
+  border-radius: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
@@ -308,17 +177,17 @@ Dark Sidebar Scrollbar
 }
 
 .custom-scrollbar-dark::-webkit-scrollbar-thumb {
-  background-color: rgba(212, 175, 55, 0.2);
-  border-radius: 10px;
+  background-color: var(--ui-muted);
+  border-radius: 4px;
 }
 
 .custom-scrollbar-dark::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(212, 175, 55, 0.35);
+  background-color: var(--ui-muted);
 }
 
 .custom-scrollbar-dark {
   scrollbar-width: thin;
-  scrollbar-color: rgba(212, 175, 55, 0.2) transparent;
+  scrollbar-color: var(--ui-muted) transparent;
 }
 
 /*=========================================================

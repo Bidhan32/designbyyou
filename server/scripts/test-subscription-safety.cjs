@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const { randomUUID } = require("node:crypto");
 const { isolatedServer } = require("./support/isolated-app.cjs");
 const { cleanupRecordedPortalConfiguration } = require("./support/subscription-cleanup.cjs");
+process.env.CREATOR_SUBSCRIPTION_SIGNUPS_ENABLED = "true";
 process.env.STRIPE_SECRET_KEY = "sk_test_offline";
 process.env.CREATOR_SUBSCRIPTION_MONTHLY_PRICE_ID = "price_monthly";
 process.env.CREATOR_SUBSCRIPTION_QUARTERLY_PRICE_ID = "price_quarterly";
@@ -39,6 +40,18 @@ function setup() {
     stats() { return { writes, portals, creates }; } };
 }
 async function checkout(s, plan = "monthly") { const res = response(); await s.controller.createCheckoutSession({ user: { id: s.owner.id }, body: { plan, client_request_id: randomUUID() } }, res); return res; }
+test("new checkout is paused by default before contacting Stripe", async () => {
+  const s = setup();
+  delete process.env.CREATOR_SUBSCRIPTION_SIGNUPS_ENABLED;
+  try {
+    const result = await checkout(s);
+    assert.equal(result.statusCode, 409);
+    assert.equal(result.body.code, "SUBSCRIPTION_SIGNUPS_PAUSED");
+    assert.equal(s.stats().creates, 0);
+  } finally {
+    process.env.CREATOR_SUBSCRIPTION_SIGNUPS_ENABLED = "true";
+  }
+});
 test("repeated checkout requests resume the same open session even with a new request UUID", async () => {
   const s = setup(); const first = await checkout(s), again = await checkout(s);
   assert.equal(first.statusCode, 201); assert.equal(again.statusCode, 201);

@@ -618,25 +618,25 @@ function getAnimationClass(animation) {
 
 function getBackgroundClass(backgroundTheme) {
   const themes = {
-    studio: "from-slate-950 via-[#12121a] to-black",
+    studio: "",
 
-    "digital-studio": "from-indigo-950 via-violet-950 to-black",
+    "digital-studio": "",
 
-    runway: "from-neutral-900 via-zinc-800 to-black",
+    runway: "",
 
-    atelier: "from-amber-950 via-stone-900 to-black",
+    atelier: "",
 
-    minimal: "from-slate-800 via-slate-900 to-black",
+    minimal: "",
 
-    neon: "from-fuchsia-950 via-indigo-950 to-black",
+    neon: "",
 
-    luxury: "from-[#2b2104] via-[#111008] to-black",
+    luxury: "",
 
-    street: "from-slate-800 via-zinc-900 to-black",
+    street: "",
 
-    nature: "from-emerald-950 via-slate-950 to-black",
+    nature: "",
 
-    transparent: "from-black/10 via-black/5 to-black/10",
+    transparent: "",
   };
 
   return themes[backgroundTheme] || themes.studio;
@@ -671,7 +671,7 @@ function FeaturedDesignCard({ design, onClick, interactive }) {
 
   const content = (
     <div className="flex items-center gap-3">
-      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/5">
+      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md border border-line bg-subtle">
         {design.image && !imageFailed ? (
           <img
             src={design.image}
@@ -683,22 +683,22 @@ function FeaturedDesignCard({ design, onClick, interactive }) {
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
-            <ImageIcon size={18} className="text-white/20" />
+            <ImageIcon size={18} className="text-muted" />
           </div>
         )}
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="text-[8px] font-black uppercase tracking-[0.14em] text-violet-300">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-action">
           Featured Design
         </p>
 
-        <p className="mt-1 truncate text-xs font-bold text-white">
+        <p className="mt-1 truncate text-xs font-bold text-ink">
           {design.title}
         </p>
 
         <div className="mt-1 flex items-center gap-2">
-          <span className="truncate text-[8px] font-bold uppercase tracking-[0.1em] text-white/30">
+          <span className="truncate text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
             {design.sourceType === "fashion_editor"
               ? design.isRemix
                 ? "Editor Remix"
@@ -707,7 +707,7 @@ function FeaturedDesignCard({ design, onClick, interactive }) {
           </span>
 
           {design.allowRemix && (
-            <GitFork size={9} className="shrink-0 text-violet-300" />
+            <GitFork size={9} className="shrink-0 text-action" />
           )}
         </div>
       </div>
@@ -715,7 +715,7 @@ function FeaturedDesignCard({ design, onClick, interactive }) {
       {interactive && (
         <Eye
           size={14}
-          className="shrink-0 text-white/30 transition group-hover:text-white"
+          className="shrink-0 text-muted transition group-hover:text-ink"
         />
       )}
     </div>
@@ -1052,9 +1052,9 @@ export default function FashionPersonaAvatar({
 
   return (
     <div
-      className={`relative w-full overflow-hidden rounded-[2rem] ${
+      className={`relative w-full overflow-hidden rounded-md ${
         showBackground
-          ? `bg-gradient-to-br ${backgroundClass}`
+          ? `bg-surface ${backgroundClass}`
           : "bg-transparent"
       } ${className}`}
       style={{
@@ -1206,28 +1206,28 @@ export default function FashionPersonaAvatar({
 
         {backgroundTheme === "digital-studio" && (
           <>
-            <div className="absolute left-8 top-16 h-px w-28 bg-violet-400/25" />
+            <div className="absolute left-8 top-16 h-px w-28 bg-subtle" />
 
-            <div className="absolute right-8 top-28 h-px w-20 bg-cyan-400/25" />
+            <div className="absolute right-8 top-28 h-px w-20 bg-subtle" />
 
-            <div className="absolute bottom-28 left-10 h-px w-16 bg-violet-400/20" />
+            <div className="absolute bottom-28 left-10 h-px w-16 bg-subtle" />
 
-            <div className="absolute bottom-16 right-12 h-px w-24 bg-cyan-400/15" />
+            <div className="absolute bottom-16 right-12 h-px w-24 bg-subtle" />
           </>
         )}
 
         {backgroundTheme === "runway" && (
           <>
-            <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-white/10" />
+            <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-subtle" />
 
-            <div className="absolute bottom-0 left-[25%] h-[45%] w-px origin-bottom -rotate-[18deg] bg-white/10" />
+            <div className="absolute bottom-0 left-[25%] h-[45%] w-px origin-bottom -rotate-[18deg] bg-subtle" />
 
-            <div className="absolute bottom-0 right-[25%] h-[45%] w-px origin-bottom rotate-[18deg] bg-white/10" />
+            <div className="absolute bottom-0 right-[25%] h-[45%] w-px origin-bottom rotate-[18deg] bg-subtle" />
           </>
         )}
 
         {backgroundTheme === "luxury" && (
-          <div className="absolute inset-5 rounded-[1.5rem] border border-[#D4AF37]/10" />
+          <div className="absolute inset-5 rounded-md border border-line" />
         )}
       </div>
 
@@ -1236,7 +1236,7 @@ export default function FashionPersonaAvatar({
           =================================================== */}
 
       {avatarLabel && (
-        <div className="absolute left-4 top-4 z-30 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-2 text-[7px] font-black uppercase tracking-[0.15em] text-white/45 backdrop-blur-md">
+        <div className="absolute left-4 top-4 z-30 inline-flex items-center gap-2 rounded-md border border-line bg-subtle px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted">
           <Sparkles size={10} />
 
           {avatarLabel}
@@ -1248,7 +1248,7 @@ export default function FashionPersonaAvatar({
           =================================================== */}
 
       {showModeBadge && (
-        <div className="absolute right-4 top-4 z-30 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/35 px-3 py-2 text-[7px] font-black uppercase tracking-[0.15em] text-white/60 backdrop-blur-md">
+        <div className="absolute right-4 top-4 z-30 inline-flex items-center gap-2 rounded-md border border-line bg-black/35 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted">
           {displayMode === "wear" ? <Shirt size={10} /> : <Monitor size={10} />}
 
           {displayMode === "wear" ? "Wear" : "Showcase"}
@@ -2291,7 +2291,7 @@ export default function FashionPersonaAvatar({
         config.showFeaturedCard &&
         design && (
           <div
-            className={`absolute z-20 rounded-2xl border border-white/15 bg-black/45 shadow-2xl backdrop-blur-xl ${
+            className={`absolute z-20 rounded-md border border-line bg-black/45 ${
               compact
                 ? "bottom-3 left-3 right-3 p-2.5"
                 : "bottom-5 left-5 right-5 p-3 sm:left-auto sm:right-5 sm:w-60"
@@ -2311,8 +2311,8 @@ export default function FashionPersonaAvatar({
 
       {displayMode === "wear" && design && (
         <div
-          className={`absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded-full border border-violet-300/20 bg-black/45 text-center font-black uppercase tracking-[0.13em] text-violet-100 backdrop-blur-md ${
-            compact ? "px-2.5 py-1 text-[6px]" : "px-3 py-1.5 text-[7px]"
+          className={`absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded-full border border-line bg-black/45 text-center font-semibold uppercase tracking-[0.13em] text-action ${
+            compact ? "px-2.5 py-1 text-[6px]" : "px-3 py-1.5 text-[11px]"
           }`}
         >
           Wearing {design.title}
@@ -2454,13 +2454,7 @@ export function FashionPersonaAvatarCircle({
   return (
     <div
       className={`
-        relative
-        shrink-0
-        overflow-hidden
-        rounded-full
-        border
-        border-white/10
-        bg-slate-950
+        relative shrink-0 overflow-hidden rounded-full border border-line bg-surface
         ${className}
       `}
       style={{
@@ -2480,8 +2474,7 @@ export function FashionPersonaAvatarCircle({
 
       <div
         className="
-          pointer-events-none
-          absolute
+          pointer-events-none absolute
         "
         style={{
           width: 260,
@@ -2545,10 +2538,10 @@ export function FashionPersonaDesignBadge({ featuredDesign }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[7px] font-black uppercase tracking-[0.12em] ${
+      className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${
         isEditor
-          ? "border-violet-300/20 bg-violet-500/10 text-violet-300"
-          : "border-slate-300/20 bg-slate-500/10 text-slate-300"
+          ? "border-line bg-subtle text-action"
+          : "border-line bg-subtle text-muted"
       }`}
     >
       {isEditor ? (

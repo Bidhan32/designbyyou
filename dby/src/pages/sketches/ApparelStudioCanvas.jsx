@@ -512,20 +512,7 @@ const activeViewerBlueprint =
 
         <div
             className="
-                fixed
-                inset-0
-                z-[99999]
-                flex
-                h-screen
-                w-screen
-                select-none
-                flex-col
-                overflow-hidden
-                bg-[#030303]
-                font-sans
-                text-white
-                selection:bg-[#D4AF37]
-                selection:text-black
+                fixed inset-0 z-[99999] flex h-screen w-screen select-none flex-col overflow-hidden bg-canvas font-sans text-ink selection:bg-action selection:text-on-action
             "
         >
 
@@ -533,16 +520,7 @@ const activeViewerBlueprint =
 
             <div
                 className="
-                    pointer-events-none
-                    absolute
-                    left-[-10%]
-                    top-[-20%]
-                    z-0
-                    h-[50vw]
-                    w-[50vw]
-                    rounded-full
-                    bg-[#D4AF37]/5
-                    blur-[150px]
+                    pointer-events-none absolute left-[-10%] top-[-20%] z-0 h-[50vw] w-[50vw] rounded-full bg-subtle blur-[150px]
                 "
             />
 
@@ -552,28 +530,13 @@ const activeViewerBlueprint =
 
             <header
                 className="
-                    relative
-                    z-50
-                    flex
-                    h-20
-                    w-full
-                    shrink-0
-                    items-center
-                    justify-between
-                    border-b
-                    border-white/5
-                    bg-[#0a0a0a]/90
-                    px-8
-                    shadow-2xl
-                    backdrop-blur-xl
+                    relative z-50 flex h-20 w-full shrink-0 items-center justify-between border-b border-line bg-subtle px-8
                 "
             >
 
                 <div
                     className="
-                        flex
-                        items-center
-                        gap-4
+                        flex items-center gap-4
                     "
                 >
 
@@ -583,18 +546,14 @@ const activeViewerBlueprint =
                             navigate(-1)
                         }
                         className="
-                            rounded-full
-                            bg-white/5
-                            p-2
-                            transition-colors
-                            hover:bg-white/10
+                            rounded-md bg-subtle p-2 transition-colors hover:bg-subtle
                         "
                         aria-label="Close studio"
                     >
 
                         <X
                             size={16}
-                            className="text-white/60"
+                            className="text-muted"
                         />
 
                     </button>
@@ -603,14 +562,7 @@ const activeViewerBlueprint =
 
                         <div
                             className="
-                                flex
-                                items-center
-                                gap-2
-                                text-[9px]
-                                font-bold
-                                uppercase
-                                tracking-[0.4em]
-                                text-[#D4AF37]
+                                flex items-center gap-2 text-[11px] font-bold uppercase tracking-normal text-action
                             "
                         >
 
@@ -622,10 +574,7 @@ const activeViewerBlueprint =
 
                         <h1
                             className="
-                                text-lg
-                                font-serif
-                                tracking-wide
-                                text-white
+                                text-lg font-serif tracking-wide text-ink
                             "
                         >
 
@@ -633,13 +582,7 @@ const activeViewerBlueprint =
 
                             <span
                                 className="
-                                    ml-3
-                                    text-[9px]
-                                    font-sans
-                                    font-bold
-                                    uppercase
-                                    tracking-widest
-                                    text-white/30
+                                    ml-3 text-[11px] font-sans font-bold uppercase tracking-widest text-muted
                                 "
                             >
                                 {role}
@@ -653,9 +596,7 @@ const activeViewerBlueprint =
 
                 <div
                     className="
-                        flex
-                        items-center
-                        gap-3
+                        flex items-center gap-3
                     "
                 >
 
@@ -670,16 +611,7 @@ const activeViewerBlueprint =
                             lines.length === 0
                         }
                         className="
-                            rounded-full
-                            border
-                            border-white/10
-                            bg-white/5
-                            p-2.5
-                            text-white
-                            transition-colors
-                            hover:bg-white/10
-                            disabled:cursor-not-allowed
-                            disabled:opacity-30
+                            rounded-md border border-line bg-subtle p-2.5 text-ink transition-colors hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-30
                         "
                         title="Download PNG"
                     >
@@ -701,23 +633,7 @@ const activeViewerBlueprint =
                             !garmentBlueprint
                         }
                         className="
-                            flex
-                            items-center
-                            gap-2
-                            rounded-full
-                            bg-emerald-600
-                            px-5
-                            py-2.5
-                            text-[10px]
-                            font-bold
-                            uppercase
-                            tracking-[0.2em]
-                            text-white
-                            shadow-[0_0_20px_rgba(16,185,129,0.3)]
-                            transition-all
-                            hover:bg-emerald-500
-                            disabled:cursor-not-allowed
-                            disabled:opacity-40
+                            flex items-center gap-2 rounded-md bg-action px-5 py-2.5 text-[10px] font-bold uppercase tracking-normal text-on-action transition-all hover:bg-action disabled:cursor-not-allowed disabled:opacity-40 hover:text-on-action
                         "
                     >
 
@@ -750,12 +666,7 @@ const activeViewerBlueprint =
 
             <div
                 className="
-                    relative
-                    z-10
-                    flex
-                    h-full
-                    flex-1
-                    overflow-hidden
+                    relative z-10 flex h-full flex-1 overflow-hidden
                 "
             >
 
@@ -765,34 +676,13 @@ const activeViewerBlueprint =
 
                 <aside
                     className="
-                        flex
-                        h-full
-                        w-[90px]
-                        shrink-0
-                        flex-col
-                        items-center
-                        gap-3
-                        border-r
-                        border-white/5
-                        bg-[#0a0a0a]
-                        px-3
-                        py-6
-                        shadow-2xl
+                        flex h-full w-[90px] shrink-0 flex-col items-center gap-3 border-r border-line bg-surface px-3 py-6
                     "
                 >
 
                     <div
                         className="
-                            mb-2
-                            flex
-                            h-11
-                            w-11
-                            items-center
-                            justify-center
-                            rounded-xl
-                            bg-[#D4AF37]
-                            text-black
-                            shadow-[0_0_20px_rgba(212,175,55,0.25)]
+                            mb-2 flex h-11 w-11 items-center justify-center rounded-md bg-action text-on-action
                         "
                         title="Pen"
                     >
@@ -803,10 +693,7 @@ const activeViewerBlueprint =
 
                     <div
                         className="
-                            my-2
-                            h-px
-                            w-10
-                            bg-white/10
+                            my-2 h-px w-10 bg-subtle
                         "
                     />
 
@@ -817,17 +704,7 @@ const activeViewerBlueprint =
                             lines.length === 0
                         }
                         className="
-                            flex
-                            w-full
-                            justify-center
-                            rounded-xl
-                            py-3
-                            text-white/50
-                            transition-colors
-                            hover:bg-white/5
-                            hover:text-white
-                            disabled:cursor-not-allowed
-                            disabled:opacity-20
+                            flex w-full justify-center rounded-md py-3 text-muted transition-colors hover:bg-subtle hover:text-ink disabled:cursor-not-allowed disabled:opacity-20
                         "
                         title="Undo"
                     >
@@ -845,17 +722,7 @@ const activeViewerBlueprint =
                             lines.length === 0
                         }
                         className="
-                            flex
-                            w-full
-                            justify-center
-                            rounded-xl
-                            py-3
-                            text-rose-400/70
-                            transition-colors
-                            hover:bg-rose-500/10
-                            hover:text-rose-400
-                            disabled:cursor-not-allowed
-                            disabled:opacity-20
+                            flex w-full justify-center rounded-md py-3 text-muted transition-colors hover:bg-subtle hover:text-action disabled:cursor-not-allowed disabled:opacity-20
                         "
                         title="Clear"
                     >
@@ -872,12 +739,7 @@ const activeViewerBlueprint =
 
                 <div
                     className="
-                        flex
-                        h-full
-                        min-w-0
-                        flex-1
-                        overflow-hidden
-                        bg-[#050505]
+                        flex h-full min-w-0 flex-1 overflow-hidden bg-canvas
                     "
                 >
 
@@ -885,37 +747,13 @@ const activeViewerBlueprint =
 
                     <section
                         className="
-                            relative
-                            flex
-                            min-w-0
-                            w-1/2
-                            items-center
-                            justify-center
-                            overflow-auto
-                            border-r
-                            border-white/5
-                            p-4
+                            relative flex min-w-0 w-1/2 items-center justify-center overflow-auto border-r border-line p-4
                         "
                     >
 
                         <div
                             className="
-                                absolute
-                                left-4
-                                top-4
-                                z-10
-                                rounded-md
-                                border
-                                border-[#D4AF37]/30
-                                bg-[#0a0a0a]/80
-                                px-3
-                                py-1.5
-                                text-[9px]
-                                font-bold
-                                uppercase
-                                tracking-widest
-                                text-[#D4AF37]
-                                backdrop-blur-md
+                                absolute left-4 top-4 z-10 rounded-md border border-line bg-subtle px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-action
                             "
                         >
                             1. Vector Editor
@@ -937,35 +775,13 @@ const activeViewerBlueprint =
 
                     <section
                         className="
-                            relative
-                            flex
-                            min-w-0
-                            w-1/2
-                            items-center
-                            justify-center
-                            overflow-hidden
-                            bg-[#0a0a0a]
+                            relative flex min-w-0 w-1/2 items-center justify-center overflow-hidden bg-surface
                         "
                     >
 
                         <div
                             className="
-                                absolute
-                                left-4
-                                top-4
-                                z-10
-                                rounded-md
-                                border
-                                border-emerald-500/30
-                                bg-[#050505]/80
-                                px-3
-                                py-1.5
-                                text-[9px]
-                                font-bold
-                                uppercase
-                                tracking-widest
-                                text-emerald-400
-                                backdrop-blur-md
+                                absolute left-4 top-4 z-10 rounded-md border border-line bg-subtle px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-action
                             "
                         >
                             2. Live 3D Mesh
@@ -983,17 +799,7 @@ const activeViewerBlueprint =
 
                             <div
                                 className="
-                                    flex
-                                    flex-col
-                                    items-center
-                                    gap-4
-                                    px-8
-                                    text-center
-                                    text-xs
-                                    font-bold
-                                    uppercase
-                                    tracking-widest
-                                    text-white/20
+                                    flex flex-col items-center gap-4 px-8 text-center text-xs font-bold uppercase tracking-widest text-muted
                                 "
                             >
 
@@ -1020,18 +826,7 @@ const activeViewerBlueprint =
 
                 <aside
                     className="
-                        flex
-                        h-full
-                        w-72
-                        shrink-0
-                        flex-col
-                        gap-6
-                        overflow-y-auto
-                        border-l
-                        border-white/5
-                        bg-[#0a0a0a]
-                        p-5
-                        shadow-2xl
+                        flex h-full w-72 shrink-0 flex-col gap-6 overflow-y-auto border-l border-line bg-surface p-4
                     "
                 >
 
@@ -1041,18 +836,7 @@ const activeViewerBlueprint =
 
                         <h4
                             className="
-                                mb-4
-                                flex
-                                items-center
-                                gap-2
-                                border-b
-                                border-white/5
-                                pb-3
-                                text-[9px]
-                                font-bold
-                                uppercase
-                                tracking-[0.3em]
-                                text-[#D4AF37]
+                                mb-4 flex items-center gap-2 border-b border-line pb-3 text-[11px] font-bold uppercase tracking-normal text-action
                             "
                         >
 
@@ -1064,12 +848,7 @@ const activeViewerBlueprint =
 
                         <div
                             className="
-                                space-y-3
-                                rounded-xl
-                                border
-                                border-white/5
-                                bg-white/[0.03]
-                                p-4
+                                space-y-3 rounded-md border border-line bg-subtle p-4
                             "
                         >
 
@@ -1104,9 +883,7 @@ const activeViewerBlueprint =
 
                             <div
                                 className="
-                                    my-2
-                                    h-px
-                                    bg-white/5
+                                    my-2 h-px bg-subtle
                                 "
                             />
 
@@ -1141,18 +918,7 @@ const activeViewerBlueprint =
 
                         <h4
                             className="
-                                mb-4
-                                flex
-                                items-center
-                                gap-2
-                                border-b
-                                border-white/5
-                                pb-3
-                                text-[9px]
-                                font-bold
-                                uppercase
-                                tracking-[0.3em]
-                                text-white/40
+                                mb-4 flex items-center gap-2 border-b border-line pb-3 text-[11px] font-bold uppercase tracking-normal text-muted
                             "
                         >
 
@@ -1164,12 +930,7 @@ const activeViewerBlueprint =
 
                         <div
                             className="
-                                space-y-2
-                                rounded-xl
-                                border
-                                border-white/5
-                                bg-white/[0.03]
-                                p-4
+                                space-y-2 rounded-md border border-line bg-subtle p-4
                             "
                         >
 
@@ -1249,18 +1010,7 @@ const activeViewerBlueprint =
 
                         <h4
                             className="
-                                mb-4
-                                flex
-                                items-center
-                                gap-2
-                                border-b
-                                border-white/5
-                                pb-3
-                                text-[9px]
-                                font-bold
-                                uppercase
-                                tracking-[0.3em]
-                                text-white/40
+                                mb-4 flex items-center gap-2 border-b border-line pb-3 text-[11px] font-bold uppercase tracking-normal text-muted
                             "
                         >
 
@@ -1274,11 +1024,7 @@ const activeViewerBlueprint =
 
                             <p
                                 className="
-                                    text-[9px]
-                                    uppercase
-                                    leading-relaxed
-                                    tracking-widest
-                                    text-white/25
+                                    text-[11px] uppercase leading-relaxed tracking-widest text-muted
                                 "
                             >
                                 Draw strokes to generate recognition groups.
@@ -1342,21 +1088,13 @@ const activeViewerBlueprint =
                                                     `group-${index}`
                                                 }
                                                 className="
-                                                    rounded-lg
-                                                    border
-                                                    border-white/5
-                                                    bg-white/[0.03]
-                                                    p-3
+                                                    rounded-md border border-line bg-subtle p-3
                                                 "
                                             >
 
                                                 <p
                                                     className="
-                                                        text-[9px]
-                                                        font-bold
-                                                        uppercase
-                                                        tracking-widest
-                                                        text-emerald-400
+                                                        text-[11px] font-bold uppercase tracking-widest text-action
                                                     "
                                                 >
                                                     {group.id ||
@@ -1365,9 +1103,7 @@ const activeViewerBlueprint =
 
                                                 <p
                                                     className="
-                                                        mt-2
-                                                        text-[9px]
-                                                        text-white/40
+                                                        mt-2 text-[11px] text-muted
                                                     "
                                                 >
                                                     {strokeCount} stroke(s)
@@ -1375,10 +1111,7 @@ const activeViewerBlueprint =
 
                                                 <p
                                                     className="
-                                                        mt-1
-                                                        text-[9px]
-                                                        capitalize
-                                                        text-[#D4AF37]
+                                                        mt-1 text-[11px] capitalize text-action
                                                     "
                                                 >
                                                     Type: {groupType}
@@ -1386,9 +1119,7 @@ const activeViewerBlueprint =
 
                                                 <p
                                                     className="
-                                                        mt-1
-                                                        text-[9px]
-                                                        text-white/30
+                                                        mt-1 text-[11px] text-muted
                                                     "
                                                 >
                                                     Confidence:{" "}
@@ -1414,15 +1145,7 @@ const activeViewerBlueprint =
 
                         <div
                             className={`
-                                mt-auto
-                                rounded-xl
-                                border
-                                p-4
-                                text-[9px]
-                                font-bold
-                                uppercase
-                                leading-relaxed
-                                tracking-widest
+                                mt-auto rounded-md border p-4 text-[11px] font-bold uppercase leading-relaxed tracking-widest
                                 ${
                                     statusMessage
                                         .toLowerCase()
@@ -1430,14 +1153,10 @@ const activeViewerBlueprint =
                                             "failed"
                                         )
                                         ? `
-                                            border-rose-500/20
-                                            bg-rose-500/5
-                                            text-rose-400
+                                            border-line bg-subtle text-action
                                         `
                                         : `
-                                            border-emerald-500/20
-                                            bg-emerald-500/5
-                                            text-emerald-400
+                                            border-line bg-subtle text-action
                                         `
                                 }
                             `}
@@ -1471,19 +1190,13 @@ function StatusRow({
     return (
         <div
             className="
-                flex
-                items-center
-                justify-between
-                gap-3
+                flex items-center justify-between gap-3
             "
         >
 
             <span
                 className="
-                    text-[9px]
-                    uppercase
-                    tracking-widest
-                    text-white/35
+                    text-[11px] uppercase tracking-widest text-muted
                 "
             >
                 {label}
@@ -1491,14 +1204,7 @@ function StatusRow({
 
             <span
                 className="
-                    max-w-[135px]
-                    truncate
-                    text-right
-                    font-mono
-                    text-[10px]
-                    font-bold
-                    capitalize
-                    text-white
+                    max-w-[135px] truncate text-right font-mono text-[10px] font-bold capitalize text-ink
                 "
                 title={
                     String(value)
@@ -1524,19 +1230,13 @@ function StructureRow({
     return (
         <div
             className="
-                flex
-                items-center
-                justify-between
-                gap-3
+                flex items-center justify-between gap-3
             "
         >
 
             <span
                 className="
-                    text-[9px]
-                    uppercase
-                    tracking-widest
-                    text-white/35
+                    text-[11px] uppercase tracking-widest text-muted
                 "
             >
                 {label}
@@ -1544,14 +1244,11 @@ function StructureRow({
 
             <span
                 className={`
-                    text-[9px]
-                    font-bold
-                    uppercase
-                    tracking-widest
+                    text-[11px] font-bold uppercase tracking-widest
                     ${
                         present
-                            ? "text-emerald-400"
-                            : "text-white/20"
+                            ? "text-action"
+                            : "text-muted"
                     }
                 `}
             >

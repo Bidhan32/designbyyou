@@ -274,8 +274,8 @@ function EmptyAvatar({
     <div
       className={[
         "flex items-center justify-center overflow-hidden",
-        "rounded-3xl border border-white/10",
-        "bg-slate-950/70 text-white",
+        "rounded-md border border-line",
+        "bg-subtle text-ink",
         className,
       ]
         .filter(Boolean)
@@ -298,8 +298,8 @@ function EmptyAvatar({
         <div
           className={[
             "mx-auto mb-4 flex h-14 w-14",
-            "items-center justify-center rounded-2xl",
-            "bg-white/10 text-sm font-bold",
+            "items-center justify-center rounded-md",
+            "bg-subtle text-sm font-bold",
           ].join(" ")}
         >
           DBY
@@ -312,7 +312,7 @@ function EmptyAvatar({
         </p>
 
         <p
-          className="mt-2 text-xs leading-5 text-slate-400"
+          className="mt-2 text-xs leading-5 text-muted"
         >
           {message}
         </p>

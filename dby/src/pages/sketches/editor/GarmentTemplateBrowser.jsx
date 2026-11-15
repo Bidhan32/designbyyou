@@ -61,10 +61,10 @@ function GarmentTile({ template, preview, selected, favorite, onSelect, onFavori
   const count = template.colourRegions?.length || getClothingTemplateColourRegions(template).length;
   return (
     <div
-      className={`group relative min-w-0 overflow-hidden rounded-xl border bg-slate-900/70 transition-colors ${
+      className={`group relative min-w-0 overflow-hidden rounded-md border bg-subtle transition-colors ${
         selected
-          ? "border-violet-400 bg-violet-500/10 ring-1 ring-violet-400/60"
-          : "border-slate-700/90 hover:border-slate-500 hover:bg-slate-800"
+          ? "border-line bg-subtle ring-1 ring-action"
+          : "border-line hover:border-line hover:bg-subtle"
       }`}
     >
       <button
@@ -72,9 +72,9 @@ function GarmentTile({ template, preview, selected, favorite, onSelect, onFavori
         aria-pressed={selected}
         aria-label={`Select ${template.label}, ${count} editing regions, ${template.has3D ? "2D and 3D" : "2D"}`}
         onClick={() => onSelect(template.id)}
-        className="block w-full min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-400"
+        className="block w-full min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-action"
       >
-        <div className={`relative overflow-hidden bg-slate-100 ${expanded ? "aspect-[7/5]" : "aspect-[5/4]"}`}>
+        <div className={`relative overflow-hidden bg-subtle ${expanded ? "aspect-[7/5]" : "aspect-[5/4]"}`}>
           {preview ? (
             <img
               src={preview}
@@ -85,27 +85,27 @@ function GarmentTile({ template, preview, selected, favorite, onSelect, onFavori
               className="h-full w-full select-none object-contain p-1.5 transition-transform duration-200 group-hover:scale-[1.04]"
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-slate-400">
+            <div className="flex h-full items-center justify-center text-muted">
               <ImageIcon size={26} aria-hidden="true" />
             </div>
           )}
           {selected && (
-            <span className="absolute left-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-violet-600 text-white shadow-md" aria-hidden="true">
+            <span className="absolute left-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-action text-on-action" aria-hidden="true">
               <Check size={15} strokeWidth={3} />
             </span>
           )}
-          <span className="absolute bottom-2 left-2 rounded-md bg-slate-950/85 px-1.5 py-1 text-[9px] font-bold tracking-wide text-white">
+          <span className="absolute bottom-2 left-2 rounded-md bg-subtle px-1.5 py-1 text-[11px] font-bold tracking-wide text-ink">
             {template.has3D ? "2D + 3D" : "2D"}
           </span>
         </div>
         <div className="min-w-0 px-2.5 pb-2.5 pt-2">
           <div className="flex items-center gap-1.5">
-            <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-slate-100" title={template.label}>
+            <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-ink" title={template.label}>
               {template.label}
             </span>
-            {selected && <Check size={13} className="shrink-0 text-violet-300" aria-hidden="true" />}
+            {selected && <Check size={13} className="shrink-0 text-action" aria-hidden="true" />}
           </div>
-          <div className="mt-1 flex items-center gap-1 text-[10px] text-slate-400">
+          <div className="mt-1 flex items-center gap-1 text-[10px] text-muted">
             <Layers3 size={11} aria-hidden="true" />
             <span>{count} editable regions</span>
           </div>
@@ -117,8 +117,8 @@ function GarmentTile({ template, preview, selected, favorite, onSelect, onFavori
         aria-pressed={favorite}
         title={favorite ? "Remove favorite" : "Add favorite"}
         onClick={() => onFavorite(template.id)}
-        className={`absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full border bg-white/95 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
-          favorite ? "border-rose-200 text-rose-600" : "border-slate-200 text-slate-600 hover:text-rose-600"
+        className={`absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-md border bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action ${
+          favorite ? "border-line text-action" : "border-line text-muted hover:text-action"
         }`}
       >
         <Heart size={16} fill={favorite ? "currentColor" : "none"} aria-hidden="true" />
@@ -267,7 +267,7 @@ export default function GarmentTemplateBrowser({
   const renderControls = (inDialog = false) => (
     <div className="space-y-3">
       <div className="relative">
-        <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+        <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" aria-hidden="true" />
         <input
           ref={inDialog ? searchRef : undefined}
           type="search"
@@ -275,7 +275,7 @@ export default function GarmentTemplateBrowser({
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search garments, styles..."
           aria-label="Search garment templates"
-          className="h-10 w-full rounded-xl border border-slate-700 bg-slate-950 pl-9 pr-3 text-xs text-white placeholder:text-slate-500 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
+          className="h-10 w-full rounded-md border border-line bg-surface pl-9 pr-3 text-xs text-ink placeholder:text-muted focus:border-line focus:outline-none focus:ring-1 focus:ring-action"
         />
       </div>
       <div className="flex gap-1.5 overflow-x-auto pb-1" role="group" aria-label="Garment categories">
@@ -285,10 +285,10 @@ export default function GarmentTemplateBrowser({
             type="button"
             aria-pressed={category === item.id}
             onClick={() => setCategory(item.id)}
-            className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
+            className={`shrink-0 rounded-md border px-3 py-1.5 text-[10px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action ${
               category === item.id
-                ? "border-violet-400 bg-violet-500/20 text-violet-100"
-                : "border-slate-700 bg-slate-900 text-slate-400 hover:text-white"
+                ? "border-line bg-subtle text-action"
+                : "border-line bg-surface text-muted hover:text-ink"
             }`}
           >
             {item.label}
@@ -303,7 +303,7 @@ export default function GarmentTemplateBrowser({
             ["recent", "Recent"],
           ].map(([value, label]) => (
             <button key={value} type="button" aria-pressed={filter === value} onClick={() => setFilter(value)}
-              className={`rounded-lg px-2 py-1.5 text-[10px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${filter === value ? "bg-slate-700 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}>
+              className={`rounded-md px-2 py-1.5 text-[10px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action ${filter === value ? "bg-subtle text-ink" : "text-muted hover:bg-subtle hover:text-ink"}`}>
               {label}
             </button>
           ))}
@@ -312,7 +312,7 @@ export default function GarmentTemplateBrowser({
           value={mode}
           onChange={(event) => setMode(event.target.value)}
           aria-label="Filter 2D and 3D templates"
-          className="max-w-[104px] rounded-lg border border-slate-700 bg-slate-900 px-1.5 py-1.5 text-[10px] text-slate-200 focus:border-violet-400 focus:outline-none"
+          className="max-w-[104px] rounded-md border border-line bg-surface px-1.5 py-1.5 text-[10px] text-ink focus:border-line focus:outline-none"
         >
           <option value="all">All modes</option>
           <option value="3d">3D ready</option>
@@ -324,7 +324,7 @@ export default function GarmentTemplateBrowser({
 
   const renderGrid = (inDialog = false) => (
     <>
-      <div className="mb-2 flex items-center justify-between text-[10px] text-slate-500">
+      <div className="mb-2 flex items-center justify-between text-[10px] text-muted">
         <span role="status" aria-live="polite">{visible.length} of {catalog.length} garments</span>
         <span>{has3DCount} with 3D</span>
       </div>
@@ -344,57 +344,57 @@ export default function GarmentTemplateBrowser({
           ))}
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/40 px-4 py-8 text-center">
-          <Search size={22} className="mx-auto text-slate-600" aria-hidden="true" />
-          <p className="mt-2 text-xs font-semibold text-slate-300">No garments found</p>
-          <p className="mt-1 text-[10px] text-slate-500">Change your search or filters.</p>
+        <div className="rounded-md border border-dashed border-line bg-subtle px-4 py-8 text-center">
+          <Search size={22} className="mx-auto text-muted" aria-hidden="true" />
+          <p className="mt-2 text-xs font-semibold text-muted">No garments found</p>
+          <p className="mt-1 text-[10px] text-muted">Change your search or filters.</p>
           <button type="button" onClick={() => { setQuery(""); setCategory("all"); setFilter("all"); setMode("all"); }}
-            className="mt-3 rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-800">Clear filters</button>
+            className="mt-3 rounded-md border border-line px-3 py-1.5 text-xs text-ink hover:bg-subtle">Clear filters</button>
         </div>
       )}
     </>
   );
 
   const renderSelected = (inDialog = false) => (
-    <div className="rounded-xl border border-violet-500/30 bg-gradient-to-b from-violet-500/10 to-slate-900/90 p-3">
+    <div className="rounded-md border border-line bg-surface p-3">
       {selected ? (
         <>
           <div className="flex items-start gap-2.5">
-            <div className="flex h-[80px] w-[100px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-1.5">
+            <div className="flex h-[80px] w-[100px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-surface p-1.5">
               {previewById.get(selected.id) ? (
                 <img src={previewById.get(selected.id)} alt={`${selected.label} selected fashion flat`} className="h-full w-full object-contain" draggable={false} />
-              ) : <ImageIcon size={24} className="text-slate-400" />}
+              ) : <ImageIcon size={24} className="text-muted" />}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[9px] font-bold uppercase tracking-wider text-violet-300">Selected template</p>
-              <p className="mt-0.5 text-sm font-bold leading-5 text-white">{selected.label}</p>
-              <p className="mt-1 text-[10px] text-slate-400">{getClothingTemplateColourRegions(selected).length} editable regions · Front + Back</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-action">Selected template</p>
+              <p className="mt-0.5 text-sm font-bold leading-5 text-ink">{selected.label}</p>
+              <p className="mt-1 text-[10px] text-muted">{getClothingTemplateColourRegions(selected).length} editable regions · Front + Back</p>
               <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[9px] font-semibold text-slate-200">2D flat</span>
-                {selected.has3D && <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[9px] font-semibold text-slate-200"><Box size={10} className="mr-0.5 inline" />3D model</span>}
+                <span className="rounded bg-subtle px-1.5 py-0.5 text-[11px] font-semibold text-ink">2D flat</span>
+                {selected.has3D && <span className="rounded bg-subtle px-1.5 py-0.5 text-[11px] font-semibold text-ink"><Box size={10} className="mr-0.5 inline" />3D model</span>}
               </div>
             </div>
           </div>
           {inDialog && selected.description && (
-            <p className="mt-2.5 text-xs leading-relaxed text-slate-400">{selected.description}</p>
+            <p className="mt-2.5 text-xs leading-relaxed text-muted">{selected.description}</p>
           )}
           <button
             type="button"
             disabled={!canInsert || importing || busy}
             onClick={() => void placeSelected()}
-            className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-violet-500 px-3 text-xs font-bold text-white transition hover:bg-violet-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-3 flex min-h-9 w-full items-center justify-center gap-2 rounded-md bg-action px-3 text-xs font-bold text-on-action transition hover:bg-action focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action disabled:cursor-not-allowed disabled:opacity-50 hover:text-on-action"
           >
             {importing || busy ? "Preparing template..." : "Place on canvas"}
             {!importing && !busy && <ArrowRight size={15} aria-hidden="true" />}
           </button>
           {!canInsert && (
-            <p className="mt-2 text-center text-[10px] text-amber-300">Unlock and show the active layer to place a garment.</p>
+            <p className="mt-2 text-center text-[10px] text-action">Unlock and show the active layer to place a garment.</p>
           )}
-          <p className="mt-2 text-center text-[10px] leading-4 text-slate-500">
+          <p className="mt-2 text-center text-[10px] leading-4 text-muted">
             After preparing, click once on the canvas to place the editable garment board.
           </p>
         </>
-      ) : <p className="text-xs text-slate-400">No garment templates available.</p>}
+      ) : <p className="text-xs text-muted">No garment templates available.</p>}
     </div>
   );
 
@@ -402,7 +402,7 @@ export default function GarmentTemplateBrowser({
 
   return createPortal(
         <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/85 p-2 backdrop-blur-sm sm:p-6"
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-subtle p-2 sm:p-4"
           onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose(); }}
         >
           <div
@@ -410,27 +410,27 @@ export default function GarmentTemplateBrowser({
             role="dialog"
             aria-modal="true"
             aria-label="DesignByYou garment catalog"
-            className="flex h-[min(94dvh,930px)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 text-white shadow-2xl"
+            className="flex h-[min(94dvh,930px)] w-full max-w-6xl flex-col overflow-hidden rounded-md border border-line bg-surface text-ink"
           >
-            <div className="flex shrink-0 items-center justify-between border-b border-slate-800 px-4 py-3 sm:px-6">
+            <div className="flex shrink-0 items-center justify-between border-b border-line px-4 py-3 sm:px-6">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet-300">DesignByYou Studio</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-action">DesignByYou Studio</p>
                 <h2 className="text-lg font-bold">Explore garments</h2>
               </div>
               <button type="button" onClick={requestClose} aria-label="Close garment catalog"
-                className="grid h-10 w-10 place-items-center rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 focus-visible:ring-2 focus-visible:ring-violet-400">
+                className="grid h-9 w-10 place-items-center rounded-md border border-line text-muted hover:bg-subtle focus-visible:ring-2 focus-visible:ring-action">
                 <X size={19} />
               </button>
             </div>
             <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_300px] lg:grid-rows-1">
-              <div className="min-h-0 overflow-y-auto p-3 sm:p-5">
+              <div className="min-h-0 overflow-y-auto p-3 sm:p-4">
                 {renderControls(true)}
                 <div className="mt-4">{renderGrid(true)}</div>
               </div>
-              <aside className="max-h-[250px] overflow-y-auto border-t border-slate-800 p-3 lg:max-h-none lg:border-l lg:border-t-0 lg:p-4">
-                <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-slate-500">Your selection</p>
+              <aside className="max-h-[250px] overflow-y-auto border-t border-line p-3 lg:max-h-none lg:border-l lg:border-t-0 lg:p-4">
+                <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-muted">Your selection</p>
                 {renderSelected(true)}
-                <div className="mt-3 flex items-start gap-2 text-[11px] leading-5 text-slate-500">
+                <div className="mt-3 flex items-start gap-2 text-[11px] leading-5 text-muted">
                   <ImageIcon size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
                   <p>Browse by garment category and select a reference. This does not replace or delete designs already on your canvas.</p>
                 </div>

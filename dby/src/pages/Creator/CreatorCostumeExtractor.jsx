@@ -282,25 +282,25 @@ function ResultCard({
   const complete = status === "completed";
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#151515]">
+    <article className="overflow-hidden rounded-md border border-line bg-surface">
       <div className="flex items-center justify-between gap-2 px-4 py-3">
         <div className="min-w-0">
-          <h3 className="font-serif text-lg font-semibold text-slate-900 dark:text-white">
+          <h3 className="font-serif text-lg font-semibold text-ink">
             {view.label}
           </h3>
 
-          <p className="text-[11px] text-slate-500 dark:text-white/45">
+          <p className="text-[11px] text-muted">
             {view.detail}
           </p>
         </div>
 
         <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+          className={`shrink-0 rounded-md px-2.5 py-1 text-[10px] font-semibold ${
             complete
-              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
+              ? "bg-canvas text-action dark:bg-subtle"
               : status === "failed" || status === "submission_unknown"
-                ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"
-                : "bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-white/70"
+                ? "bg-canvas text-action dark:bg-subtle"
+                : "bg-subtle text-muted"
           }`}
         >
           {statusLabel(status)}
@@ -318,10 +318,10 @@ function ResultCard({
             className="h-full w-full object-contain"
           />
         ) : loading || POLL_STATES.has(status) ? (
-          <div className="flex flex-col items-center gap-2 rounded-xl bg-white/90 px-5 py-4 text-center text-slate-700 shadow-sm">
+          <div className="flex flex-col items-center gap-2 rounded-md bg-subtle px-5 py-4 text-center text-ink">
             <Loader2
               size={25}
-              className="animate-spin text-[#b58a32]"
+              className="animate-spin text-action"
               aria-hidden="true"
             />
 
@@ -330,7 +330,7 @@ function ResultCard({
             </span>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-2 rounded-xl bg-white/85 px-5 py-4 text-center text-slate-500">
+          <div className="flex flex-col items-center gap-2 rounded-md bg-subtle px-5 py-4 text-center text-muted">
             <Scissors size={25} aria-hidden="true" />
 
             <span className="text-xs text-center">
@@ -351,7 +351,7 @@ function ResultCard({
           <button
             type="button"
             onClick={() => onDownload(view.key)}
-            className="flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#e5c67d] px-3 text-xs font-bold text-black transition hover:bg-[#f4d995]"
+            className="flex min-h-9 w-full items-center justify-center gap-2 rounded-md bg-subtle px-3 text-xs font-bold text-ink transition hover:bg-subtle"
           >
             <Download size={15} aria-hidden="true" />
             Download PNG
@@ -361,12 +361,12 @@ function ResultCard({
             type="button"
             onClick={() => onLoad(view.key)}
             disabled={loading}
-            className="flex min-h-10 w-full items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-800 disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:text-white"
+            className="flex min-h-9 w-full items-center justify-center rounded-md border border-line bg-canvas text-xs font-semibold text-ink disabled:opacity-50 dark:bg-subtle"
           >
             {loading ? "Loading..." : "Load Result"}
           </button>
         ) : (
-          <div className="flex min-h-10 items-center justify-center text-center text-[11px] text-slate-500 dark:text-white/50">
+          <div className="flex min-h-10 items-center justify-center text-center text-[11px] text-muted">
             {status === "submission_unknown"
               ? "Submission uncertain — do not retry automatically"
               : status === "failed"
@@ -378,7 +378,7 @@ function ResultCard({
         )}
 
         {error && (
-          <p className="mt-1.5 text-[11px] text-rose-600" role="alert">
+          <p className="mt-1.5 text-[11px] text-action" role="alert">
             {error}
           </p>
         )}
@@ -1179,31 +1179,31 @@ export default function CreatorCostumeExtractor() {
      ========================================================= */
 
   return (
-    <main className="min-h-screen bg-slate-50 pb-20 text-slate-900 dark:bg-[#090909] dark:text-white">
+    <main className="min-h-screen bg-canvas pb-20 text-ink dark:bg-surface">
       {/* ===============================================
           HEADER
           =============================================== */}
 
-      <section className="border-b border-slate-200 bg-white dark:border-white/10 dark:bg-[#111111]">
+      <section className="border-b border-line bg-surface">
         <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-10">
           <Link
             to="/creator/tools"
-            className="inline-flex items-center gap-2 text-xs text-slate-500 hover:text-[#b58a32] dark:text-white/60"
+            className="inline-flex items-center gap-2 text-xs text-muted hover:text-action"
           >
             <ArrowLeft size={15} aria-hidden="true" />
-            Back to Creative Hub
+            Back to tools
           </Link>
 
-          <div className="mt-5 flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.23em] text-[#a67c2c] dark:text-[#e5c67d]">
+          <div className="mt-5 flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-normal text-action">
             <WandSparkles size={16} aria-hidden="true" />
             DesignByYou AI Creative Tools
           </div>
 
-          <h1 className="mt-3 font-serif text-3xl tracking-tight sm:text-5xl">
+          <h1 className="mt-3 font-sans text-3xl tracking-tight sm:text-5xl">
             AI Costume Extractor
           </h1>
 
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 dark:text-white/60">
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-muted">
             Upload a costume photo and choose exactly which garment-only angles
             to generate. Unseen back and side details are AI-inferred, not
             verified construction details.
@@ -1216,11 +1216,11 @@ export default function CreatorCostumeExtractor() {
             SOURCE IMAGE AND VIEW SELECTION
             =========================================== */}
 
-        <section className="h-fit rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#151515]">
+        <section className="h-fit rounded-md border border-line bg-surface p-4">
           <div className="mb-4 flex items-center gap-2">
             <ImagePlus
               size={18}
-              className="text-[#b58a32]"
+              className="text-action"
               aria-hidden="true"
             />
 
@@ -1254,14 +1254,14 @@ export default function CreatorCostumeExtractor() {
 
               handleFile(event.dataTransfer.files?.[0]);
             }}
-            className={`overflow-hidden rounded-xl border-2 border-dashed transition ${
+            className={`overflow-hidden rounded-md border-2 border-dashed transition ${
               dragging
-                ? "border-[#b58a32] bg-[#e5c67d]/10"
-                : "border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.035]"
+                ? "border-line bg-subtle"
+                : "border-line bg-canvas dark:bg-subtle"
             }`}
           >
             {sourcePreview ? (
-              <div className="flex aspect-[4/5] items-center justify-center bg-[#f1f1f1]">
+              <div className="flex aspect-[4/5] items-center justify-center bg-canvas">
                 <img
                   src={sourcePreview}
                   alt="Uploaded source costume"
@@ -1272,7 +1272,7 @@ export default function CreatorCostumeExtractor() {
               <div className="flex min-h-[210px] flex-col items-center justify-center gap-2 px-5 text-center">
                 <UploadCloud
                   size={29}
-                  className="text-[#b58a32]"
+                  className="text-action"
                   aria-hidden="true"
                 />
 
@@ -1280,7 +1280,7 @@ export default function CreatorCostumeExtractor() {
                   Drag your costume image here
                 </p>
 
-                <p className="text-xs text-slate-500 dark:text-white/50">
+                <p className="text-xs text-muted">
                   JPG, PNG or WebP · Up to 12 MB
                 </p>
               </div>
@@ -1296,7 +1296,7 @@ export default function CreatorCostumeExtractor() {
               Boolean(unresolvedJobId)
             }
             onClick={() => fileInputRef.current?.click()}
-            className="mt-3 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-semibold transition hover:border-[#b58a32] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/20"
+            className="mt-3 flex min-h-9 w-full items-center justify-center gap-2 rounded-md border border-line px-3 text-xs font-semibold transition hover:border-line disabled:cursor-not-allowed disabled:opacity-50"
           >
             <UploadCloud size={15} aria-hidden="true" />
 
@@ -1309,7 +1309,7 @@ export default function CreatorCostumeExtractor() {
 
           {file && (
             <p
-              className="mt-2 truncate text-xs text-slate-500 dark:text-white/50"
+              className="mt-2 truncate text-xs text-muted"
               title={file.name}
             >
               {file.name} · {(file.size / 1024 / 1024).toFixed(2)} MB
@@ -1317,7 +1317,7 @@ export default function CreatorCostumeExtractor() {
           )}
 
           {job && !file && pendingCount > 0 && (
-            <p className="mt-2 text-[11px] leading-5 text-amber-700 dark:text-amber-300">
+            <p className="mt-2 text-[11px] leading-5 text-action">
               Reattach the same original image before submitting pending angles.
               The original upload is not saved here.
             </p>
@@ -1327,16 +1327,16 @@ export default function CreatorCostumeExtractor() {
               VIEW SELECTOR
               ======================================= */}
 
-          <div className="mt-6 border-t border-slate-200 pt-5 dark:border-white/10">
+          <div className="mt-6 border-t border-line pt-5">
             <div className="flex items-center justify-between gap-2">
               <h2 className="font-serif text-lg font-semibold">Choose Views</h2>
 
-              <span className="text-[11px] font-semibold text-[#a67c2c] dark:text-[#e5c67d]">
+              <span className="text-[11px] font-semibold text-action">
                 {totalCount} of 4
               </span>
             </div>
 
-            <p className="mt-1.5 text-[11px] leading-5 text-slate-500 dark:text-white/50">
+            <p className="mt-1.5 text-[11px] leading-5 text-muted">
               Pick one angle or combine any views. Selections are fixed once the
               job is created.
             </p>
@@ -1356,10 +1356,10 @@ export default function CreatorCostumeExtractor() {
                     aria-pressed={isSelected}
                     disabled={selectionLocked}
                     onClick={() => toggleView(view.key)}
-                    className={`flex min-h-12 items-center justify-between gap-2 rounded-xl border px-3 text-left text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b58a32] disabled:cursor-not-allowed ${
+                    className={`flex min-h-9 items-center justify-between gap-2 rounded-md border px-3 text-left text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-action disabled:cursor-not-allowed ${
                       isSelected
-                        ? "border-[#c9a353] bg-[#e5c67d]/15 text-[#795919] dark:text-[#f3d693]"
-                        : "border-slate-200 bg-slate-50 text-slate-600 hover:border-[#c9a353] dark:border-white/10 dark:bg-white/5 dark:text-white/70"
+                        ? "border-line bg-subtle text-action"
+                        : "border-line bg-canvas text-muted hover:border-line dark:bg-subtle"
                     }`}
                   >
                     <span>{view.short}</span>
@@ -1367,8 +1367,8 @@ export default function CreatorCostumeExtractor() {
                     <span
                       className={`flex h-5 w-5 items-center justify-center rounded-md border ${
                         isSelected
-                          ? "border-[#c9a353] bg-[#e5c67d] text-[#17130b]"
-                          : "border-slate-300 dark:border-white/30"
+                          ? "border-line bg-subtle text-ink"
+                          : "border-line"
                       }`}
                     >
                       {isSelected && <Check size={13} aria-hidden="true" />}
@@ -1392,10 +1392,10 @@ export default function CreatorCostumeExtractor() {
                     key={preset.label}
                     type="button"
                     onClick={() => applyViewPreset(preset.keys)}
-                    className={`rounded-full border px-2.5 py-1.5 text-[10px] font-semibold transition ${
+                    className={`rounded-md border px-2.5 py-1.5 text-[10px] font-semibold transition ${
                       sameSelection(selectedViews, preset.keys)
-                        ? "border-[#c9a353] bg-[#e5c67d]/20 text-[#795919] dark:text-[#f3d693]"
-                        : "border-slate-200 text-slate-600 hover:border-[#c9a353] dark:border-white/15 dark:text-white/65"
+                        ? "border-line bg-subtle text-action"
+                        : "border-line text-muted hover:border-line"
                     }`}
                   >
                     {preset.label}
@@ -1408,16 +1408,16 @@ export default function CreatorCostumeExtractor() {
                 ESTIMATED CREDITS
                 =================================== */}
 
-            <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-50 px-3 py-3 dark:bg-white/5">
+            <div className="mt-4 flex items-center justify-between rounded-md bg-canvas px-3 py-3 dark:bg-subtle">
               <div>
-                <p className="text-[11px] text-slate-500 dark:text-white/50">
+                <p className="text-[11px] text-muted">
                   Estimated FASHN credits
                 </p>
 
                 <p className="mt-0.5 text-lg font-bold">{estimatedCredits}</p>
               </div>
 
-              <p className="max-w-[110px] text-right text-[10px] leading-4 text-slate-500 dark:text-white/50">
+              <p className="max-w-[110px] text-right text-[10px] leading-4 text-muted">
                 Based on 1 estimated credit per view
               </p>
             </div>
@@ -1431,7 +1431,7 @@ export default function CreatorCostumeExtractor() {
             type="button"
             disabled={!mayStart}
             onClick={generate}
-            className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#e5c67d] px-4 text-sm font-bold text-black transition hover:bg-[#f4d995] disabled:cursor-not-allowed disabled:opacity-40"
+            className="mt-5 flex min-h-9 w-full items-center justify-center gap-2 rounded-md bg-subtle px-4 text-sm font-bold text-ink transition hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40"
           >
             {busy ? (
               <Loader2 size={18} className="animate-spin" aria-hidden="true" />
@@ -1452,7 +1452,7 @@ export default function CreatorCostumeExtractor() {
 
           {stage && (
             <p
-              className="mt-2 text-center text-xs text-slate-600 dark:text-white/60"
+              className="mt-2 text-center text-xs text-muted"
               role="status"
             >
               {stage}
@@ -1464,7 +1464,7 @@ export default function CreatorCostumeExtractor() {
               ======================================= */}
 
           {attemptLocked && !job && (
-            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] leading-5 text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+            <div className="mt-3 rounded-md border border-line bg-canvas p-3 text-[11px] leading-5 text-action dark:bg-subtle">
               A job-creation request was attempted. Retry with the same
               selection and request key to avoid duplicates.
               <button
@@ -1486,7 +1486,7 @@ export default function CreatorCostumeExtractor() {
               type="button"
               onClick={recoverJob}
               disabled={restoring}
-              className="mt-3 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-amber-300 text-xs font-semibold text-amber-800 disabled:opacity-50 dark:text-amber-200"
+              className="mt-3 flex min-h-9 w-full items-center justify-center gap-2 rounded-md border border-line text-xs font-semibold text-action disabled:opacity-50"
             >
               <RefreshCw size={14} aria-hidden="true" />
               Retry previous job recovery
@@ -1500,7 +1500,7 @@ export default function CreatorCostumeExtractor() {
           {error && (
             <div
               role="alert"
-              className="mt-3 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs leading-5 text-rose-700 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-200"
+              className="mt-3 flex items-start gap-2 rounded-md border border-line bg-canvas p-3 text-xs leading-5 text-action dark:bg-subtle"
             >
               <AlertCircle
                 size={16}
@@ -1525,7 +1525,7 @@ export default function CreatorCostumeExtractor() {
               ======================================= */}
 
           {job && (
-            <div className="mt-5 rounded-xl bg-slate-50 p-3 dark:bg-white/5">
+            <div className="mt-5 rounded-md bg-canvas p-3 dark:bg-subtle">
               <div className="flex items-center justify-between gap-3 text-xs">
                 <span className="font-semibold">Job progress</span>
 
@@ -1534,9 +1534,9 @@ export default function CreatorCostumeExtractor() {
                 </span>
               </div>
 
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-white/15">
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-subtle">
                 <div
-                  className="h-full rounded-full bg-[#c49a3d] transition-all"
+                  className="h-full rounded-full bg-action transition-all text-on-action"
                   style={{
                     width: `${
                       totalCount ? (completedCount / totalCount) * 100 : 0
@@ -1545,18 +1545,18 @@ export default function CreatorCostumeExtractor() {
                 />
               </div>
 
-              <p className="mt-2 break-all text-[10px] text-slate-500 dark:text-white/45">
+              <p className="mt-2 break-all text-[10px] text-muted">
                 Job ID: {job.id}
               </p>
 
               {generating && (
-                <p className="mt-2 text-[11px] text-slate-500 dark:text-white/60">
+                <p className="mt-2 text-[11px] text-muted">
                   Checking status about every 8 seconds.
                 </p>
               )}
 
               {uncertain && (
-                <p className="mt-2 text-[11px] text-amber-700 dark:text-amber-300">
+                <p className="mt-2 text-[11px] text-action">
                   An uncertain submission needs investigation before starting a
                   new job.
                 </p>
@@ -1566,7 +1566,7 @@ export default function CreatorCostumeExtractor() {
                 <button
                   type="button"
                   onClick={reset}
-                  className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-[#9a752c] hover:underline"
+                  className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-action hover:underline"
                 >
                   <RefreshCw size={14} aria-hidden="true" />
                   Start New Extraction
@@ -1579,10 +1579,10 @@ export default function CreatorCostumeExtractor() {
               TEMPORARY RESULT NOTICE
               ======================================= */}
 
-          <p className="mt-5 flex items-start gap-2 text-[11px] leading-5 text-slate-500 dark:text-white/50">
+          <p className="mt-5 flex items-start gap-2 text-[11px] leading-5 text-muted">
             <ShieldCheck
               size={16}
-              className="mt-0.5 shrink-0 text-[#b58a32]"
+              className="mt-0.5 shrink-0 text-action"
               aria-hidden="true"
             />
             Generated images are temporarily retrieved from FASHN. Download them
@@ -1597,13 +1597,13 @@ export default function CreatorCostumeExtractor() {
         <section className="min-w-0">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#a67c2c] dark:text-[#e5c67d]">
+              <p className="text-[10px] font-bold uppercase tracking-normal text-action">
                 Custom-angle studio
               </p>
 
-              <h2 className="mt-1.5 font-serif text-2xl">Your Costume Views</h2>
+              <h2 className="mt-1.5 font-sans text-2xl">Your Costume Views</h2>
 
-              <p className="mt-1 text-xs text-slate-500 dark:text-white/50">
+              <p className="mt-1 text-xs text-muted">
                 Only selected angles are shown. Each is generated independently
                 from the same source image.
               </p>
@@ -1615,7 +1615,7 @@ export default function CreatorCostumeExtractor() {
 
             <div className="flex flex-wrap items-center gap-2">
               {job && (
-                <span className="rounded-full border border-slate-200 px-3 py-1.5 text-[11px] text-slate-600 dark:border-white/15 dark:text-white/60">
+                <span className="rounded-md border border-line px-3 py-1.5 text-[11px] text-muted">
                   {completedCount} of {totalCount} ready
                 </span>
               )}
@@ -1627,7 +1627,7 @@ export default function CreatorCostumeExtractor() {
                   disabled={!canClear || restoring || busy}
                   aria-label="Clear all generated image previews"
                   title="Clear generated previews from this page, not from FASHN or your downloads"
-                  className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-rose-200 bg-white px-3 text-[11px] font-semibold text-rose-700 transition hover:border-rose-300 hover:bg-rose-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-rose-500/30 dark:bg-[#151515] dark:text-rose-300 dark:hover:bg-rose-500/10"
+                  className="inline-flex min-h-9 items-center gap-2 rounded-md border border-line bg-surface px-3 text-[11px] font-semibold text-action transition hover:border-line hover:bg-canvas focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-action disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-subtle"
                 >
                   <Trash2 size={14} aria-hidden="true" />
                   Clear All Generated Images
@@ -1643,11 +1643,11 @@ export default function CreatorCostumeExtractor() {
           {notice && (
             <div
               role="status"
-              className="mb-4 flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs leading-5 text-slate-700 dark:border-white/10 dark:bg-[#151515] dark:text-white/70"
+              className="mb-4 flex items-start gap-2 rounded-md border border-line bg-surface px-4 py-3 text-xs leading-5 text-ink dark:text-muted"
             >
               <CheckCircle2
                 size={16}
-                className="mt-0.5 shrink-0 text-[#b58a32]"
+                className="mt-0.5 shrink-0 text-action"
                 aria-hidden="true"
               />
 
@@ -1684,7 +1684,7 @@ export default function CreatorCostumeExtractor() {
               ))}
             </div>
           ) : (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center text-sm text-slate-500 dark:border-white/10 dark:bg-[#151515]">
+            <div className="rounded-md border border-dashed border-line bg-surface px-5 py-12 text-center text-sm text-muted">
               Select one or more angles to see your result cards.
             </div>
           )}
@@ -1694,7 +1694,7 @@ export default function CreatorCostumeExtractor() {
               =================================== */}
 
           {allComplete && (
-            <div className="mt-5 flex items-start gap-2 rounded-xl border border-[#e5c67d]/40 bg-[#e5c67d]/10 p-4 text-sm text-slate-800 dark:text-[#f3deb0]">
+            <div className="mt-5 flex items-start gap-2 rounded-md border border-line bg-subtle p-4 text-sm text-ink dark:text-action">
               <CheckCircle2
                 size={18}
                 className="mt-0.5 shrink-0"
@@ -1713,14 +1713,14 @@ export default function CreatorCostumeExtractor() {
               =================================== */}
 
           {job && failedCount > 0 && (
-            <div className="mt-4 rounded-xl border border-amber-300/60 bg-amber-50 p-4 text-xs text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+            <div className="mt-4 rounded-md border border-line bg-canvas p-4 text-xs text-action dark:bg-subtle">
               {failedCount} selected{" "}
               {failedCount === 1 ? "view failed" : "views failed"}. Review the
               result; the application will not automatically resubmit it.
             </div>
           )}
 
-          <p className="mt-5 text-[11px] leading-5 text-slate-500 dark:text-white/45">
+          <p className="mt-5 text-[11px] leading-5 text-muted">
             Back and side views are AI-inferred illustrations of unseen garment
             details, not validated sewing patterns, tailoring measurements or
             manufacturing drawings.

@@ -469,6 +469,7 @@ function buildBookingUrl(design) {
     designer_id: String(designerId),
 
     design_id: String(designId),
+    design_title: design.title || "Untitled design",
   });
 
   return `/creator/bookings/new?${params.toString()}`;
@@ -519,25 +520,14 @@ function SectionHeading({ eyebrow, title, description, action = null }) {
   return (
     <div
       className="
-        mb-7
-        flex
-        flex-col
-        gap-4
-
-        md:flex-row
-        md:items-end
-        md:justify-between
+        mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between
       "
     >
       <div>
         {eyebrow && (
           <p
             className="
-              text-[9px]
-              font-black
-              uppercase
-              tracking-[0.3em]
-              text-[#e5c67d]
+              text-[11px] font-semibold uppercase tracking-normal text-action
             "
           >
             {eyebrow}
@@ -546,12 +536,7 @@ function SectionHeading({ eyebrow, title, description, action = null }) {
 
         <h2
           className="
-            mt-2
-            font-serif
-            text-3xl
-            tracking-tight
-
-            sm:text-4xl
+            mt-2 font-sans text-3xl tracking-tight sm:text-4xl
           "
         >
           {title}
@@ -560,13 +545,7 @@ function SectionHeading({ eyebrow, title, description, action = null }) {
         {description && (
           <p
             className="
-              mt-3
-              max-w-2xl
-              text-sm
-              leading-6
-              text-slate-600
-
-              dark:text-white/42
+              mt-3 max-w-2xl text-sm leading-6 text-muted
             "
           >
             {description}
@@ -587,41 +566,18 @@ function DiscoveryLoading() {
   return (
     <div
       className="
-        flex
-        min-h-[160px]
-        items-center
-        justify-center
-        rounded-[1.75rem]
-        border
-        border-slate-200
-        bg-white
-        shadow-sm
-        transition-colors
-
-        dark:border-white/[0.07]
-        dark:bg-white/[0.02]
-        dark:shadow-none
+        flex min-h-[160px] items-center justify-center rounded-md border border-line bg-surface transition-colors dark:bg-subtle
       "
     >
       <div
         className="
-          flex
-          items-center
-          gap-3
-          text-[9px]
-          font-black
-          uppercase
-          tracking-[0.2em]
-          text-slate-500
-
-          dark:text-white/35
+          flex items-center gap-3 text-[11px] font-semibold uppercase tracking-normal text-muted
         "
       >
         <Loader2
           size={15}
           className="
-            animate-spin
-            text-[#e5c67d]
+            animate-spin text-action
           "
         />
         Loading Discovery
@@ -1278,96 +1234,19 @@ export default function CreatorShowcase({ audience = "creator" }) {
   return (
     <div
       className="
-        relative
-        min-h-screen
-        overflow-x-hidden
-        bg-slate-50
-        pb-28
-        text-slate-900
-        transition-colors
-        duration-300
-
-        dark:bg-[#080808]
-        dark:text-white
-        selection:bg-[#e5c67d]
-        selection:text-black
+        relative min-h-screen overflow-x-hidden bg-canvas pb-28 text-ink transition-colors duration-300 selection:bg-subtle selection:text-ink
       "
     >
-      {/*===================================================
-      Ambient Background
-      ===================================================*/}
-
-      <div
-        aria-hidden="true"
-        className="
-          pointer-events-none
-          fixed
-          inset-0
-          overflow-hidden
-        "
-      >
-        <div
-          className="
-            absolute
-            -left-56
-            top-[30rem]
-            h-[42rem]
-            w-[42rem]
-            rounded-full
-            bg-[#e5c67d]/[0.055]
-            blur-[170px]
-          "
-        />
-
-        <div
-          className="
-            absolute
-            -right-52
-            top-[95rem]
-            h-[38rem]
-            w-[38rem]
-            rounded-full
-            bg-violet-500/[0.05]
-            blur-[160px]
-          "
-        />
-      </div>
-
-      {/*===================================================
-      FULL-WIDTH HERO
-
-      IMPORTANT:
-      Hero is intentionally outside the max-w-[1440px]
-      content container.
-
-      The Hero media therefore fills 100% of the available
-      page width edge-to-edge.
-      ===================================================*/}
+      {/* Featured showcase media */}
 
       <div
         className="
-          relative
-          z-10
-          w-full
-          max-w-none
-          pt-6
+          relative z-10 w-full max-w-none pt-6
         "
       >
         <section
           className="
-            relative
-            min-h-[360px]
-            w-full
-            max-w-none
-            overflow-hidden
-            border-y
-            border-white/10
-            bg-[#101010]
-            shadow-[0_36px_120px_rgba(0,0,0,0.7)]
-
-            sm:min-h-[420px]
-
-            lg:min-h-[460px]
+            grid w-full items-center overflow-hidden border-y border-line bg-surface sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]
           "
         >
           {/*===============================================
@@ -1396,12 +1275,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
               aria-hidden="true"
               onError={() => setHeroVideoFailed(true)}
               className="
-                absolute
-                inset-0
-                h-full
-                w-full
-                object-cover
-                opacity-55
+                h-32 w-full object-cover sm:h-40
               "
             />
           ) : (
@@ -1411,151 +1285,15 @@ export default function CreatorShowcase({ audience = "creator" }) {
               alt=""
               onError={() => setHeroImageFailed(true)}
               className="
-                absolute
-                inset-0
-                h-full
-                w-full
-                object-cover
-                opacity-50
-                transition-opacity
-                duration-700
+                h-32 w-full object-cover sm:h-40
               "
             />
           )}
 
-          {/*===============================================
-          Hero Overlays
-          ===============================================*/}
-
-          <div
-            className="
-              absolute
-              inset-0
-              bg-gradient-to-r
-              from-[#070707]
-              via-[#070707]/85
-              to-[#070707]/15
-            "
-          />
-
-          <div
-            className="
-              absolute
-              inset-0
-              bg-gradient-to-t
-              from-[#080808]/90
-              via-transparent
-              to-black/25
-            "
-          />
-
-          <div
-            className="
-              absolute
-              inset-0
-              bg-[radial-gradient(circle_at_75%_25%,rgba(229,198,125,0.2),transparent_30%)]
-            "
-          />
-
-          {/*===============================================
-          Hero Copy
-
-          Background is full width.
-          Copy remains aligned to the main content grid.
-          ===============================================*/}
-
-          <div
-            className="
-              relative
-              z-10
-              mx-auto
-              flex
-              min-h-[360px]
-              w-full
-              text-white
-              max-w-[1440px]
-              flex-col
-              justify-center
-              px-7
-              py-10
-
-              sm:min-h-[420px]
-              sm:px-12
-
-              md:px-16
-
-              lg:min-h-[460px]
-              lg:px-20
-            "
-          >
-            <p
-              className="
-                flex
-                items-center
-                gap-2
-                text-[10px]
-                font-black
-                uppercase
-                tracking-[0.34em]
-                text-[#e5c67d]
-              "
-            >
-              <Sparkles size={14} />
-              DesignByYou
-            </p>
-
-            <h1
-              className="
-                mt-7
-                max-w-5xl
-                font-serif
-                text-[3.8rem]
-                leading-[0.9]
-                tracking-[-0.055em]
-
-                sm:text-7xl
-
-                lg:text-[7.4rem]
-              "
-            >
-              Design
-              <br />
-              <span
-                className="
-                  italic
-                  text-[#e5c67d]
-                "
-              >
-                Without Limits
-              </span>
-            </h1>
-
-            <p
-              className="
-                mt-8
-                max-w-xl
-                border-l
-                border-[#e5c67d]/50
-                pl-5
-                text-base
-                leading-8
-                text-white/65
-
-                sm:text-lg
-              "
-            >
-              Wear your identity. Discover ideas, find your style, connect with
-              designers, or bring your own vision to life.
-            </p>
-
-            <div
-              className="
-                mt-10
-                flex
-                flex-wrap
-                gap-3
-              "
-            >
+          <div className="relative p-4">
+            <h1 className="text-2xl font-semibold tracking-tight">Design showcase</h1>
+            <p className="mt-1 text-sm text-muted">{isCreator ? "Browse designs and book their designers for custom work." : "Browse published designs and share your work."}</p>
+            <div className="mt-4 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() =>
@@ -1564,23 +1302,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
                   })
                 }
                 className="
-                  inline-flex
-                  items-center
-                  gap-2
-                  rounded-full
-                  bg-[#e5c67d]
-                  px-7
-                  py-4
-                  text-[10px]
-                  font-black
-                  uppercase
-                  tracking-[0.2em]
-                  text-black
-                  transition
-
-                  hover:-translate-y-0.5
-                  hover:bg-white
-                "
+                  inline-flex h-9 items-center gap-2 rounded-md bg-action px-3 text-sm font-semibold text-on-action"
               >
                 Explore Designs
                 <ArrowRight size={14} />
@@ -1590,26 +1312,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
                 type="button"
                 onClick={() => navigate(createRoute)}
                 className="
-                  inline-flex
-                  items-center
-                  gap-2
-                  rounded-full
-                  border
-                  border-white/20
-                  bg-white/[0.06]
-                  px-7
-                  py-4
-                  text-[10px]
-                  font-black
-                  uppercase
-                  tracking-[0.2em]
-                  text-white
-                  backdrop-blur
-                  transition
-
-                  hover:border-[#e5c67d]
-                  hover:text-[#e5c67d]
-                "
+                  inline-flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm font-semibold hover:bg-subtle"
               >
                 <PencilRuler size={14} />
                 {isCreator ? "Create Your Own" : "Share Your Design"}
@@ -1618,14 +1321,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
 
             <p
               className="
-                mt-10
-                max-w-lg
-                font-serif
-                text-xl
-                italic
-                text-white/38
-
-                sm:text-2xl
+                mt-10 max-w-lg font-serif text-xl italic text-muted sm:text-2xl
               "
             >
               “You don&apos;t just wear it. You create it.”
@@ -1643,15 +1339,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
 
       <div
         className="
-          relative
-          z-10
-          mx-auto
-          max-w-[1440px]
-          px-4
-
-          sm:px-6
-          md:px-10
-          lg:px-12
+          relative z-10 mx-auto max-w-[1440px] px-4 sm:px-6 md:px-10 lg:px-12
         "
       >
         {/*=================================================
@@ -1662,30 +1350,12 @@ export default function CreatorShowcase({ audience = "creator" }) {
           <div
             role="alert"
             className="
-              mt-8
-              flex
-              flex-col
-              gap-4
-              rounded-2xl
-              border
-              border-rose-400/20
-              bg-rose-400/[0.08]
-              p-4
-
-              sm:flex-row
-              sm:items-center
-              sm:justify-between
+              mt-8 flex flex-col gap-4 rounded-md border border-line bg-subtle p-4 sm:flex-row sm:items-center sm:justify-between
             "
           >
             <div
               className="
-                flex
-                items-center
-                gap-3
-                text-sm
-                text-rose-700
-
-                dark:text-rose-200
+                flex items-center gap-3 text-sm text-action
               "
             >
               <ShieldAlert
@@ -1702,22 +1372,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
               type="button"
               onClick={() => void loadDiscovery()}
               className="
-                inline-flex
-                h-9
-                items-center
-                justify-center
-                gap-2
-                rounded-xl
-                border
-                border-rose-400/20
-                px-4
-                text-[8px]
-                font-black
-                uppercase
-                tracking-[0.15em]
-                text-rose-700
-
-                dark:text-rose-200
+                inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line px-4 text-[11px] font-semibold uppercase tracking-[0.15em] text-action
               "
             >
               <RefreshCw size={11} />
@@ -1732,9 +1387,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
 
         <section
           className="
-            py-10
-
-            sm:py-12
+            py-10 sm:py-12
           "
         >
           <SectionHeading
@@ -1749,27 +1402,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
                     aria-label="Previous trending styles"
                     onClick={() => scrollTrending("left")}
                     className="
-                      grid
-                      h-11
-                      w-11
-                      place-items-center
-                      rounded-full
-                      border
-                      border-slate-200
-                      bg-white
-                      text-slate-600
-                      shadow-sm
-                      transition
-
-                      hover:border-[#e5c67d]
-                      hover:text-[#b38b32]
-
-                      dark:border-white/10
-                      dark:bg-white/[0.04]
-                      dark:text-white/55
-                      dark:shadow-none
-                      dark:hover:border-[#e5c67d]
-                      dark:hover:text-[#e5c67d]
+                      grid h-9 w-11 place-items-center rounded-md border border-line bg-surface text-muted transition hover:border-line hover:text-action dark:bg-subtle
                     "
                   >
                     <ChevronLeft size={17} />
@@ -1780,27 +1413,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
                     aria-label="Next trending styles"
                     onClick={() => scrollTrending("right")}
                     className="
-                      grid
-                      h-11
-                      w-11
-                      place-items-center
-                      rounded-full
-                      border
-                      border-slate-200
-                      bg-white
-                      text-slate-600
-                      shadow-sm
-                      transition
-
-                      hover:border-[#e5c67d]
-                      hover:text-[#b38b32]
-
-                      dark:border-white/10
-                      dark:bg-white/[0.04]
-                      dark:text-white/55
-                      dark:shadow-none
-                      dark:hover:border-[#e5c67d]
-                      dark:hover:text-[#e5c67d]
+                      grid h-9 w-11 place-items-center rounded-md border border-line bg-surface text-muted transition hover:border-line hover:text-action dark:bg-subtle
                     "
                   >
                     <ChevronRight size={17} />
@@ -1815,21 +1428,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
           ) : trendingCards.length === 0 ? (
             <div
               className="
-                rounded-[1.75rem]
-                border
-                border-dashed
-                border-slate-300
-                bg-white
-                p-8
-                text-center
-                text-sm
-                text-slate-500
-                shadow-sm
-
-                dark:border-white/10
-                dark:bg-white/[0.02]
-                dark:text-white/30
-                dark:shadow-none
+                rounded-md border border-dashed border-line bg-surface p-4 text-center text-sm text-muted dark:bg-subtle
               "
             >
               Trending styles are currently unavailable.
@@ -1838,14 +1437,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
             <div
               ref={trendingRef}
               className="
-                flex
-                snap-x
-                gap-5
-                overflow-x-auto
-                pb-3
-                [scrollbar-width:none]
-
-                [&::-webkit-scrollbar]:hidden
+                flex snap-x gap-5 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden
               "
             >
               {trendingCards.map((term, index) => (
@@ -1854,38 +1446,12 @@ export default function CreatorShowcase({ audience = "creator" }) {
                   type="button"
                   onClick={() => applyDiscovery(term)}
                   className="
-                      group
-                      relative
-                      min-w-[310px]
-                      snap-start
-                      overflow-hidden
-                      rounded-[1.75rem]
-                      border
-                      border-slate-200
-                      bg-white
-                      text-left
-                      text-white
-                      shadow-sm
-                      transition
-
-                      dark:border-white/10
-                      dark:bg-[#111]
-                      dark:shadow-none
-
-                      hover:-translate-y-1
-                      hover:border-[#e5c67d]/60
-
-                      sm:min-w-[420px]
-
-                      lg:min-w-[500px]
+                      group relative min-w-[310px] snap-start overflow-hidden rounded-md border border-line bg-surface text-left text-ink transition hover:-translate-y-1 hover:border-line sm:min-w-[420px] lg:min-w-[500px]
                     "
                 >
                   <div
                     className="
-                        relative
-                        h-[250px]
-
-                        sm:h-[300px]
+                        relative h-[250px] sm:h-[300px]
                       "
                   >
                     {term.design ? <ShowcaseThumbnail key={`${term.design.slug}:${term.design.updated_at || term.design.created_at}`} item={term.design} /> : (
@@ -1894,46 +1460,21 @@ export default function CreatorShowcase({ audience = "creator" }) {
                       alt=""
                       loading="lazy"
                       className="
-                          h-full
-                          w-full
-                          object-cover
-                          opacity-70
-                          transition
-                          duration-700
-
-                          group-hover:scale-105
+                          h-full w-full object-cover opacity-70 transition duration-700 group-hover:scale-105
                         "
                     />
                     )}
 
-                    <div
-                      className="
-                          absolute
-                          inset-0
-                          bg-gradient-to-t
-                          from-black
-                          via-black/20
-                          to-transparent
-                        "
-                    />
+
 
                     <div
                       className="
-                          absolute
-                          inset-x-0
-                          bottom-0
-                          p-6
-
-                          sm:p-7
+                          absolute inset-x-0 bottom-0 border-t border-line bg-surface p-3
                         "
                     >
                       <p
                         className="
-                            text-[9px]
-                            font-black
-                            uppercase
-                            tracking-[0.22em]
-                            text-[#e5c67d]
+                            text-[11px] font-semibold uppercase tracking-normal text-action
                           "
                       >
                         {term.description || `Trending style ${index + 1}`}
@@ -1941,19 +1482,12 @@ export default function CreatorShowcase({ audience = "creator" }) {
 
                       <div
                         className="
-                            mt-2
-                            flex
-                            items-end
-                            justify-between
-                            gap-4
+                            mt-2 flex items-end justify-between gap-4
                           "
                       >
                         <h3
                           className="
-                              font-serif
-                              text-3xl
-
-                              sm:text-4xl
+                              text-lg font-semibold
                             "
                         >
                           {term.name}
@@ -1961,18 +1495,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
 
                         <span
                           className="
-                              grid
-                              h-10
-                              w-10
-                              place-items-center
-                              rounded-full
-                              border
-                              border-white/20
-                              bg-white/10
-                              transition
-
-                              group-hover:bg-[#e5c67d]
-                              group-hover:text-black
+                              grid h-10 w-10 place-items-center rounded-full border border-line bg-subtle transition group-hover:bg-subtle group-hover:text-ink
                             "
                         >
                           <ArrowRight size={15} />
@@ -1992,13 +1515,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
 
         <section
           className="
-            border-t
-            border-slate-200
-            py-10
-
-            dark:border-white/[0.07]
-
-            sm:py-12
+            border-t border-line py-10 sm:py-12
           "
         >
           <SectionHeading
@@ -2012,13 +1529,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
           ) : (
             <div
               className="
-                grid
-                grid-cols-2
-                gap-3
-
-                sm:grid-cols-4
-
-                xl:grid-cols-8
+                grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8
               "
             >
               {discovery.styles.map((style, index) => (
@@ -2027,35 +1538,12 @@ export default function CreatorShowcase({ audience = "creator" }) {
                   type="button"
                   onClick={() => applyDiscovery(style)}
                   className="
-                      group
-                      min-h-[135px]
-                      rounded-[1.5rem]
-                      border
-                      border-slate-200
-                      bg-white
-                      p-4
-                      text-left
-                      shadow-sm
-                      transition
-
-                      hover:-translate-y-1
-                      hover:border-[#e5c67d]/70
-                      hover:bg-[#e5c67d]/[0.07]
-
-                      dark:border-white/10
-                      dark:bg-white/[0.025]
-                      dark:shadow-none
-                      dark:hover:border-[#e5c67d]/55
+                      group min-h-[135px] rounded-md border border-line bg-surface p-4 text-left transition hover:-translate-y-1 hover:border-line hover:bg-subtle
                     "
                 >
                   <span
                     className="
-                        text-[9px]
-                        font-black
-                        tracking-[0.15em]
-                        text-slate-400
-
-                        dark:text-white/20
+                        text-[11px] font-semibold tracking-[0.15em] text-muted
                       "
                   >
                     {String(index + 1).padStart(2, "0")}
@@ -2064,19 +1552,13 @@ export default function CreatorShowcase({ audience = "creator" }) {
                   <Palette
                     size={18}
                     className="
-                        mt-6
-                        text-[#e5c67d]/70
+                        mt-6 text-muted
                       "
                   />
 
                   <p
                     className="
-                        mt-3
-                        font-serif
-                        text-lg
-                        transition
-
-                        group-hover:text-[#e5c67d]
+                        mt-3 font-serif text-lg transition group-hover:text-action
                       "
                   >
                     {style.name}
@@ -2093,13 +1575,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
 
         <section
           className="
-            border-t
-            border-slate-200
-            py-10
-
-            dark:border-white/[0.07]
-
-            sm:py-12
+            border-t border-line py-10 sm:py-12
           "
         >
           <SectionHeading
@@ -2113,13 +1589,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
           ) : (
             <div
               className="
-                grid
-                grid-cols-2
-                gap-4
-
-                sm:grid-cols-3
-
-                lg:grid-cols-6
+                grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6
               "
             >
               {discovery.garments.map((garment) => (
@@ -2128,39 +1598,12 @@ export default function CreatorShowcase({ audience = "creator" }) {
                   type="button"
                   onClick={() => applyDiscovery(garment)}
                   className="
-                      group
-                      flex
-                      min-h-[160px]
-                      flex-col
-                      items-center
-                      justify-center
-                      rounded-[1.5rem]
-                      border
-                      border-slate-200
-                      bg-white
-                      p-5
-                      text-center
-                      shadow-sm
-                      transition
-
-                      hover:-translate-y-1
-                      hover:border-[#e5c67d]/70
-                      hover:bg-slate-50
-
-                      dark:border-white/10
-                      dark:bg-white/[0.025]
-                      dark:shadow-none
-                      dark:hover:border-[#e5c67d]/50
-                      dark:hover:bg-white/[0.05]
+                      group flex min-h-[160px] flex-col items-center justify-center rounded-md border border-line bg-surface p-4 text-center transition hover:-translate-y-1 hover:border-line hover:bg-canvas dark:bg-subtle dark:hover:bg-subtle
                     "
                 >
                   <span
                     className="
-                        text-4xl
-                        transition
-                        duration-300
-
-                        group-hover:scale-110
+                        text-4xl transition duration-300 group-hover:scale-110
                       "
                   >
                     {garment.emoji || "✦"}
@@ -2168,12 +1611,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
 
                   <p
                     className="
-                        mt-4
-                        font-serif
-                        text-lg
-                        transition
-
-                        group-hover:text-[#e5c67d]
+                        mt-4 font-serif text-lg transition group-hover:text-action
                       "
                   >
                     {garment.name}
@@ -2190,13 +1628,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
 
         <section
           className="
-            border-t
-            border-slate-200
-            py-10
-
-            dark:border-white/[0.07]
-
-            sm:py-12
+            border-t border-line py-10 sm:py-12
           "
         >
           <SectionHeading
@@ -2210,13 +1642,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
           ) : (
             <div
               className="
-                grid
-                grid-cols-2
-                gap-3
-
-                sm:grid-cols-4
-
-                xl:grid-cols-8
+                grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8
               "
             >
               {discovery.occasions.map((occasion) => (
@@ -2225,36 +1651,14 @@ export default function CreatorShowcase({ audience = "creator" }) {
                   type="button"
                   onClick={() => applyDiscovery(occasion)}
                   className="
-                      group
-                      min-h-[130px]
-                      rounded-[1.5rem]
-                      border
-                      border-slate-200
-                      bg-white
-                      p-4
-                      text-center
-                      shadow-sm
-                      transition
-
-                      hover:-translate-y-1
-                      hover:border-[#e5c67d]/70
-
-                      dark:border-white/10
-                      dark:bg-white/[0.025]
-                      dark:shadow-none
-                      dark:hover:border-[#e5c67d]/50
+                      group min-h-[130px] rounded-md border border-line bg-surface p-4 text-center transition hover:-translate-y-1 hover:border-line dark:bg-subtle
                     "
                 >
                   <div className="text-3xl">{occasion.emoji || "✦"}</div>
 
                   <p
                     className="
-                        mt-4
-                        font-serif
-                        text-base
-                        transition
-
-                        group-hover:text-[#e5c67d]
+                        mt-4 font-serif text-base transition group-hover:text-action
                       "
                   >
                     {occasion.name}
@@ -2271,13 +1675,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
 
         {isCreator && <section
           className="
-            border-t
-            border-slate-200
-            py-10
-
-            dark:border-white/[0.07]
-
-            sm:py-12
+            border-t border-line py-10 sm:py-12
           "
         >
           <SectionHeading
@@ -2289,33 +1687,20 @@ export default function CreatorShowcase({ audience = "creator" }) {
           {topDesignersLoading ? (
             <div
               className="
-                flex
-                min-h-[230px]
-                items-center
-                justify-center
+                flex min-h-[230px] items-center justify-center
               "
             >
               <Loader2
                 size={28}
                 className="
-                  animate-spin
-                  text-[#e5c67d]
+                  animate-spin text-action
                 "
               />
             </div>
           ) : topDesignersError ? (
             <div
               className="
-                rounded-2xl
-                border
-                border-rose-400/20
-                bg-rose-50
-                p-5
-                text-sm
-                text-rose-700
-
-                dark:bg-rose-400/10
-                dark:text-rose-200
+                rounded-md border border-line bg-canvas p-4 text-sm text-action dark:bg-subtle
               "
             >
               {topDesignersError}
@@ -2323,21 +1708,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
           ) : topDesigners.length === 0 ? (
             <div
               className="
-                rounded-[1.75rem]
-                border
-                border-dashed
-                border-slate-300
-                bg-white
-                p-8
-                text-center
-                text-sm
-                text-slate-500
-                shadow-sm
-
-                dark:border-white/10
-                dark:bg-white/[0.02]
-                dark:text-white/30
-                dark:shadow-none
+                rounded-md border border-dashed border-line bg-surface p-4 text-center text-sm text-muted dark:bg-subtle
               "
             >
               No featured designers are available yet.
@@ -2345,14 +1716,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
           ) : (
             <div
               className="
-                grid
-                gap-4
-
-                sm:grid-cols-2
-
-                lg:grid-cols-3
-
-                xl:grid-cols-5
+                grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5
               "
             >
               {topDesigners.map((designer, index) => {
@@ -2367,48 +1731,17 @@ export default function CreatorShowcase({ audience = "creator" }) {
                   <article
                     key={designerId || `designer-${index}`}
                     className="
-                        group
-                        rounded-[1.75rem]
-                        border
-                        border-slate-200
-                        bg-white
-                        p-5
-                        shadow-sm
-                        transition
-
-                        hover:-translate-y-1
-                        hover:border-[#e5c67d]/70
-                        hover:shadow-md
-
-                        dark:border-white/10
-                        dark:bg-[#111]
-                        dark:shadow-none
-                        dark:hover:border-[#e5c67d]/50
+                        group rounded-md border border-line bg-surface p-4 transition hover:-translate-y-1 hover:border-line
                       "
                   >
                     <div
                       className="
-                          flex
-                          items-start
-                          justify-between
-                          gap-4
+                          flex items-start justify-between gap-4
                         "
                     >
                       <div
                         className="
-                            flex
-                            h-16
-                            w-16
-                            items-center
-                            justify-center
-                            overflow-hidden
-                            rounded-full
-                            border
-                            border-slate-200
-                            bg-slate-100
-
-                            dark:border-white/10
-                            dark:bg-white/[0.05]
+                            flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-line bg-subtle
                           "
                       >
                         {designer?.designer_avatar ? (
@@ -2416,18 +1749,14 @@ export default function CreatorShowcase({ audience = "creator" }) {
                             src={designer.designer_avatar}
                             alt=""
                             className="
-                                h-full
-                                w-full
-                                object-cover
+                                h-full w-full object-cover
                               "
                           />
                         ) : (
                           <User
                             size={22}
                             className="
-                                text-slate-400
-
-                                dark:text-white/30
+                                text-muted
                               "
                           />
                         )}
@@ -2437,7 +1766,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
                         <Crown
                           size={17}
                           className="
-                              text-[#e5c67d]
+                              text-action
                             "
                         />
                       )}
@@ -2445,10 +1774,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
 
                     <h3
                       className="
-                          mt-5
-                          truncate
-                          font-serif
-                          text-xl
+                          mt-5 truncate font-serif text-xl
                         "
                     >
                       {designer?.designer_name || "Designer"}
@@ -2456,25 +1782,13 @@ export default function CreatorShowcase({ audience = "creator" }) {
 
                     <div
                       className="
-                          mt-3
-                          flex
-                          flex-wrap
-                          gap-2
+                          mt-3 flex flex-wrap gap-2
                         "
                     >
                       {Number.isFinite(rating) && rating > 0 && (
                         <span
                           className="
-                                inline-flex
-                                items-center
-                                gap-1
-                                rounded-full
-                                bg-[#e5c67d]/10
-                                px-2.5
-                                py-1
-                                text-[9px]
-                                font-bold
-                                text-[#e5c67d]
+                                inline-flex items-center gap-1 rounded-md bg-subtle px-2.5 py-1 text-[11px] font-bold text-action
                               "
                         >
                           <Star size={9} fill="currentColor" />
@@ -2485,15 +1799,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
 
                       <span
                         className="
-                            rounded-full
-                            bg-slate-100
-                            px-2.5
-                            py-1
-                            text-[9px]
-                            text-slate-600
-
-                            dark:bg-white/[0.05]
-                            dark:text-white/40
+                            rounded-md bg-subtle px-2.5 py-1 text-[11px] text-muted
                           "
                       >
                         {bookings} {bookings === 1 ? "booking" : "bookings"}
@@ -2502,10 +1808,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
 
                     <div
                       className="
-                          mt-5
-                          grid
-                          grid-cols-2
-                          gap-2
+                          mt-5 grid grid-cols-2 gap-2
                         "
                     >
                       <button
@@ -2521,29 +1824,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
                           );
                         }}
                         className="
-                            rounded-xl
-                            border
-                            border-slate-200
-                            bg-white
-                            py-3
-                            text-[8px]
-                            font-black
-                            uppercase
-                            tracking-[0.13em]
-                            text-slate-700
-                            transition
-
-                            hover:border-slate-400
-                            hover:text-slate-950
-
-                            dark:border-white/10
-                            dark:bg-transparent
-                            dark:text-white/65
-                            dark:hover:border-white/30
-                            dark:hover:text-white
-
-                            disabled:cursor-not-allowed
-                            disabled:opacity-40
+                            rounded-md border border-line bg-surface py-3 text-[11px] font-semibold uppercase tracking-[0.13em] text-ink transition hover:border-line hover:text-ink dark:bg-transparent dark:text-muted disabled:cursor-not-allowed disabled:opacity-40
                           "
                       >
                         View Profile
@@ -2564,20 +1845,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
                           );
                         }}
                         className="
-                            rounded-xl
-                            bg-[#e5c67d]
-                            py-3
-                            text-[8px]
-                            font-black
-                            uppercase
-                            tracking-[0.13em]
-                            text-black
-                            transition
-
-                            hover:bg-white
-
-                            disabled:cursor-not-allowed
-                            disabled:opacity-40
+                            rounded-md bg-subtle py-3 text-[11px] font-semibold uppercase tracking-[0.13em] text-ink transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40
                           "
                       >
                         Booking
@@ -2597,14 +1865,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
         <section
           ref={arrivalsRef}
           className="
-            scroll-mt-28
-            border-t
-            border-slate-200
-            py-10
-
-            dark:border-white/[0.07]
-
-            sm:py-12
+            scroll-mt-28 border-t border-line py-10 sm:py-12
           "
         >
           <SectionHeading
@@ -2625,28 +1886,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
                   type="button"
                   onClick={clearDiscovery}
                   className="
-                    rounded-full
-                    border
-                    border-slate-200
-                    bg-white
-                    px-5
-                    py-2.5
-                    text-[9px]
-                    font-black
-                    uppercase
-                    tracking-[0.16em]
-                    text-slate-600
-                    shadow-sm
-                    transition
-
-                    hover:border-[#e5c67d]
-                    hover:text-[#b38b32]
-
-                    dark:border-white/10
-                    dark:bg-white/[0.04]
-                    dark:text-white/55
-                    dark:shadow-none
-                    dark:hover:text-[#e5c67d]
+                    rounded-md border border-line bg-surface px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted transition hover:border-line hover:text-action dark:bg-subtle
                   "
                 >
                   View All
@@ -2660,9 +1900,9 @@ export default function CreatorShowcase({ audience = "creator" }) {
               <label htmlFor="showcase-search" className="mb-2 block text-sm font-medium">Search designs</label>
               <input id="showcase-search" type="search" value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)}
                 placeholder="Search titles, styles or designers"
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 dark:border-white/20 dark:bg-slate-900 dark:text-white" />
+                className="w-full rounded-md border border-line bg-surface px-4 py-3 text-base text-ink" />
             </div>
-            <button type="submit" className="rounded-xl bg-slate-900 px-5 py-3 text-white dark:bg-white dark:text-slate-900">Search</button>
+            <button type="submit" className="rounded-md bg-action px-5 py-3 text-on-action dark:bg-surface dark:text-ink">Search</button>
             {search && <button type="button" className="px-3 py-3 text-sm underline" onClick={() => { setSearchDraft(""); setSearch(""); }}>Clear search</button>}
           </form>
 
@@ -2670,21 +1910,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
             <div
               role="alert"
               className="
-                mb-7
-                flex
-                items-center
-                gap-3
-                rounded-2xl
-                border
-                border-rose-400/20
-                bg-rose-50
-                px-5
-                py-4
-                text-sm
-                text-rose-700
-
-                dark:bg-rose-400/10
-                dark:text-rose-200
+                mb-7 flex items-center gap-3 rounded-md border border-line bg-canvas px-5 py-4 text-sm text-action dark:bg-subtle
               "
             >
               <ShieldAlert size={18} />
@@ -2696,31 +1922,19 @@ export default function CreatorShowcase({ audience = "creator" }) {
           {loading ? (
             <div
               className="
-                flex
-                min-h-[380px]
-                flex-col
-                items-center
-                justify-center
-                gap-4
+                flex min-h-[380px] flex-col items-center justify-center gap-4
               "
             >
               <Loader2
                 size={38}
                 className="
-                  animate-spin
-                  text-[#e5c67d]
+                  animate-spin text-action
                 "
               />
 
               <span
                 className="
-                  text-[9px]
-                  font-black
-                  uppercase
-                  tracking-[0.26em]
-                  text-slate-500
-
-                  dark:text-white/35
+                  text-[11px] font-semibold uppercase tracking-normal text-muted
                 "
               >
                 Loading Showcase
@@ -2729,37 +1943,19 @@ export default function CreatorShowcase({ audience = "creator" }) {
           ) : items.length === 0 ? (
             <div
               className="
-                flex
-                min-h-[330px]
-                flex-col
-                items-center
-                justify-center
-                rounded-[2rem]
-                border
-                border-dashed
-                border-slate-300
-                bg-white
-                px-6
-                text-center
-                shadow-sm
-
-                dark:border-white/15
-                dark:bg-white/[0.02]
-                dark:shadow-none
+                flex min-h-[330px] flex-col items-center justify-center rounded-md border border-dashed border-line bg-surface px-6 text-center dark:bg-subtle
               "
             >
               <Sparkles
                 size={36}
                 className="
-                  text-[#e5c67d]/50
+                  text-muted
                 "
               />
 
               <h3
                 className="
-                  mt-5
-                  font-serif
-                  text-2xl
+                  mt-5 font-sans text-2xl
                 "
               >
                 No designs found.
@@ -2767,11 +1963,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
 
               <p
                 className="
-                  mt-2
-                  text-sm
-                  text-slate-500
-
-                  dark:text-white/35
+                  mt-2 text-sm text-muted
                 "
               >
                 {activeDiscovery
@@ -2784,16 +1976,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
                   type="button"
                   onClick={clearDiscovery}
                   className="
-                    mt-6
-                    rounded-full
-                    bg-[#e5c67d]
-                    px-5
-                    py-3
-                    text-[9px]
-                    font-black
-                    uppercase
-                    tracking-[0.16em]
-                    text-black
+                    mt-6 rounded-md bg-subtle px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink
                   "
                 >
                   View All
@@ -2827,9 +2010,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
               {hasMore && (
                 <div
                   className="
-                    mt-10
-                    flex
-                    justify-center
+                    mt-10 flex justify-center
                   "
                 >
                   <button
@@ -2837,29 +2018,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
                     onClick={handleLoadMore}
                     disabled={loadingMore}
                     className="
-                      inline-flex
-                      min-w-[180px]
-                      items-center
-                      justify-center
-                      gap-2
-                      rounded-full
-                      border
-                      border-[#e5c67d]/30
-                      bg-[#e5c67d]/10
-                      px-6
-                      py-3.5
-                      text-[9px]
-                      font-black
-                      uppercase
-                      tracking-[0.2em]
-                      text-[#e5c67d]
-                      transition
-
-                      hover:bg-[#e5c67d]
-                      hover:text-black
-
-                      disabled:cursor-not-allowed
-                      disabled:opacity-50
+                      inline-flex min-w-[180px] items-center justify-center gap-2 rounded-md border border-line bg-subtle px-6 py-3.5 text-[11px] font-semibold uppercase tracking-normal text-action transition hover:bg-subtle hover:text-ink disabled:cursor-not-allowed disabled:opacity-50
                     "
                   >
                     {loadingMore ? (

@@ -97,13 +97,13 @@ function ModelLoadingFallback() {
       center
       transform={false}
     >
-      <div className="flex min-w-[170px] items-center justify-center gap-3 rounded-xl border border-white/10 bg-black/75 px-4 py-3 text-white shadow-xl backdrop-blur-md">
+      <div className="flex min-w-[170px] items-center justify-center gap-3 rounded-md border border-line bg-black/75 px-4 py-3 text-ink">
         <Loader2
           size={17}
-          className="shrink-0 animate-spin text-[#D4AF37]"
+          className="shrink-0 animate-spin text-action"
         />
 
-        <span className="whitespace-nowrap text-[10px] font-black uppercase tracking-[0.16em]">
+        <span className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em]">
           Loading 3D model
         </span>
       </div>
@@ -296,24 +296,24 @@ function ModelErrorState({
 }) {
   return (
     <div className="flex min-h-[320px] flex-col items-center justify-center px-6 py-10 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-300">
+      <div className="flex h-14 w-14 items-center justify-center rounded-md border border-line bg-canvas text-action dark:bg-subtle">
         <AlertCircle
           size={24}
         />
       </div>
 
-      <h3 className="mt-5 text-base font-semibold text-slate-900 dark:text-white">
+      <h3 className="mt-5 text-base font-semibold text-ink">
         3D model unavailable
       </h3>
 
-      <p className="mt-2 max-w-md text-sm leading-6 text-slate-500 dark:text-white/45">
+      <p className="mt-2 max-w-md text-sm leading-6 text-muted">
         The model could not be displayed inside the viewer.
         Check that the link points to a valid GLB or GLTF
         file and that the file host allows browser access.
       </p>
 
       {message && (
-        <p className="mt-3 max-w-md break-words text-xs leading-5 text-rose-600/80 dark:text-rose-300/70">
+        <p className="mt-3 max-w-md break-words text-xs leading-5 text-muted">
           {message}
         </p>
       )}
@@ -324,7 +324,7 @@ function ModelErrorState({
           onClick={
             onRetry
           }
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-[9px] font-black uppercase tracking-[0.16em] text-slate-600 transition hover:border-[#D4AF37]/50 hover:text-[#9B791D] dark:border-white/10 dark:bg-white/[0.05] dark:text-white/60 dark:hover:text-[#D4AF37]"
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted transition hover:border-line hover:text-action dark:bg-subtle"
         >
           <RefreshCw
             size={14}
@@ -342,7 +342,7 @@ function ModelErrorState({
             }
             target="_blank"
             rel="noreferrer"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-4 text-[9px] font-black uppercase tracking-[0.16em] text-black transition hover:bg-[#E2C45D]"
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-on-action transition hover:bg-action hover:text-on-action"
           >
             <ExternalLink
               size={14}
@@ -363,17 +363,17 @@ Empty / Invalid URL State
 function EmptyModelState() {
   return (
     <div className="flex min-h-[300px] flex-col items-center justify-center px-6 py-10 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100 text-slate-400 dark:border-white/10 dark:bg-white/[0.05] dark:text-white/30">
+      <div className="flex h-14 w-14 items-center justify-center rounded-md border border-line bg-subtle text-muted">
         <Box
           size={25}
         />
       </div>
 
-      <h3 className="mt-5 text-base font-semibold text-slate-900 dark:text-white">
+      <h3 className="mt-5 text-base font-semibold text-ink">
         No 3D model available
       </h3>
 
-      <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500 dark:text-white/40">
+      <p className="mt-2 max-w-sm text-sm leading-6 text-muted">
         A valid HTTP or HTTPS GLB/GLTF model URL has not
         been supplied for this booking milestone.
       </p>
@@ -423,24 +423,24 @@ export default function BookingModelViewer({
 
   return (
     <section
-      className={`overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#090909] ${className}`}
+      className={`overflow-hidden rounded-md border border-line bg-surface ${className}`}
     >
       {/* Viewer Toolbar */}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-white/10 dark:bg-white/[0.03]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-subtle px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-300">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-line bg-canvas text-action dark:bg-subtle">
             <Box
               size={17}
             />
           </div>
 
           <div className="min-w-0">
-            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-700/70 dark:text-cyan-300/70">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
               Interactive Viewer
             </p>
 
-            <h3 className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+            <h3 className="truncate text-sm font-semibold text-ink">
               {title}
             </h3>
           </div>
@@ -453,7 +453,7 @@ export default function BookingModelViewer({
               onClick={
                 resetViewer
               }
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[9px] font-black uppercase tracking-[0.14em] text-slate-600 transition hover:border-[#D4AF37]/50 hover:text-[#9B791D] dark:border-white/10 dark:bg-white/[0.04] dark:text-white/55 dark:hover:text-[#D4AF37]"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted transition hover:border-line hover:text-action dark:bg-subtle"
             >
               <RefreshCw
                 size={13}
@@ -468,7 +468,7 @@ export default function BookingModelViewer({
               }
               target="_blank"
               rel="noreferrer"
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[9px] font-black uppercase tracking-[0.14em] text-slate-600 transition hover:border-cyan-300 hover:text-cyan-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/55 dark:hover:text-cyan-300"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted transition hover:border-line hover:text-action dark:bg-subtle"
             >
               <ExternalLink
                 size={13}
@@ -509,7 +509,7 @@ export default function BookingModelViewer({
           )}
         >
           <div
-            className="relative w-full bg-[radial-gradient(circle_at_center,rgba(148,163,184,0.13),transparent_65%)] dark:bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.07),transparent_65%)]"
+            className="relative w-full bg-surface"
             style={{
               height:
                 `${Math.max(
@@ -564,7 +564,7 @@ export default function BookingModelViewer({
 
             {/* Interaction hint */}
 
-            <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-black/10 bg-white/85 px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.14em] text-slate-500 shadow-sm backdrop-blur dark:border-white/10 dark:bg-black/65 dark:text-white/45">
+            <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-md border border-line bg-subtle px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted dark:bg-black/65">
               Drag to rotate · Scroll to zoom
             </div>
           </div>

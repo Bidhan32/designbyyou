@@ -49,8 +49,8 @@ const SWATCHES = Object.freeze([
 const HEX_COLOUR = /^#[\da-f]{6}$/i;
 const safeColour = (value) => HEX_COLOUR.test(String(value || "")) ? String(value).toLowerCase() : DEFAULT_COLOUR;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, Number(value) || 0));
-const BTN = "rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-slate-500 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40";
-const FIELD = "min-w-0 w-full rounded-lg border border-slate-600 bg-slate-900 px-2 py-1.5 text-xs text-slate-100";
+const BTN = "rounded-md border border-line bg-subtle px-3 py-1.5 text-xs font-medium text-ink transition hover:border-line hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40";
+const FIELD = "min-w-0 w-full rounded-md border border-line bg-surface px-2 py-1.5 text-xs text-ink";
 
 // A projected 3D region uses normalized UVs (left→right, bottom→top).
 // Existing SVG artwork uses center-relative region-box units (X→right, Y→down).
@@ -387,9 +387,9 @@ function Model({ modelUrl, templateId, regions, colours, artwork, wireframe, sel
       position={handlePosition} center zIndexRange={[100, 10]}
       style={{ pointerEvents: "auto", userSelect: "none", touchAction: "none" }}>
       <div role="group" aria-label="3D logo or text transform handles"
-        className="relative rounded border-2 border-dashed border-cyan-300 bg-cyan-300/10 shadow-[0_0_0_1px_rgba(0,0,0,0.8)]"
+        className="relative rounded border-2 border-dashed border-line bg-subtle"
         style={{ width: gizmoSize, height: gizmoSize, touchAction: "none" }}>
-        <span className="pointer-events-none absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-950/90 px-1.5 py-0.5 text-[10px] text-cyan-200">
+        <span className="pointer-events-none absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-subtle px-1.5 py-0.5 text-[10px] text-action">
           {Math.round((transformEntry.rotation || 0))}° · {(transformEntry.scale || 0.45).toFixed(2)}×
         </span>
         <button type="button" title="Drag horizontally to rotate" aria-label="Drag to rotate artwork"
@@ -397,13 +397,13 @@ function Model({ modelUrl, templateId, regions, colours, artwork, wireframe, sel
           onPointerMove={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) { event.stopPropagation(); onTransformMove?.(event.clientX, event.clientY); } }}
           onPointerUp={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) { event.stopPropagation(); event.currentTarget.releasePointerCapture(event.pointerId); onTransformEnd?.(); } }}
           onPointerCancel={event => { event.stopPropagation(); onTransformCancel?.(); }}
-          className="absolute -right-4 -top-5 flex h-9 w-9 cursor-ew-resize items-center justify-center rounded-full border-2 border-cyan-200 bg-slate-900 text-lg text-white shadow-lg">↻</button>
+          className="absolute -right-4 -top-5 flex h-9 w-9 cursor-ew-resize items-center justify-center rounded-md border-2 border-line bg-action text-lg text-on-action">↻</button>
         <button type="button" title="Drag diagonally to resize" aria-label="Drag to resize artwork"
           onPointerDown={event => { event.stopPropagation(); event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); onTransformStart?.("resize", event.clientX, event.clientY); }}
           onPointerMove={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) { event.stopPropagation(); onTransformMove?.(event.clientX, event.clientY); } }}
           onPointerUp={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) { event.stopPropagation(); event.currentTarget.releasePointerCapture(event.pointerId); onTransformEnd?.(); } }}
           onPointerCancel={event => { event.stopPropagation(); onTransformCancel?.(); }}
-          className="absolute -bottom-4 -right-4 flex h-9 w-9 cursor-nwse-resize items-center justify-center rounded-full border-2 border-cyan-200 bg-slate-900 text-lg text-white shadow-lg">↘</button>
+          className="absolute -bottom-4 -right-4 flex h-9 w-9 cursor-nwse-resize items-center justify-center rounded-md border-2 border-line bg-action text-lg text-on-action">↘</button>
       </div>
     </Html>}
   </group>;
@@ -431,7 +431,7 @@ class ViewerErrorBoundary extends Component {
   componentDidCatch(error) { this.props.onError?.(error); }
   render() {
     if (!this.state.error) return this.props.children;
-    return <div role="alert" className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-red-200">
+    return <div role="alert" className="flex h-full flex-col items-center justify-center gap-3 p-4 text-center text-action">
       <strong>3D model could not be loaded.</strong>
       <span className="text-xs">Check the garment GLB under public/models/garments.</span>
       <span className="break-all text-xs">{String(this.state.error?.message || "Unknown error")}</span>
@@ -1055,18 +1055,18 @@ export default function Garment3DViewer({
   };
   const scrollToArtwork = () => changeStudioTab("add");
 
-  return <section className={`garment-studio flex h-full min-h-0 w-full flex-col overflow-hidden bg-slate-900 text-slate-100 ${className}`} aria-label="DesignByYou 3D garment studio">
-    <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-700 bg-slate-950 px-3 py-2 lg:hidden">
+  return <section className={`garment-studio flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface text-ink ${className}`} aria-label="DesignByYou 3D garment studio">
+    <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line bg-surface px-3 py-2 lg:hidden">
       {onExit && <button type="button" className={BTN} onClick={onExit}>Back to 2D</button>}
       {supported && <div className="flex gap-2">
         <button type="button" className={BTN} onClick={() => mobileScrollRef.current?.scrollTo({ top: 0 })}>View garment</button>
         <button type="button" className={BTN} onClick={() => controlsRef.current?.scrollIntoView({ block: "start" })}>Edit design</button>
       </div>}
     </div>
-    <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-700 bg-slate-950 px-3 py-2">
+    <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-line bg-surface px-3 py-2">
       <div>
-        <strong className="text-sm font-semibold tracking-tight">3D Design Studio <span className="ml-2 rounded-full border border-violet-500/30 bg-violet-950/60 px-2 py-0.5 text-[10px] font-semibold text-violet-200">Studio 4.6</span></strong>
-        <p className="text-[11px] text-slate-400">{supported ? `${garmentLabel} · ${regions.length} editable regions` : "Select a supported garment in 2D"}</p>
+        <strong className="text-sm font-semibold tracking-tight">3D Design Studio <span className="ml-2 rounded-md border border-line bg-subtle px-2 py-0.5 text-[10px] font-semibold text-action">Studio 4.6</span></strong>
+        <p className="text-[11px] text-muted">{supported ? `${garmentLabel} · ${regions.length} editable regions` : "Select a supported garment in 2D"}</p>
       </div>
       {supported && <div className="flex items-center gap-2">
         <button type="button" className={BTN} onClick={scrollToArtwork}>Add artwork</button>
@@ -1074,25 +1074,25 @@ export default function Garment3DViewer({
       </div>}
     </header>
     {supported && modelAudit?.templateId === templateId && modelAudit.missing.length > 0 && (
-        <p role="status" className="border-b border-amber-700/60 bg-amber-950/40 px-3 py-2 text-xs text-amber-200">
+        <p role="status" className="border-b border-line bg-subtle px-3 py-2 text-xs text-action">
           This 3D model is missing {modelAudit.missing.length} editable region mesh(es):
           {" "}{modelAudit.missing.join(", ")}. Colors/artwork on these regions may not appear in 3D.
         </p>
       )}
-    {!supported ? <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center text-sm text-slate-300">
+    {!supported ? <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center text-sm text-muted">
       This clothing template is currently 2D-only. Select a template with a registered 3D model to open the 3D Studio.
     </div> : <div ref={mobileScrollRef} className="garment-studio-body flex min-h-0 flex-1 flex-col lg:flex-row">
       {/* On desktop, properties are on the LEFT. On mobile, model comes first. */}
       <aside ref={controlsRef} aria-label="3D garment properties"
-        className="garment-studio-controls order-2 min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain border-t border-slate-700 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 lg:order-1 lg:w-[350px] lg:min-w-[315px] lg:max-w-[390px] lg:flex-none lg:border-r lg:border-t-0"
+        className="garment-studio-controls order-2 min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain border-t border-line bg-surface lg:order-1 lg:w-[350px] lg:min-w-[315px] lg:max-w-[390px] lg:flex-none lg:border-r lg:border-t-0"
         style={{ scrollbarWidth: "thin" }}>
-        <div className="garment-studio-tool-header sticky top-0 z-30 border-b border-slate-700/70 bg-slate-950/95 px-3 pb-3 pt-3 shadow-xl shadow-slate-950/30 backdrop-blur-xl">
-          <nav className="grid grid-cols-4 gap-1 rounded-xl border border-slate-700/70 bg-slate-900/90 p-1" aria-label="3D studio editing tools">
+        <div className="garment-studio-tool-header sticky top-0 z-30 border-b border-line bg-subtle px-3 pb-3 pt-3">
+          <nav className="grid grid-cols-4 gap-1 rounded-md border border-line bg-subtle p-1" aria-label="3D studio editing tools">
             {STUDIO_TABS.map(({ id, label, Icon }) => (
               <button key={id} type="button" aria-current={studioTab === id ? "page" : undefined}
                 aria-pressed={studioTab === id} disabled={busy || cleanupBusy || placementSaving}
                 onClick={() => changeStudioTab(id)}
-                className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg px-1 py-1.5 text-[10px] font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-400 disabled:opacity-50 ${studioTab === id ? "bg-violet-600 text-white shadow-md shadow-violet-950/30" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}>
+                className={`flex min-h-9 flex-col items-center justify-center gap-1 rounded-md px-1 py-1.5 text-[10px] font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-action disabled:opacity-50 ${studioTab === id ? "bg-action text-on-action" : "text-muted hover:bg-subtle hover:text-ink"}`}>
                 <Icon size={17} strokeWidth={1.8} aria-hidden="true"/>
                 {label}
               </button>
@@ -1101,113 +1101,113 @@ export default function Garment3DViewer({
           <div className="mt-3 flex items-center gap-2">
             <button type="button" aria-expanded={regionPickerOpen} aria-controls="studio-region-picker"
               onClick={() => setRegionPickerOpen((open) => !open)}
-              className={`inline-flex min-h-9 flex-1 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium transition ${regionPickerOpen ? "border-violet-500 bg-violet-950/40 text-white" : "border-slate-700 bg-slate-900 text-slate-200 hover:border-violet-500/60"}`}>
-              <span className="flex min-w-0 items-center gap-2"><MousePointer2 size={15} className="shrink-0 text-violet-300" aria-hidden="true"/>
+              className={`inline-flex min-h-9 flex-1 items-center justify-between gap-2 rounded-md border px-3 py-2 text-left text-xs font-medium transition ${regionPickerOpen ? "border-line bg-subtle text-ink" : "border-line bg-surface text-ink hover:border-line"}`}>
+              <span className="flex min-w-0 items-center gap-2"><MousePointer2 size={15} className="shrink-0 text-action" aria-hidden="true"/>
                 <span className="truncate">{selectedRegions.length === 0 ? "Choose garment parts" : selectedRegions.length === 1 ? regions.find(r => r.id === selectedRegions[0])?.label || "1 part selected" : `${selectedRegions.length} parts selected`}</span>
               </span>
               <ChevronDown size={15} className={`shrink-0 transition-transform ${regionPickerOpen ? "rotate-180" : ""}`} aria-hidden="true"/>
             </button>
-            <label className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-2 text-[11px] text-slate-300" title="Click several parts on the model without clearing the last selection">
-              <input type="checkbox" checked={multiSelect} onChange={(event) => setMultiSelect(event.target.checked)} className="h-3.5 w-3.5 accent-violet-500"/>
+            <label className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 py-2 text-[11px] text-muted" title="Click several parts on the model without clearing the last selection">
+              <input type="checkbox" checked={multiSelect} onChange={(event) => setMultiSelect(event.target.checked)} className="h-3.5 w-3.5 accent-action"/>
               Multi
             </label>
           </div>
-          {regionPickerOpen && <div id="studio-region-picker" className="mt-2 space-y-2 rounded-xl border border-slate-700 bg-slate-900/95 p-2 shadow-2xl">
+          {regionPickerOpen && <div id="studio-region-picker" className="mt-2 space-y-2 rounded-md border border-line bg-subtle p-2">
             <div className="grid grid-cols-4 gap-1" role="group" aria-label="Quick region selections">
               <button type="button" className={BTN} onClick={() => selectSet(regions.map(r => r.id))}>All</button>
               <button type="button" className={BTN} onClick={() => selectSet(regions.filter(r => r.view === "front").map(r => r.id))}>Front</button>
               <button type="button" className={BTN} onClick={() => selectSet(regions.filter(r => r.view === "back").map(r => r.id))}>Back</button>
               <button type="button" className={BTN} onClick={() => selectSet([])}>Clear</button>
             </div>
-            <label className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1">
-              <Search size={14} className="shrink-0 text-slate-500" aria-hidden="true"/>
+            <label className="flex items-center gap-2 rounded-md border border-line bg-surface px-2 py-1">
+              <Search size={14} className="shrink-0 text-muted" aria-hidden="true"/>
               <input type="search" aria-label="Search garment regions" placeholder="Find collar, sleeve, pocket..." value={regionQuery}
-                onChange={(event) => setRegionQuery(event.target.value)} className="min-w-0 flex-1 bg-transparent py-1 text-xs text-white outline-none placeholder:text-slate-500"/>
+                onChange={(event) => setRegionQuery(event.target.value)} className="min-w-0 flex-1 bg-transparent py-1 text-xs text-ink outline-none placeholder:text-muted"/>
             </label>
             <div className="max-h-40 space-y-1 overflow-y-auto overscroll-contain pr-1" role="group" aria-label="Garment region checkboxes">
               {regions.filter(r => `${r.label} ${r.id} ${r.group || ""}`.toLowerCase().includes(regionQuery.trim().toLowerCase())).map(r => (
-                <label key={r.id} className={`flex cursor-pointer items-center gap-2 rounded-md border px-2 py-1.5 text-[11px] ${selectedRegions.includes(r.id) ? "border-violet-500/70 bg-violet-950/40 text-white" : "border-transparent bg-slate-950/75 text-slate-300 hover:border-slate-700"}`}>
-                  <input type="checkbox" checked={selectedRegions.includes(r.id)} onChange={() => selectRegion(r.id, true)} className="accent-violet-500"/>
-                  <span className="h-3 w-3 shrink-0 rounded-full border border-white/30" style={{ backgroundColor: safeColour(resolvedColours[r.id]) }}/>
+                <label key={r.id} className={`flex cursor-pointer items-center gap-2 rounded-md border px-2 py-1.5 text-[11px] ${selectedRegions.includes(r.id) ? "border-line bg-subtle text-ink" : "border-transparent bg-subtle text-muted hover:border-line"}`}>
+                  <input type="checkbox" checked={selectedRegions.includes(r.id)} onChange={() => selectRegion(r.id, true)} className="accent-action"/>
+                  <span className="h-3 w-3 shrink-0 rounded-full border border-line" style={{ backgroundColor: safeColour(resolvedColours[r.id]) }}/>
                   <span className="min-w-0 flex-1 truncate">{r.label}</span>
                 </label>
               ))}
             </div>
-            {groups.length > 0 && <div className="flex max-h-16 flex-wrap gap-1 overflow-y-auto border-t border-slate-700 pt-2" role="group" aria-label="Quick select groups">
-              {groups.map(({ key, label, ids }) => <button type="button" key={key} className="rounded-full border border-slate-700 px-2 py-1 text-[10px] text-slate-300 hover:border-violet-500" onClick={() => selectSet(ids)}>{label}</button>)}
+            {groups.length > 0 && <div className="flex max-h-16 flex-wrap gap-1 overflow-y-auto border-t border-line pt-2" role="group" aria-label="Quick select groups">
+              {groups.map(({ key, label, ids }) => <button type="button" key={key} className="rounded-md border border-line px-2 py-1 text-[10px] text-muted hover:border-line" onClick={() => selectSet(ids)}>{label}</button>)}
             </div>}
-            <label className="flex cursor-pointer items-center gap-2 text-[11px] text-slate-300">
-              <input type="checkbox" checked={highlightSelection} onChange={(event) => setHighlightSelection(event.target.checked)} className="accent-cyan-500"/>
+            <label className="flex cursor-pointer items-center gap-2 text-[11px] text-muted">
+              <input type="checkbox" checked={highlightSelection} onChange={(event) => setHighlightSelection(event.target.checked)} className="accent-action"/>
               Highlight chosen parts (preview only)
             </label>
-            <button type="button" className="w-full rounded-lg bg-violet-700/80 py-1.5 text-xs font-semibold text-white hover:bg-violet-600" onClick={() => setRegionPickerOpen(false)}>Done selecting</button>
+            <button type="button" className="w-full rounded-md bg-subtle py-1.5 text-xs font-semibold text-ink hover:bg-action hover:text-on-action" onClick={() => setRegionPickerOpen(false)}>Done selecting</button>
           </div>}
         </div>
         <div className="space-y-3 p-3 pb-6">
         {studioTab === "color" && <>
           <div className="flex items-center justify-between px-0.5">
             <div>
-              <h3 className="text-sm font-semibold text-white">Color your garment</h3>
-              <p className="text-[11px] text-slate-400">Pick a part, choose a shade, then apply.</p>
+              <h3 className="text-sm font-semibold text-ink">Color your garment</h3>
+              <p className="text-[11px] text-muted">Pick a part, choose a shade, then apply.</p>
             </div>
-            <Palette size={21} className="text-violet-300" aria-hidden="true"/>
+            <Palette size={21} className="text-action" aria-hidden="true"/>
           </div>
-        <section className="space-y-3 rounded-2xl border border-violet-500/25 bg-gradient-to-b from-violet-950/30 to-slate-900/60 p-3">
+        <section className="space-y-3 rounded-md border border-line bg-surface p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <strong className="text-sm font-semibold text-white">Fabric color</strong>
-            <span className="text-[10px] text-slate-400">{selectedRegions.length ? `${selectedRegions.length} areas` : "Select a region"}</span>
+            <strong className="text-sm font-semibold text-ink">Fabric color</strong>
+            <span className="text-[10px] text-muted">{selectedRegions.length ? `${selectedRegions.length} areas` : "Select a region"}</span>
           </div>
-          {!selectedRegions.length && <p className="rounded-lg border border-violet-600/30 bg-violet-950/20 px-3 py-2 text-xs text-violet-200">Click a part of the 3D garment or use “Choose parts” above to start.</p>}
-          {selectedRegionNames.length > 0 && <p className="text-[10px] leading-relaxed text-slate-400">Apply one color to {selectedRegionNames.length === 1 ? selectedRegionNames[0].label : `${selectedRegionNames.length} selected areas`}.</p>}
+          {!selectedRegions.length && <p className="rounded-md border border-line bg-subtle px-3 py-2 text-xs text-action">Click a part of the 3D garment or use “Choose parts” above to start.</p>}
+          {selectedRegionNames.length > 0 && <p className="text-[10px] leading-relaxed text-muted">Apply one color to {selectedRegionNames.length === 1 ? selectedRegionNames[0].label : `${selectedRegionNames.length} selected areas`}.</p>}
           <div className="grid grid-cols-6 gap-2" role="group" aria-label="Fabric color presets">
             {SWATCHES.map((swatch) => <button type="button" key={swatch} onClick={() => setPaintColour(swatch)} aria-label={`Choose color ${swatch}`} aria-pressed={safeColour(paintColour) === swatch}
-              className={`aspect-square min-h-7 rounded-lg border-2 ${safeColour(paintColour) === swatch ? "border-violet-400 ring-1 ring-violet-400" : "border-slate-600"}`} style={{ background: swatch }}/>) }
+              className={`aspect-square min-h-7 rounded-md border-2 ${safeColour(paintColour) === swatch ? "border-line ring-1 ring-action" : "border-line"}`} style={{ background: swatch }}/>) }
           </div>
           <div className="flex items-center gap-2">
-            <input type="color" aria-label="Custom garment color" value={safeColour(paintColour)} onChange={(event) => setPaintColour(event.target.value)} className="h-9 w-11 shrink-0 cursor-pointer rounded border border-slate-600 bg-transparent" disabled={disabled}/>
+            <input type="color" aria-label="Custom garment color" value={safeColour(paintColour)} onChange={(event) => setPaintColour(event.target.value)} className="h-9 w-11 shrink-0 cursor-pointer rounded border border-line bg-transparent" disabled={disabled}/>
             <input aria-label="Selected color hex" className={FIELD} value={paintColour} maxLength={7} onChange={(event) => setPaintColour(event.target.value)} />
           </div>
-          <button type="button" className={`${BTN} w-full min-h-11 border-violet-400 bg-violet-600 font-semibold text-white shadow-lg shadow-violet-950/30 hover:bg-violet-500`} disabled={!canApplyColour || !HEX_COLOUR.test(paintColour)} onClick={applyColour}>
+          <button type="button" className={`${BTN} w-full min-h-9 border-line bg-action font-semibold text-on-action hover:bg-action hover:text-on-action`} disabled={!canApplyColour || !HEX_COLOUR.test(paintColour)} onClick={applyColour}>
             Apply to {selectedRegions.length} region{selectedRegions.length === 1 ? "" : "s"}
           </button>
-          {!canBatchSave && selectedRegions.length > 1 && <p className="text-[10px] text-amber-300">Multi-region saving requires the updated FashionEditor.jsx bridge.</p>}
+          {!canBatchSave && selectedRegions.length > 1 && <p className="text-[10px] text-action">Multi-region saving requires the updated FashionEditor.jsx bridge.</p>}
         </section>
 
         </>}
         {studioTab === "add" && <>
-          <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-3">
-            <h3 className="text-sm font-semibold text-white">Add to your design</h3>
-            <p className="mt-1 text-[11px] text-slate-400">Add artwork to one part or several at once.</p>
+          <div className="rounded-md border border-line bg-subtle p-3">
+            <h3 className="text-sm font-semibold text-ink">Add to your design</h3>
+            <p className="mt-1 text-[11px] text-muted">Add artwork to one part or several at once.</p>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <button type="button" aria-pressed={artworkTargetMode === "single"} onClick={() => setArtworkTargetMode("single")}
-                className={`rounded-lg px-2 py-2 text-xs font-semibold ${artworkTargetMode === "single" ? "bg-violet-600 text-white" : "bg-slate-800 text-slate-300"}`}>One part</button>
+                className={`rounded-md px-2 py-2 text-xs font-semibold ${artworkTargetMode === "single" ? "bg-action text-on-action" : "bg-subtle text-muted"}`}>One part</button>
               <button type="button" aria-pressed={artworkTargetMode === "batch"} onClick={() => setArtworkTargetMode("batch")}
-                className={`rounded-lg px-2 py-2 text-xs font-semibold ${artworkTargetMode === "batch" ? "bg-violet-600 text-white" : "bg-slate-800 text-slate-300"}`}>Selected parts</button>
+                className={`rounded-md px-2 py-2 text-xs font-semibold ${artworkTargetMode === "batch" ? "bg-action text-on-action" : "bg-subtle text-muted"}`}>Selected parts</button>
             </div>
           </div>
           {artworkTargetMode === "single" &&
-        <section ref={artworkSectionRef} className="space-y-3 rounded-2xl border border-slate-700 bg-slate-900/75 p-3">
+        <section ref={artworkSectionRef} className="space-y-3 rounded-md border border-line bg-subtle p-3">
           <div className="space-y-1">
-            <strong className="text-xs uppercase tracking-wide text-slate-200">Graphics · Text · Fabric prints</strong>
-            <p className="text-[10px] text-slate-400">Add a logo, fabric print, or text to one region. Edit its layer later under Edit.</p>
+            <strong className="text-xs uppercase tracking-wide text-ink">Graphics · Text · Fabric prints</strong>
+            <p className="text-[10px] text-muted">Add a logo, fabric print, or text to one region. Edit its layer later under Edit.</p>
           </div>
-          {artworkUnavailableReason && <p role="status" className="rounded-md border border-amber-800/50 bg-amber-950/30 px-3 py-2 text-[11px] text-amber-200">{artworkUnavailableReason}</p>}
-          <label className="block space-y-1 text-[10px] text-slate-400">Artwork target region
+          {artworkUnavailableReason && <p role="status" className="rounded-md border border-line bg-subtle px-3 py-2 text-[11px] text-action">{artworkUnavailableReason}</p>}
+          <label className="block space-y-1 text-[10px] text-muted">Artwork target region
             <select className={FIELD} value={selectedRegion} onChange={(event) => selectSet([event.target.value])}>
               {regions.map(({ id, label }) => <option value={id} key={id}>{label}</option>)}
             </select>
           </label>
           <div className="flex flex-wrap gap-1.5" role="group" aria-label="Artwork type">
             {[{ id: "graphic", label: "Logo / Image" }, { id: "pattern", label: "Fabric Pattern" }, { id: "text", label: "Text" }].map(({ id, label }) =>
-              <button type="button" key={id} aria-pressed={activeTab === id} onClick={() => setActiveTab(id)} className={`${BTN} ${activeTab === id ? "border-violet-400 bg-violet-700 text-white" : ""}`}>{label}</button>)}
+              <button type="button" key={id} aria-pressed={activeTab === id} onClick={() => setActiveTab(id)} className={`${BTN} ${activeTab === id ? "border-line bg-action text-on-action" : ""}`}>{label}</button>)}
           </div>
           {activeTab === "text" ? <div className="space-y-2">
-            <label className="block space-y-1 text-[10px] text-slate-400">Garment text
+            <label className="block space-y-1 text-[10px] text-muted">Garment text
               <input className={FIELD} maxLength={60} value={textValue} onChange={(event) => setTextValue(event.target.value)} placeholder="Enter text" disabled={!editable}/>
             </label>
             <div className="flex items-end gap-2">
-              <label className="space-y-1 text-[10px] text-slate-400">Text color
-                <input type="color" aria-label="Text color" value={textColour} onChange={(event) => setTextColour(event.target.value)} className="block h-8 w-9 rounded border border-slate-600" disabled={!editable}/>
+              <label className="space-y-1 text-[10px] text-muted">Text color
+                <input type="color" aria-label="Text color" value={textColour} onChange={(event) => setTextColour(event.target.value)} className="block h-8 w-9 rounded border border-line" disabled={!editable}/>
               </label>
               <button type="button" className={BTN} disabled={!editable || busy || stack.texts.length >= 24 || !textValue.trim()} onClick={addText}>Place Text</button>
             </div>
@@ -1216,101 +1216,101 @@ export default function Garment3DViewer({
           </div> : <div className="space-y-2">
             <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={handleUpload}/>
             <button type="button" className={BTN} disabled={!editable || busy || !hasUploadBridge} onClick={() => inputRef.current?.click()}>{busy ? "Importing…" : activeTab === "pattern" ? "Upload Pattern" : "Upload Logo / Image"}</button>
-            <p className="text-[10px] text-slate-500">PNG, JPG, WebP, SVG · uses secure 2D asset import</p>
+            <p className="text-[10px] text-muted">PNG, JPG, WebP, SVG · uses secure 2D asset import</p>
           </div>}
         </section>
           }
           {artworkTargetMode === "batch" &&
-        <section className="space-y-3 rounded-2xl border border-violet-500/20 bg-slate-900/75 p-3" aria-label="Multi-region artwork application">
+        <section className="space-y-3 rounded-md border border-line bg-subtle p-3" aria-label="Multi-region artwork application">
           <div className="flex items-center justify-between gap-2">
-            <strong className="text-xs text-violet-200">Apply artwork to selected regions</strong>
-            <span className="text-[10px] text-slate-400">{selectedRegions.length} selected</span>
+            <strong className="text-xs text-action">Apply artwork to selected regions</strong>
+            <span className="text-[10px] text-muted">{selectedRegions.length} selected</span>
           </div>
-          <p className="text-[10px] leading-relaxed text-slate-400">Apply the same logo, fabric pattern, or text to all selected areas. Layers remain separately movable, resizable, and removable on each region. Each batch is one Undo step.</p>
+          <p className="text-[10px] leading-relaxed text-muted">Apply the same logo, fabric pattern, or text to all selected areas. Layers remain separately movable, resizable, and removable on each region. Each batch is one Undo step.</p>
           <div className="flex flex-wrap gap-1.5" role="group" aria-label="Artwork to selected regions">
             {[{id: "graphic", label: "Logo"}, {id: "pattern", label: "Pattern"}, {id: "text", label: "Text"}].map(({id,label}) =>
               <button type="button" key={id} aria-pressed={activeTab === id} onClick={() => setActiveTab(id)}
-                className={`${BTN} ${activeTab === id ? "border-violet-400 bg-violet-700 text-white" : ""}`}>{label}</button>)}
+                className={`${BTN} ${activeTab === id ? "border-line bg-action text-on-action" : ""}`}>{label}</button>)}
           </div>
           {activeTab === "text" ? <div className="space-y-2">
             <input aria-label="Text for multiple garment regions" className={FIELD} maxLength={60}
               value={textValue} onChange={(event) => setTextValue(event.target.value)} disabled={disabled} />
-            <label className="flex items-center gap-2 text-[10px] text-slate-300">Text color
+            <label className="flex items-center gap-2 text-[10px] text-muted">Text color
               <input type="color" value={textColour} onChange={(event) => setTextColour(event.target.value)} disabled={disabled} className="h-8 w-10 rounded"/>
             </label>
             <GarmentTextStyleFields value={{ ...newTextStyle, color: textColour }}
               onChange={(value) => { setNewTextStyle(value); setTextColour(value.color); }} disabled={disabled || busy}/>
-            <button type="button" className={`${BTN} w-full border-violet-500 bg-violet-700 text-white`}
+            <button type="button" className={`${BTN} w-full border-line bg-action text-on-action`}
               disabled={!canBatchArtwork || !textValue.trim()} onClick={() => void addBatchText()}>
               {busy ? "Applying…" : `Add text to ${selectedRegions.length} selected region${selectedRegions.length === 1 ? "" : "s"}`}
             </button>
           </div> : <div>
             <input ref={bulkInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"
               className="hidden" onChange={(event) => void handleBatchUpload(event)} />
-            <button type="button" className={`${BTN} w-full border-violet-500 bg-violet-700 text-white`}
+            <button type="button" className={`${BTN} w-full border-line bg-action text-on-action`}
               disabled={!canBatchArtwork} onClick={() => bulkInputRef.current?.click()}>
               {busy ? "Applying…" : `Upload ${activeTab === "pattern" ? "pattern" : "logo"} to ${selectedRegions.length} selected region${selectedRegions.length === 1 ? "" : "s"}`}
             </button>
           </div>}
-          {!hasBatchArtworkBridge && <p className="text-[10px] text-amber-300">Install the accompanying FashionEditor.jsx to enable batch artwork saves.</p>}
-          <p className="text-[10px] text-slate-500">A new pattern replaces only the pattern layer on each selected region. Existing logos and texts are preserved.</p>
+          {!hasBatchArtworkBridge && <p className="text-[10px] text-action">Install the accompanying FashionEditor.jsx to enable batch artwork saves.</p>}
+          <p className="text-[10px] text-muted">A new pattern replaces only the pattern layer on each selected region. Existing logos and texts are preserved.</p>
         </section>
 
           }
         </>}
         {studioTab === "edit" && <>
-        <section className="space-y-3 rounded-2xl border border-slate-700/70 bg-slate-900/65 p-3" aria-label="Existing garment artwork layers">
+        <section className="space-y-3 rounded-md border border-line bg-subtle p-3" aria-label="Existing garment artwork layers">
           <div className="flex items-center justify-between">
             <div>
-              <strong className="text-sm font-semibold text-white">Edit saved artwork</strong>
-              <p className="mt-1 text-[11px] text-slate-400">Choose a region and a saved layer to adjust.</p>
+              <strong className="text-sm font-semibold text-ink">Edit saved artwork</strong>
+              <p className="mt-1 text-[11px] text-muted">Choose a region and a saved layer to adjust.</p>
             </div>
-            <span className="rounded-full bg-slate-800 px-2 py-1 text-[10px] text-slate-300">{layers.length} layers</span>
+            <span className="rounded-md bg-subtle px-2 py-1 text-[10px] text-muted">{layers.length} layers</span>
           </div>
-          <label className="block space-y-1 text-[11px] text-slate-400">Editing region
+          <label className="block space-y-1 text-[11px] text-muted">Editing region
             <select className={FIELD} value={selectedRegion} onChange={(event) => selectSet([event.target.value])}>
               {regions.map(({ id, label }) => <option key={id} value={id}>{label}</option>)}
             </select>
           </label>
-          <div className="space-y-2 border-t border-slate-800 pt-3">
+          <div className="space-y-2 border-t border-line pt-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <strong className="text-[11px] uppercase tracking-wide text-slate-300">Layer stack · {layers.length} item{layers.length === 1 ? "" : "s"}</strong>
-              <button type="button" className={`${BTN} border-red-900/70 text-red-200`} disabled={!editable || busy || placementSaving || layers.length === 0}
+              <strong className="text-[11px] uppercase tracking-wide text-muted">Layer stack · {layers.length} item{layers.length === 1 ? "" : "s"}</strong>
+              <button type="button" className={`${BTN} border-line text-action`} disabled={!editable || busy || placementSaving || layers.length === 0}
                 onClick={clearRegionArtwork} title="Remove all artwork only from this region (undoable)">Clear region</button>
             </div>
-            {layers.length === 0 ? <p className="text-[11px] text-slate-500">No artwork on this region yet.</p>
+            {layers.length === 0 ? <p className="text-[11px] text-muted">No artwork on this region yet.</p>
               : <div className="flex flex-wrap gap-1.5" role="group" aria-label="Select garment artwork layer">
                 {layers.map((item) => <button type="button" key={item.id} aria-pressed={entry?.id === item.id} onClick={() => setSelectedLayerId(item.id)}
-                  className={`${BTN} max-w-full truncate ${entry?.id === item.id ? "border-violet-400 bg-violet-700 text-white" : ""}`}>{item.name}</button>)}
+                  className={`${BTN} max-w-full truncate ${entry?.id === item.id ? "border-line bg-action text-on-action" : ""}`}>{item.name}</button>)}
               </div>}
             {entry?.kind === "pattern" && <GarmentPatternControls
               key={`${selectedRegion}:${entry.id}`} entry={entry}
               disabled={!editable || busy || placementSaving || placementMode || transformMode}
               onSave={savePatternSettings} onSync={syncSavedPattern}
               syncTargets={patternSyncTargets.length}/>}
-            {entry?.kind === "pattern" && <button type="button" className={`${BTN} w-full border-red-900/70 text-red-200`}
+            {entry?.kind === "pattern" && <button type="button" className={`${BTN} w-full border-line text-action`}
               disabled={!editable || busy || placementSaving || placementMode || transformMode}
               onClick={removeSelectedLayer}>Remove fabric pattern</button>}
             {entry?.kind === "text" && typeof entry.text === "string" && entry.text.trim() &&
               <GarmentTextControls key={`${selectedRegion}:${entry.id}`} entry={entry}
                 disabled={!editable || busy || placementSaving || placementMode || transformMode}
                 onSave={saveExistingText}/>}
-            {entry && <div className="space-y-2 rounded-lg border border-violet-800/60 bg-violet-950/20 p-3">
+            {entry && <div className="space-y-2 rounded-md border border-line bg-subtle p-3">
               <div className="flex items-center justify-between gap-2">
-                <strong className="text-[11px] text-violet-200">3D {entry.kind === "pattern" ? "fabric pattern" : entry.kind} controls</strong>
-                <span className="text-[10px] text-slate-400">{placementSaving ? "Saving…" : placementMode ? "Move mode" : "Ready"}</span>
+                <strong className="text-[11px] text-action">3D {entry.kind === "pattern" ? "fabric pattern" : entry.kind} controls</strong>
+                <span className="text-[10px] text-muted">{placementSaving ? "Saving…" : placementMode ? "Move mode" : "Ready"}</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
               <button type="button" disabled={!canPlaceArtwork} onClick={togglePlacement}
-                aria-pressed={placementMode} className={`${BTN} w-full ${placementMode ? "border-violet-400 bg-violet-700 text-white" : "border-violet-600"}`}>
+                aria-pressed={placementMode} className={`${BTN} w-full ${placementMode ? "border-line bg-action text-on-action" : "border-line"}`}>
                 {placementMode ? "Finish moving" : "Move on 3D"}
               </button>
               <button type="button" disabled={!canPlaceArtwork} onClick={toggleTransform}
-                aria-pressed={transformMode} className={`${BTN} ${transformMode ? "border-cyan-300 bg-cyan-800 text-white" : "border-cyan-700"}`}>
+                aria-pressed={transformMode} className={`${BTN} ${transformMode ? "border-line bg-action text-on-action" : "border-line"}`}>
                 {transformMode ? "Finish transform" : "Resize / Rotate"}
               </button>
               </div>
-              <p className="text-[10px] leading-4 text-slate-300">
+              <p className="text-[10px] leading-4 text-muted">
                 {placementMode ? `Click or drag on ${regions.find(r => r.id === selectedRegion)?.label || selectedRegion} to ${entry.kind === "pattern" ? "shift the pattern repeat" : "place artwork"}. Orbit is paused. Press Esc to exit.`
                   : transformMode ? `Drag cyan ↘ to ${entry.kind === "pattern" ? "change pattern repeat size" : "resize"}, or ↻ horizontally to rotate. The outline is an approximate surface guide. Release to save once.`
                   : "Choose Move for position or Resize / Rotate for interactive model handles. Pattern controls edit the fabric repeat, not a standalone logo."}
@@ -1323,11 +1323,11 @@ export default function Garment3DViewer({
                 <button type="button" className={BTN} disabled={!canPlaceArtwork} onClick={() => changeSetting("rotation", clamp(Number(entry.rotation || 0) + 15, -180, 180))}>↷ 15°</button>
               </div>
             </div>}
-            {entry && entry.kind !== "pattern" && <details className="group space-y-3 rounded-xl border border-slate-700 bg-slate-900/70 p-3">
-              <summary className="cursor-pointer select-none text-xs font-semibold text-slate-200">Fine-tune settings · Scale, position and opacity</summary>
+            {entry && entry.kind !== "pattern" && <details className="group space-y-3 rounded-md border border-line bg-subtle p-3">
+              <summary className="cursor-pointer select-none text-xs font-semibold text-ink">Fine-tune settings · Scale, position and opacity</summary>
               <div className="space-y-3 pt-3">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold text-slate-200">Edit {entry.name}</span>
+                <span className="text-xs font-semibold text-ink">Edit {entry.name}</span>
                 <button type="button" className={BTN} disabled={!editable || busy || placementSaving || Boolean(placementRef.current) || Boolean(transformRef.current)} onClick={removeSelectedLayer}>Remove layer</button>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -1336,12 +1336,12 @@ export default function Garment3DViewer({
                   { key: "offsetX", name: "Horizontal", min: -120, max: 120, step: 1 },
                   { key: "offsetY", name: "Vertical", min: -120, max: 120, step: 1 },
                   { key: "opacity", name: "Opacity", min: 0, max: 1, step: 0.05 }].map(({ key, name, min, max, step }) =>
-                  <label key={key} className="space-y-1 text-[10px] text-slate-400">{name}: {Number(entry[key] ?? (key === "scale" || key === "opacity" ? 1 : 0)).toFixed(key === "opacity" ? 2 : 1)}
-                    <input type="range" className="block w-full accent-violet-500" min={min} max={max} step={step}
+                  <label key={key} className="space-y-1 text-[10px] text-muted">{name}: {Number(entry[key] ?? (key === "scale" || key === "opacity" ? 1 : 0)).toFixed(key === "opacity" ? 2 : 1)}
+                    <input type="range" className="block w-full accent-action" min={min} max={max} step={step}
                       value={clamp(entry[key] ?? (key === "scale" || key === "opacity" ? 1 : 0), min, max)}
                       disabled={!editable || busy || placementSaving} onChange={(event) => changeSetting(key, Number(event.target.value))}/>
                   </label>)}
-                <label className="space-y-1 text-[10px] text-slate-400">Image fitting
+                <label className="space-y-1 text-[10px] text-muted">Image fitting
                   <select className={FIELD} value={entry.fit || "contain"} disabled={!editable || busy} onChange={(event) => changeSetting("fit", event.target.value)}>
                     <option value="contain">Contain</option><option value="cover">Cover</option><option value="fill">Stretch</option>
                   </select>
@@ -1350,49 +1350,49 @@ export default function Garment3DViewer({
             </div></details>}
           </div>
         </section>
-          {layers.length === 0 && <button type="button" className="w-full rounded-lg bg-violet-700 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-600" onClick={() => changeStudioTab("add")}>+ Add artwork first</button>}
+          {layers.length === 0 && <button type="button" className="w-full rounded-md bg-action px-3 py-2 text-xs font-semibold text-on-action hover:bg-action hover:text-on-action" onClick={() => changeStudioTab("add")}>+ Add artwork first</button>}
         </>}
         {studioTab === "tools" && <>
-          <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-3">
-            <h3 className="text-sm font-semibold text-white">Advanced tools</h3>
-            <p className="mt-1 text-[11px] text-slate-400">Copy artwork between parts or clear saved layers. Nothing changes without an action.</p>
+          <div className="rounded-md border border-line bg-subtle p-3">
+            <h3 className="text-sm font-semibold text-ink">Advanced tools</h3>
+            <p className="mt-1 text-[11px] text-muted">Copy artwork between parts or clear saved layers. Nothing changes without an action.</p>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <button type="button" aria-pressed={toolsPanel === "transfer"} onClick={() => setToolsPanel("transfer")}
-                className={`rounded-lg px-2 py-2 text-xs font-semibold ${toolsPanel === "transfer" ? "bg-cyan-700 text-white" : "bg-slate-800 text-slate-300"}`}>Copy / Mirror</button>
+                className={`rounded-md px-2 py-2 text-xs font-semibold ${toolsPanel === "transfer" ? "bg-action text-on-action" : "bg-subtle text-muted"}`}>Copy / Mirror</button>
               <button type="button" aria-pressed={toolsPanel === "cleanup"} onClick={() => setToolsPanel("cleanup")}
-                className={`rounded-lg px-2 py-2 text-xs font-semibold ${toolsPanel === "cleanup" ? "bg-rose-800 text-white" : "bg-slate-800 text-slate-300"}`}>Manage / Clear</button>
+                className={`rounded-md px-2 py-2 text-xs font-semibold ${toolsPanel === "cleanup" ? "bg-action text-on-action" : "bg-subtle text-muted"}`}>Manage / Clear</button>
             </div>
           </div>
           {toolsPanel === "transfer" &&
-        <section className="space-y-3 rounded-xl border border-cyan-800/60 bg-cyan-950/15 p-3" aria-label="Copy mirror and sync garment artwork">
+        <section className="space-y-3 rounded-md border border-line bg-subtle p-3" aria-label="Copy mirror and sync garment artwork">
           <div className="flex items-center justify-between gap-2">
-            <strong className="text-xs text-cyan-200">Phase 3.2 · Copy / Mirror / Sync</strong>
-            <span className="text-[10px] text-slate-400">Region transfers</span>
+            <strong className="text-xs text-action">Phase 3.2 · Copy / Mirror / Sync</strong>
+            <span className="text-[10px] text-muted">Region transfers</span>
           </div>
-          <p className="text-[10px] text-slate-400">Choose an artwork target and layer below, copy it here, then select destination areas using the region checkboxes above. The source region is excluded.</p>
+          <p className="text-[10px] text-muted">Choose an artwork target and layer below, copy it here, then select destination areas using the region checkboxes above. The source region is excluded.</p>
           <div className="grid grid-cols-2 gap-2">
             <button type="button" className={BTN} disabled={!editable || busy || placementMode || transformMode || layers.length === 0} onClick={() => copyArtwork("layer")}>Copy selected layer</button>
             <button type="button" className={BTN} disabled={!editable || busy || placementMode || transformMode || layers.length === 0} onClick={() => copyArtwork("region")}>Copy full region</button>
           </div>
-          {artworkClipboard ? <p className="text-[10px] text-cyan-200">Copied {artworkClipboard.label} from {regions.find(r=>r.id === artworkClipboard.sourceRegionId)?.label || artworkClipboard.sourceRegionId}. {transferTargets.length} target(s) selected.</p>
-            : <p className="text-[10px] text-slate-500">Nothing copied yet.</p>}
+          {artworkClipboard ? <p className="text-[10px] text-action">Copied {artworkClipboard.label} from {regions.find(r=>r.id === artworkClipboard.sourceRegionId)?.label || artworkClipboard.sourceRegionId}. {transferTargets.length} target(s) selected.</p>
+            : <p className="text-[10px] text-muted">Nothing copied yet.</p>}
           {mirrorPartner && <button type="button" className={`${BTN} w-full`} onClick={() => selectSet([mirrorPartner])}>
             Select opposite left/right region · {regions.find((r) => r.id === mirrorPartner)?.label}
           </button>}
           <div className="grid grid-cols-2 gap-2">
             <button type="button" className={BTN} disabled={!canTransfer} onClick={() => void transferArtwork("paste", false)}>Paste to selected</button>
             <button type="button" className={BTN} disabled={!canTransfer} onClick={() => void transferArtwork("paste", true)}>Mirror placement</button>
-            <button type="button" className={`${BTN} col-span-2 border-amber-800 text-amber-200`} disabled={!canTransfer || artworkClipboard?.scope !== "region"} onClick={() => void transferArtwork("sync", false)}>Sync now · Replace target artwork</button>
+            <button type="button" className={`${BTN} col-span-2 border-line text-action`} disabled={!canTransfer || artworkClipboard?.scope !== "region"} onClick={() => void transferArtwork("sync", false)}>Sync now · Replace target artwork</button>
           </div>
-          <p className="text-[10px] text-slate-500">Paste creates independent layers; Sync replaces target region layers in one Undo step. Mirror reflects position and rotation, not image pixels/text. Sync is a one-time operation, not a live link.</p>
-          {!onArtworkTransfer && <p className="text-[10px] text-amber-300">The accompanying FashionEditor.jsx is required for transfers.</p>}
+          <p className="text-[10px] text-muted">Paste creates independent layers; Sync replaces target region layers in one Undo step. Mirror reflects position and rotation, not image pixels/text. Sync is a one-time operation, not a live link.</p>
+          {!onArtworkTransfer && <p className="text-[10px] text-action">The accompanying FashionEditor.jsx is required for transfers.</p>}
         </section>
 
           }
           {toolsPanel === "cleanup" &&
-        <section className="space-y-3 rounded-xl border border-rose-800/50 bg-rose-950/15 p-3" aria-label="Phase 3.5 3D artwork management">
-          <strong className="block text-xs text-rose-200">Manage &amp; clear artwork</strong>
-          <p className="text-[10px] text-slate-400">Selected: {selectedRegions.length} region(s) · {cleanupSummary.logos} logos · {cleanupSummary.texts} text · {cleanupSummary.pattern} patterns. Only artwork is deleted, never garment colors.</p>
+        <section className="space-y-3 rounded-md border border-line bg-subtle p-3" aria-label="Phase 3.5 3D artwork management">
+          <strong className="block text-xs text-action">Manage &amp; clear artwork</strong>
+          <p className="text-[10px] text-muted">Selected: {selectedRegions.length} region(s) · {cleanupSummary.logos} logos · {cleanupSummary.texts} text · {cleanupSummary.pattern} patterns. Only artwork is deleted, never garment colors.</p>
           <div className="grid grid-cols-2 gap-2">
             {[
               ["clear-logos", "Clear logos", cleanupSummary.logos],
@@ -1400,28 +1400,28 @@ export default function Garment3DViewer({
               ["clear-patterns", "Clear patterns", cleanupSummary.pattern],
               ["clear-all", "Clear selected", cleanupSummary.total],
             ].map(([operation, label, count]) =>
-              <button type="button" key={operation} className={`${BTN} border-rose-800/70 text-rose-200`}
+              <button type="button" key={operation} className={`${BTN} border-line text-action`}
                 disabled={!canManageArtwork || !selectedRegions.length || !count}
                 onClick={() => void runCleanup(operation)}>{label}</button>)}
           </div>
-          <button type="button" className={`${BTN} w-full border-rose-600 bg-rose-950/50 text-rose-100`}
+          <button type="button" className={`${BTN} w-full border-line bg-subtle text-action`}
             disabled={!canManageArtwork || !allArtworkCount}
             onClick={() => void runCleanup("reset-garment", regions.map((region) => region.id))}>
             Reset entire garment artwork ({allArtworkCount} layer{allArtworkCount === 1 ? "" : "s"})
           </button>
-          {entry && <button type="button" className={`${BTN} w-full border-rose-800/60 text-rose-200`}
+          {entry && <button type="button" className={`${BTN} w-full border-line text-action`}
             disabled={!canManageArtwork} onClick={() => void runCleanup("remove-layer", [selectedRegion], entry.id)}>
             Remove {entry.name} from {regions.find((region) => region.id === selectedRegion)?.label || selectedRegion}
           </button>}
-          {cleanupBusy && <p role="status" className="text-[10px] text-rose-200">Updating garment artwork…</p>}
-          {!onManageArtwork && <p role="status" className="text-[10px] text-amber-300">Install the accompanying Phase 3.5 FashionEditor.jsx to enable batch clearing.</p>}
+          {cleanupBusy && <p role="status" className="text-[10px] text-action">Updating garment artwork…</p>}
+          {!onManageArtwork && <p role="status" className="text-[10px] text-action">Install the accompanying Phase 3.5 FashionEditor.jsx to enable batch clearing.</p>}
         </section>
           }
         </>}
         </div>
       </aside>
 
-      <div className="garment-studio-preview relative order-1 flex h-[clamp(255px,44dvh,520px)] shrink-0 flex-col bg-gradient-to-b from-slate-700 via-slate-800 to-slate-950 lg:order-2 lg:h-auto lg:min-h-0 lg:min-w-0 lg:flex-1">
+      <div className="garment-studio-preview relative order-1 flex h-[clamp(255px,44dvh,520px)] shrink-0 flex-col bg-surface lg:order-2 lg:h-auto lg:min-h-0 lg:min-w-0 lg:flex-1">
         <div className="relative min-h-0 flex-1"
           // Capture the original DOM pointer gesture before OrbitControls handles it.
           // We track motion even when a raycast moves off a mesh mid-orbit.
@@ -1438,7 +1438,7 @@ export default function Garment3DViewer({
               <ambientLight intensity={1.4}/><hemisphereLight args={["#ffffff", "#475569", 1.4]}/>
               <directionalLight position={[4, 6, 6]} intensity={2.5}/>
               <directionalLight position={[-5, 2, -4]} intensity={1.5}/>
-              <Suspense fallback={<Html center><div className="rounded bg-slate-950 px-4 py-3 text-xs">Loading garment…</div></Html>}>
+              <Suspense fallback={<Html center><div className="rounded bg-surface px-4 py-3 text-xs">Loading garment…</div></Html>}>
                 <Model modelUrl={resolvedModelUrl} templateId={templateId} regions={regions} colours={resolvedColours} artwork={artworkForModel}
                    wireframe={wireframe} selectedRegions={selectedRegions} highlightSelection={highlightSelection}
                    onRegionPointerDown={handleRegionPointerDown} onRegionClick={handleModelRegionClick} onError={onError}
@@ -1454,20 +1454,20 @@ export default function Garment3DViewer({
                 transformMode={transformMode && canPlaceArtwork} onCameraChange={handleCameraChange}/>
             </Canvas>
           </ViewerErrorBoundary>
-          <div className="pointer-events-none absolute left-3 top-3 rounded-lg border border-slate-700/60 bg-slate-950/85 px-3 py-2 text-[10px] text-slate-200">
+          <div className="pointer-events-none absolute left-3 top-3 rounded-md border border-line bg-subtle px-3 py-2 text-[10px] text-ink">
             <div className="font-semibold">{selectedRegions.length === 1
               ? `Selected: ${regions.find((r) => r.id === selectedRegions[0])?.label || "1 region"}`
               : `${selectedRegions.length} areas selected`}</div>
-            <div className="mt-1 text-slate-400">{placementMode ? "Click or drag: place logo/text · Orbit paused" : transformMode ? "Drag cyan handles to resize or rotate · Orbit paused" : "Click: select · Drag: orbit · Scroll: zoom"}</div>
-            {placementDraft && <div className="mt-1 font-mono text-violet-200">X {placementDraft.offsetX.toFixed(0)} · Y {placementDraft.offsetY.toFixed(0)}</div>}
-            {transformDraft && <div className="mt-1 font-mono text-cyan-200">Size {transformDraft.scale.toFixed(2)}× · Angle {transformDraft.rotation.toFixed(0)}°</div>}
+            <div className="mt-1 text-muted">{placementMode ? "Click or drag: place logo/text · Orbit paused" : transformMode ? "Drag cyan handles to resize or rotate · Orbit paused" : "Click: select · Drag: orbit · Scroll: zoom"}</div>
+            {placementDraft && <div className="mt-1 font-mono text-action">X {placementDraft.offsetX.toFixed(0)} · Y {placementDraft.offsetY.toFixed(0)}</div>}
+            {transformDraft && <div className="mt-1 font-mono text-action">Size {transformDraft.scale.toFixed(2)}× · Angle {transformDraft.rotation.toFixed(0)}°</div>}
           </div>
-          <span className="pointer-events-none absolute bottom-2 right-2 rounded-md bg-slate-950/80 px-2 py-1 text-[10px] text-slate-400">
+          <span className="pointer-events-none absolute bottom-2 right-2 rounded-md bg-subtle px-2 py-1 text-[10px] text-muted">
             {placementMode || transformMode ? "Release handle to save as one Undo action" : "Select only · Apply to save fabric colors"}
           </span>
         </div>
-        <nav className="flex shrink-0 flex-wrap justify-center gap-1 border-t border-slate-700 bg-slate-950/95 p-2" aria-label="3D camera views">
-          {VIEWS.map(({ id, label }) => <button type="button" key={id} aria-pressed={view === id} onClick={() => chooseView(id)} className={`${BTN} ${view === id ? "border-violet-400 bg-violet-700 text-white" : ""}`}>{label}</button>)}
+        <nav className="flex shrink-0 flex-wrap justify-center gap-1 border-t border-line bg-subtle p-2" aria-label="3D camera views">
+          {VIEWS.map(({ id, label }) => <button type="button" key={id} aria-pressed={view === id} onClick={() => chooseView(id)} className={`${BTN} ${view === id ? "border-line bg-action text-on-action" : ""}`}>{label}</button>)}
         </nav>
       </div>
     </div>}

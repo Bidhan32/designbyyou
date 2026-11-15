@@ -492,47 +492,25 @@ function ViewerOverlay({
     return (
         <div
             className="
-                pointer-events-none
-                absolute
-                right-3
-                top-3
-                z-20
-                rounded-xl
-                border
-                border-black/10
-                bg-white/80
-                px-3
-                py-2
-                shadow-lg
-                backdrop-blur-md
+                pointer-events-none absolute right-3 top-3 z-20 rounded-md border border-line bg-subtle px-3 py-2
             "
         >
 
             <div
                 className="
-                    flex
-                    items-center
-                    gap-2
+                    flex items-center gap-2
                 "
             >
 
                 <span
                     className="
-                        h-2
-                        w-2
-                        rounded-full
-                        bg-emerald-500
-                        shadow-[0_0_8px_rgba(16,185,129,0.8)]
+                        h-2 w-2 rounded-full bg-action text-on-action
                     "
                 />
 
                 <span
                     className="
-                        text-[9px]
-                        font-bold
-                        uppercase
-                        tracking-[0.18em]
-                        text-black/60
+                        text-[11px] font-bold uppercase tracking-[0.18em] text-muted
                     "
                 >
                     Mesh Ready
@@ -542,12 +520,7 @@ function ViewerOverlay({
 
             <div
                 className="
-                    mt-2
-                    flex
-                    gap-3
-                    font-mono
-                    text-[9px]
-                    text-black/45
+                    mt-2 flex gap-3 font-mono text-[11px] text-muted
                 "
             >
 
@@ -565,12 +538,7 @@ function ViewerOverlay({
 
                 <div
                     className="
-                        mt-1
-                        font-mono
-                        text-[8px]
-                        uppercase
-                        tracking-wider
-                        text-violet-600
+                        mt-1 font-mono text-[11px] uppercase tracking-wider text-action
                     "
                 >
                     {reconstructionMethod}
@@ -597,29 +565,13 @@ function ViewerMessage({
     return (
         <div
             className="
-                pointer-events-none
-                absolute
-                inset-0
-                z-20
-                flex
-                items-center
-                justify-center
-                p-8
+                pointer-events-none absolute inset-0 z-20 flex items-center justify-center p-4
             "
         >
 
             <div
                 className="
-                    max-w-sm
-                    rounded-2xl
-                    border
-                    border-black/10
-                    bg-white/75
-                    px-6
-                    py-5
-                    text-center
-                    shadow-xl
-                    backdrop-blur-xl
+                    max-w-sm rounded-md border border-line bg-subtle px-6 py-5 text-center
                 "
             >
 
@@ -627,15 +579,7 @@ function ViewerMessage({
 
                     <div
                         className="
-                            mx-auto
-                            mb-3
-                            h-7
-                            w-7
-                            animate-spin
-                            rounded-full
-                            border-2
-                            border-violet-200
-                            border-t-violet-600
+                            mx-auto mb-3 h-7 w-7 animate-spin rounded-full border-2 border-line border-t-action
                         "
                     />
 
@@ -643,23 +587,14 @@ function ViewerMessage({
 
                     <div
                         className={`
-                            mx-auto
-                            mb-3
-                            flex
-                            h-9
-                            w-9
-                            items-center
-                            justify-center
-                            rounded-full
+                            mx-auto mb-3 flex h-9 w-9 items-center justify-center rounded-full
                             ${
                                 tone === "error"
                                     ? `
-                                        bg-rose-100
-                                        text-rose-600
+                                        bg-subtle text-action
                                     `
                                     : `
-                                        bg-violet-100
-                                        text-violet-600
+                                        bg-subtle text-action
                                     `
                             }
                         `}
@@ -671,14 +606,11 @@ function ViewerMessage({
 
                 <h3
                     className={`
-                        text-xs
-                        font-bold
-                        uppercase
-                        tracking-[0.18em]
+                        text-xs font-bold uppercase tracking-[0.18em]
                         ${
                             tone === "error"
-                                ? "text-rose-600"
-                                : "text-black/70"
+                                ? "text-action"
+                                : "text-muted"
                         }
                     `}
                 >
@@ -687,10 +619,7 @@ function ViewerMessage({
 
                 <p
                     className="
-                        mt-2
-                        text-[10px]
-                        leading-relaxed
-                        text-black/45
+                        mt-2 text-[10px] leading-relaxed text-muted
                     "
                 >
                     {description}
@@ -815,12 +744,7 @@ export const Viewer = ({
     return (
         <div
             className={`
-                relative
-                h-full
-                min-h-[420px]
-                w-full
-                overflow-hidden
-                bg-[radial-gradient(circle_at_50%_32%,#ffffff_0%,#f4f4f6_48%,#e5e7eb_100%)]
+                relative h-full min-h-[420px] w-full overflow-hidden bg-surface
                 ${className}
             `}
         >
@@ -1162,25 +1086,7 @@ export const Viewer = ({
 
                 <div
                     className="
-                        pointer-events-none
-                        absolute
-                        bottom-3
-                        left-1/2
-                        z-10
-                        -translate-x-1/2
-                        rounded-full
-                        border
-                        border-black/10
-                        bg-white/65
-                        px-3
-                        py-1.5
-                        text-[8px]
-                        font-bold
-                        uppercase
-                        tracking-[0.16em]
-                        text-black/35
-                        shadow-sm
-                        backdrop-blur-md
+                        pointer-events-none absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-md border border-line bg-subtle px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-muted
                     "
                 >
                     Drag to rotate · Scroll to zoom

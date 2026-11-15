@@ -1,3 +1,4 @@
+import MetricList from "../../components/MetricList";
 "use strict";
 
 /*
@@ -83,7 +84,6 @@ import {
   Sparkles,
   WalletCards,
   X,
-  Zap,
 } from "lucide-react";
 
 import {
@@ -95,6 +95,7 @@ import {
 
 import { loadStripe } from "@stripe/stripe-js";
 
+import { useLocation } from "react-router-dom";
 import API from "../../api/axios";
 
 import { useTheme } from "../../context/ThemeContext.helpers.js";
@@ -168,23 +169,6 @@ const LEDGER_PROVIDERS = [
   },
 ];
 
-const SUBSCRIPTION_PLANS = [
-  {
-    id: "monthly",
-    name: "Monthly",
-    description: "Flexible month-to-month Creator membership.",
-  },
-  {
-    id: "quarterly",
-    name: "Quarterly",
-    description: "Creator membership billed every three months.",
-  },
-  {
-    id: "yearly",
-    name: "Yearly",
-    description: "Annual Creator membership through Stripe.",
-  },
-];
 
 function createCardElementOptions(theme) {
   const isDark = theme === "dark";
@@ -476,29 +460,29 @@ function getDirectionAmountPrefix(direction) {
 function getDirectionBadgeClasses(direction) {
   switch (direction) {
     case "credit":
-      return "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
+      return "border-line bg-subtle text-action";
 
     case "debit":
-      return "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-400";
+      return "border-line bg-subtle text-action";
 
     case "internal_release":
-      return "border-[#D4AF37]/20 bg-[#D4AF37]/10 text-[#D4AF37]";
+      return "border-line bg-subtle text-action";
 
     default:
-      return "border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/50";
+      return "border-line bg-subtle text-muted";
   }
 }
 
 function getDirectionAmountClasses(direction) {
   switch (direction) {
     case "credit":
-      return "text-emerald-700 dark:text-emerald-400";
+      return "text-action";
 
     case "debit":
-      return "text-rose-700 dark:text-rose-400";
+      return "text-action";
 
     default:
-      return "text-[#D4AF37]";
+      return "text-action";
   }
 }
 
@@ -526,29 +510,24 @@ function getSubscriptionStatusClasses(status) {
   switch (status) {
     case "active":
     case "trialing":
-      return "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
+      return "border-line bg-subtle text-action";
 
     case "past_due":
     case "incomplete":
-      return "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300";
+      return "border-line bg-subtle text-action";
 
     case "unpaid":
-      return "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-400";
+      return "border-line bg-subtle text-action";
 
     case "canceled":
     case "incomplete_expired":
-      return "border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/45";
+      return "border-line bg-subtle text-muted";
 
     default:
-      return "border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/45";
+      return "border-line bg-subtle text-muted";
   }
 }
 
-function canStartNewSubscription(subscription) {
-  const status = String(subscription?.status || "free").toLowerCase();
-
-  return ["free", "canceled", "incomplete_expired"].includes(status);
-}
 
 /*=========================================================
 Modal
@@ -585,27 +564,27 @@ function WalletModal({ open, title, subtitle, onClose, children }) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 dark:bg-black/80 p-4 backdrop-blur-md"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 dark:bg-black/80 p-4"
       onMouseDown={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-lg overflow-hidden rounded-[2rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0a0a0a] shadow-2xl shadow-slate-300/50 shadow-sm"
+        className="w-full max-w-lg overflow-hidden rounded-md border border-line bg-surface"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div
-          className="flex items-start justify-between gap-4 border-b border-slate-200/80 dark:border-white/5 p-6"
+          className="flex items-start justify-between gap-4 border-b border-line p-4"
         >
           <div>
             <h2
-              className="font-serif text-2xl text-slate-900 dark:text-white"
+              className="font-sans text-2xl text-ink"
             >
               {title}
             </h2>
 
             <p
-              className="mt-2 text-xs leading-5 text-slate-500 dark:text-white/45"
+              className="mt-2 text-xs leading-5 text-muted"
             >
               {subtitle}
             </p>
@@ -614,14 +593,14 @@ function WalletModal({ open, title, subtitle, onClose, children }) {
           <button
             type="button"
             onClick={onClose}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/50 transition hover:bg-slate-200 dark:hover:bg-white/10 hover:text-slate-950 dark:hover:text-white"
+            className="grid h-9 w-10 shrink-0 place-items-center rounded-md border border-line bg-subtle text-muted transition hover:bg-subtle hover:text-ink"
             aria-label="Close"
           >
             <X size={16} />
           </button>
         </div>
 
-        <div className="p-6">{children}</div>
+        <div className="p-4">{children}</div>
       </div>
     </div>
   );
@@ -681,7 +660,6 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
 
   const [subscriptionError, setSubscriptionError] = useState("");
 
-  const [checkoutPlanLoading, setCheckoutPlanLoading] = useState("");
 
   const [portalLoading, setPortalLoading] = useState(false);
 
@@ -723,7 +701,6 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
   Subscription Checkout Request Identity
   =======================================================*/
 
-  const subscriptionRequestRef = useRef(null);
 
   /*=======================================================
   Derived
@@ -740,7 +717,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
   const activeEscrowCount =
     Number.parseInt(wallet.active_escrow_count, 10) || 0;
 
-  const subscriptionCanStart = canStartNewSubscription(currentSubscription);
+  const location = useLocation();
 
   /*=======================================================
   Debounce Ledger Search
@@ -1103,77 +1080,6 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
       }),
       fetchLedger(),
     ]);
-  };
-
-  /*=======================================================
-  Subscription Checkout
-  =======================================================*/
-
-  const handleSubscribe = async (plan) => {
-    if (checkoutPlanLoading) {
-      return;
-    }
-
-    setSubscriptionError("");
-    setNotice(null);
-
-    setCheckoutPlanLoading(plan);
-
-    try {
-      if (
-        !subscriptionRequestRef.current ||
-        subscriptionRequestRef.current.plan !== plan
-      ) {
-        subscriptionRequestRef.current = {
-          plan,
-
-          id: createClientRequestId(),
-        };
-      }
-
-      const response = await API.post("/subscription/create-checkout-session", {
-        plan,
-
-        client_request_id: subscriptionRequestRef.current.id,
-      });
-
-      const url = response?.data?.url;
-
-      if (!url) {
-        throw new Error("Stripe Checkout URL was not returned.");
-      }
-
-      window.location.assign(url);
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error(
-          "Subscription Checkout failed:",
-          error?.response?.data || error,
-        );
-      }
-
-      const code = error?.response?.data?.code;
-
-      if (code === "CREATOR_SUBSCRIPTION_ALREADY_EXISTS") {
-        setNotice({
-          type: "info",
-          message:
-            "A Stripe subscription already exists for this account. Use Manage Billing instead.",
-        });
-
-        await fetchSubscription({
-          refresh: true,
-        });
-      } else {
-        setSubscriptionError(
-          error?.response?.data?.message ||
-            error?.message ||
-            "Unable to start subscription checkout.",
-        );
-      }
-    } finally {
-      setCheckoutPlanLoading("");
-    }
   };
 
   /*=======================================================
@@ -1560,28 +1466,34 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
     summaryLoading &&
     subscriptionLoading;
 
+  useEffect(() => {
+    if (!firstLoad && location.hash === "#subscription") {
+      document.getElementById("subscription")?.scrollIntoView({ block: "start" });
+    }
+  }, [firstLoad, location.key, location.hash]);
+
   if (firstLoad) {
     return (
       <div
-        className="relative flex min-h-[calc(100vh-5rem)] flex-col items-center justify-center gap-4 overflow-hidden bg-slate-50 transition-colors duration-300 dark:bg-[#030303]"
+        className="relative flex min-h-[calc(100vh-5rem)] flex-col items-center justify-center gap-4 overflow-hidden bg-canvas transition-colors duration-300"
       >
         <div
-          className="pointer-events-none absolute left-1/2 top-1/2 h-[40vw] w-[40vw] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#D4AF37]/5 blur-[150px]"
+          className="pointer-events-none absolute left-1/2 top-1/2 h-[40vw] w-[40vw] -translate-x-1/2 -translate-y-1/2 rounded-full bg-subtle blur-[150px]"
         />
 
         <div className="relative z-10">
           <div
-            className="absolute inset-0 animate-spin rounded-full border-t-2 border-[#D4AF37]"
+            className="absolute inset-0 animate-spin rounded-full border-t-2 border-line"
           />
 
           <Loader2
-            className="animate-spin text-slate-300 dark:text-white/20"
+            className="animate-spin text-muted"
             size={40}
           />
         </div>
 
         <span
-          className="relative z-10 animate-pulse text-xs font-bold tracking-normal text-[#D4AF37]"
+          className="relative z-10 animate-pulse text-xs font-bold tracking-normal text-action"
         >
           Synchronizing Wallet
         </span>
@@ -1596,7 +1508,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
   return (
     <>
       <div
-        className="relative min-h-screen overflow-x-hidden bg-slate-50 pb-32 font-sans text-slate-900 transition-colors duration-300 dark:bg-[#030303] dark:text-white selection:bg-[#D4AF37] selection:text-black"
+        className="relative min-h-screen overflow-x-hidden bg-canvas pb-32 font-sans text-ink transition-colors duration-300 selection:bg-action selection:text-on-action"
       >
         {/*=================================================
         Ambient
@@ -1605,13 +1517,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
         <div
           className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
         >
-          <div
-            className="absolute -right-[5%] -top-[10%] h-[40vw] w-[40vw] rounded-full bg-[#D4AF37]/5 blur-[150px]"
-          />
 
-          <div
-            className="absolute -bottom-[20%] -left-[10%] h-[40vw] w-[40vw] rounded-full bg-indigo-500/[0.03] blur-[150px]"
-          />
         </div>
 
         <div
@@ -1626,24 +1532,24 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
           >
             <div>
               <p
-                className="mb-3 text-xs font-semibold tracking-normal text-[#D4AF37]"
+                className="mb-3 text-xs font-semibold tracking-normal text-action"
               >
                 Billing
               </p>
 
               <h1
-                className="font-semibold font-semibold tracking-tight text-slate-900 dark:text-white text-3xl sm:text-4xl"
+                className="font-semibold tracking-tight text-ink text-3xl sm:text-4xl"
               >
                 Wallet{" "}
                 <span
-                  className="italic text-[#D4AF37]"
+                  className="italic text-action"
                 >
                   & Billing
                 </span>
               </h1>
 
               <p
-                className="mt-3 max-w-2xl text-xs leading-6 text-slate-500 dark:text-white/45 sm:text-sm"
+                className="mt-3 max-w-2xl text-xs leading-6 text-muted sm:text-sm"
               >
                 View your balance, payment history, and membership.
               </p>
@@ -1652,7 +1558,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
             <button
               type="button"
               onClick={handleRefreshAll}
-              className="inline-flex w-fit items-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-5 py-3 text-xs font-semibold tracking-normal text-slate-600 dark:text-white/60 transition hover:border-[#D4AF37]/30 hover:text-[#D4AF37]"
+              className="inline-flex w-fit items-center gap-2 rounded-md border border-line bg-subtle px-5 py-3 text-xs font-semibold tracking-normal text-muted transition hover:border-line hover:text-action"
             >
               <RefreshCw
                 size={13}
@@ -1673,20 +1579,12 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
           {notice && (
             <div
               className={`
-                mb-8
-                flex
-                items-start
-                gap-3
-                rounded-2xl
-                border
-                p-4
-                text-xs
-                leading-5
+                mb-8 flex items-start gap-3 rounded-md border p-4 text-xs leading-5
 
                 ${
                   notice.type === "success"
-                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                    : "border-[#D4AF37]/20 bg-[#D4AF37]/10 text-amber-700 dark:text-[#e9d181]"
+                    ? "border-line bg-subtle text-action"
+                    : "border-line bg-subtle text-action"
                 }
               `}
             >
@@ -1715,10 +1613,10 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
 
           {summaryError && (
             <div
-              className="mb-8 flex items-center justify-between gap-4 rounded-2xl border border-rose-500/20 bg-rose-500/5 p-4"
+              className="mb-8 flex items-center justify-between gap-4 rounded-md border border-line bg-subtle p-4"
             >
               <div
-                className="flex items-center gap-3 text-xs text-rose-700 dark:text-rose-300"
+                className="flex items-center gap-3 text-xs text-action"
               >
                 <AlertCircle size={16} />
 
@@ -1728,7 +1626,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
               <button
                 type="button"
                 onClick={() => fetchSummary()}
-                className="text-xs font-semibold tracking-widest text-slate-600 dark:text-white/60 hover:text-slate-950 dark:hover:text-white"
+                className="text-xs font-semibold tracking-widest text-muted hover:text-ink"
               >
                 Retry
               </button>
@@ -1739,135 +1637,12 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
           Primary Wallet Metrics
           =================================================*/}
 
-          <div
-            className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4"
-          >
-            {/* Available */}
-
-            <div
-              className="group relative overflow-hidden rounded-3xl border border-[#D4AF37]/20 bg-slate-50 dark:bg-[#111] p-7 shadow-2xl"
-            >
-              <WalletCards
-                size={110}
-                strokeWidth={1}
-                className="pointer-events-none absolute -right-5 -top-4 rotate-12 text-[#D4AF37] opacity-[0.05] transition duration-700 group-hover:scale-110"
-              />
-
-              <div className="relative z-10">
-                <p
-                  className="mb-4 text-xs font-semibold tracking-normal text-[#D4AF37]"
-                >
-                  Available Balance
-                </p>
-
-                <p
-                  className="font-serif text-4xl tracking-tight"
-                >
-                  {formatMoney(wallet.available_balance, currency)}
-                </p>
-
-                <p
-                  className="mt-2 text-xs tracking-widest text-slate-500 dark:text-white/35"
-                >
-                  Ready for bookings
-                </p>
-              </div>
-            </div>
-
-            {/* Escrow */}
-
-            <div
-              className="group relative overflow-hidden rounded-3xl border border-slate-200/80 dark:border-white/5 bg-white dark:bg-[#0a0a0a] p-7 shadow-2xl"
-            >
-              <ShieldCheck
-                size={110}
-                strokeWidth={1}
-                className="pointer-events-none absolute -right-5 -top-4 text-indigo-500 dark:text-indigo-400 opacity-[0.035]"
-              />
-
-              <p
-                className="mb-4 text-xs font-semibold tracking-normal text-slate-500 dark:text-white/40"
-              >
-                Active Escrow
-              </p>
-
-              <p
-                className="font-serif text-4xl tracking-tight"
-              >
-                {formatMoney(wallet.locked_escrow_balance, currency)}
-              </p>
-
-              <p
-                className="mt-2 text-xs tracking-widest text-indigo-600 dark:text-indigo-300/70"
-              >
-                {activeEscrowCount}{" "}
-                {activeEscrowCount === 1 ? "active booking" : "active bookings"}
-              </p>
-            </div>
-
-            {/* Pending Return */}
-
-            <div
-              className="relative overflow-hidden rounded-3xl border border-slate-200/80 dark:border-white/5 bg-white dark:bg-[#0a0a0a] p-7 shadow-2xl"
-            >
-              <RotateCcw
-                size={110}
-                strokeWidth={1}
-                className="pointer-events-none absolute -right-5 -top-4 text-rose-700 dark:text-rose-400 opacity-[0.03]"
-              />
-
-              <p
-                className="mb-4 text-xs font-semibold tracking-normal text-slate-500 dark:text-white/40"
-              >
-                Pending Return
-              </p>
-
-              <p
-                className="font-serif text-4xl tracking-tight"
-              >
-                {formatMoney(wallet.pending_refund_balance, currency)}
-              </p>
-
-              <p
-                className="mt-2 text-xs tracking-widest text-slate-500 dark:text-white/35"
-              >
-                Awaiting Stripe
-              </p>
-            </div>
-
-            {/* Booking Spend */}
-
-            <div
-              className="relative overflow-hidden rounded-3xl border border-slate-200/80 dark:border-white/5 bg-white dark:bg-[#0a0a0a] p-7 shadow-2xl"
-            >
-              <CircleDollarSign
-                size={110}
-                strokeWidth={1}
-                className="pointer-events-none absolute -right-5 -top-4 text-slate-900 dark:text-white opacity-[0.025]"
-              />
-
-              <p
-                className="mb-4 text-xs font-semibold tracking-normal text-slate-500 dark:text-white/40"
-              >
-                Net Booking Spend
-              </p>
-
-              <p
-                className="font-serif text-4xl tracking-tight"
-              >
-                {formatMoney(
-                  wallet.net_p2p_spend || wallet.total_lifespan_spend,
-                  currency,
-                )}
-              </p>
-
-              <p
-                className="mt-2 text-xs tracking-widest text-slate-500 dark:text-white/35"
-              >
-                After booking refunds
-              </p>
-            </div>
-          </div>
+          <MetricList label="Wallet balances" rows={[
+            ["Available balance", formatMoney(wallet.available_balance, currency)],
+            ["Active escrow", formatMoney(wallet.locked_escrow_balance, currency), activeEscrowCount + (activeEscrowCount === 1 ? " active booking" : " active bookings")],
+            ["Pending return", formatMoney(wallet.pending_refund_balance, currency), "Awaiting Stripe"],
+            ["Net booking spend", formatMoney(wallet.net_p2p_spend || wallet.total_lifespan_spend, currency), "After refunds"],
+          ]} />
 
           {/*=================================================
           Wallet Actions + Lifetime Stats
@@ -1877,20 +1652,20 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
             className="mb-12 grid gap-5 lg:grid-cols-[1.2fr_1fr]"
           >
             <div
-              className="rounded-3xl border border-slate-200/80 dark:border-white/5 bg-white dark:bg-[#0a0a0a] p-6 shadow-2xl sm:p-7"
+              className="rounded-md border border-line bg-surface p-4"
             >
               <div
                 className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
                   <h2
-                    className="font-serif text-2xl"
+                    className="font-sans text-2xl"
                   >
                     Wallet Actions
                   </h2>
 
                   <p
-                    className="mt-2 max-w-xl text-xs leading-5 text-slate-500 dark:text-white/40"
+                    className="mt-2 max-w-xl text-xs leading-5 text-muted"
                   >
                     Fund your Creator wallet or return unused Stripe-funded
                     wallet value to its original payment source.
@@ -1899,7 +1674,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
 
                 <ShieldCheck
                   size={28}
-                  className="hidden text-[#D4AF37] sm:block"
+                  className="hidden text-action sm:block"
                 />
               </div>
 
@@ -1913,7 +1688,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
 
                     setDepositOpen(true);
                   }}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-5 py-4 text-xs font-semibold tracking-normal text-black transition hover:bg-slate-100 dark:hover:bg-white"
+                  className="flex items-center justify-center gap-2 rounded-md bg-action px-5 py-4 text-xs font-semibold tracking-normal text-on-action transition hover:bg-action dark:hover:bg-surface"
                 >
                   <CreditCard size={14} />
                   Add Funds
@@ -1927,7 +1702,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                     setWithdrawalOpen(true);
                   }}
                   disabled={availableBalance <= 0}
-                  className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-5 py-4 text-xs font-semibold tracking-normal text-slate-600 dark:text-white/70 transition hover:border-[#D4AF37]/30 hover:text-[#D4AF37] disabled:cursor-not-allowed disabled:opacity-35"
+                  className="flex items-center justify-center gap-2 rounded-md border border-line bg-subtle px-5 py-4 text-xs font-semibold tracking-normal text-muted transition hover:border-line hover:text-action disabled:cursor-not-allowed disabled:opacity-35"
                 >
                   <ArrowUpRight size={14} />
                   Return Unused Balance
@@ -1936,7 +1711,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
             </div>
 
             <div
-              className="grid grid-cols-2 gap-px overflow-hidden rounded-3xl border border-slate-200/80 dark:border-white/5 bg-slate-100 dark:bg-white/5 shadow-2xl sm:grid-cols-4 lg:grid-cols-2"
+              className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-subtle sm:grid-cols-4 lg:grid-cols-2"
             >
               {[
                 {
@@ -1959,16 +1734,16 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
               ].map((stat) => (
                 <div
                   key={stat.label}
-                  className="bg-white dark:bg-[#0a0a0a] p-5"
+                  className="bg-surface p-4"
                 >
                   <p
-                    className="text-xs font-semibold tracking-normal text-slate-500 dark:text-white/35"
+                    className="text-xs font-semibold tracking-normal text-muted"
                   >
                     {stat.label}
                   </p>
 
                   <p
-                    className="mt-2 font-serif text-xl text-slate-900 dark:text-white"
+                    className="mt-2 font-serif text-xl text-ink"
                   >
                     {stat.count
                       ? Number(stat.value || 0).toLocaleString()
@@ -1984,15 +1759,16 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
           =================================================*/}
 
           <section
-            className="mb-12 overflow-hidden rounded-[2rem] border border-[#D4AF37]/20 bg-white dark:bg-[#0a0a0a] shadow-xl shadow-slate-200/60 shadow-sm"
+            id="subscription" aria-label="Subscription"
+            className="mb-12 scroll-mt-20 overflow-hidden rounded-md border border-line bg-surface"
           >
             <div
-              className="relative border-b border-slate-200/80 dark:border-white/5 bg-gradient-to-r from-[#D4AF37]/10 to-transparent p-6 sm:p-8"
+              className="relative border-b border-line bg-surface p-4"
             >
               <Crown
                 size={130}
                 strokeWidth={1}
-                className="pointer-events-none absolute -right-7 -top-8 text-[#D4AF37] opacity-[0.035]"
+                className="pointer-events-none absolute -right-7 -top-8 text-action opacity-[0.035]"
               />
 
               <div
@@ -2000,47 +1776,45 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
               >
                 <div>
                   <p
-                    className="text-xs font-semibold tracking-normal text-[#D4AF37]"
+                    className="text-xs font-semibold tracking-normal text-action"
                   >
                     Membership
                   </p>
 
                   <h2
-                    className="mt-2 font-serif text-3xl"
+                    className="mt-2 font-sans text-3xl"
                   >
                     Subscription
                   </h2>
 
                   <p
-                    className="mt-3 max-w-xl text-xs leading-6 text-slate-500 dark:text-white/45"
+                    className="mt-3 max-w-xl text-xs leading-6 text-muted"
                   >
-                    Subscribe securely through Stripe and manage billing,
-                    invoices, payment methods, and cancellation through Stripe
-                    Billing Portal.
+                    View your plan and billing details. Active memberships waive the connection fee on bookings.
                   </p>
                 </div>
 
                 {subscriptionLoading ? (
                   <Loader2
                     size={24}
-                    className="animate-spin text-[#D4AF37]"
+                    className="animate-spin text-action"
                   />
-                ) : (
+                ) : subscription && (
                   <div
-                    className="min-w-[240px] rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-black/20 p-5"
+                    className="min-w-[240px] rounded-md border border-line bg-subtle p-4"
                   >
                     <div
                       className="flex items-start justify-between gap-4"
                     >
                       <div>
                         <p
-                          className="text-xs font-semibold tracking-normal text-slate-500 dark:text-white/35"
+                          className="text-xs font-semibold tracking-normal text-muted"
                         >
                           Current Plan
                         </p>
 
                         <p
-                          className="mt-2 font-serif text-2xl"
+                          className="mt-2 font-sans text-2xl"
                         >
                           {getSubscriptionPlanLabel(currentSubscription.plan)}
                         </p>
@@ -2048,14 +1822,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
 
                       <span
                         className={`
-                          rounded-full
-                          border
-                          px-3
-                          py-1.5
-                          text-xs
-                          font-semibold
-                          
-                          tracking-widest
+                          rounded-md border px-3 py-1.5 text-xs font-semibold tracking-widest
 
                           ${getSubscriptionStatusClasses(
                             currentSubscription.status,
@@ -2068,15 +1835,15 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
 
                     {currentSubscription.current_period_end && (
                       <div
-                        className="mt-4 flex items-center gap-2 border-t border-slate-200/80 dark:border-white/5 pt-4 text-xs text-slate-500 dark:text-white/45"
+                        className="mt-4 flex items-center gap-2 border-t border-line pt-4 text-xs text-muted"
                       >
-                        <CalendarDays size={12} className="text-[#D4AF37]" />
+                        <CalendarDays size={12} className="text-action" />
 
                         {currentSubscription.cancel_at_period_end
                           ? "Active until"
                           : "Current period ends"}
 
-                        <span className="text-slate-700 dark:text-white/75">
+                        <span className="text-ink dark:text-muted">
                           {formatDate(currentSubscription.current_period_end)}
                         </span>
                       </div>
@@ -2087,11 +1854,11 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
             </div>
 
             <div
-              className="p-6 sm:p-8"
+              className="p-4"
             >
               {subscriptionError && (
                 <div
-                  className="mb-6 flex items-center justify-between gap-4 rounded-xl border border-rose-500/20 bg-rose-500/5 p-4 text-xs text-rose-700 dark:text-rose-300"
+                  className="mb-6 flex items-center justify-between gap-4 rounded-md border border-line bg-subtle p-4 text-xs text-action"
                 >
                   <span>{subscriptionError}</span>
 
@@ -2111,7 +1878,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
 
               {currentSubscription.needs_billing_attention && (
                 <div
-                  className="mb-6 flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-xs leading-5 text-amber-700 dark:text-amber-200"
+                  className="mb-6 flex items-start gap-3 rounded-md border border-line bg-subtle p-4 text-xs leading-5 text-action"
                 >
                   <AlertCircle size={16} className="mt-0.5 shrink-0" />
                   Your Stripe subscription requires billing attention. Open
@@ -2121,7 +1888,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
 
               {currentSubscription.cancel_at_period_end && (
                 <div
-                  className="mb-6 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 p-4 text-xs leading-5 text-slate-600 dark:text-white/55"
+                  className="mb-6 rounded-md border border-line bg-subtle p-4 text-xs leading-5 text-muted"
                 >
                   Cancellation is scheduled. Your current access remains
                   governed by Stripe until the end of the current billing
@@ -2129,102 +1896,21 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                 </div>
               )}
 
-              {subscriptionCanStart ? (
-                <div
-                  className="grid gap-4 md:grid-cols-3"
-                >
-                  {SUBSCRIPTION_PLANS.map((plan) => (
-                    <div
-                      key={plan.id}
-                      className="flex flex-col rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#111] p-5 transition hover:border-[#D4AF37]/30"
-                    >
-                      <Sparkles size={18} className="text-[#D4AF37]" />
-
-                      <h3
-                        className="mt-5 font-serif text-2xl"
-                      >
-                        {plan.name}
-                      </h3>
-
-                      <p
-                        className="mt-3 flex-1 text-xs leading-5 text-slate-500 dark:text-white/40"
-                      >
-                        {plan.description}
-                      </p>
-
-                      <button
-                        type="button"
-                        disabled={Boolean(checkoutPlanLoading)}
-                        onClick={() => handleSubscribe(plan.id)}
-                        className="mt-6 flex items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-4 py-3.5 text-xs font-semibold tracking-normal text-black transition hover:bg-slate-100 dark:hover:bg-white disabled:cursor-wait disabled:opacity-50"
-                      >
-                        {checkoutPlanLoading === plan.id ? (
-                          <Loader2 size={13} className="animate-spin" />
-                        ) : (
-                          <Zap size={13} />
-                        )}
-                        Subscribe
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div
-                  className="flex flex-col gap-5 rounded-2xl border border-slate-200/80 dark:border-white/5 bg-slate-50 dark:bg-[#111] p-6 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div>
-                    <p
-                      className="text-xs font-semibold tracking-normal text-[#D4AF37]"
-                    >
-                      Managed through Stripe
-                    </p>
-
-                    <p
-                      className="mt-2 text-sm text-slate-600 dark:text-white/60"
-                    >
-                      Your current subscription should be managed through Stripe
-                      Billing Portal.
-                    </p>
-                  </div>
-
+              {subscription && (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-muted">
+                    {currentSubscription.can_manage_billing
+                      ? "Review invoices, update your payment method or manage your subscription in Stripe."
+                      : "New subscriptions are currently paused."}
+                  </p>
                   {currentSubscription.can_manage_billing && (
-                    <button
-                      type="button"
-                      onClick={handleManageBilling}
-                      disabled={portalLoading}
-                      className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-5 py-3.5 text-xs font-semibold tracking-normal text-black transition hover:bg-slate-100 dark:hover:bg-white disabled:cursor-wait disabled:opacity-50"
-                    >
-                      {portalLoading ? (
-                        <Loader2 size={13} className="animate-spin" />
-                      ) : (
-                        <ExternalLink size={13} />
-                      )}
-                      Manage Billing
+                    <button type="button" onClick={handleManageBilling} disabled={portalLoading}
+                      className="inline-flex h-9 items-center gap-2 rounded-md bg-action px-3 text-sm text-on-action">
+                      <ExternalLink size={16} />{portalLoading ? "Opening billing…" : "Manage billing"}
                     </button>
                   )}
                 </div>
               )}
-
-              {subscriptionCanStart &&
-                currentSubscription.can_manage_billing && (
-                  <div
-                    className="mt-5 flex justify-end"
-                  >
-                    <button
-                      type="button"
-                      onClick={handleManageBilling}
-                      disabled={portalLoading}
-                      className="inline-flex items-center gap-2 text-xs font-semibold tracking-normal text-slate-500 dark:text-white/45 transition hover:text-[#D4AF37]"
-                    >
-                      {portalLoading ? (
-                        <Loader2 size={12} className="animate-spin" />
-                      ) : (
-                        <ExternalLink size={12} />
-                      )}
-                      Billing History
-                    </button>
-                  </div>
-                )}
             </div>
           </section>
 
@@ -2233,10 +1919,10 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
           =================================================*/}
 
           <section
-            className="overflow-hidden rounded-[2rem] border border-slate-200/80 dark:border-white/5 bg-white dark:bg-[#0a0a0a] shadow-2xl"
+            className="overflow-hidden rounded-md border border-line bg-surface"
           >
             <div
-              className="border-b border-slate-200/80 dark:border-white/5 bg-slate-100/70 dark:bg-[#111]/50 p-6 sm:p-8"
+              className="border-b border-line bg-subtle p-4"
             >
               <div
                 className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between"
@@ -2245,9 +1931,9 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   className="flex items-center gap-4"
                 >
                   <div
-                    className="grid h-11 w-11 place-items-center rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#030303]"
+                    className="grid h-11 w-11 place-items-center rounded-md border border-line bg-surface dark:bg-canvas"
                   >
-                    <FileText size={17} className="text-[#D4AF37]" />
+                    <FileText size={17} className="text-action" />
                   </div>
 
                   <div>
@@ -2258,7 +1944,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                     </h2>
 
                     <p
-                      className="mt-1 text-xs font-bold tracking-normal text-slate-500 dark:text-white/35"
+                      className="mt-1 text-xs font-bold tracking-normal text-muted"
                     >
                       {pagination.total} recorded{" "}
                       {pagination.total === 1 ? "transaction" : "transactions"}
@@ -2276,7 +1962,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
 
                     <Search
                       size={14}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
                     />
 
                     <input
@@ -2285,14 +1971,14 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                       onChange={handleLedgerSearch}
                       maxLength={100}
                       placeholder="Search ledger"
-                      className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#030303] py-3 pl-9 pr-3 text-xs text-slate-900 dark:text-white outline-none placeholder:text-slate-400 dark:placeholder:text-white/25 focus:border-[#D4AF37]/40"
+                      className="w-full rounded-md border border-line bg-surface dark:bg-canvas py-3 pl-9 pr-3 text-xs text-ink outline-none placeholder:text-muted focus:border-line"
                     />
                   </label>
 
                   <select
                     value={ledgerType}
                     onChange={handleLedgerType}
-                    className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#030303] px-3 py-3 text-xs text-slate-600 dark:text-white/70 outline-none"
+                    className="rounded-md border border-line bg-surface dark:bg-canvas px-3 py-3 text-xs text-muted outline-none"
                   >
                     {LEDGER_TYPES.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -2304,7 +1990,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   <select
                     value={ledgerProvider}
                     onChange={handleLedgerProvider}
-                    className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#030303] px-3 py-3 text-xs text-slate-600 dark:text-white/70 outline-none"
+                    className="rounded-md border border-line bg-surface dark:bg-canvas px-3 py-3 text-xs text-muted outline-none"
                   >
                     {LEDGER_PROVIDERS.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -2318,7 +2004,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
 
             {ledgerError && (
               <div
-                className="m-5 flex items-center justify-between gap-4 rounded-xl border border-rose-500/20 bg-rose-500/5 p-4 text-xs text-rose-700 dark:text-rose-300"
+                className="m-5 flex items-center justify-between gap-4 rounded-md border border-line bg-subtle p-4 text-xs text-action"
               >
                 <span>{ledgerError}</span>
 
@@ -2338,21 +2024,21 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
               >
                 <Loader2
                   size={28}
-                  className="animate-spin text-[#D4AF37]"
+                  className="animate-spin text-action"
                 />
               </div>
             ) : ledger.length === 0 ? (
               <div
-                className="flex min-h-[300px] flex-col items-center justify-center gap-4 p-10 text-center"
+                className="flex min-h-[300px] flex-col items-center justify-center gap-4 p-4 text-center"
               >
                 <div
-                  className="grid h-16 w-16 place-items-center rounded-full border border-slate-200/80 dark:border-white/5 bg-slate-50 dark:bg-[#111]"
+                  className="grid h-16 w-16 place-items-center rounded-full border border-line bg-canvas dark:bg-surface"
                 >
-                  <Sparkles size={24} className="text-slate-300 dark:text-white/20" />
+                  <Sparkles size={24} className="text-muted" />
                 </div>
 
                 <p
-                  className="text-xs font-semibold tracking-normal text-slate-500 dark:text-white/35"
+                  className="text-xs font-semibold tracking-normal text-muted"
                 >
                   No matching transactions found
                 </p>
@@ -2364,7 +2050,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                 =========================================*/}
 
                 <div
-                  className="divide-y divide-slate-200 dark:divide-white/5 md:hidden"
+                  className="divide-y divide-line md:hidden"
                 >
                   {ledger.map((transaction) => {
                     const direction = transaction?.direction || "informational";
@@ -2374,7 +2060,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                     return (
                       <article
                         key={transaction.transaction_id}
-                        className="space-y-4 p-5"
+                        className="space-y-4 p-4"
                       >
                         <div
                           className="flex items-start justify-between gap-4"
@@ -2382,15 +2068,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                           <div className="min-w-0">
                             <span
                               className={`
-                                  inline-flex
-                                  rounded-lg
-                                  border
-                                  px-2.5
-                                  py-1.5
-                                  text-xs
-                                  font-semibold
-                                  
-                                  tracking-normal
+                                  inline-flex rounded-md border px-2.5 py-1.5 text-xs font-semibold tracking-normal
 
                                   ${getDirectionBadgeClasses(direction)}
                                 `}
@@ -2406,7 +2084,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                             </h3>
 
                             <p
-                              className="mt-1 truncate text-xs text-slate-500 dark:text-white/40"
+                              className="mt-1 truncate text-xs text-muted"
                             >
                               {transaction.counterparty_name ||
                                 "Platform / Stripe"}
@@ -2415,10 +2093,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
 
                           <p
                             className={`
-                                shrink-0
-                                font-mono
-                                text-base
-                                font-semibold
+                                shrink-0 font-mono text-base font-semibold
 
                                 ${getDirectionAmountClasses(direction)}
                               `}
@@ -2432,17 +2107,17 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                         </div>
 
                         <div
-                          className="grid grid-cols-2 gap-3 rounded-xl bg-slate-100/70 dark:bg-white/[0.03] p-3 text-xs"
+                          className="grid grid-cols-2 gap-3 rounded-md bg-subtle p-3 text-xs"
                         >
                           <div>
                             <p
-                              className="tracking-widest text-slate-400 dark:text-white/25"
+                              className="tracking-widest text-muted"
                             >
                               Provider
                             </p>
 
                             <p
-                              className="mt-1 text-slate-600 dark:text-white/55"
+                              className="mt-1 text-muted"
                             >
                               {getProviderLabel(transaction)}
                             </p>
@@ -2450,13 +2125,13 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
 
                           <div>
                             <p
-                              className="tracking-widest text-slate-400 dark:text-white/25"
+                              className="tracking-widest text-muted"
                             >
                               Date
                             </p>
 
                             <p
-                              className="mt-1 text-slate-600 dark:text-white/55"
+                              className="mt-1 text-muted"
                             >
                               {formatDate(transaction.created_at)}
                             </p>
@@ -2466,13 +2141,13 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                             className="col-span-2"
                           >
                             <p
-                              className="tracking-widest text-slate-400 dark:text-white/25"
+                              className="tracking-widest text-muted"
                             >
                               Reference
                             </p>
 
                             <p
-                              className="mt-1 break-all font-mono text-slate-500 dark:text-white/45"
+                              className="mt-1 break-all font-mono text-muted"
                             >
                               {shortenReference(reference, 30)}
                             </p>
@@ -2495,7 +2170,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   >
                     <thead>
                       <tr
-                        className="border-b border-slate-200/80 dark:border-white/5 bg-white dark:bg-[#030303] text-xs font-semibold tracking-normal text-slate-400 dark:text-white/30"
+                        className="border-b border-line bg-surface dark:bg-canvas text-xs font-semibold tracking-normal text-muted"
                       >
                         <th className="px-7 py-5">Transaction</th>
 
@@ -2514,7 +2189,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                     </thead>
 
                     <tbody
-                      className="divide-y divide-slate-200 dark:divide-white/5"
+                      className="divide-y divide-line"
                     >
                       {ledger.map((transaction) => {
                         const direction =
@@ -2525,20 +2200,12 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                         return (
                           <tr
                             key={transaction.transaction_id}
-                            className="transition hover:bg-slate-50 dark:hover:bg-[#111]"
+                            className="transition hover:bg-canvas dark:hover:bg-surface"
                           >
                             <td className="px-7 py-5">
                               <span
                                 className={`
-                                    inline-flex
-                                    rounded-lg
-                                    border
-                                    px-2.5
-                                    py-1.5
-                                    text-xs
-                                    font-semibold
-                                    
-                                    tracking-normal
+                                    inline-flex rounded-md border px-2.5 py-1.5 text-xs font-semibold tracking-normal
 
                                     ${getDirectionBadgeClasses(direction)}
                                   `}
@@ -2548,7 +2215,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                               </span>
 
                               <p
-                                className="mt-2 font-mono text-xs text-slate-400 dark:text-white/25"
+                                className="mt-2 font-mono text-xs text-muted"
                               >
                                 ID:{" "}
                                 {shortenReference(
@@ -2559,28 +2226,28 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                             </td>
 
                             <td
-                              className="px-7 py-5 font-serif text-sm text-slate-700 dark:text-white/80"
+                              className="px-7 py-5 font-serif text-sm text-ink dark:text-muted"
                             >
                               {transaction.counterparty_name ||
                                 "Platform / Stripe"}
                             </td>
 
                             <td
-                              className="px-7 py-5 text-xs text-slate-500 dark:text-white/45"
+                              className="px-7 py-5 text-xs text-muted"
                             >
                               {formatDateTime(transaction.created_at)}
                             </td>
 
                             <td className="px-7 py-5">
                               <p
-                                className="mb-1 text-xs font-semibold tracking-widest text-slate-500 dark:text-white/35"
+                                className="mb-1 text-xs font-semibold tracking-widest text-muted"
                               >
                                 {getProviderLabel(transaction)}
                               </p>
 
                               <span
                                 title={reference || ""}
-                                className="inline-block max-w-[230px] truncate rounded-lg border border-slate-200/80 dark:border-white/5 bg-white dark:bg-[#030303] px-3 py-1.5 font-mono text-xs text-slate-500 dark:text-white/40"
+                                className="inline-block max-w-[230px] truncate rounded-md border border-line bg-surface dark:bg-canvas px-3 py-1.5 font-mono text-xs text-muted"
                               >
                                 {shortenReference(reference, 24)}
                               </span>
@@ -2588,12 +2255,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
 
                             <td
                               className={`
-                                  px-7
-                                  py-5
-                                  text-right
-                                  font-mono
-                                  text-base
-                                  font-semibold
+                                  px-7 py-5 text-right font-mono text-base font-semibold
 
                                   ${getDirectionAmountClasses(direction)}
                                 `}
@@ -2616,10 +2278,10 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                 =========================================*/}
 
                 <div
-                  className="flex flex-col gap-4 border-t border-slate-200/80 dark:border-white/5 p-5 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-4 border-t border-line p-4 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <p
-                    className="text-xs font-bold tracking-normal text-slate-400 dark:text-white/30"
+                    className="text-xs font-bold tracking-normal text-muted"
                   >
                     Page {pagination.page} of{" "}
                     {Math.max(pagination.totalPages, 1)}
@@ -2634,7 +2296,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                       onClick={() =>
                         setLedgerPage((current) => Math.max(1, current - 1))
                       }
-                      className="flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-4 py-2.5 text-xs font-semibold tracking-widest text-slate-600 dark:text-white/55 transition hover:text-slate-950 dark:hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                      className="flex items-center gap-1.5 rounded-md border border-line bg-subtle px-4 py-2.5 text-xs font-semibold tracking-widest text-muted transition hover:text-ink disabled:cursor-not-allowed disabled:opacity-30"
                     >
                       <ChevronLeft size={12} />
                       Previous
@@ -2644,7 +2306,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                       type="button"
                       disabled={!pagination.hasNextPage || ledgerLoading}
                       onClick={() => setLedgerPage((current) => current + 1)}
-                      className="flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-4 py-2.5 text-xs font-semibold tracking-widest text-slate-600 dark:text-white/55 transition hover:text-slate-950 dark:hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                      className="flex items-center gap-1.5 rounded-md border border-line bg-subtle px-4 py-2.5 text-xs font-semibold tracking-widest text-muted transition hover:text-ink disabled:cursor-not-allowed disabled:opacity-30"
                     >
                       Next
                       <ChevronRight size={12} />
@@ -2676,14 +2338,14 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
         <form onSubmit={handleDeposit} className="space-y-5">
           <label className="block">
             <span
-              className="mb-2 block text-xs font-semibold tracking-normal text-slate-500 dark:text-white/40"
+              className="mb-2 block text-xs font-semibold tracking-normal text-muted"
             >
               Deposit Amount
             </span>
 
             <div className="relative">
               <span
-                className="absolute left-4 top-1/2 -translate-y-1/2 font-serif text-lg text-[#D4AF37]"
+                className="absolute left-4 top-1/2 -translate-y-1/2 font-serif text-lg text-action"
               >
                 $
               </span>
@@ -2701,26 +2363,26 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   setDepositError("");
                 }}
                 placeholder="50.00"
-                className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#030303] py-4 pl-10 pr-4 text-slate-900 dark:text-white outline-none focus:border-[#D4AF37]/50"
+                className="w-full rounded-md border border-line bg-surface dark:bg-canvas py-4 pl-10 pr-4 text-ink outline-none focus:border-line"
               />
             </div>
           </label>
 
           <div>
             <span
-              className="mb-2 block text-xs font-semibold tracking-normal text-slate-500 dark:text-white/40"
+              className="mb-2 block text-xs font-semibold tracking-normal text-muted"
             >
               Card
             </span>
 
             <div
-              className="min-h-[54px] rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#030303] px-4 py-[17px]"
+              className="min-h-[54px] rounded-md border border-line bg-surface dark:bg-canvas px-4 py-[17px]"
             >
               {stripeElementsEnabled ? (
                 <CardElement options={cardElementOptions} />
               ) : (
                 <p
-                  className="text-xs text-rose-700 dark:text-rose-300"
+                  className="text-xs text-action"
                 >
                   Card payments are temporarily unavailable. Please try again later.
                 </p>
@@ -2730,7 +2392,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
 
           {depositError && (
             <div
-              className="flex items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/5 p-3 text-xs leading-5 text-rose-700 dark:text-rose-300"
+              className="flex items-start gap-2 rounded-md border border-line bg-subtle p-3 text-xs leading-5 text-action"
             >
               <AlertCircle size={15} className="mt-0.5 shrink-0" />
 
@@ -2739,7 +2401,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
           )}
 
           <div
-            className="rounded-xl border border-[#D4AF37]/10 bg-[#D4AF37]/5 p-4 text-xs leading-5 text-slate-500 dark:text-white/45"
+            className="rounded-md border border-line bg-subtle p-4 text-xs leading-5 text-muted"
           >
             Wallet deposits are separate from subscription payments. Unused
             eligible wallet funds may later be returned only to their original
@@ -2749,7 +2411,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
           <button
             type="submit"
             disabled={depositLoading || !stripeElementsEnabled}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#D4AF37] py-4 text-xs font-semibold tracking-normal text-black transition hover:bg-slate-100 dark:hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-md bg-action py-4 text-xs font-semibold tracking-normal text-on-action transition hover:bg-action dark:hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
           >
             {depositLoading ? (
               <Loader2 size={14} className="animate-spin" />
@@ -2780,16 +2442,16 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
       >
         <form onSubmit={handleWithdrawal} className="space-y-5">
           <div
-            className="rounded-xl border border-slate-200/80 dark:border-white/5 bg-slate-50 dark:bg-[#111] p-4"
+            className="rounded-md border border-line bg-canvas dark:bg-surface p-4"
           >
             <p
-              className="text-xs font-semibold tracking-normal text-slate-500 dark:text-white/35"
+              className="text-xs font-semibold tracking-normal text-muted"
             >
               Available Wallet Balance
             </p>
 
             <p
-              className="mt-2 font-serif text-2xl text-slate-900 dark:text-white"
+              className="mt-2 font-sans text-2xl text-ink"
             >
               {formatMoney(wallet.available_balance, currency)}
             </p>
@@ -2797,14 +2459,14 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
 
           <label className="block">
             <span
-              className="mb-2 block text-xs font-semibold tracking-normal text-slate-500 dark:text-white/40"
+              className="mb-2 block text-xs font-semibold tracking-normal text-muted"
             >
               Amount to Return
             </span>
 
             <div className="relative">
               <span
-                className="absolute left-4 top-1/2 -translate-y-1/2 font-serif text-lg text-[#D4AF37]"
+                className="absolute left-4 top-1/2 -translate-y-1/2 font-serif text-lg text-action"
               >
                 $
               </span>
@@ -2822,14 +2484,14 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   setWithdrawalError("");
                 }}
                 placeholder="25.00"
-                className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#030303] py-4 pl-10 pr-4 text-slate-900 dark:text-white outline-none focus:border-[#D4AF37]/50"
+                className="w-full rounded-md border border-line bg-surface dark:bg-canvas py-4 pl-10 pr-4 text-ink outline-none focus:border-line"
               />
             </div>
           </label>
 
           {withdrawalError && (
             <div
-              className="flex items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/5 p-3 text-xs leading-5 text-rose-700 dark:text-rose-300"
+              className="flex items-start gap-2 rounded-md border border-line bg-subtle p-3 text-xs leading-5 text-action"
             >
               <AlertCircle size={15} className="mt-0.5 shrink-0" />
 
@@ -2838,7 +2500,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
           )}
 
           <div
-            className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100/70 dark:bg-white/[0.03] p-4 text-xs leading-5 text-slate-500 dark:text-white/45"
+            className="rounded-md border border-line bg-subtle p-4 text-xs leading-5 text-muted"
           >
             Only eligible funds can be returned to the original payment method. We’ll check the refundable amount when you submit your request.
           </div>
@@ -2846,7 +2508,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
           <button
             type="submit"
             disabled={withdrawalLoading || availableBalance <= 0}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#D4AF37] py-4 text-xs font-semibold tracking-normal text-black transition hover:bg-slate-100 dark:hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-md bg-action py-4 text-xs font-semibold tracking-normal text-on-action transition hover:bg-action dark:hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
           >
             {withdrawalLoading ? (
               <Loader2 size={14} className="animate-spin" />

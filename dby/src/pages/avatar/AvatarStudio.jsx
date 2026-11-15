@@ -905,17 +905,17 @@ function SectionTitle({
         {Icon && (
           <Icon
             size={15}
-            className="text-violet-600 dark:text-violet-400"
+            className="text-action"
           />
         )}
 
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+        <h3 className="text-sm font-bold text-ink">
           {title}
         </h3>
       </div>
 
       {description && (
-        <p className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-white/35">
+        <p className="mt-1.5 text-xs leading-5 text-muted">
           {description}
         </p>
       )}
@@ -932,7 +932,7 @@ function OptionGrid({
 }) {
   return (
     <div>
-      <p className="mb-2.5 text-[9px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-white/35">
+      <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
         {label}
       </p>
 
@@ -948,10 +948,10 @@ function OptionGrid({
               onClick={() =>
                 onChange(option.value)
               }
-              className={`relative min-h-11 rounded-xl border px-3 py-2.5 text-left text-[10px] font-bold transition ${
+              className={`relative min-h-9 rounded-md border px-3 py-2.5 text-left text-[10px] font-bold transition ${
                 selected
-                  ? "border-violet-500 bg-violet-50 text-violet-800 shadow-sm dark:border-violet-400 dark:bg-violet-500/15 dark:text-white dark:shadow-[0_0_20px_rgba(139,92,246,0.12)]"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-violet-300 hover:bg-violet-50/50 hover:text-slate-900 dark:border-white/10 dark:bg-white/[0.035] dark:text-white/45 dark:hover:border-white/20 dark:hover:bg-white/[0.06] dark:hover:text-white/70"
+                  ? "border-line bg-canvas text-action dark:bg-subtle dark:text-ink"
+                  : "border-line bg-surface text-muted hover:border-line hover:bg-subtle hover:text-ink dark:bg-subtle dark:hover:text-muted"
               }`}
             >
               {option.label}
@@ -959,7 +959,7 @@ function OptionGrid({
               {selected && (
                 <Check
                   size={12}
-                  className="absolute right-2 top-2 text-violet-600 dark:text-violet-300"
+                  className="absolute right-2 top-2 text-action"
                 />
               )}
             </button>
@@ -978,7 +978,7 @@ function ColorChoices({
 }) {
   return (
     <div>
-      <p className="mb-2.5 text-[9px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-white/35">
+      <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
         {label}
       </p>
 
@@ -995,10 +995,10 @@ function ColorChoices({
               onClick={() =>
                 onChange(color)
               }
-              className={`relative h-9 w-9 rounded-full border-2 transition ${
+              className={`relative h-9 w-9 rounded-md border-2 transition ${
                 selected
-                  ? "scale-110 border-slate-900 shadow-[0_0_0_3px_rgba(139,92,246,0.25)] dark:border-white dark:shadow-[0_0_0_3px_rgba(139,92,246,0.35)]"
-                  : "border-slate-200 hover:scale-105 hover:border-slate-400 dark:border-white/10 dark:hover:border-white/30"
+                  ? "scale-110 border-line"
+                  : "border-line hover:scale-105 hover:border-line"
               }`}
               style={{
                 backgroundColor:
@@ -1008,17 +1008,17 @@ function ColorChoices({
               {selected && (
                 <Check
                   size={13}
-                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white drop-shadow"
+                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-ink"
                 />
               )}
             </button>
           );
         })}
 
-        <label className="relative h-9 w-9 cursor-pointer overflow-hidden rounded-full border-2 border-dashed border-slate-300 bg-white transition hover:border-violet-500 dark:border-white/20 dark:bg-white/[0.04] dark:hover:border-violet-400">
+        <label className="relative h-9 w-9 cursor-pointer overflow-hidden rounded-full border-2 border-dashed border-line bg-surface transition hover:border-line dark:bg-subtle">
           <Palette
             size={14}
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-slate-500 dark:text-white/50"
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-muted"
           />
 
           <input
@@ -1053,22 +1053,22 @@ function Toggle({
       onClick={() =>
         onChange(!checked)
       }
-      className="flex w-full items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-violet-300 dark:border-white/10 dark:bg-white/[0.035] dark:shadow-none dark:hover:border-white/20"
+      className="flex w-full items-center justify-between gap-4 rounded-md border border-line bg-surface p-4 text-left transition hover:border-line dark:bg-subtle"
     >
       <div className="flex min-w-0 items-start gap-3">
         {Icon && (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600 dark:bg-white/[0.05] dark:text-violet-300">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-canvas text-action dark:bg-subtle">
             <Icon size={15} />
           </div>
         )}
 
         <div>
-          <p className="text-xs font-bold text-slate-800 dark:text-white/80">
+          <p className="text-xs font-bold text-ink dark:text-muted">
             {title}
           </p>
 
           {description && (
-            <p className="mt-1 text-[10px] leading-4 text-slate-500 dark:text-white/30">
+            <p className="mt-1 text-[10px] leading-4 text-muted">
               {description}
             </p>
           )}
@@ -1078,12 +1078,12 @@ function Toggle({
       <span
         className={`relative h-6 w-11 shrink-0 rounded-full transition ${
           checked
-            ? "bg-violet-600"
-            : "bg-slate-200 dark:bg-white/10"
+            ? "bg-action text-on-action"
+            : "bg-subtle"
         }`}
       >
         <span
-          className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition ${
+          className={`absolute top-1 h-4 w-4 rounded-full bg-surface transition ${
             checked
               ? "left-6"
               : "left-1"
@@ -1114,13 +1114,13 @@ function DesignCard({
       onClick={() =>
         onSelect(design)
       }
-      className={`group overflow-hidden rounded-2xl border text-left transition ${
+      className={`group overflow-hidden rounded-md border text-left transition ${
         selected
-          ? "border-violet-500 bg-violet-50 shadow-sm dark:border-violet-400 dark:bg-violet-500/10 dark:shadow-[0_0_24px_rgba(139,92,246,0.12)]"
-          : "border-slate-200 bg-white shadow-sm hover:border-violet-300 hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.03] dark:shadow-none dark:hover:border-white/20 dark:hover:bg-white/[0.05]"
+          ? "border-line bg-canvas dark:bg-subtle"
+          : "border-line bg-surface hover:border-line hover:bg-canvas dark:bg-subtle dark:hover:bg-subtle"
       }`}
     >
-      <div className="relative aspect-[4/3] overflow-hidden bg-black">
+      <div className="relative aspect-[4/3] overflow-hidden bg-canvas">
         {design.image &&
         !imageFailed ? (
           <img
@@ -1140,7 +1140,7 @@ function DesignCard({
             className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-white/15">
+          <div className="flex h-full w-full items-center justify-center text-muted">
             <ImageIcon
               size={24}
             />
@@ -1148,14 +1148,14 @@ function DesignCard({
         )}
 
         {selected && (
-          <div className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-violet-600 text-white">
+          <div className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-action text-on-action">
             <Check size={13} />
           </div>
         )}
 
         {design.sourceType ===
           "fashion_editor" && (
-          <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full border border-violet-300/20 bg-black/55 px-2 py-1 text-[7px] font-black uppercase tracking-[0.1em] text-violet-200 backdrop-blur-md">
+          <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-md border border-line bg-black/55 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-action">
             <Layers3
               size={9}
             />
@@ -1168,16 +1168,16 @@ function DesignCard({
       </div>
 
       <div className="p-3">
-        <p className="truncate text-xs font-bold text-slate-800 dark:text-white/80">
+        <p className="truncate text-xs font-bold text-ink dark:text-muted">
           {design.title}
         </p>
 
-        <p className="mt-1 line-clamp-2 min-h-8 text-[9px] leading-4 text-slate-500 dark:text-white/30">
+        <p className="mt-1 line-clamp-2 min-h-8 text-[11px] leading-4 text-muted">
           {design.description}
         </p>
 
         {design.allowRemix && (
-          <div className="mt-2 inline-flex items-center gap-1 text-[7px] font-black uppercase tracking-[0.12em] text-violet-600 dark:text-violet-300/70">
+          <div className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-action dark:text-muted">
             <GitFork size={9} />
 
             Remixable
@@ -2016,42 +2016,17 @@ export default function AvatarStudio() {
     return (
       <div
         className="
-          flex
-          min-h-[75vh]
-          flex-col
-          items-center
-          justify-center
-          gap-5
-          bg-[#f7f7f9]
-          text-slate-900
-          transition-colors
-          duration-300
-
-          dark:bg-[#050507]
-          dark:text-white
+          flex min-h-[75vh] flex-col items-center justify-center gap-5 bg-canvas text-ink transition-colors duration-300
         "
       >
         <div
           className="
-            flex
-            h-16
-            w-16
-            items-center
-            justify-center
-            rounded-2xl
-            border
-            border-violet-200
-            bg-violet-50
-            shadow-lg
-
-            dark:border-violet-400/20
-            dark:bg-violet-500/10
-            dark:shadow-[0_0_50px_rgba(139,92,246,0.15)]
+            flex h-16 w-16 items-center justify-center rounded-md border border-line bg-canvas dark:bg-subtle
           "
         >
           <Loader2
             size={28}
-            className="animate-spin text-violet-600 dark:text-violet-300"
+            className="animate-spin text-action"
           />
         </div>
 
@@ -2060,7 +2035,7 @@ export default function AvatarStudio() {
             Loading Avatar Studio
           </p>
 
-          <p className="mt-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-white/25">
+          <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
             Preparing Fashion Persona
           </p>
         </div>
@@ -2075,16 +2050,7 @@ export default function AvatarStudio() {
   return (
     <div
       className="
-        min-h-screen
-        bg-[#f7f7f9]
-        text-slate-900
-        transition-colors
-        duration-300
-        selection:bg-violet-600
-        selection:text-white
-
-        dark:bg-[#050507]
-        dark:text-white
+        min-h-screen bg-canvas text-ink transition-colors duration-300 selection:bg-action selection:text-on-action
       "
     >
       {/* ===================================================
@@ -2092,35 +2058,7 @@ export default function AvatarStudio() {
           =================================================== */}
 
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div
-          className="
-            absolute
-            -left-48
-            -top-48
-            h-[38rem]
-            w-[38rem]
-            rounded-full
-            bg-violet-400/[0.10]
-            blur-[160px]
 
-            dark:bg-violet-600/10
-          "
-        />
-
-        <div
-          className="
-            absolute
-            -bottom-52
-            -right-52
-            h-[36rem]
-            w-[36rem]
-            rounded-full
-            bg-cyan-400/[0.08]
-            blur-[160px]
-
-            dark:bg-cyan-500/[0.06]
-          "
-        />
       </div>
 
       <div className="relative mx-auto max-w-[1700px] space-y-6 px-4 py-5 sm:px-6 lg:px-8">
@@ -2130,31 +2068,12 @@ export default function AvatarStudio() {
 
         <header
           className="
-            flex
-            flex-col
-            gap-5
-            rounded-[2rem]
-            border
-            border-slate-200
-            bg-white/90
-            p-5
-            shadow-xl
-            backdrop-blur-xl
-
-            dark:border-white/10
-            dark:bg-[#0b0b0e]/90
-            dark:shadow-2xl
-
-            sm:p-6
-
-            lg:flex-row
-            lg:items-center
-            lg:justify-between
+            flex flex-col gap-5 rounded-md border border-line bg-subtle p-4 lg:flex-row lg:items-center lg:justify-between
           "
         >
           <div>
             <div className="flex flex-wrap items-center gap-3">
-              <span className="inline-flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.22em] text-violet-600 dark:text-violet-300">
+              <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-normal text-action">
                 <Sparkles
                   size={13}
                 />
@@ -2162,29 +2081,29 @@ export default function AvatarStudio() {
                 Fashion Persona
               </span>
 
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[7px] font-black uppercase tracking-[0.14em] text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/35">
+              <span className="rounded-md border border-line bg-canvas px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted dark:bg-subtle">
                 {role || "User"}
               </span>
 
               {avatarExists && (
-                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[7px] font-black uppercase tracking-[0.14em] text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300">
+                <span className="rounded-md border border-line bg-canvas px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-action dark:bg-subtle">
                   Version{" "}
                   {avatarVersion}
                 </span>
               )}
 
               {hasUnsavedChanges && (
-                <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[7px] font-black uppercase tracking-[0.14em] text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300">
+                <span className="rounded-md border border-line bg-canvas px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-action dark:bg-subtle">
                   Unsaved Changes
                 </span>
               )}
             </div>
 
-            <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+            <h1 className="mt-3 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
               Avatar Studio
             </h1>
 
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500 dark:text-white/35">
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
               Build a richer human identity, refine facial structure and
               styling, connect a fashion design, and create the persona shown
               throughout your profile.
@@ -2201,7 +2120,7 @@ export default function AvatarStudio() {
                 resetting ||
                 saving
               }
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 shadow-sm transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/50 dark:shadow-none dark:hover:border-rose-400/30 dark:hover:bg-rose-400/10 dark:hover:text-rose-200"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-4 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted transition hover:border-line hover:bg-canvas hover:text-action disabled:cursor-not-allowed disabled:opacity-50 dark:bg-subtle dark:hover:bg-subtle"
             >
               {resetting ? (
                 <Loader2
@@ -2226,7 +2145,7 @@ export default function AvatarStudio() {
                 saving ||
                 resetting
               }
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 text-[9px] font-black uppercase tracking-[0.15em] text-white shadow-lg shadow-violet-200/60 transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50 dark:shadow-violet-950/30"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-5 text-[11px] font-semibold uppercase tracking-[0.15em] text-on-action transition hover:bg-action disabled:cursor-not-allowed disabled:opacity-50 hover:text-on-action"
             >
               {saving ? (
                 <Loader2
@@ -2251,7 +2170,7 @@ export default function AvatarStudio() {
         {error && (
           <div
             role="alert"
-            className="flex items-start justify-between gap-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-200"
+            className="flex items-start justify-between gap-4 rounded-md border border-line bg-canvas p-4 text-sm text-action dark:bg-subtle"
           >
             <span>
               {error}
@@ -2262,7 +2181,7 @@ export default function AvatarStudio() {
               onClick={() =>
                 setError("")
               }
-              className="shrink-0 text-rose-400 transition hover:text-rose-700 dark:text-rose-300/60 dark:hover:text-white"
+              className="shrink-0 text-action transition hover:text-action dark:text-muted dark:hover:text-ink"
             >
               <X size={15} />
             </button>
@@ -2274,7 +2193,7 @@ export default function AvatarStudio() {
         {success && (
           <div
             role="status"
-            className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-200"
+            className="flex items-center gap-3 rounded-md border border-line bg-canvas p-4 text-sm text-action dark:bg-subtle"
           >
             <Check size={16} />
 
@@ -2290,19 +2209,19 @@ export default function AvatarStudio() {
           {/* Live Preview */}
 
           <section className="xl:sticky xl:top-5 xl:self-start">
-            <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl dark:border-white/10 dark:bg-[#0b0b0e] dark:shadow-2xl">
-              <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-white/10">
+            <div className="overflow-hidden rounded-md border border-line bg-surface">
+              <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
                 <div>
-                  <p className="text-[8px] font-black uppercase tracking-[0.18em] text-violet-600 dark:text-violet-300">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-action">
                     Live Preview
                   </p>
 
-                  <p className="mt-1 text-sm font-bold text-slate-800 dark:text-white/80">
+                  <p className="mt-1 text-sm font-bold text-ink dark:text-muted">
                     {displayName}
                   </p>
                 </div>
 
-                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.13em] text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/40">
+                <div className="inline-flex items-center gap-2 rounded-md border border-line bg-canvas px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.13em] text-muted dark:bg-subtle">
                   <Eye size={11} />
 
                   Real Time
@@ -2331,7 +2250,7 @@ export default function AvatarStudio() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 border-t border-slate-200 dark:border-white/10 sm:grid-cols-4">
+              <div className="grid grid-cols-2 border-t border-line sm:grid-cols-4">
                 {[
                   {
                     label:
@@ -2385,13 +2304,13 @@ export default function AvatarStudio() {
                       key={
                         item.label
                       }
-                      className="border-r border-slate-100 px-3 py-3 text-center last:border-r-0 dark:border-white/5"
+                      className="border-r border-line px-3 py-3 text-center last:border-r-0"
                     >
-                      <p className="truncate text-[9px] font-bold text-slate-700 dark:text-white/65">
+                      <p className="truncate text-[11px] font-bold text-ink dark:text-muted">
                         {item.value}
                       </p>
 
-                      <p className="mt-1 text-[7px] font-black uppercase tracking-[0.12em] text-slate-400 dark:text-white/20">
+                      <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
                         {item.label}
                       </p>
                     </div>
@@ -2403,10 +2322,10 @@ export default function AvatarStudio() {
 
           {/* Customization Panel */}
 
-          <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl dark:border-white/10 dark:bg-[#0b0b0e] dark:shadow-2xl">
+          <section className="overflow-hidden rounded-md border border-line bg-surface">
             {/* Tabs */}
 
-            <div className="overflow-x-auto border-b border-slate-200 dark:border-white/10">
+            <div className="overflow-x-auto border-b border-line">
               <div className="flex min-w-max px-2 pt-2">
                 {TABS.map(
                   ({
@@ -2429,10 +2348,10 @@ export default function AvatarStudio() {
                             value,
                           )
                         }
-                        className={`relative inline-flex min-h-12 items-center gap-2 rounded-t-xl px-4 text-[9px] font-black uppercase tracking-[0.13em] transition ${
+                        className={`relative inline-flex min-h-9 items-center gap-2 rounded-t-md px-4 text-[11px] font-semibold uppercase tracking-[0.13em] transition ${
                           active
-                            ? "bg-violet-50 text-violet-700 dark:bg-white/[0.055] dark:text-white"
-                            : "text-slate-400 hover:bg-slate-50 hover:text-slate-700 dark:text-white/30 dark:hover:bg-transparent dark:hover:text-white/60"
+                            ? "bg-canvas text-action dark:bg-subtle dark:text-ink"
+                            : "text-muted hover:bg-canvas hover:text-ink dark:hover:bg-transparent dark:hover:text-muted"
                         }`}
                       >
                         <Icon
@@ -2442,7 +2361,7 @@ export default function AvatarStudio() {
                         {label}
 
                         {active && (
-                          <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-violet-500" />
+                          <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-action text-on-action" />
                         )}
                       </button>
                     );
@@ -2451,7 +2370,7 @@ export default function AvatarStudio() {
               </div>
             </div>
 
-            <div className="min-h-[640px] p-5 sm:p-6">
+            <div className="min-h-[640px] p-4">
               {/* FACE TAB */}
 
               {activeTab ===
@@ -2464,7 +2383,7 @@ export default function AvatarStudio() {
                   />
 
                   <div>
-                    <p className="mb-3 text-[9px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-white/35">
+                    <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
                       Skin Tone
                     </p>
 
@@ -2488,21 +2407,21 @@ export default function AvatarStudio() {
                                   tone.value,
                                 )
                               }
-                              className={`rounded-xl border p-2 transition ${
+                              className={`rounded-md border p-2 transition ${
                                 selected
-                                  ? "border-violet-500 bg-violet-50 dark:border-violet-400 dark:bg-violet-500/10"
-                                  : "border-slate-200 bg-white hover:border-violet-300 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/20"
+                                  ? "border-line bg-canvas dark:bg-subtle"
+                                  : "border-line bg-surface hover:border-line dark:bg-subtle"
                               }`}
                             >
                               <div
-                                className="mx-auto h-9 w-9 rounded-full border border-black/10 dark:border-white/10"
+                                className="mx-auto h-9 w-9 rounded-full border border-line"
                                 style={{
                                   backgroundColor:
                                     tone.color,
                                 }}
                               />
 
-                              <p className="mt-2 truncate text-center text-[7px] font-bold text-slate-500 dark:text-white/45">
+                              <p className="mt-2 truncate text-center text-[11px] font-bold text-muted">
                                 {
                                   tone.label
                                 }
@@ -2514,12 +2433,12 @@ export default function AvatarStudio() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-violet-200 bg-violet-50/70 p-4 dark:border-violet-400/15 dark:bg-violet-500/[0.045]">
-                    <p className="text-[8px] font-black uppercase tracking-[0.16em] text-violet-700 dark:text-violet-300">
+                  <div className="rounded-md border border-line bg-subtle p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-action">
                       Human Face Structure
                     </p>
 
-                    <p className="mt-2 text-[10px] leading-5 text-slate-500 dark:text-white/30">
+                    <p className="mt-2 text-[10px] leading-5 text-muted">
                       Face presets provide a quick overall look. You can then
                       refine the face shape, jaw, cheeks, nose, lips, eyes, and
                       expression individually.
@@ -3191,20 +3110,20 @@ export default function AvatarStudio() {
 
                   {/* Profile Identity Preference */}
 
-                  <div className="rounded-2xl border border-violet-200 bg-violet-50/70 p-4 dark:border-violet-400/15 dark:bg-violet-500/[0.055]">
+                  <div className="rounded-md border border-line bg-subtle p-4">
                     <div className="mb-4 flex items-start gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-violet-200 bg-white text-violet-600 dark:border-violet-300/15 dark:bg-violet-500/10 dark:text-violet-300">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-line bg-surface text-action dark:bg-subtle">
                         <User
                           size={16}
                         />
                       </div>
 
                       <div>
-                        <p className="text-xs font-bold text-slate-800 dark:text-white/85">
+                        <p className="text-xs font-bold text-ink dark:text-muted">
                           Profile Identity
                         </p>
 
-                        <p className="mt-1 text-[10px] leading-5 text-slate-500 dark:text-white/35">
+                        <p className="mt-1 text-[10px] leading-5 text-muted">
                           Choose whether your saved Fashion Persona should
                           replace your normal profile photo in identity surfaces
                           such as your profile, navigation, chat, bookings, and
@@ -3298,7 +3217,7 @@ export default function AvatarStudio() {
                   {/* Presentation Mode */}
 
                   <div>
-                    <p className="mb-3 text-[9px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-white/35">
+                    <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
                       Presentation Mode
                     </p>
 
@@ -3314,23 +3233,23 @@ export default function AvatarStudio() {
                             "",
                           );
                         }}
-                        className={`rounded-2xl border p-4 text-left transition ${
+                        className={`rounded-md border p-4 text-left transition ${
                           displayMode ===
                           "showcase"
-                            ? "border-violet-500 bg-violet-50 dark:border-violet-400 dark:bg-violet-500/15"
-                            : "border-slate-200 bg-white hover:border-violet-300 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/20"
+                            ? "border-line bg-canvas dark:bg-subtle"
+                            : "border-line bg-surface hover:border-line dark:bg-subtle"
                         }`}
                       >
                         <Monitor
                           size={18}
-                          className="text-violet-600 dark:text-violet-300"
+                          className="text-action"
                         />
 
-                        <p className="mt-3 text-xs font-bold text-slate-800 dark:text-white">
+                        <p className="mt-3 text-xs font-bold text-ink">
                           Showcase Mode
                         </p>
 
-                        <p className="mt-1 text-[10px] leading-5 text-slate-500 dark:text-white/30">
+                        <p className="mt-1 text-[10px] leading-5 text-muted">
                           Present the selected fashion design beside your avatar
                           as part of your visual portfolio.
                         </p>
@@ -3350,23 +3269,23 @@ export default function AvatarStudio() {
                             "",
                           );
                         }}
-                        className={`rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                        className={`rounded-md border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-40 ${
                           displayMode ===
                           "wear"
-                            ? "border-violet-500 bg-violet-50 dark:border-violet-400 dark:bg-violet-500/15"
-                            : "border-slate-200 bg-white hover:border-violet-300 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/20"
+                            ? "border-line bg-canvas dark:bg-subtle"
+                            : "border-line bg-surface hover:border-line dark:bg-subtle"
                         }`}
                       >
                         <Shirt
                           size={18}
-                          className="text-violet-600 dark:text-violet-300"
+                          className="text-action"
                         />
 
-                        <p className="mt-3 text-xs font-bold text-slate-800 dark:text-white">
+                        <p className="mt-3 text-xs font-bold text-ink">
                           Wear Mode
                         </p>
 
-                        <p className="mt-1 text-[10px] leading-5 text-slate-500 dark:text-white/30">
+                        <p className="mt-1 text-[10px] leading-5 text-muted">
                           Apply the featured design preview as a visual garment
                           treatment on the Fashion Persona.
                         </p>
@@ -3377,9 +3296,9 @@ export default function AvatarStudio() {
                   {/* Currently Selected Design */}
 
                   {featuredDesign && (
-                    <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4 dark:border-violet-400/25 dark:bg-violet-500/10">
+                    <div className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
                       <div className="flex items-center gap-4">
-                        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-black dark:border-white/10">
+                        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-md border border-line bg-canvas">
                           {featuredDesign.image ? (
                             <img
                               src={
@@ -3396,24 +3315,24 @@ export default function AvatarStudio() {
                                 size={
                                   20
                                 }
-                                className="text-white/20"
+                                className="text-muted"
                               />
                             </div>
                           )}
                         </div>
 
                         <div className="min-w-0 flex-1">
-                          <p className="text-[8px] font-black uppercase tracking-[0.15em] text-violet-600 dark:text-violet-300">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-action">
                             Currently Featured
                           </p>
 
-                          <h4 className="mt-1 truncate text-sm font-bold text-slate-900 dark:text-white">
+                          <h4 className="mt-1 truncate text-sm font-bold text-ink">
                             {
                               featuredDesign.title
                             }
                           </h4>
 
-                          <p className="mt-1 text-[8px] font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-white/30">
+                          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
                             {featuredDesign.sourceType ===
                             "fashion_editor"
                               ? featuredDesign.originalDesignId
@@ -3429,7 +3348,7 @@ export default function AvatarStudio() {
                             removeFeaturedDesign
                           }
                           title="Remove featured design"
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-400 transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 dark:border-white/10 dark:text-white/35 dark:hover:border-rose-400/30 dark:hover:bg-rose-400/10 dark:hover:text-rose-200"
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-line text-muted transition hover:border-line hover:bg-canvas hover:text-action dark:hover:bg-subtle"
                         >
                           <X
                             size={14}
@@ -3445,7 +3364,7 @@ export default function AvatarStudio() {
                     <div className="relative flex-1">
                       <SlidersHorizontal
                         size={14}
-                        className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/25"
+                        className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted"
                       />
 
                       <input
@@ -3460,7 +3379,7 @@ export default function AvatarStudio() {
                           )
                         }
                         placeholder="Search designs..."
-                        className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-xs text-slate-900 outline-none placeholder:text-slate-400 focus:border-violet-500 dark:border-white/10 dark:bg-white/[0.035] dark:text-white dark:placeholder:text-white/20 dark:focus:border-violet-400"
+                        className="h-11 w-full rounded-md border border-line bg-surface pl-10 pr-4 text-xs text-ink outline-none placeholder:text-muted focus:border-line dark:bg-subtle"
                       />
                     </div>
 
@@ -3473,7 +3392,7 @@ export default function AvatarStudio() {
                         designLoading
                       }
                       title="Refresh design library"
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition hover:border-violet-400 hover:text-violet-600 disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.035] dark:text-white/35 dark:hover:text-violet-300"
+                      className="flex h-9 w-11 shrink-0 items-center justify-center rounded-md border border-line bg-surface text-muted transition hover:border-line hover:text-action disabled:opacity-50 dark:bg-subtle"
                     >
                       <RefreshCw
                         size={14}
@@ -3489,7 +3408,7 @@ export default function AvatarStudio() {
                   {/* Design Loading Error */}
 
                   {designError && (
-                    <div className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[10px] leading-5 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/[0.06] dark:text-amber-200/70">
+                    <div className="flex items-start justify-between gap-3 rounded-md border border-line bg-canvas p-3 text-[10px] leading-5 text-action dark:bg-subtle dark:text-muted">
                       <span>
                         {
                           designError
@@ -3503,7 +3422,7 @@ export default function AvatarStudio() {
                             "",
                           )
                         }
-                        className="shrink-0 text-amber-500 hover:text-amber-800 dark:text-amber-200/40 dark:hover:text-white"
+                        className="shrink-0 text-action hover:text-action dark:text-muted dark:hover:text-ink"
                       >
                         <X
                           size={13}
@@ -3527,24 +3446,24 @@ export default function AvatarStudio() {
                             key={
                               index
                             }
-                            className="aspect-[4/5] animate-pulse rounded-2xl bg-slate-100 dark:bg-white/[0.05]"
+                            className="aspect-[4/5] animate-pulse rounded-md bg-subtle"
                           />
                         ),
                       )}
                     </div>
                   ) : visibleDesigns.length ===
                     0 ? (
-                    <div className="flex min-h-[250px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 text-center dark:border-white/10 dark:bg-white/[0.02]">
+                    <div className="flex min-h-[250px] flex-col items-center justify-center rounded-md border border-dashed border-line bg-canvas px-6 text-center dark:bg-subtle">
                       <Layers3
                         size={27}
-                        className="text-slate-300 dark:text-white/15"
+                        className="text-muted"
                       />
 
-                      <p className="mt-4 text-sm font-bold text-slate-600 dark:text-white/55">
+                      <p className="mt-4 text-sm font-bold text-muted">
                         No designs available
                       </p>
 
-                      <p className="mt-2 max-w-sm text-xs leading-6 text-slate-400 dark:text-white/25">
+                      <p className="mt-2 max-w-sm text-xs leading-6 text-muted">
                         {isDesigner
                           ? "Create or upload a design first, then return here to connect it with your Fashion Persona."
                           : "No public and published showcase designs are currently available to feature."}
@@ -3578,21 +3497,21 @@ export default function AvatarStudio() {
 
                   {/* Role Permission Information */}
 
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/[0.025]">
+                  <div className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
                     <div className="flex items-start gap-3">
                       {isDesigner ? (
                         <GitFork
                           size={15}
-                          className="mt-0.5 shrink-0 text-violet-600 dark:text-violet-300"
+                          className="mt-0.5 shrink-0 text-action"
                         />
                       ) : (
                         <Sparkles
                           size={15}
-                          className="mt-0.5 shrink-0 text-violet-600 dark:text-violet-300"
+                          className="mt-0.5 shrink-0 text-action"
                         />
                       )}
 
-                      <p className="text-[10px] leading-5 text-slate-500 dark:text-white/30">
+                      <p className="text-[10px] leading-5 text-muted">
                         {isDesigner
                           ? "Designer Fashion Personas can feature designs owned by that designer, including Fashion Editor originals, remixes, and manual uploads."
                           : "Creator Fashion Personas use exactly the same avatar system. Creators can currently feature public and published designs. Purchased and commissioned design permissions can be connected later."}
@@ -3605,9 +3524,9 @@ export default function AvatarStudio() {
 
             {/* Bottom Save Bar */}
 
-            <div className="sticky bottom-0 z-20 flex flex-col gap-3 border-t border-slate-200 bg-white/95 px-5 py-4 backdrop-blur-xl dark:border-white/10 dark:bg-[#0b0b0e]/95 sm:flex-row sm:items-center sm:justify-between">
+            <div className="sticky bottom-0 z-20 flex flex-col gap-3 border-t border-line bg-subtle px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-xs font-bold text-slate-700 dark:text-white/65">
+                <p className="text-xs font-bold text-ink dark:text-muted">
                   {hasUnsavedChanges
                     ? "Your persona has unsaved changes."
                     : avatarExists
@@ -3615,7 +3534,7 @@ export default function AvatarStudio() {
                       : "Create your first Fashion Persona."}
                 </p>
 
-                <p className="mt-1 text-[8px] font-bold uppercase tracking-[0.13em] text-slate-400 dark:text-white/20">
+                <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.13em] text-muted">
                   Shared Avatar ·{" "}
                   {role ||
                     "User"}{" "}
@@ -3635,7 +3554,7 @@ export default function AvatarStudio() {
                   saving ||
                   resetting
                 }
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 text-[9px] font-black uppercase tracking-[0.15em] text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-5 text-[11px] font-semibold uppercase tracking-[0.15em] text-on-action transition hover:bg-action disabled:cursor-not-allowed disabled:opacity-50 hover:text-on-action"
               >
                 {saving ? (
                   <Loader2
@@ -3659,49 +3578,49 @@ export default function AvatarStudio() {
         {/* Architecture Information */}
 
         <section className="grid gap-4 pb-6 md:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/[0.025] dark:shadow-none">
+          <div className="rounded-md border border-line bg-surface p-4 dark:bg-subtle">
             <Brush
               size={17}
-              className="text-violet-600 dark:text-violet-300"
+              className="text-action"
             />
 
-            <h3 className="mt-4 text-sm font-bold text-slate-900 dark:text-white">
+            <h3 className="mt-4 text-sm font-bold text-ink">
               One Identity
             </h3>
 
-            <p className="mt-2 text-xs leading-6 text-slate-500 dark:text-white/30">
+            <p className="mt-2 text-xs leading-6 text-muted">
               Creator and designer accounts use the exact same Fashion Persona
               customization system.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/[0.025] dark:shadow-none">
+          <div className="rounded-md border border-line bg-surface p-4 dark:bg-subtle">
             <Layers3
               size={17}
-              className="text-cyan-600 dark:text-cyan-300"
+              className="text-action"
             />
 
-            <h3 className="mt-4 text-sm font-bold text-slate-900 dark:text-white">
+            <h3 className="mt-4 text-sm font-bold text-ink">
               One Renderer
             </h3>
 
-            <p className="mt-2 text-xs leading-6 text-slate-500 dark:text-white/30">
+            <p className="mt-2 text-xs leading-6 text-muted">
               Avatar Studio and profile pages share FashionPersonaAvatar,
               including the richer Version 2 human-face rendering system.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/[0.025] dark:shadow-none">
+          <div className="rounded-md border border-line bg-surface p-4 dark:bg-subtle">
             <ArrowRight
               size={17}
-              className="text-[#b58a20] dark:text-[#D4AF37]"
+              className="text-action"
             />
 
-            <h3 className="mt-4 text-sm font-bold text-slate-900 dark:text-white">
+            <h3 className="mt-4 text-sm font-bold text-ink">
               Profile Ready
             </h3>
 
-            <p className="mt-2 text-xs leading-6 text-slate-500 dark:text-white/30">
+            <p className="mt-2 text-xs leading-6 text-muted">
               This same saved Fashion Persona can now be rendered directly
               inside designer and creator profile pages.
             </p>

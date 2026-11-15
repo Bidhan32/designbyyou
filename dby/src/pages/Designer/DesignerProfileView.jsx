@@ -511,7 +511,7 @@ function getDesignerRank(completedCount = 0) {
       name: "Grand Visionary",
 
       className:
-        "border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-200",
+        "border-line bg-canvas text-action dark:bg-subtle",
     };
   }
 
@@ -520,7 +520,7 @@ function getDesignerRank(completedCount = 0) {
       name: "Master Craftsman",
 
       className:
-        "border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#9A7618] dark:text-[#D4AF37]",
+        "border-line bg-subtle text-action",
     };
   }
 
@@ -529,7 +529,7 @@ function getDesignerRank(completedCount = 0) {
       name: "Atelier Associate",
 
       className:
-        "border-slate-200 bg-slate-100 text-slate-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-white/70",
+        "border-line bg-subtle text-ink dark:text-muted",
     };
   }
 
@@ -537,7 +537,7 @@ function getDesignerRank(completedCount = 0) {
     name: "Visionary Apprentice",
 
     className:
-      "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-200",
+      "border-line bg-canvas text-action dark:bg-subtle",
   };
 }
 
@@ -551,7 +551,7 @@ function SafeImage({ src, alt, className = "" }) {
   if (!src || failedSource === src) {
     return (
       <div
-        className={`flex h-full w-full items-center justify-center bg-slate-100 text-slate-300 dark:bg-white/[0.035] dark:text-white/15 ${className}`}
+        className={`flex h-full w-full items-center justify-center bg-subtle text-muted ${className}`}
       >
         <ImageOff size={34} />
       </div>
@@ -577,7 +577,7 @@ function SafeImage({ src, alt, className = "" }) {
 function SourceBadge({ design }) {
   if (design.isEditorDesign) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-300/30 bg-violet-500/20 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-violet-50 backdrop-blur-md">
+      <span className="inline-flex items-center gap-1.5 rounded-md border border-line bg-subtle px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-action">
         {design.isRemix ? <GitFork size={10} /> : <Layers3 size={10} />}
 
         {design.isRemix ? "Editor Remix" : "Fashion Editor"}
@@ -586,7 +586,7 @@ function SourceBadge({ design }) {
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-white backdrop-blur-md">
+    <span className="inline-flex items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink">
       <FileImage size={10} />
       Image Upload
     </span>
@@ -600,11 +600,11 @@ function SourceBadge({ design }) {
 function LoadingScreen() {
   return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center gap-5">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/10">
-        <Loader2 size={28} className="animate-spin text-[#D4AF37]" />
+      <div className="flex h-16 w-16 items-center justify-center rounded-full border border-line bg-subtle">
+        <Loader2 size={28} className="animate-spin text-action" />
       </div>
 
-      <p className="text-[9px] font-black uppercase tracking-[0.26em] text-[#A17E1F] dark:text-[#D4AF37]">
+      <p className="text-[11px] font-semibold uppercase tracking-normal text-action">
         Loading designer profile
       </p>
     </div>
@@ -1132,24 +1132,24 @@ export default function ProfileView() {
   if (!profileData && error) {
     return (
       <div className="flex min-h-[70vh] items-center justify-center px-4">
-        <div className="w-full max-w-xl rounded-3xl border border-rose-200 bg-rose-50 p-8 text-center dark:border-rose-400/20 dark:bg-rose-400/10">
+        <div className="w-full max-w-xl rounded-md border border-line bg-canvas p-4 text-center dark:bg-subtle">
           <AlertTriangle
             size={34}
-            className="mx-auto text-rose-600 dark:text-rose-300"
+            className="mx-auto text-action"
           />
 
-          <h1 className="mt-5 text-xl font-bold text-rose-800 dark:text-rose-100">
+          <h1 className="mt-5 text-xl font-bold text-action">
             Profile unavailable
           </h1>
 
-          <p className="mt-3 text-sm leading-7 text-rose-700/75 dark:text-rose-200/70">
+          <p className="mt-3 text-sm leading-7 text-muted">
             {error}
           </p>
 
           <button
             type="button"
             onClick={() => fetchProfile()}
-            className="mt-6 inline-flex h-11 items-center gap-2 rounded-xl bg-rose-600 px-5 text-[9px] font-black uppercase tracking-[0.14em] text-white"
+            className="mt-6 inline-flex h-9 items-center gap-2 rounded-md bg-action px-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-on-action"
           >
             <RefreshCw size={14} />
             Try Again
@@ -1164,26 +1164,26 @@ export default function ProfileView() {
      ======================================================= */
 
   return (
-    <div className="relative mx-auto max-w-[1500px] space-y-8 pb-20 text-slate-950 dark:text-white">
+    <div className="relative mx-auto max-w-[1500px] space-y-8 pb-20 text-ink">
       {/* ===================================================
           Ambient Lighting
           =================================================== */}
 
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute -right-52 -top-52 h-[40rem] w-[40rem] rounded-full bg-[#D4AF37]/10 blur-[180px]" />
 
-        <div className="absolute -bottom-52 -left-52 h-[36rem] w-[36rem] rounded-full bg-violet-500/[0.06] blur-[180px]" />
+
+
       </div>
 
       {/* ===================================================
           PROFILE HERO
           =================================================== */}
 
-      <section className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl dark:border-white/10 dark:bg-[#090909] sm:p-7 lg:p-8">
+      <section className="relative overflow-hidden rounded-md border border-line bg-surface p-4 lg:p-4">
         <Compass
           size={420}
           strokeWidth={0.45}
-          className="pointer-events-none absolute -right-24 -top-32 rotate-12 text-[#D4AF37] opacity-[0.035]"
+          className="pointer-events-none absolute -right-24 -top-32 rotate-12 text-action opacity-[0.035]"
         />
 
         <div className="relative grid gap-8 xl:grid-cols-[minmax(340px,0.8fr)_minmax(0,1.2fr)]">
@@ -1194,25 +1194,25 @@ export default function ProfileView() {
           <div>
             <div className="mb-4 flex items-center justify-between gap-4">
               <div>
-                <p className="inline-flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.2em] text-violet-500 dark:text-violet-300">
+                <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-normal text-action">
                   <Sparkles size={12} />
                   Fashion Persona
                 </p>
 
-                <p className="mt-1 text-[10px] text-slate-400 dark:text-white/30">
+                <p className="mt-1 text-[10px] text-muted">
                   Shared designer identity
                 </p>
               </div>
 
               {avatarData && (
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[7px] font-black uppercase tracking-[0.13em] text-slate-400 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/30">
+                <span className="rounded-md border border-line bg-canvas px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.13em] text-muted dark:bg-subtle">
                   Version {avatarData.version}
                 </span>
               )}
             </div>
 
             {hasFashionPersona ? (
-              <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-black shadow-xl dark:border-white/10">
+              <div className="overflow-hidden rounded-md border border-line bg-canvas">
                 <FashionPersonaAvatar
                   config={avatarData.config}
                   pose={avatarData.pose}
@@ -1228,9 +1228,9 @@ export default function ProfileView() {
                 />
               </div>
             ) : (
-              <div className="flex min-h-[500px] flex-col items-center justify-center overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-50 px-6 text-center dark:border-white/10 dark:bg-white/[0.025]">
+              <div className="flex min-h-[500px] flex-col items-center justify-center overflow-hidden rounded-md border border-line bg-canvas px-6 text-center dark:bg-subtle">
                 {profilePicture ? (
-                  <div className="h-28 w-28 overflow-hidden rounded-full border border-[#D4AF37]/30 shadow-lg">
+                  <div className="h-28 w-28 overflow-hidden rounded-full border border-line">
                     <SafeImage
                       src={profilePicture}
                       alt={`${profileName} profile`}
@@ -1238,16 +1238,16 @@ export default function ProfileView() {
                     />
                   </div>
                 ) : (
-                  <div className="flex h-28 w-28 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-300 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/15">
+                  <div className="flex h-28 w-28 items-center justify-center rounded-full border border-line bg-surface text-muted dark:bg-subtle">
                     <User size={42} />
                   </div>
                 )}
 
-                <p className="mt-5 text-sm font-bold text-slate-700 dark:text-white/60">
+                <p className="mt-5 text-sm font-bold text-ink dark:text-muted">
                   Fashion Persona unavailable
                 </p>
 
-                <p className="mt-2 max-w-sm text-xs leading-6 text-slate-400 dark:text-white/30">
+                <p className="mt-2 max-w-sm text-xs leading-6 text-muted">
                   {isOwnProfile
                     ? "Your avatar could not be loaded. Open Avatar Studio to create or update your Fashion Persona."
                     : avatarUnavailable
@@ -1262,7 +1262,7 @@ export default function ProfileView() {
             {isOwnProfile && (
               <Link
                 to="/designer/avatar-studio"
-                className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-violet-300/30 bg-violet-500/10 px-4 text-[8px] font-black uppercase tracking-[0.15em] text-violet-600 transition hover:bg-violet-500 hover:text-white dark:text-violet-200"
+                className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-line bg-subtle px-4 text-[11px] font-semibold uppercase tracking-[0.15em] text-action transition hover:bg-action hover:text-on-action"
               >
                 <Sparkles size={14} />
                 Customize Avatar
@@ -1302,10 +1302,7 @@ export default function ProfileView() {
                   size="2xl"
                   shape="rounded"
                   className="
-                    h-full
-                    w-full
-                    border-[#D4AF37]/20
-                    shadow-[0_18px_45px_rgba(0,0,0,0.18)]
+                    h-full w-full border-line
                   "
                   ariaLabel={`${profileName} profile identity`}
                   title={`${profileName} profile`}
@@ -1315,21 +1312,7 @@ export default function ProfileView() {
                   <div
                     title="Verified Designer"
                     className="
-                      absolute
-                      -bottom-2
-                      -right-2
-                      grid
-                      h-9
-                      w-9
-                      place-items-center
-                      rounded-full
-                      border-4
-                      border-white
-                      bg-emerald-500
-                      text-white
-                      shadow-lg
-
-                      dark:border-[#090909]
+                      absolute -bottom-2 -right-2 grid h-9 w-9 place-items-center rounded-full border-4 border-line bg-action text-on-action
                     "
                   >
                     <ShieldCheck size={15} />
@@ -1338,11 +1321,11 @@ export default function ProfileView() {
               </div>
 
               <div className="min-w-0">
-                <p className="text-[8px] font-black uppercase tracking-[0.18em] text-violet-500 dark:text-violet-300">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-action">
                   Designer Identity
                 </p>
 
-                <p className="mt-2 max-w-sm text-xs leading-5 text-slate-400 dark:text-white/30">
+                <p className="mt-2 max-w-sm text-xs leading-5 text-muted">
                   {personaUsedAsProfilePicture
                     ? "Fashion Persona is being used as this Designer's profile picture."
                     : "Standard Designer profile identity."}
@@ -1351,14 +1334,14 @@ export default function ProfileView() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.16em] text-[#9A7618] dark:text-[#D4AF37]">
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-line bg-subtle px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-action">
                 <ShieldCheck size={11} />
 
                 {isVerified ? `Verified ${profileRole}` : profileRole}
               </span>
 
               <span
-                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.15em] ${currentRank.className}`}
+                className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] ${currentRank.className}`}
               >
                 <Award size={11} />
 
@@ -1366,11 +1349,11 @@ export default function ProfileView() {
               </span>
             </div>
 
-            <h1 className="mt-5 font-serif text-4xl tracking-[-0.035em] text-slate-950 dark:text-white sm:text-5xl lg:text-6xl">
+            <h1 className="mt-5 font-sans text-4xl tracking-[-0.035em] text-ink sm:text-5xl lg:text-6xl">
               {profileName}
             </h1>
 
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-500 dark:text-white/40">
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-muted">
               {cleanText(
                 profileData?.bio || profileData?.about,
                 "Fashion designer and creative professional showcasing original concepts and visual design work.",
@@ -1379,12 +1362,12 @@ export default function ProfileView() {
 
             {/* Profile metadata */}
 
-            <div className="mt-6 flex flex-wrap gap-x-5 gap-y-3 text-[9px] font-bold uppercase tracking-[0.13em] text-slate-400 dark:text-white/35">
+            <div className="mt-6 flex flex-wrap gap-x-5 gap-y-3 text-[11px] font-bold uppercase tracking-[0.13em] text-muted">
               {publicEmail && (
                 <span className="inline-flex items-center gap-1.5">
                   <Mail
                     size={12}
-                    className="text-[#A17E1F] dark:text-[#D4AF37]"
+                    className="text-action"
                   />
 
                   {publicEmail}
@@ -1395,7 +1378,7 @@ export default function ProfileView() {
                 <span className="inline-flex items-center gap-1.5">
                   <MapPin
                     size={12}
-                    className="text-[#A17E1F] dark:text-[#D4AF37]"
+                    className="text-action"
                   />
 
                   {[profileData?.city, profileData?.country]
@@ -1405,7 +1388,7 @@ export default function ProfileView() {
               )}
 
               {rating > 0 && (
-                <span className="inline-flex items-center gap-1.5 text-[#A17E1F] dark:text-[#D4AF37]">
+                <span className="inline-flex items-center gap-1.5 text-action">
                   <Star size={12} fill="currentColor" />
                   {rating.toFixed(1)} / 5.0
                 </span>
@@ -1415,9 +1398,9 @@ export default function ProfileView() {
             {/* Featured design summary */}
 
             {avatarFeaturedDesign && (
-              <div className="mt-7 rounded-2xl border border-violet-200 bg-violet-50/70 p-4 dark:border-violet-400/20 dark:bg-violet-500/[0.07]">
+              <div className="mt-7 rounded-md border border-line bg-subtle p-4">
                 <div className="flex items-start gap-4">
-                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-black dark:border-white/10">
+                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-line bg-canvas">
                     <SafeImage
                       src={avatarFeaturedDesign.image}
                       alt={avatarFeaturedDesign.title}
@@ -1426,11 +1409,11 @@ export default function ProfileView() {
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <p className="text-[7px] font-black uppercase tracking-[0.17em] text-violet-500 dark:text-violet-300">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.17em] text-action">
                       Persona Featured Design
                     </p>
 
-                    <h2 className="mt-1 truncate text-sm font-bold text-slate-900 dark:text-white">
+                    <h2 className="mt-1 truncate text-sm font-bold text-ink">
                       {avatarFeaturedDesign.title}
                     </h2>
 
@@ -1444,7 +1427,7 @@ export default function ProfileView() {
                   <button
                     type="button"
                     onClick={handleFeaturedDesign}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-violet-200 bg-white text-violet-500 transition hover:bg-violet-500 hover:text-white dark:border-white/10 dark:bg-white/[0.05]"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-line bg-surface text-action transition hover:bg-action hover:text-on-action dark:bg-subtle"
                     title="View featured design"
                   >
                     <Eye size={14} />
@@ -1460,7 +1443,7 @@ export default function ProfileView() {
                 <>
                   <Link
                     to="/designer/upload"
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-5 text-[9px] font-black uppercase tracking-[0.16em] text-slate-700 transition hover:border-[#D4AF37]/50 hover:text-[#A17E1F] dark:border-white/10 dark:bg-white/[0.04] dark:text-white/60 dark:hover:text-[#D4AF37]"
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-canvas px-5 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink transition hover:border-line hover:text-action dark:bg-subtle dark:text-muted"
                   >
                     <UploadCloud size={15} />
                     Upload Design
@@ -1468,7 +1451,7 @@ export default function ProfileView() {
 
                   <Link
                     to="/designer/profile-settings"
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-[9px] font-black uppercase tracking-[0.16em] text-slate-600 transition hover:border-[#D4AF37]/50 hover:text-[#A17E1F] dark:border-white/10 dark:bg-white/[0.025] dark:text-white/50"
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-5 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted transition hover:border-line hover:text-action dark:bg-subtle"
                   >
                     <User size={15} />
                     Edit Profile
@@ -1476,7 +1459,7 @@ export default function ProfileView() {
 
                   <Link
                     to="/designer/avatar-studio"
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-violet-300/30 bg-violet-500/10 px-5 text-[9px] font-black uppercase tracking-[0.16em] text-violet-600 transition hover:bg-violet-600 hover:text-white dark:text-violet-200"
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-subtle px-5 text-[11px] font-semibold uppercase tracking-[0.16em] text-action transition hover:bg-action hover:text-on-action"
                   >
                     <Sparkles size={15} />
                     Avatar Studio
@@ -1492,7 +1475,7 @@ export default function ProfileView() {
                       )}`,
                     )
                   }
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-6 text-[9px] font-black uppercase tracking-[0.16em] text-black transition hover:bg-[#E2C45D] sm:col-span-2"
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-6 text-[11px] font-semibold uppercase tracking-[0.16em] text-on-action transition hover:bg-action sm:col-span-2 hover:text-on-action"
                 >
                   <Zap size={15} />
                   Initiate Commission
@@ -1509,7 +1492,7 @@ export default function ProfileView() {
                         block: "start",
                       })
                   }
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-6 text-[9px] font-black uppercase tracking-[0.16em] text-black transition hover:bg-[#E2C45D] sm:col-span-2"
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-6 text-[11px] font-semibold uppercase tracking-[0.16em] text-on-action transition hover:bg-action sm:col-span-2 hover:text-on-action"
                 >
                   <Palette size={15} />
                   Browse Portfolio
@@ -1527,7 +1510,7 @@ export default function ProfileView() {
       {error && profileData && (
         <div
           role="alert"
-          className="flex flex-col gap-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200 sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-4 rounded-md border border-line bg-canvas p-4 text-action dark:bg-subtle sm:flex-row sm:items-center sm:justify-between"
         >
           <div className="flex items-start gap-3">
             <AlertTriangle size={17} className="mt-0.5 shrink-0" />
@@ -1542,7 +1525,7 @@ export default function ProfileView() {
                 silent: true,
               })
             }
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 text-[8px] font-black uppercase tracking-[0.14em] text-white"
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-on-action"
           >
             <RefreshCw size={13} />
             Retry
@@ -1559,14 +1542,14 @@ export default function ProfileView() {
             Metrics Sidebar
             ================================================= */}
 
-        <aside className="space-y-5 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#0A0A0A]">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-white/5">
+        <aside className="space-y-5 rounded-md border border-line bg-surface p-4">
+          <div className="flex items-center justify-between border-b border-line pb-4">
             <div>
-              <p className="text-[8px] font-black uppercase tracking-[0.2em] text-[#A17E1F] dark:text-[#D4AF37]">
+              <p className="text-[11px] font-semibold uppercase tracking-normal text-action">
                 Studio Metrics
               </p>
 
-              <h2 className="mt-1 font-serif text-2xl text-slate-950 dark:text-white">
+              <h2 className="mt-1 font-sans text-2xl text-ink">
                 Portfolio summary
               </h2>
             </div>
@@ -1580,7 +1563,7 @@ export default function ProfileView() {
               }
               disabled={refreshing}
               aria-label="Refresh profile"
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-400 transition hover:border-[#D4AF37] hover:text-[#A17E1F] disabled:opacity-50 dark:border-white/10 dark:text-white/30 dark:hover:text-[#D4AF37]"
+              className="flex h-9 w-9 items-center justify-center rounded-md border border-line text-muted transition hover:border-line hover:text-action disabled:opacity-50"
             >
               <RefreshCw
                 size={14}
@@ -1601,20 +1584,20 @@ export default function ProfileView() {
             ].map(([label, value, Icon]) => (
               <div
                 key={label}
-                className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/[0.035]"
+                className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle"
               >
                 <div className="flex items-center justify-between gap-3">
                   <Icon
                     size={15}
-                    className="text-[#A17E1F] dark:text-[#D4AF37]"
+                    className="text-action"
                   />
 
-                  <span className="font-serif text-3xl text-slate-950 dark:text-white">
+                  <span className="font-sans text-3xl text-ink">
                     {value}
                   </span>
                 </div>
 
-                <p className="mt-3 text-[7px] font-black uppercase tracking-[0.13em] text-slate-400 dark:text-white/30">
+                <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.13em] text-muted">
                   {label}
                 </p>
               </div>
@@ -1623,19 +1606,19 @@ export default function ProfileView() {
 
           {/* Fashion Persona status */}
 
-          <div className="rounded-2xl border border-violet-200 bg-violet-50 p-5 dark:border-violet-400/20 dark:bg-violet-500/[0.07]">
+          <div className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
             <div className="flex items-center gap-2">
               <Sparkles
                 size={14}
-                className="text-violet-500 dark:text-violet-300"
+                className="text-action"
               />
 
-              <p className="text-[8px] font-black uppercase tracking-[0.16em] text-violet-600 dark:text-violet-300">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-action">
                 Fashion Persona
               </p>
             </div>
 
-            <p className="mt-3 text-sm font-bold text-slate-800 dark:text-white/70">
+            <p className="mt-3 text-sm font-bold text-ink dark:text-muted">
               {avatarData
                 ? avatarData.isPublic
                   ? "Public Persona"
@@ -1644,7 +1627,7 @@ export default function ProfileView() {
             </p>
 
             {avatarData && (
-              <p className="mt-1 text-[9px] uppercase tracking-[0.12em] text-slate-400 dark:text-white/30">
+              <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-muted">
                 {humanize(avatarData.pose, "Standing")}
 
                 {" · "}
@@ -1656,7 +1639,7 @@ export default function ProfileView() {
             {isOwnProfile && (
               <Link
                 to="/designer/avatar-studio"
-                className="mt-4 inline-flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300"
+                className="mt-4 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-action"
               >
                 Customize Persona
                 <ArrowRight size={12} />
@@ -1665,18 +1648,18 @@ export default function ProfileView() {
           </div>
 
           {isOwnProfile && (
-            <div className="rounded-2xl border border-[#D4AF37]/25 bg-[#D4AF37]/10 p-5">
-              <p className="text-[8px] font-black uppercase tracking-[0.16em] text-[#9A7618] dark:text-[#D4AF37]/70">
+            <div className="rounded-md border border-line bg-subtle p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-action dark:text-muted">
                 Available Capital
               </p>
 
-              <p className="mt-2 font-serif text-3xl text-slate-950 dark:text-white">
+              <p className="mt-2 font-sans text-3xl text-ink">
                 {formatMoney(availableBalance)}
               </p>
 
               <Link
                 to="/designer/wallet"
-                className="mt-4 inline-flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.14em] text-[#9A7618] hover:text-[#6E5310] dark:text-[#D4AF37]"
+                className="mt-4 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-action hover:text-action"
               >
                 Open Wallet
                 <ArrowRight size={12} />
@@ -1691,18 +1674,18 @@ export default function ProfileView() {
 
         <div
           id="designer-profile-showcase"
-          className="scroll-mt-24 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#0A0A0A] sm:p-7"
+          className="scroll-mt-24 rounded-md border border-line bg-surface p-4"
         >
           {/* Tabs */}
 
-          <div className="flex gap-6 overflow-x-auto border-b border-slate-100 dark:border-white/5">
+          <div className="flex gap-6 overflow-x-auto border-b border-line">
             <button
               type="button"
               onClick={() => setActiveTab("designs")}
-              className={`inline-flex shrink-0 items-center gap-2 border-b-2 px-1 pb-4 text-[9px] font-black uppercase tracking-[0.18em] transition ${
+              className={`inline-flex shrink-0 items-center gap-2 border-b-2 px-1 pb-4 text-[11px] font-semibold uppercase tracking-[0.18em] transition ${
                 activeTab === "designs"
-                  ? "border-[#D4AF37] text-slate-950 dark:text-white"
-                  : "border-transparent text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white/60"
+                  ? "border-line text-ink"
+                  : "border-transparent text-muted hover:text-ink dark:hover:text-muted"
               }`}
             >
               <Palette size={13} />
@@ -1712,10 +1695,10 @@ export default function ProfileView() {
             <button
               type="button"
               onClick={() => setActiveTab("about")}
-              className={`inline-flex shrink-0 items-center gap-2 border-b-2 px-1 pb-4 text-[9px] font-black uppercase tracking-[0.18em] transition ${
+              className={`inline-flex shrink-0 items-center gap-2 border-b-2 px-1 pb-4 text-[11px] font-semibold uppercase tracking-[0.18em] transition ${
                 activeTab === "about"
-                  ? "border-[#D4AF37] text-slate-950 dark:text-white"
-                  : "border-transparent text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white/60"
+                  ? "border-line text-ink"
+                  : "border-transparent text-muted hover:text-ink dark:hover:text-muted"
               }`}
             >
               <User size={13} />
@@ -1729,17 +1712,17 @@ export default function ProfileView() {
 
           {activeTab === "designs" ? (
             userDesigns.length === 0 ? (
-              <div className="flex min-h-[360px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center dark:border-white/10 dark:bg-white/[0.025]">
+              <div className="flex min-h-[360px] flex-col items-center justify-center rounded-md border border-dashed border-line bg-canvas px-6 text-center dark:bg-subtle">
                 <ShoppingBag
                   size={32}
-                  className="text-slate-300 dark:text-white/15"
+                  className="text-muted"
                 />
 
-                <h3 className="mt-5 font-serif text-2xl text-slate-900 dark:text-white">
+                <h3 className="mt-5 font-sans text-2xl text-ink">
                   No designs in this portfolio
                 </h3>
 
-                <p className="mt-2 max-w-md text-sm leading-7 text-slate-500 dark:text-white/35">
+                <p className="mt-2 max-w-md text-sm leading-7 text-muted">
                   {isOwnProfile
                     ? "Upload a finished presentation image to build your profile."
                     : "This designer has not published any showcase designs yet."}
@@ -1749,7 +1732,7 @@ export default function ProfileView() {
                   <div className="mt-6 flex flex-col gap-2 sm:flex-row">
                     <Link
                       to="/designer/upload"
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-5 text-[9px] font-black uppercase tracking-[0.14em] text-slate-600 dark:border-white/10 dark:text-white/50"
+                      className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line px-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted"
                     >
                       <UploadCloud size={14} />
                       Upload Design
@@ -1767,14 +1750,14 @@ export default function ProfileView() {
                   return (
                     <article
                       key={design.id}
-                      className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-[#101010]"
+                      className="group overflow-hidden rounded-md border border-line bg-surface transition hover:-translate-y-1"
                     >
                       {/* Image */}
 
                       <button
                         type="button"
                         onClick={() => setPreviewDesign(design)}
-                        className="relative block aspect-[4/3] w-full overflow-hidden bg-slate-100 text-left dark:bg-black"
+                        className="relative block aspect-[4/3] w-full overflow-hidden bg-subtle text-left dark:bg-canvas"
                       >
                         <SafeImage
                           src={design.image}
@@ -1782,25 +1765,25 @@ export default function ProfileView() {
                           className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
                         />
 
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/5" />
+
 
                         <div className="absolute left-3 top-3 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2">
                           <SourceBadge design={design} />
                         </div>
 
-                        <span className="absolute bottom-3 left-3 max-w-[65%] truncate rounded-full border border-white/15 bg-black/45 px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.13em] text-white backdrop-blur-md">
+                        <span className="absolute bottom-3 left-3 max-w-[65%] truncate rounded-md border border-line bg-black/45 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.13em] text-ink">
                           {design.category}
                         </span>
                       </button>
 
                       {/* Details */}
 
-                      <div className="p-5">
-                        <h3 className="truncate font-serif text-xl text-slate-950 dark:text-white">
+                      <div className="p-4">
+                        <h3 className="truncate font-serif text-xl text-ink">
                           {design.title}
                         </h3>
 
-                        <p className="mt-2 line-clamp-2 min-h-10 text-xs leading-5 text-slate-500 dark:text-white/40">
+                        <p className="mt-2 line-clamp-2 min-h-10 text-xs leading-5 text-muted">
                           {design.description}
                         </p>
 
@@ -1809,7 +1792,7 @@ export default function ProfileView() {
                             {design.tags.slice(0, 3).map((tag) => (
                               <span
                                 key={`${design.id}-${tag}`}
-                                className="rounded-full bg-slate-100 px-2.5 py-1 text-[7px] font-bold uppercase tracking-[0.1em] text-slate-500 dark:bg-white/[0.05] dark:text-white/35"
+                                className="rounded-md bg-subtle px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.1em] text-muted"
                               >
                                 {tag}
                               </span>
@@ -1817,17 +1800,17 @@ export default function ProfileView() {
                           </div>
                         )}
 
-                        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 text-[8px] font-bold uppercase tracking-[0.12em] text-slate-400 dark:border-white/5 dark:text-white/30">
+                        <div className="mt-4 flex items-center justify-between border-t border-line pt-4 text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
                           <span>{formatDate(design.createdAt)}</span>
 
                           <span className="inline-flex items-center gap-1.5">
                             {design.isPublished && design.isPublic ? (
                               <CheckCircle2
                                 size={11}
-                                className="text-emerald-500"
+                                className="text-action"
                               />
                             ) : (
-                              <Clock3 size={11} className="text-amber-500" />
+                              <Clock3 size={11} className="text-action" />
                             )}
 
                             {design.isPublished && design.isPublic
@@ -1842,7 +1825,7 @@ export default function ProfileView() {
                           <button
                             type="button"
                             onClick={() => performDesignAction(design)}
-                            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-3 text-[8px] font-black uppercase tracking-[0.14em] text-black transition hover:bg-[#E2C45D] disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-on-action transition hover:bg-action disabled:cursor-not-allowed disabled:opacity-60 hover:text-on-action"
                           >
                             <ActionIcon size={13} />
 
@@ -1853,7 +1836,7 @@ export default function ProfileView() {
                             type="button"
                             onClick={() => openShowcase(design)}
                             aria-label={`View ${design.title}`}
-                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition hover:border-[#D4AF37] hover:text-[#A17E1F] dark:border-white/10 dark:bg-white/[0.035] dark:text-white/40 dark:hover:text-[#D4AF37]"
+                            className="flex h-9 w-10 items-center justify-center rounded-md border border-line bg-canvas text-muted transition hover:border-line hover:text-action dark:bg-subtle"
                           >
                             <Eye size={14} />
                           </button>
@@ -1870,13 +1853,13 @@ export default function ProfileView() {
                ============================================= */
 
             <div className="mt-6 space-y-6">
-              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-6 dark:border-white/10 dark:bg-white/[0.035]">
-                <div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.18em] text-[#A17E1F] dark:text-[#D4AF37]">
+              <section className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
+                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-action">
                   <Sparkles size={13} />
                   Artist Biography
                 </div>
 
-                <p className="mt-4 whitespace-pre-wrap text-sm leading-8 text-slate-600 dark:text-white/50">
+                <p className="mt-4 whitespace-pre-wrap text-sm leading-8 text-muted">
                   {cleanText(
                     profileData?.bio || profileData?.about,
                     "This designer has not added a public biography yet.",
@@ -1887,8 +1870,8 @@ export default function ProfileView() {
               {/* Fashion Persona Bio Card */}
 
               {avatarData && (
-                <section className="rounded-2xl border border-violet-200 bg-violet-50/70 p-6 dark:border-violet-400/20 dark:bg-violet-500/[0.06]">
-                  <div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.18em] text-violet-600 dark:text-violet-300">
+                <section className="rounded-md border border-line bg-subtle p-4">
+                  <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-action">
                     <Sparkles size={13} />
                     Fashion Persona
                   </div>
@@ -1908,13 +1891,13 @@ export default function ProfileView() {
                     ].map(([label, value]) => (
                       <div
                         key={label}
-                        className="rounded-xl border border-violet-200/70 bg-white/70 p-4 dark:border-white/10 dark:bg-white/[0.035]"
+                        className="rounded-md border border-line bg-subtle p-4"
                       >
-                        <p className="text-[7px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-white/25">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted">
                           {label}
                         </p>
 
-                        <p className="mt-2 text-xs font-bold text-slate-800 dark:text-white/70">
+                        <p className="mt-2 text-xs font-bold text-ink dark:text-muted">
                           {value}
                         </p>
                       </div>
@@ -1928,25 +1911,25 @@ export default function ProfileView() {
                   href={portfolioUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 transition hover:border-[#D4AF37]/50 dark:border-white/10 dark:bg-white/[0.035]"
+                  className="group flex items-center gap-4 rounded-md border border-line bg-canvas p-4 transition hover:border-line dark:bg-subtle"
                 >
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-[#A17E1F] shadow-sm dark:bg-white/[0.05] dark:text-[#D4AF37]">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-surface text-action dark:bg-subtle">
                     <Globe size={17} />
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-slate-900 dark:text-white">
+                    <p className="text-sm font-bold text-ink">
                       Visit External Portfolio
                     </p>
 
-                    <p className="mt-1 truncate text-xs text-slate-400 dark:text-white/30">
+                    <p className="mt-1 truncate text-xs text-muted">
                       {portfolioUrl}
                     </p>
                   </div>
 
                   <ArrowRight
                     size={14}
-                    className="shrink-0 text-slate-300 transition group-hover:translate-x-1 group-hover:text-[#A17E1F] dark:text-white/20 dark:group-hover:text-[#D4AF37]"
+                    className="shrink-0 text-muted transition group-hover:translate-x-1 group-hover:text-action"
                   />
                 </a>
               )}
@@ -1969,12 +1952,12 @@ export default function ProfileView() {
               setPreviewDesign(null);
             }
           }}
-          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md sm:p-6"
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4"
         >
-          <section className="relative flex max-h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0A0A0A] text-white shadow-2xl">
+          <section className="relative flex max-h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-md border border-line bg-surface text-ink">
             {/* Modal Header */}
 
-            <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-6">
+            <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4 sm:px-6">
               <div className="min-w-0">
                 <SourceBadge design={previewDesign} />
 
@@ -1982,7 +1965,7 @@ export default function ProfileView() {
                   {previewDesign.title}
                 </h2>
 
-                <p className="mt-1 text-xs text-white/35">
+                <p className="mt-1 text-xs text-muted">
                   {previewDesign.category}
 
                   {" · "}
@@ -1995,7 +1978,7 @@ export default function ProfileView() {
                 type="button"
                 onClick={() => setPreviewDesign(null)}
                 aria-label="Close design preview"
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+                className="flex h-9 w-10 shrink-0 items-center justify-center rounded-md border border-line bg-subtle text-muted hover:bg-subtle hover:text-ink"
               >
                 <X size={17} />
               </button>
@@ -2003,8 +1986,8 @@ export default function ProfileView() {
 
             {/* Modal Body */}
 
-            <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
-              <div className="overflow-hidden rounded-2xl border border-white/10 bg-black">
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              <div className="overflow-hidden rounded-md border border-line bg-canvas">
                 <div className="flex min-h-[320px] max-h-[65vh] items-center justify-center">
                   <SafeImage
                     src={previewDesign.image}
@@ -2014,7 +1997,7 @@ export default function ProfileView() {
                 </div>
               </div>
 
-              <p className="mt-5 whitespace-pre-wrap text-sm leading-7 text-white/55">
+              <p className="mt-5 whitespace-pre-wrap text-sm leading-7 text-muted">
                 {previewDesign.description}
               </p>
 
@@ -2023,7 +2006,7 @@ export default function ProfileView() {
                   {previewDesign.tags.map((tag) => (
                     <span
                       key={`${previewDesign.id}-modal-${tag}`}
-                      className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[8px] font-bold uppercase tracking-[0.12em] text-white/40"
+                      className="rounded-md border border-line bg-subtle px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-muted"
                     >
                       {tag}
                     </span>
@@ -2034,11 +2017,11 @@ export default function ProfileView() {
 
             {/* Modal Actions */}
 
-            <div className="flex flex-col-reverse gap-2 border-t border-white/10 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+            <div className="flex flex-col-reverse gap-2 border-t border-line px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
               <button
                 type="button"
                 onClick={() => setPreviewDesign(null)}
-                className="h-11 rounded-xl border border-white/10 bg-white/5 px-5 text-[9px] font-black uppercase tracking-[0.14em] text-white/60 hover:bg-white/10 hover:text-white"
+                className="h-9 rounded-md border border-line bg-subtle px-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted hover:bg-subtle hover:text-ink"
               >
                 Close
               </button>
@@ -2051,7 +2034,7 @@ export default function ProfileView() {
 
                     openShowcase(previewDesign);
                   }}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-5 text-[9px] font-black uppercase tracking-[0.14em] text-[#F0D783] hover:bg-[#D4AF37]/20"
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-subtle px-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-action hover:bg-subtle"
                 >
                   <Eye size={14} />
                   Public Showcase
@@ -2066,7 +2049,7 @@ export default function ProfileView() {
 
                     performDesignAction(previewDesign);
                   }}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-5 text-[9px] font-black uppercase tracking-[0.14em] text-black hover:bg-[#E2C45D] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-on-action hover:bg-action disabled:cursor-not-allowed disabled:opacity-60 hover:text-on-action"
                 >
                   {React.createElement(getDesignAction(previewDesign).Icon, {
                     size: 14,

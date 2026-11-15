@@ -523,11 +523,11 @@ const SystemSettings = () => {
       <div className="min-h-[420px] flex flex-col items-center justify-center gap-4">
         <RefreshCw
           size={28}
-          className="animate-spin text-[#D4AF37]"
+          className="animate-spin text-action"
           aria-hidden="true"
         />
 
-        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400">
+        <p className="text-[10px] font-semibold uppercase tracking-normal text-muted">
           Loading Platform Configuration...
         </p>
       </div>
@@ -539,7 +539,7 @@ const SystemSettings = () => {
   =======================================================*/
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8 pb-20">
+    <div className="p-4 max-w-5xl mx-auto space-y-8 pb-20">
       {/*===============================================
       Header
       ===============================================*/}
@@ -549,20 +549,20 @@ const SystemSettings = () => {
           <div className="flex items-center gap-2 mb-2">
             <ShieldCheck
               size={15}
-              className="text-[#D4AF37]"
+              className="text-action"
               aria-hidden="true"
             />
 
-            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-[#D4AF37]">
+            <span className="text-[10px] font-semibold uppercase tracking-normal text-action">
               Super Admin Control
             </span>
           </div>
 
-          <h1 className="text-3xl font-serif italic text-gray-900">
+          <h1 className="text-3xl font-serif italic text-ink">
             Platform Settings
           </h1>
 
-          <p className="text-gray-400 text-sm mt-1">
+          <p className="text-muted text-sm mt-1">
             Review Designer tier commission policy and manage the shared
             Showcase presentation.
           </p>
@@ -572,7 +572,7 @@ const SystemSettings = () => {
           type="button"
           onClick={fetchSettings}
           disabled={savingHero}
-          className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-white border border-gray-200 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-500 hover:border-black hover:text-black transition-all disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-surface border border-line rounded-md text-[10px] font-semibold uppercase tracking-widest text-muted hover:border-line hover:text-ink transition-all disabled:opacity-50"
         >
           <RefreshCw size={14} aria-hidden="true" />
           Refresh
@@ -586,38 +586,38 @@ const SystemSettings = () => {
       {error && (
         <div
           role="alert"
-          className="p-4 rounded-2xl bg-red-50 border border-red-100 flex items-start gap-3"
+          className="p-4 rounded-md bg-canvas border border-line flex items-start gap-3"
         >
           <AlertTriangle
             size={18}
-            className="text-red-600 mt-0.5 flex-shrink-0"
+            className="text-action mt-0.5 flex-shrink-0"
             aria-hidden="true"
           />
 
           <div>
-            <p className="text-xs font-bold text-red-700">
+            <p className="text-xs font-bold text-action">
               Configuration Error
             </p>
 
-            <p className="text-xs text-red-600 mt-1">{error}</p>
+            <p className="text-xs text-action mt-1">{error}</p>
           </div>
         </div>
       )}
 
       {success && (
-        <div className="p-4 rounded-2xl bg-green-50 border border-green-100 flex items-start gap-3">
+        <div className="p-4 rounded-md bg-canvas border border-line flex items-start gap-3">
           <CheckCircle2
             size={18}
-            className="text-green-600 mt-0.5 flex-shrink-0"
+            className="text-action mt-0.5 flex-shrink-0"
             aria-hidden="true"
           />
 
           <div>
-            <p className="text-xs font-bold text-green-800">
+            <p className="text-xs font-bold text-action">
               Configuration Updated
             </p>
 
-            <p className="text-xs text-green-700 mt-1">{success}</p>
+            <p className="text-xs text-action mt-1">{success}</p>
           </div>
         </div>
       )}
@@ -626,24 +626,24 @@ const SystemSettings = () => {
       Designer Tier Commission Policy
       ===============================================*/}
 
-      <section className="bg-white border border-gray-100 shadow-sm rounded-[2rem] overflow-hidden">
-        <div className="p-6 md:p-8 border-b border-gray-100">
+      <section className="bg-surface border border-line rounded-md overflow-hidden">
+        <div className="p-4 border-b border-line">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
             <div className="flex items-start gap-4">
-              <div className="p-3 rounded-2xl bg-[#D4AF37]/10">
+              <div className="p-3 rounded-md bg-subtle">
                 <DollarSign
                   size={22}
-                  className="text-[#D4AF37]"
+                  className="text-action"
                   aria-hidden="true"
                 />
               </div>
 
               <div>
-                <h2 className="text-lg font-bold text-gray-900">
+                <h2 className="text-lg font-bold text-ink">
                   Designer Tier Commission
                 </h2>
 
-                <p className="text-sm text-gray-400 mt-1 max-w-2xl leading-relaxed">
+                <p className="text-sm text-muted mt-1 max-w-2xl leading-relaxed">
                   Designer commission is determined automatically by completed
                   bookings. The percentage shown for each tier is the portion of
                   the booking base amount credited to the Designer when a
@@ -652,21 +652,21 @@ const SystemSettings = () => {
               </div>
             </div>
 
-            <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gray-50 border border-gray-100 text-gray-600">
+            <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-canvas border border-line text-muted">
               <ShieldCheck
                 size={14}
-                className="text-[#D4AF37]"
+                className="text-action"
                 aria-hidden="true"
               />
 
-              <span className="text-[10px] font-black uppercase tracking-widest">
+              <span className="text-[10px] font-semibold uppercase tracking-widest">
                 Read Only Policy
               </span>
             </div>
           </div>
         </div>
 
-        <div className="p-6 md:p-8 space-y-7">
+        <div className="p-4 space-y-7">
           {/* Summary */}
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -683,19 +683,19 @@ const SystemSettings = () => {
           {/* Policy integrity warning */}
 
           {!policyConsistent && policyMismatches > 0 && (
-            <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-3">
+            <div className="p-4 bg-canvas border border-line rounded-md flex items-start gap-3">
               <AlertTriangle
                 size={17}
-                className="text-amber-600 mt-0.5 flex-shrink-0"
+                className="text-action mt-0.5 flex-shrink-0"
                 aria-hidden="true"
               />
 
               <div>
-                <p className="text-xs font-bold text-amber-800">
+                <p className="text-xs font-bold text-action">
                   Tier Policy Mismatch Detected
                 </p>
 
-                <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                <p className="text-xs text-action mt-1 leading-relaxed">
                   {policyMismatches} Designer profile
                   {policyMismatches === 1 ? "" : "s"} currently do not match the
                   expected commission rate for their stored tier. The booking
@@ -707,19 +707,19 @@ const SystemSettings = () => {
           )}
 
           {policyConsistent && (
-            <div className="p-4 bg-green-50 border border-green-100 rounded-2xl flex items-start gap-3">
+            <div className="p-4 bg-canvas border border-line rounded-md flex items-start gap-3">
               <CheckCircle2
                 size={17}
-                className="text-green-600 mt-0.5 flex-shrink-0"
+                className="text-action mt-0.5 flex-shrink-0"
                 aria-hidden="true"
               />
 
               <div>
-                <p className="text-xs font-bold text-green-800">
+                <p className="text-xs font-bold text-action">
                   Tier Policy Synchronized
                 </p>
 
-                <p className="text-xs text-green-700 mt-1 leading-relaxed">
+                <p className="text-xs text-action mt-1 leading-relaxed">
                   Existing Designer profiles match the expected commission rate
                   for their current tier.
                 </p>
@@ -729,49 +729,49 @@ const SystemSettings = () => {
 
           {/* Tier Table */}
 
-          <div className="overflow-hidden rounded-2xl border border-gray-100">
+          <div className="overflow-hidden rounded-md border border-line">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[720px]">
-                <thead className="bg-gray-50">
+                <thead className="bg-canvas">
                   <tr>
-                    <th className="px-5 py-4 text-left text-[9px] font-black uppercase tracking-widest text-gray-400">
+                    <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-widest text-muted">
                       Tier
                     </th>
 
-                    <th className="px-5 py-4 text-left text-[9px] font-black uppercase tracking-widest text-gray-400">
+                    <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-widest text-muted">
                       Completed Bookings
                     </th>
 
-                    <th className="px-5 py-4 text-left text-[9px] font-black uppercase tracking-widest text-gray-400">
+                    <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-widest text-muted">
                       Designer Commission
                     </th>
 
-                    <th className="px-5 py-4 text-left text-[9px] font-black uppercase tracking-widest text-gray-400">
+                    <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-widest text-muted">
                       Designers
                     </th>
                   </tr>
                 </thead>
 
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-line">
                   {tierPolicy.length > 0 ? (
                     tierPolicy.map((tier, index) => (
-                      <tr key={tier.tier || index} className="bg-white">
+                      <tr key={tier.tier || index} className="bg-surface">
                         <td className="px-5 py-5">
                           <div className="flex items-center gap-3">
-                            <div className="h-9 w-9 rounded-xl bg-[#D4AF37]/10 flex items-center justify-center">
+                            <div className="h-9 w-9 rounded-md bg-subtle flex items-center justify-center">
                               <ShieldCheck
                                 size={16}
-                                className="text-[#D4AF37]"
+                                className="text-action"
                                 aria-hidden="true"
                               />
                             </div>
 
                             <div>
-                              <p className="text-sm font-bold text-gray-900">
+                              <p className="text-sm font-bold text-ink">
                                 {formatTierLabel(tier.tier)}
                               </p>
 
-                              <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">
+                              <p className="text-[10px] text-muted mt-1 uppercase tracking-wider">
                                 Tier {index + 1}
                               </p>
                             </div>
@@ -779,21 +779,21 @@ const SystemSettings = () => {
                         </td>
 
                         <td className="px-5 py-5">
-                          <p className="text-sm font-mono font-bold text-gray-800">
+                          <p className="text-sm font-mono font-bold text-ink">
                             {formatBookingRange(tier)}
                           </p>
                         </td>
 
                         <td className="px-5 py-5">
-                          <div className="inline-flex items-center px-3 py-1.5 rounded-xl bg-green-50 border border-green-100">
-                            <span className="text-sm font-mono font-bold text-green-700">
+                          <div className="inline-flex items-center px-3 py-1.5 rounded-md bg-canvas border border-line">
+                            <span className="text-sm font-mono font-bold text-action">
                               {Number(tier.commission_rate || 0)}%
                             </span>
                           </div>
                         </td>
 
                         <td className="px-5 py-5">
-                          <p className="text-sm font-mono font-bold text-gray-800">
+                          <p className="text-sm font-mono font-bold text-ink">
                             {Number(tier.designer_count || 0)}
                           </p>
                         </td>
@@ -803,7 +803,7 @@ const SystemSettings = () => {
                     <tr>
                       <td
                         colSpan={4}
-                        className="px-5 py-10 text-center text-sm text-gray-400"
+                        className="px-5 py-10 text-center text-sm text-muted"
                       >
                         No tier policy information was returned.
                       </td>
@@ -816,19 +816,19 @@ const SystemSettings = () => {
 
           {/* Business rule explanation */}
 
-          <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5">
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+          <div className="bg-canvas border border-line rounded-md p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted">
               Automatic Tier Progression
             </p>
 
-            <p className="text-xs text-gray-500 mt-3 leading-relaxed">
+            <p className="text-xs text-muted mt-3 leading-relaxed">
               Tier progression is based on completed bookings. The booking that
               reaches a threshold uses the new tier immediately. For example, a
               Designer completing their 5th booking receives the Silver 15%
               commission for that booking.
             </p>
 
-            <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+            <p className="text-xs text-muted mt-2 leading-relaxed">
               Super Admin cannot manually overwrite these rates from this
               screen. This prevents a global setting from conflicting with the
               tier-based booking payout rules.
@@ -841,32 +841,32 @@ const SystemSettings = () => {
       Showcase Hero Configuration
       ===============================================*/}
 
-      <section className="bg-white border border-gray-100 shadow-sm rounded-[2rem] overflow-hidden">
-        <div className="p-6 md:p-8 border-b border-gray-100">
+      <section className="bg-surface border border-line rounded-md overflow-hidden">
+        <div className="p-4 border-b border-line">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
             <div className="flex items-start gap-4">
-              <div className="p-3 rounded-2xl bg-[#D4AF37]/10">
+              <div className="p-3 rounded-md bg-subtle">
                 {hero.mode === "video" ? (
                   <Video
                     size={22}
-                    className="text-[#D4AF37]"
+                    className="text-action"
                     aria-hidden="true"
                   />
                 ) : (
                   <Image
                     size={22}
-                    className="text-[#D4AF37]"
+                    className="text-action"
                     aria-hidden="true"
                   />
                 )}
               </div>
 
               <div>
-                <h2 className="text-lg font-bold text-gray-900">
+                <h2 className="text-lg font-bold text-ink">
                   Shared Showcase Hero
                 </h2>
 
-                <p className="text-sm text-gray-400 mt-1 max-w-2xl leading-relaxed">
+                <p className="text-sm text-muted mt-1 max-w-2xl leading-relaxed">
                   Choose the background presentation shared by Creator Showcase
                   and Designer Marketplace. Only one media mode runs at a time.
                 </p>
@@ -874,33 +874,33 @@ const SystemSettings = () => {
             </div>
 
             <div
-              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border ${
+              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-md border ${
                 hero.is_enabled
-                  ? "bg-green-50 border-green-100 text-green-700"
-                  : "bg-gray-50 border-gray-100 text-gray-500"
+                  ? "bg-canvas border-line text-action"
+                  : "bg-canvas border-line text-muted"
               }`}
             >
               <Power size={14} aria-hidden="true" />
 
-              <span className="text-[10px] font-black uppercase tracking-widest">
+              <span className="text-[10px] font-semibold uppercase tracking-widest">
                 {hero.is_enabled ? "Hero Enabled" : "Hero Disabled"}
               </span>
             </div>
           </div>
         </div>
 
-        <form onSubmit={handleSaveHero} className="p-6 md:p-8 space-y-8">
+        <form onSubmit={handleSaveHero} className="p-4 space-y-8">
           {/*===========================================
           Enable / Disable
           ===========================================*/}
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-gray-50 border border-gray-100">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-md bg-canvas border border-line">
             <div>
-              <p className="text-sm font-bold text-gray-900">
+              <p className="text-sm font-bold text-ink">
                 Use Super Admin Hero
               </p>
 
-              <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+              <p className="text-xs text-muted mt-1 leading-relaxed">
                 When disabled, both Showcase pages keep their existing fallback
                 Hero backgrounds.
               </p>
@@ -919,14 +919,14 @@ const SystemSettings = () => {
                 setError("");
                 setSuccess("");
               }}
-              className={`relative inline-flex h-8 w-14 flex-shrink-0 rounded-full transition-colors disabled:opacity-50 ${
-                hero.is_enabled ? "bg-black" : "bg-gray-300"
+              className={`relative inline-flex h-8 w-14 flex-shrink-0 rounded-md transition-colors disabled:opacity-50 ${
+                hero.is_enabled ? "bg-canvas" : "bg-subtle"
               }`}
               aria-pressed={hero.is_enabled}
               aria-label="Toggle Showcase Hero"
             >
               <span
-                className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow-sm transition-transform ${
+                className={`absolute top-1 h-6 w-6 rounded-full bg-surface transition-transform ${
                   hero.is_enabled ? "translate-x-7" : "translate-x-1"
                 }`}
               />
@@ -938,7 +938,7 @@ const SystemSettings = () => {
           ===========================================*/}
 
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3">
+            <p className="text-[10px] font-semibold uppercase tracking-normal text-muted mb-3">
               Hero Background Mode
             </p>
 
@@ -958,10 +958,10 @@ const SystemSettings = () => {
                   setError("");
                   setSuccess("");
                 }}
-                className={`text-left p-5 rounded-2xl border transition-all ${
+                className={`text-left p-4 rounded-md border transition-all ${
                   hero.mode === "slideshow"
-                    ? "border-[#D4AF37] bg-[#D4AF37]/5 shadow-sm"
-                    : "border-gray-100 bg-gray-50 hover:border-gray-300"
+                    ? "border-line bg-subtle"
+                    : "border-line bg-canvas hover:border-line"
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -969,18 +969,18 @@ const SystemSettings = () => {
                     size={20}
                     className={
                       hero.mode === "slideshow"
-                        ? "text-[#D4AF37]"
-                        : "text-gray-400"
+                        ? "text-action"
+                        : "text-muted"
                     }
                     aria-hidden="true"
                   />
 
                   <div>
-                    <p className="text-sm font-bold text-gray-900">
+                    <p className="text-sm font-bold text-ink">
                       Image Slideshow
                     </p>
 
-                    <p className="text-[11px] text-gray-500 mt-1">
+                    <p className="text-[11px] text-muted mt-1">
                       Loop between 3–5 background images.
                     </p>
                   </div>
@@ -1000,27 +1000,27 @@ const SystemSettings = () => {
                   setError("");
                   setSuccess("");
                 }}
-                className={`text-left p-5 rounded-2xl border transition-all ${
+                className={`text-left p-4 rounded-md border transition-all ${
                   hero.mode === "video"
-                    ? "border-[#D4AF37] bg-[#D4AF37]/5 shadow-sm"
-                    : "border-gray-100 bg-gray-50 hover:border-gray-300"
+                    ? "border-line bg-subtle"
+                    : "border-line bg-canvas hover:border-line"
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <Video
                     size={20}
                     className={
-                      hero.mode === "video" ? "text-[#D4AF37]" : "text-gray-400"
+                      hero.mode === "video" ? "text-action" : "text-muted"
                     }
                     aria-hidden="true"
                   />
 
                   <div>
-                    <p className="text-sm font-bold text-gray-900">
+                    <p className="text-sm font-bold text-ink">
                       Background Video
                     </p>
 
-                    <p className="text-[11px] text-gray-500 mt-1">
+                    <p className="text-[11px] text-muted mt-1">
                       Play one muted looping cinematic video.
                     </p>
                   </div>
@@ -1038,11 +1038,11 @@ const SystemSettings = () => {
               <div>
                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-4">
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+                    <p className="text-[10px] font-semibold uppercase tracking-normal text-muted">
                       Slideshow Images
                     </p>
 
-                    <p className="text-xs text-gray-500 mt-2">
+                    <p className="text-xs text-muted mt-2">
                       Add 3 to 5 HTTPS or application-relative image URLs.
                     </p>
                   </div>
@@ -1051,7 +1051,7 @@ const SystemSettings = () => {
                     type="button"
                     onClick={handleAddHeroImage}
                     disabled={savingHero || hero.slideshow_images.length >= 5}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-[10px] font-black uppercase tracking-widest text-gray-600 hover:border-black hover:text-black disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md border border-line text-[10px] font-semibold uppercase tracking-widest text-muted hover:border-line hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   >
                     <Plus size={14} aria-hidden="true" />
                     Add Image
@@ -1067,7 +1067,7 @@ const SystemSettings = () => {
                       <div className="flex-1">
                         <label
                           htmlFor={`hero-image-${index}`}
-                          className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-2"
+                          className="block text-[11px] font-semibold uppercase tracking-widest text-muted mb-2"
                         >
                           Image {index + 1}
                           {index >= 3 ? " — Optional" : ""}
@@ -1082,7 +1082,7 @@ const SystemSettings = () => {
                           onChange={(event) =>
                             handleHeroImageChange(index, event.target.value)
                           }
-                          className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3.5 text-sm text-gray-900 outline-none focus:bg-white focus:border-[#D4AF37] transition-all disabled:opacity-60"
+                          className="w-full bg-canvas border border-line rounded-md px-4 py-3.5 text-sm text-ink outline-none focus:bg-surface focus:border-line transition-all disabled:opacity-60"
                         />
                       </div>
 
@@ -1091,7 +1091,7 @@ const SystemSettings = () => {
                           type="button"
                           disabled={savingHero}
                           onClick={() => handleRemoveHeroImage(index)}
-                          className="self-end h-[50px] w-[50px] flex items-center justify-center rounded-2xl border border-red-100 bg-red-50 text-red-500 hover:bg-red-100 transition-all disabled:opacity-50"
+                          className="self-end h-[50px] w-[50px] flex items-center justify-center rounded-md border border-line bg-canvas text-action hover:bg-subtle transition-all disabled:opacity-50"
                           aria-label={`Remove image ${index + 1}`}
                         >
                           <Trash2 size={17} aria-hidden="true" />
@@ -1104,14 +1104,14 @@ const SystemSettings = () => {
                 <div className="mt-3 flex items-center justify-between gap-3 text-[11px]">
                   <span
                     className={
-                      slideshowValid ? "text-green-600" : "text-gray-400"
+                      slideshowValid ? "text-action" : "text-muted"
                     }
                   >
                     {cleanedHeroImages.length} configured image
                     {cleanedHeroImages.length === 1 ? "" : "s"}
                   </span>
 
-                  <span className="text-gray-400">Minimum 3 · Maximum 5</span>
+                  <span className="text-muted">Minimum 3 · Maximum 5</span>
                 </div>
               </div>
 
@@ -1120,7 +1120,7 @@ const SystemSettings = () => {
               <div className="max-w-sm">
                 <label
                   htmlFor="hero-rotation"
-                  className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2"
+                  className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-normal text-muted mb-2"
                 >
                   <Clock3 size={13} aria-hidden="true" />
                   Rotation Time
@@ -1146,15 +1146,15 @@ const SystemSettings = () => {
 
                       setSuccess("");
                     }}
-                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 pr-20 py-3.5 text-sm font-bold text-gray-900 outline-none focus:bg-white focus:border-[#D4AF37] transition-all disabled:opacity-60"
+                    className="w-full bg-canvas border border-line rounded-md px-4 pr-20 py-3.5 text-sm font-bold text-ink outline-none focus:bg-surface focus:border-line transition-all disabled:opacity-60"
                   />
 
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-bold">
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-muted font-bold">
                     seconds
                   </span>
                 </div>
 
-                <p className="text-[11px] text-gray-400 mt-2">
+                <p className="text-[11px] text-muted mt-2">
                   Allowed range: 3 to 30 seconds.
                 </p>
               </div>
@@ -1170,7 +1170,7 @@ const SystemSettings = () => {
               <div>
                 <label
                   htmlFor="hero-video-url"
-                  className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2"
+                  className="block text-[10px] font-semibold uppercase tracking-normal text-muted mb-2"
                 >
                   Background Video URL
                 </label>
@@ -1192,10 +1192,10 @@ const SystemSettings = () => {
 
                     setSuccess("");
                   }}
-                  className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3.5 text-sm text-gray-900 outline-none focus:bg-white focus:border-[#D4AF37] transition-all disabled:opacity-60"
+                  className="w-full bg-canvas border border-line rounded-md px-4 py-3.5 text-sm text-ink outline-none focus:bg-surface focus:border-line transition-all disabled:opacity-60"
                 />
 
-                <p className="text-[11px] text-gray-400 mt-2 leading-relaxed">
+                <p className="text-[11px] text-muted mt-2 leading-relaxed">
                   Use a compressed HTTPS video hosted on your media/CDN service.
                   The Showcase frontend will play it muted, looping and inline.
                 </p>
@@ -1204,7 +1204,7 @@ const SystemSettings = () => {
               <div>
                 <label
                   htmlFor="hero-video-poster"
-                  className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2"
+                  className="block text-[10px] font-semibold uppercase tracking-normal text-muted mb-2"
                 >
                   Poster / Fallback Image URL
                 </label>
@@ -1226,10 +1226,10 @@ const SystemSettings = () => {
 
                     setSuccess("");
                   }}
-                  className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3.5 text-sm text-gray-900 outline-none focus:bg-white focus:border-[#D4AF37] transition-all disabled:opacity-60"
+                  className="w-full bg-canvas border border-line rounded-md px-4 py-3.5 text-sm text-ink outline-none focus:bg-surface focus:border-line transition-all disabled:opacity-60"
                 />
 
-                <p className="text-[11px] text-gray-400 mt-2">
+                <p className="text-[11px] text-muted mt-2">
                   Optional but recommended for loading and fallback.
                 </p>
               </div>
@@ -1241,11 +1241,11 @@ const SystemSettings = () => {
           ===========================================*/}
 
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3">
+            <p className="text-[10px] font-semibold uppercase tracking-normal text-muted mb-3">
               Preview
             </p>
 
-            <div className="relative overflow-hidden rounded-[1.75rem] bg-[#080808] border border-gray-200 aspect-[16/6] min-h-[240px]">
+            <div className="relative overflow-hidden rounded-md bg-canvas border border-line aspect-[16/6] min-h-[240px]">
               {hero.mode === "slideshow" ? (
                 currentPreviewImage ? (
                   <img
@@ -1284,17 +1284,14 @@ const SystemSettings = () => {
               {(currentPreviewImage ||
                 (hero.mode === "video" && hero.video_url)) && (
                 <>
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/75 via-black/30 to-black/50" />
 
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
-
-                  <div className="pointer-events-none absolute left-6 md:left-10 bottom-6 md:bottom-8">
-                    <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.25em] text-[#D4AF37]">
+                  <div className="pointer-events-none absolute bottom-3 left-3 rounded-md bg-surface p-3">
+                    <p className="text-[11px] md:text-[10px] font-semibold uppercase tracking-normal text-action">
                       Showcase Preview
                     </p>
 
-                    <p className="text-xl md:text-3xl font-serif italic text-white mt-2">
-                      Design Without Limits
+                    <p className="text-xl md:text-3xl font-serif italic text-ink mt-2">
+                      Design showcase
                     </p>
                   </div>
                 </>
@@ -1307,10 +1304,10 @@ const SystemSettings = () => {
                       key={`preview-dot-${index}`}
                       type="button"
                       onClick={() => setHeroPreviewIndex(index)}
-                      className={`h-2 rounded-full transition-all ${
+                      className={`h-2 rounded-md transition-all ${
                         index === heroPreviewIndex
-                          ? "w-6 bg-white"
-                          : "w-2 bg-white/50 hover:bg-white/80"
+                          ? "w-6 bg-surface"
+                          : "w-2 bg-subtle hover:bg-subtle"
                       }`}
                       aria-label={`Preview slide ${index + 1}`}
                     />
@@ -1319,7 +1316,7 @@ const SystemSettings = () => {
               )}
             </div>
 
-            <p className="text-[11px] text-gray-400 mt-3 leading-relaxed">
+            <p className="text-[11px] text-muted mt-3 leading-relaxed">
               This preview demonstrates only the background treatment. Creator
               Showcase and Designer Marketplace will keep their own Hero text,
               buttons and page-specific content.
@@ -1331,19 +1328,19 @@ const SystemSettings = () => {
           ===========================================*/}
 
           {hero.is_enabled && hero.mode === "slideshow" && !slideshowValid && (
-            <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-3">
+            <div className="p-4 bg-canvas border border-line rounded-md flex items-start gap-3">
               <AlertTriangle
                 size={17}
-                className="text-amber-600 mt-0.5 flex-shrink-0"
+                className="text-action mt-0.5 flex-shrink-0"
                 aria-hidden="true"
               />
 
               <div>
-                <p className="text-xs font-bold text-amber-800">
+                <p className="text-xs font-bold text-action">
                   Slideshow Not Ready
                 </p>
 
-                <p className="text-xs text-amber-700 mt-1">
+                <p className="text-xs text-action mt-1">
                   Add between 3 and 5 image URLs before saving an enabled
                   slideshow.
                 </p>
@@ -1352,19 +1349,19 @@ const SystemSettings = () => {
           )}
 
           {hero.is_enabled && hero.mode === "video" && !videoValid && (
-            <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-3">
+            <div className="p-4 bg-canvas border border-line rounded-md flex items-start gap-3">
               <AlertTriangle
                 size={17}
-                className="text-amber-600 mt-0.5 flex-shrink-0"
+                className="text-action mt-0.5 flex-shrink-0"
                 aria-hidden="true"
               />
 
               <div>
-                <p className="text-xs font-bold text-amber-800">
+                <p className="text-xs font-bold text-action">
                   Video Not Ready
                 </p>
 
-                <p className="text-xs text-amber-700 mt-1">
+                <p className="text-xs text-action mt-1">
                   Add a background video URL before saving an enabled Video
                   Hero.
                 </p>
@@ -1376,16 +1373,16 @@ const SystemSettings = () => {
           Save Hero
           ===========================================*/}
 
-          <div className="pt-6 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="pt-6 border-t border-line flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <p className="text-xs text-gray-500 max-w-xl leading-relaxed">
+              <p className="text-xs text-muted max-w-xl leading-relaxed">
                 Saving changes updates the shared Hero configuration only. It
                 does not modify designs, bookings, payments or historical data.
               </p>
 
-              <p className="text-[10px] uppercase tracking-widest font-black text-gray-400 mt-2">
+              <p className="text-[10px] uppercase tracking-widest font-semibold text-muted mt-2">
                 Active Mode:{" "}
-                <span className="text-gray-700">
+                <span className="text-ink">
                   {hero.mode === "video" ? "Video" : "Slideshow"}
                 </span>
               </p>
@@ -1394,7 +1391,7 @@ const SystemSettings = () => {
             <button
               type="submit"
               disabled={savingHero || !heroValid || !heroHasChanges}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-black text-white text-[10px] font-black uppercase tracking-widest hover:bg-zinc-800 transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-md bg-action text-on-action text-[10px] font-semibold uppercase tracking-widest hover:bg-action transition-all disabled:bg-subtle disabled:text-muted disabled:cursor-not-allowed hover:text-on-action"
             >
               {savingHero ? (
                 <>
@@ -1409,7 +1406,7 @@ const SystemSettings = () => {
                 <>
                   <Save
                     size={15}
-                    className="text-[#D4AF37]"
+                    className="text-action"
                     aria-hidden="true"
                   />
                   Save Showcase Hero
@@ -1424,22 +1421,22 @@ const SystemSettings = () => {
       Maintenance
       ===============================================*/}
 
-      <section className="bg-gray-50 border border-gray-100 rounded-[2rem] p-6 md:p-8">
+      <section className="bg-canvas border border-line rounded-md p-4">
         <div className="flex items-start gap-4">
-          <div className="p-3 bg-white rounded-2xl border border-gray-100">
+          <div className="p-3 bg-surface rounded-md border border-line">
             <ShieldCheck
               size={20}
-              className="text-gray-400"
+              className="text-muted"
               aria-hidden="true"
             />
           </div>
 
           <div>
-            <h3 className="text-sm font-bold text-gray-900">
+            <h3 className="text-sm font-bold text-ink">
               Maintenance Mode
             </h3>
 
-            <p className="text-xs text-gray-500 mt-2 leading-relaxed max-w-2xl">
+            <p className="text-xs text-muted mt-2 leading-relaxed max-w-2xl">
               Maintenance controls are not currently exposed because there is no
               persistent backend maintenance configuration. This avoids showing
               a control that appears to work but would not be reliable after a
@@ -1457,22 +1454,22 @@ Small Components
 =========================================================*/
 
 const InfoCard = ({ label, value }) => (
-  <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4">
-    <p className="text-[9px] uppercase tracking-widest font-black text-gray-400">
+  <div className="bg-canvas border border-line rounded-md p-4">
+    <p className="text-[11px] uppercase tracking-widest font-semibold text-muted">
       {label}
     </p>
 
-    <p className="text-xl font-serif text-gray-900 mt-2">{value}</p>
+    <p className="text-xl font-serif text-ink mt-2">{value}</p>
   </div>
 );
 
 const HeroPreviewEmpty = ({ icon, title, description }) => (
   <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
-    <div className="text-[#D4AF37]">{icon}</div>
+    <div className="text-action">{icon}</div>
 
-    <p className="text-sm font-bold text-white mt-4">{title}</p>
+    <p className="text-sm font-bold text-ink mt-4">{title}</p>
 
-    <p className="text-xs text-gray-400 mt-2 max-w-sm leading-relaxed">
+    <p className="text-xs text-muted mt-2 max-w-sm leading-relaxed">
       {description}
     </p>
   </div>

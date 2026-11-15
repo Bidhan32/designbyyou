@@ -432,7 +432,7 @@ class PreviewErrorBoundary extends Component {
 
     if (this.state.error) {
 
-      return <div role="status" className="flex h-full items-center justify-center p-8 text-center text-sm text-slate-500">This 3D preview is temporarily unavailable. The 2D images are still available.</div>;
+      return <div role="status" className="flex h-full items-center justify-center p-4 text-center text-sm text-muted">This 3D preview is temporarily unavailable. The 2D images are still available.</div>;
 
     }
 
@@ -483,7 +483,7 @@ export default function ShowcaseGarment3D({ preview, onSnapshot, onError }) {
 
   return (
 
-    <section className="flex h-full min-h-0 w-full flex-col bg-gradient-to-b from-slate-200 via-slate-100 to-slate-300 dark:from-slate-700 dark:via-slate-800 dark:to-slate-950" aria-label={`Read-only interactive 3D ${configuration.label} preview`}>
+    <section className="flex h-full min-h-0 w-full flex-col bg-surface" aria-label={`Read-only interactive 3D ${configuration.label} preview`}>
 
       <div className="relative min-h-0 flex-1">
 
@@ -509,7 +509,7 @@ export default function ShowcaseGarment3D({ preview, onSnapshot, onError }) {
 
             <directionalLight position={[-5, 2, -4]} intensity={1.5}/>
 
-            <Suspense fallback={<Html center><div className="rounded-md bg-black/80 px-4 py-2 text-xs text-white">Loading 3D {configuration.label}…</div></Html>}>
+            <Suspense fallback={<Html center><div className="rounded-md bg-black/80 px-4 py-2 text-xs text-ink">Loading 3D {configuration.label}…</div></Html>}>
 
               <PublishedGarment key={configuration.url} preview={preview} configuration={configuration}/>
 
@@ -521,11 +521,11 @@ export default function ShowcaseGarment3D({ preview, onSnapshot, onError }) {
 
         </PreviewErrorBoundary>
 
-        <span className="pointer-events-none absolute bottom-3 left-3 rounded-lg bg-black/70 px-3 py-1.5 text-[11px] text-white">{configuration.label} · Drag to rotate · Scroll to zoom · Preview only</span>
+        <span className="pointer-events-none absolute bottom-3 left-3 rounded-md bg-black/70 px-3 py-1.5 text-[11px] text-ink">{configuration.label} · Drag to rotate · Scroll to zoom · Preview only</span>
 
       </div>
 
-      <nav className="flex shrink-0 flex-wrap items-center justify-center gap-2 border-t border-black/10 bg-slate-950/95 p-3" aria-label="3D garment camera controls">
+      <nav className="flex shrink-0 flex-wrap items-center justify-center gap-2 border-t border-line bg-subtle p-3" aria-label="3D garment camera controls">
 
         {options.map(({ id, label }) => (
 
@@ -533,7 +533,7 @@ export default function ShowcaseGarment3D({ preview, onSnapshot, onError }) {
 
             onClick={() => { setView(id); setResetKey((n) => n + 1); }}
 
-            className={`rounded-lg border px-3 py-2 text-xs font-bold transition ${view === id ? "border-[#D4AF37] bg-[#D4AF37] text-black" : "border-white/20 bg-slate-800 text-white hover:bg-slate-700"}`}>
+            className={`rounded-md border px-3 py-2 text-xs font-bold transition ${view === id ? "border-line bg-action text-on-action" : "border-line bg-action text-on-action hover:bg-action"}`}>
 
             {label}
 
@@ -544,16 +544,16 @@ export default function ShowcaseGarment3D({ preview, onSnapshot, onError }) {
       </nav>
 
       {Object.prototype.hasOwnProperty.call(PUBLISHED_MODEL_CREDITS, model) && (
-        <p className="shrink-0 bg-slate-950 px-3 pb-2 text-center text-[10px] text-slate-400">
+        <p className="shrink-0 bg-surface px-3 pb-2 text-center text-[10px] text-muted">
           Adapted 3D garment by{" "}
           <a href={PUBLISHED_MODEL_CREDITS[model].source} target="_blank"
-            rel="noopener noreferrer" className="underline underline-offset-2 hover:text-white">
+            rel="noopener noreferrer" className="underline underline-offset-2 hover:text-ink">
             {PUBLISHED_MODEL_CREDITS[model].creator} (Sketchfab)
           </a>
           {" · "}
           <a href="https://creativecommons.org/licenses/by/4.0/"
             target="_blank" rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-white">
+            className="underline underline-offset-2 hover:text-ink">
             CC BY 4.0
           </a>
           {" · "}Modified and segmented for DesignByYou.

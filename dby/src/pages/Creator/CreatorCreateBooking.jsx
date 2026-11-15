@@ -87,6 +87,7 @@ import { loadStripe } from "@stripe/stripe-js";
 
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
+import { bookingRewardEstimate } from "./bookingRewards";
 import API from "../../api/axios";
 import useModalFocus from "../../components/useModalFocus";
 
@@ -528,13 +529,13 @@ function CheckoutForm({
 
       <div>
         <p
-          className="mb-2 text-xs font-semibold tracking-normal text-slate-400 dark:text-white/35"
+          className="mb-2 text-xs font-semibold tracking-normal text-muted"
         >
           Card Details
         </p>
 
         <div
-          className="rounded-2xl border border-slate-200 bg-slate-950 p-4 shadow-inner transition focus-within:border-[#D4AF37]/60 focus-within:ring-4 focus-within:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-[#050505]"
+          className="rounded-md border border-line bg-surface p-4 transition focus-within:border-line focus-within:ring-4 focus-within:ring-action dark:bg-canvas"
         >
           <CardElement options={CARD_ELEMENT_OPTIONS} />
         </div>
@@ -544,7 +545,7 @@ function CheckoutForm({
 
       {(cardError || verificationError) && (
         <div
-          className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200"
+          className="flex items-start gap-3 rounded-md border border-line bg-canvas p-4 text-sm leading-6 text-action dark:bg-subtle"
         >
           <AlertCircle
             size={17}
@@ -558,20 +559,20 @@ function CheckoutForm({
       {/* Authoritative Payment */}
 
       <div
-        className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-white/[0.06] dark:bg-white/[0.025]"
+        className="overflow-hidden rounded-md border border-line bg-canvas dark:bg-subtle"
       >
         <div
-          className="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-4 dark:border-white/[0.06]"
+          className="flex items-center justify-between gap-4 border-b border-line px-5 py-4"
         >
           <div>
             <p
-              className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/30"
+              className="text-xs font-semibold tracking-normal text-muted"
             >
               Booking Reference
             </p>
 
             <p
-              className="mt-1 font-mono text-xs text-slate-700 dark:text-white/60"
+              className="mt-1 font-mono text-xs text-ink dark:text-muted"
             >
               #
               {String(bookingId || "")
@@ -580,21 +581,21 @@ function CheckoutForm({
             </p>
           </div>
 
-          <ShieldCheck size={21} className="text-emerald-500" />
+          <ShieldCheck size={21} className="text-action" />
         </div>
 
         <div className="px-5 py-5 text-sm">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <p className="text-xs font-bold tracking-normal text-slate-500 dark:text-white/40">
+              <p className="text-xs font-bold tracking-normal text-muted">
                 Total to pay
               </p>
-              <p className="mt-2 text-xs leading-5 text-slate-400 dark:text-white/35">
+              <p className="mt-2 text-xs leading-5 text-muted">
                 Total amount payable for this booking, including applicable
                 charges.
               </p>
             </div>
-            <strong className="shrink-0 font-mono text-2xl text-[#98761A] dark:text-[#D4AF37]">
+            <strong className="shrink-0 font-mono text-2xl text-action">
               {formatMoney(payment?.totalCharged, paymentCurrency)}
             </strong>
           </div>
@@ -606,7 +607,7 @@ function CheckoutForm({
       <button
         type="submit"
         disabled={(!paymentNeedsVerification && (!stripe || !elements)) || processing || verifying}
-        className="flex h-[54px] w-full items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-5 text-xs font-semibold tracking-normal text-black shadow-sm transition hover:bg-[#E4C65D] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none dark:disabled:bg-white/5 dark:disabled:text-white/25"
+        className="flex h-[54px] w-full items-center justify-center gap-2 rounded-md bg-action px-5 text-xs font-semibold tracking-normal text-on-action transition hover:bg-action disabled:cursor-not-allowed disabled:bg-subtle disabled:text-muted hover:text-on-action"
       >
         {processing || verifying ? (
           <Loader2 size={15} className="animate-spin" />
@@ -622,7 +623,7 @@ function CheckoutForm({
       </button>
 
       <p
-        className="text-center text-xs leading-5 text-slate-400 dark:text-white/25"
+        className="text-center text-xs leading-5 text-muted"
       >
         Stripe processes the card payment. Designer payment remains governed by
         the booking workflow and final approval.
@@ -650,6 +651,8 @@ export default function CreatorCreateBooking() {
   const designerIdFromUrl = cleanParam(searchParams, "designer_id");
 
   const designIdFromUrl = cleanParam(searchParams, "design_id");
+
+  const designLabel = cleanParam(searchParams, "design_title") || `Design #${designIdFromUrl?.slice(0, 8)}`;
 
   const budgetFromUrl = parseMoney(cleanParam(searchParams, "budget"));
 
@@ -969,6 +972,7 @@ export default function CreatorCreateBooking() {
   =======================================================*/
 
   const baseAmount = parseMoney(agreedPrice) || 0;
+  const rewardEstimate = bookingRewardEstimate(baseAmount);
 
   /*
   Do NOT hard-code the platform connection fee here.
@@ -999,34 +1003,6 @@ export default function CreatorCreateBooking() {
 
     connectionFeeWaived: subscribed,
   };
-
-  /*=======================================================
-  Form Completion
-  =======================================================*/
-
-  const completion = useMemo(() => {
-    let completed = 0;
-
-    const total = 4;
-
-    if (selectedDesigner) {
-      completed += 1;
-    }
-
-    if (baseAmount > 0) {
-      completed += 1;
-    }
-
-    if (deadline) {
-      completed += 1;
-    }
-
-    if (brief.trim().length >= 20) {
-      completed += 1;
-    }
-
-    return Math.round((completed / total) * 100);
-  }, [selectedDesigner, baseAmount, deadline, brief]);
 
   /*=======================================================
   Validation
@@ -1264,62 +1240,62 @@ export default function CreatorCreateBooking() {
   if (success && createdBooking) {
     return (
       <div
-        className="relative flex min-h-[calc(100vh-5rem)] items-center justify-center overflow-hidden bg-slate-50 px-4 py-14 text-slate-950 dark:bg-[#030303] dark:text-white"
+        className="relative flex min-h-[calc(100vh-5rem)] items-center justify-center overflow-hidden bg-canvas px-4 py-14 text-ink"
       >
         <div
-          className="pointer-events-none absolute left-1/2 top-1/2 h-[38rem] w-[38rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#D4AF37]/15 blur-[170px]"
+          className="pointer-events-none absolute left-1/2 top-1/2 h-[38rem] w-[38rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-subtle blur-[170px]"
         />
 
         <section
-          className="relative z-10 w-full max-w-xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-7 text-center shadow-sm sm:p-10 dark:border-white/[0.08] dark:bg-[#090909] shadow-sm"
+          className="relative z-10 w-full max-w-xl overflow-hidden rounded-md border border-line bg-surface p-4 text-center sm:p-4"
         >
           <div
-            className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-emerald-400/10 blur-[70px]"
+            className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-subtle blur-[70px]"
           />
 
           <div
-            className="relative mx-auto grid h-20 w-20 place-items-center rounded-3xl border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300"
+            className="relative mx-auto grid h-20 w-20 place-items-center rounded-md border border-line bg-canvas text-action dark:bg-subtle"
           >
             <ShieldCheck size={35} />
           </div>
 
           <p
-            className="relative mt-7 text-xs font-semibold tracking-normal text-[#997619] dark:text-[#D4AF37]"
+            className="relative mt-7 text-xs font-semibold tracking-normal text-action"
           >
             Payment confirmed
           </p>
 
           <h1
-            className="relative mt-3 font-semibold font-semibold text-3xl sm:text-4xl"
+            className="relative mt-3 font-semibold text-3xl sm:text-4xl"
           >
             Payment{" "}
             <span
-              className="italic text-[#A17D1C] dark:text-[#D4AF37]"
+              className="italic text-action"
             >
               confirmed.
             </span>
           </h1>
 
           <p
-            className="relative mx-auto mt-4 max-w-md text-sm leading-7 text-slate-500 dark:text-white/45"
+            className="relative mx-auto mt-4 max-w-md text-sm leading-7 text-muted"
           >
             Your payment is confirmed. Open your booking to follow the next steps.
           </p>
 
           <div
-            className="relative mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 text-left dark:border-white/[0.06] dark:bg-white/[0.025]"
+            className="relative mt-8 overflow-hidden rounded-md border border-line bg-canvas text-left dark:bg-subtle"
           >
             <div
-              className="flex justify-between gap-4 border-b border-slate-200 p-4 text-xs dark:border-white/[0.06]"
+              className="flex justify-between gap-4 border-b border-line p-4 text-xs"
             >
               <span
-                className="text-slate-500 dark:text-white/40"
+                className="text-muted"
               >
                 Booking
               </span>
 
               <span
-                className="font-mono text-slate-900 dark:text-white/75"
+                className="font-mono text-ink dark:text-muted"
               >
                 #{String(createdBooking.id).slice(0, 8).toUpperCase()}
               </span>
@@ -1329,13 +1305,13 @@ export default function CreatorCreateBooking() {
               className="flex justify-between gap-4 p-4"
             >
               <span
-                className="text-xs text-slate-500 dark:text-white/40"
+                className="text-xs text-muted"
               >
                 Total to pay
               </span>
 
               <strong
-                className="font-mono text-lg text-[#997619] dark:text-[#D4AF37]"
+                className="font-mono text-lg text-action"
               >
                 {formatMoney(payment?.totalCharged, payment?.currency)}
               </strong>
@@ -1343,23 +1319,23 @@ export default function CreatorCreateBooking() {
           </div>
 
           <div
-            className="relative mt-5 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-left dark:border-emerald-400/15 dark:bg-emerald-400/[0.05]"
+            className="relative mt-5 rounded-md border border-line bg-subtle p-4 text-left"
           >
             <div className="flex items-start gap-3">
               <MessageCircle
                 size={17}
-                className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-300"
+                className="mt-0.5 shrink-0 text-action"
               />
 
               <div>
                 <p
-                  className="text-xs font-semibold tracking-normal text-emerald-700 dark:text-emerald-300"
+                  className="text-xs font-semibold tracking-normal text-action"
                 >
                   WhatsApp Coordination
                 </p>
 
                 <p
-                  className="mt-1 text-xs leading-5 text-slate-500 dark:text-white/40"
+                  className="mt-1 text-xs leading-5 text-muted"
                 >
                   WhatsApp remains private until the Designer accepts the
                   booking and contact-sharing rules are satisfied. Open the
@@ -1375,7 +1351,7 @@ export default function CreatorCreateBooking() {
             <button
               type="button"
               onClick={() => navigate("/creator/bookings")}
-              className="h-12 rounded-xl border border-slate-200 bg-white text-xs font-semibold tracking-normal text-slate-600 transition hover:border-[#D4AF37]/50 hover:text-[#98751B] dark:border-white/10 dark:bg-white/[0.04] dark:text-white/60 dark:hover:text-[#D4AF37]"
+              className="h-9 rounded-md border border-line bg-surface text-xs font-semibold tracking-normal text-muted transition hover:border-line hover:text-action dark:bg-subtle"
             >
               View bookings
             </button>
@@ -1383,7 +1359,7 @@ export default function CreatorCreateBooking() {
             <button
               type="button"
               onClick={() => navigate(`/creator/bookings/${createdBooking.id}`)}
-              className="flex h-12 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] text-xs font-semibold tracking-normal text-black transition hover:bg-[#E4C65D]"
+              className="flex h-9 items-center justify-center gap-2 rounded-md bg-action text-xs font-semibold tracking-normal text-on-action transition hover:bg-action hover:text-on-action"
             >
               Open Booking
               <ArrowRight size={14} />
@@ -1401,7 +1377,7 @@ export default function CreatorCreateBooking() {
   return (
     <>
       <div
-        className="relative min-h-screen overflow-hidden bg-slate-50 pb-24 text-slate-950 dark:bg-[#030303] dark:text-white"
+        className="relative min-h-screen overflow-hidden bg-canvas pb-24 text-ink"
       >
         {/*===============================================
         Ambient Background
@@ -1410,124 +1386,28 @@ export default function CreatorCreateBooking() {
         <div
           className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
         >
-          <div
-            className="absolute -left-[15rem] top-[6rem] h-[40rem] w-[40rem] rounded-full bg-[#D4AF37]/10 blur-[170px] dark:bg-[#D4AF37]/10"
-          />
 
-          <div
-            className="absolute -right-[18rem] bottom-[-10rem] h-[42rem] w-[42rem] rounded-full bg-indigo-500/[0.04] blur-[180px] dark:bg-indigo-500/[0.07]"
-          />
 
-          <div
-            className="absolute inset-0 bg-[linear-gradient(to_right,rgba(15,23,42,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.02)_1px,transparent_1px)] bg-[size:42px_42px] dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.014)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.014)_1px,transparent_1px)]"
-          />
         </div>
 
         <div
-          className="relative z-10 mx-auto max-w-[1450px] px-4 pt-9 sm:px-6 lg:px-10 lg:pt-12"
+          className="relative z-10 mx-auto max-w-[1450px] px-4 pt-3 sm:px-6 lg:px-10 lg:pt-6"
         >
           {/*=============================================
           Hero
           =============================================*/}
 
-          <section
-            className="relative mb-8 overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/85 p-6 shadow-sm backdrop-blur-xl sm:p-8 lg:p-10 dark:border-white/[0.06] dark:bg-[#090909]/90 shadow-sm"
-          >
-            <div
-              className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#D4AF37]/10 blur-[80px]"
-            />
-
-            <div
-              className="relative z-10 flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between"
-            >
-              <div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    directMode ? navigate(-1) : navigate("/creator/bookings")
-                  }
-                  className="mb-5 inline-flex items-center gap-2 text-xs font-semibold tracking-normal text-slate-400 transition hover:text-[#98751A] dark:text-white/30 dark:hover:text-[#D4AF37]"
-                >
-                  <ArrowLeft size={12} />
-
-                  {directMode ? "Back to discovery" : "Back to bookings"}
-                </button>
-
-                <div
-                  className="mb-4 flex items-center gap-2 text-xs font-semibold tracking-normal text-[#98751A] dark:text-[#D4AF37]"
-                >
-                  <Compass size={13} />
-                  New booking
-                </div>
-
-                <h1
-                  className="max-w-3xl font-semibold font-semibold leading-[1.05] tracking-tight text-3xl sm:text-4xl"
-                >
-                  Book a designer{" "}
-                  
-                </h1>
-
-                <p
-                  className="mt-5 max-w-2xl text-sm leading-7 text-slate-500 dark:text-white/42"
-                >
-                  Choose your designer, add the project details, then review your total before paying.
-                </p>
-              </div>
-
-              <div
-                className="flex flex-wrap gap-2"
-              >
-                <div
-                  className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold tracking-normal text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300"
-                >
-                  <LockKeyhole size={12} />
-                  Stripe Secured
-                </div>
-
-                {designIdFromUrl && (
-                  <div
-                    className="inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-4 py-2 text-xs font-semibold tracking-normal text-[#98751A] dark:text-[#D4AF37]"
-                  >
-                    <Sparkles size={12} />
-                    Showcase Reference
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Progress */}
-
-            <div
-              className="relative z-10 mt-9"
-            >
-              <div
-                className="mb-2 flex items-center justify-between gap-4"
-              >
-                <span
-                  className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/25"
-                >
-                  Booking setup
-                </span>
-
-                <span
-                  className="font-mono text-xs text-slate-500 dark:text-white/35"
-                >
-                  {completion}%
-                </span>
-              </div>
-
-              <div
-                className="h-1 overflow-hidden rounded-full bg-slate-100 dark:bg-white/[0.05]"
-              >
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#A98520] via-[#D4AF37] to-[#E7CE74] transition-all duration-500"
-                  style={{
-                    width: `${completion}%`,
-                  }}
-                />
-              </div>
-            </div>
-          </section>
+          <header className="mb-4 rounded-md border border-line bg-surface p-4">
+            <button type="button" onClick={() => directMode && window.history.state?.idx > 0 ? navigate(-1) : navigate(designIdFromUrl ? "/creator/showcase" : directMode ? "/creator/directory" : "/creator/bookings")} className="mb-2 inline-flex h-8 items-center gap-2 text-sm text-muted hover:text-ink">
+              <ArrowLeft size={16} /> {directMode ? "Back to discovery" : "Back to bookings"}
+            </button>
+            <h1 className="break-words text-2xl font-semibold">{designIdFromUrl ? designLabel : "Book a designer"}</h1>
+            {designIdFromUrl && <p className="mt-1 text-sm text-muted" aria-live="polite">
+              {selectedDesigner ? "Booking with " + designerName(selectedDesigner) : loadingDesigners ? "Loading designer" : designerError}
+            </p>}
+            {designIdFromUrl && designerError && !selectedDesigner && <button type="button" className="mt-2 h-8 rounded-md border border-line px-3 text-sm" onClick={() => setDesignerRefreshKey(value => value + 1)}>Retry designer lookup</button>}
+            {!directMode && <p className="mt-1 text-sm text-muted">Choose a designer, then enter your project details.</p>}
+          </header>
 
           {/*=============================================
           Workspace
@@ -1535,8 +1415,7 @@ export default function CreatorCreateBooking() {
 
           <div
             className={`
-              grid
-              gap-7
+              grid gap-7
 
               ${
                 directMode
@@ -1551,23 +1430,23 @@ export default function CreatorCreateBooking() {
 
             {!directMode && (
               <aside
-                className="flex max-h-[780px] min-h-[600px] flex-col overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/90 shadow-sm backdrop-blur dark:border-white/[0.06] dark:bg-[#090909]/90 shadow-sm"
+                className="flex max-h-[780px] min-h-[600px] flex-col overflow-hidden rounded-md border border-line bg-subtle"
               >
                 <div
-                  className="border-b border-slate-200/80 p-6 dark:border-white/[0.06]"
+                  className="border-b border-line p-4"
                 >
                   <div
                     className="flex items-start justify-between gap-4"
                   >
                     <div>
                       <p
-                        className="text-xs font-semibold tracking-normal text-[#98751A] dark:text-[#D4AF37]"
+                        className="text-xs font-semibold tracking-normal text-action"
                       >
                         Step 01
                       </p>
 
                       <h2
-                        className="mt-2 font-serif text-2xl"
+                        className="mt-2 font-sans text-2xl"
                       >
                         Choose a designer
                       </h2>
@@ -1575,7 +1454,7 @@ export default function CreatorCreateBooking() {
 
                     <UserRound
                       size={21}
-                      className="text-slate-300 dark:text-white/20"
+                      className="text-muted"
                     />
                   </div>
 
@@ -1586,7 +1465,7 @@ export default function CreatorCreateBooking() {
 
                     <Search
                       size={15}
-                      className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                      className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted"
                     />
 
                     <input
@@ -1595,7 +1474,7 @@ export default function CreatorCreateBooking() {
                       maxLength={100}
                       onChange={(event) => setQuery(event.target.value)}
                       placeholder="Search designers"
-                      className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-10 text-sm text-slate-900 caret-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/55 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 [color-scheme:light] dark:border-white/10 dark:bg-[#111111] dark:text-white dark:caret-white dark:placeholder:text-white/30 dark:[color-scheme:dark] dark:focus:bg-[#151515]"
+                      className="h-11 w-full rounded-md border border-line bg-canvas pl-11 pr-10 text-sm text-ink caret-slate-900 outline-none transition placeholder:text-muted focus:border-line focus:bg-surface focus:ring-4 focus:ring-action [color-scheme:light] dark:bg-surface dark:caret-white dark:[color-scheme:dark]"
                     />
 
                     {query && (
@@ -1603,7 +1482,7 @@ export default function CreatorCreateBooking() {
                         type="button"
                         onClick={() => setQuery("")}
                         aria-label="Clear designer search"
-                        className="absolute right-3 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white"
+                        className="absolute right-3 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md text-muted transition hover:bg-subtle hover:text-ink"
                       >
                         <X size={12} />
                       </button>
@@ -1616,7 +1495,7 @@ export default function CreatorCreateBooking() {
                 >
                   {loadingDesigners ? (
                     <div
-                      className="flex min-h-80 flex-col items-center justify-center gap-3 text-[#98751A] dark:text-[#D4AF37]"
+                      className="flex min-h-80 flex-col items-center justify-center gap-3 text-action"
                     >
                       <Loader2 size={24} className="animate-spin" />
 
@@ -1628,10 +1507,10 @@ export default function CreatorCreateBooking() {
                     </div>
                   ) : designerError ? (
                     <div
-                      className="rounded-2xl border border-rose-200 bg-rose-50 p-5 dark:border-rose-400/20 dark:bg-rose-400/[0.08]"
+                      className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle"
                     >
                       <div
-                        className="flex items-start gap-3 text-sm leading-6 text-rose-700 dark:text-rose-200"
+                        className="flex items-start gap-3 text-sm leading-6 text-action"
                       >
                         <AlertCircle
                           size={17}
@@ -1646,7 +1525,7 @@ export default function CreatorCreateBooking() {
                         onClick={() =>
                           setDesignerRefreshKey((value) => value + 1)
                         }
-                        className="mt-4 inline-flex items-center gap-2 text-xs font-semibold tracking-normal text-rose-700 dark:text-rose-200"
+                        className="mt-4 inline-flex items-center gap-2 text-xs font-semibold tracking-normal text-action"
                       >
                         <RefreshCw size={12} />
                         Retry
@@ -1654,11 +1533,11 @@ export default function CreatorCreateBooking() {
                     </div>
                   ) : filteredDesigners.length === 0 ? (
                     <div
-                      className="flex min-h-80 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 p-6 text-center dark:border-white/10"
+                      className="flex min-h-80 flex-col items-center justify-center rounded-md border border-dashed border-line p-4 text-center"
                     >
                       <UserRound
                         size={29}
-                        className="text-slate-300 dark:text-white/20"
+                        className="text-muted"
                       />
 
                       <p
@@ -1668,7 +1547,7 @@ export default function CreatorCreateBooking() {
                       </p>
 
                       <p
-                        className="mt-2 text-xs leading-5 text-slate-500 dark:text-white/35"
+                        className="mt-2 text-xs leading-5 text-muted"
                       >
                         {query
                           ? "Try another designer name, country, or tier."
@@ -1695,30 +1574,17 @@ export default function CreatorCreateBooking() {
                             setFormError("");
                           }}
                           className={`
-                              group
-                              flex
-                              w-full
-                              items-center
-                              gap-3
-                              rounded-2xl
-                              border
-                              p-3.5
-                              text-left
-                              transition
-                              duration-200
-
-                              disabled:cursor-not-allowed
-                              disabled:opacity-50
+                              group flex w-full items-center gap-3 rounded-md border p-3.5 text-left transition duration-200 disabled:cursor-not-allowed disabled:opacity-50
 
                               ${
                                 selected
-                                  ? "border-[#D4AF37]/50 bg-[#D4AF37]/10 shadow-[0_10px_30px_rgba(212,175,55,0.08)]"
-                                  : "border-slate-200 bg-slate-50/70 hover:border-[#D4AF37]/25 hover:bg-white dark:border-white/[0.06] dark:bg-white/[0.025] dark:hover:bg-white/[0.05]"
+                                  ? "border-line bg-subtle"
+                                  : "border-line bg-subtle hover:border-line hover:bg-surface dark:hover:bg-subtle"
                               }
                             `}
                         >
                           <div
-                            className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 bg-white font-serif text-lg text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-white/50"
+                            className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-md border border-line bg-surface font-serif text-lg text-muted dark:bg-subtle"
                           >
                             {avatar ? (
                               <img
@@ -1736,13 +1602,13 @@ export default function CreatorCreateBooking() {
                             className="min-w-0 flex-1"
                           >
                             <p
-                              className="truncate font-serif text-base text-slate-900 dark:text-white"
+                              className="truncate font-serif text-base text-ink"
                             >
                               {designerName(candidate)}
                             </p>
 
                             <div
-                              className="mt-1 flex flex-wrap items-center gap-1.5 text-xs font-semibold tracking-normal text-slate-400 dark:text-white/28"
+                              className="mt-1 flex flex-wrap items-center gap-1.5 text-xs font-semibold tracking-normal text-muted"
                             >
                               <span>Designer</span>
 
@@ -1751,7 +1617,7 @@ export default function CreatorCreateBooking() {
                                   <span>•</span>
 
                                   <span
-                                    className="text-[#9B791D] dark:text-[#D4AF37]"
+                                    className="text-action"
                                   >
                                     {candidate.tier}
                                   </span>
@@ -1762,19 +1628,12 @@ export default function CreatorCreateBooking() {
 
                           <div
                             className={`
-                                grid
-                                h-6
-                                w-6
-                                shrink-0
-                                place-items-center
-                                rounded-full
-                                border
-                                transition
+                                grid h-6 w-6 shrink-0 place-items-center rounded-full border transition
 
                                 ${
                                   selected
-                                    ? "border-[#D4AF37] bg-[#D4AF37] text-black"
-                                    : "border-slate-300 text-transparent dark:border-white/15"
+                                    ? "border-line bg-action text-on-action"
+                                    : "border-line text-transparent"
                                 }
                               `}
                           >
@@ -1787,11 +1646,11 @@ export default function CreatorCreateBooking() {
                 </div>
 
                 <div
-                  className="border-t border-slate-200 p-4 dark:border-white/[0.06]"
+                  className="border-t border-line p-4"
                 >
                   <Link
                     to="/creator/directory"
-                    className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 py-3 text-xs font-semibold tracking-normal text-slate-500 transition hover:border-[#D4AF37]/30 hover:text-[#967319] dark:border-white/10 dark:bg-white/[0.03] dark:text-white/40 dark:hover:text-[#D4AF37]"
+                    className="flex items-center justify-center gap-2 rounded-md border border-line bg-canvas py-3 text-xs font-semibold tracking-normal text-muted transition hover:border-line hover:text-action dark:bg-subtle"
                   >
                     Explore Full Directory
                     <ArrowRight size={12} />
@@ -1805,32 +1664,26 @@ export default function CreatorCreateBooking() {
             ===========================================*/}
 
             <section
-              className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/90 shadow-sm backdrop-blur dark:border-white/[0.06] dark:bg-[#090909]/90 shadow-sm"
+              className="overflow-hidden rounded-md border border-line bg-subtle"
             >
               <form
                 onSubmit={createBooking}
-                className="p-5 sm:p-7 lg:p-9"
+                className="p-4 lg:p-4"
               >
                 {/* Form Heading */}
 
                 <div
-                  className="flex flex-col gap-5 border-b border-slate-200 pb-7 sm:flex-row sm:items-start sm:justify-between dark:border-white/[0.06]"
+                  className="flex flex-col gap-5 border-b border-line pb-7 sm:flex-row sm:items-start sm:justify-between"
                 >
                   <div>
-                    <p
-                      className="text-xs font-semibold tracking-normal text-[#98751A] dark:text-[#D4AF37]"
-                    >
-                      Step 02
-                    </p>
-
                     <h2
-                      className="mt-2 font-serif text-3xl sm:text-4xl"
+                      className="text-xl font-semibold"
                     >
                       Project details
                     </h2>
 
                     <p
-                      className="mt-3 max-w-xl text-sm leading-6 text-slate-500 dark:text-white/40"
+                      className="mt-3 max-w-xl text-sm leading-6 text-muted"
                     >
                       Enter the price agreed with your designer, your deadline, and what you need.
                     </p>
@@ -1838,23 +1691,12 @@ export default function CreatorCreateBooking() {
 
                   <div
                     className={`
-                      inline-flex
-                      w-fit
-                      items-center
-                      gap-2
-                      rounded-full
-                      border
-                      px-4
-                      py-2
-                      text-xs
-                      font-semibold
-                      
-                      tracking-normal
+                      inline-flex w-fit items-center gap-2 rounded-md border px-4 py-2 text-xs font-semibold tracking-normal
 
                       ${
                         subscribed
-                          ? "border-[#D4AF37]/25 bg-[#D4AF37]/10 text-[#8F7118] dark:text-[#D4AF37]"
-                          : "border-slate-200 bg-slate-50 text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-white/40"
+                          ? "border-line bg-subtle text-action"
+                          : "border-line bg-canvas text-muted dark:bg-subtle"
                       }
                     `}
                   >
@@ -1876,7 +1718,7 @@ export default function CreatorCreateBooking() {
 
                 {subscriptionError && (
                   <div
-                    className="mt-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/[0.08] dark:text-amber-200"
+                    className="mt-6 flex items-start gap-3 rounded-md border border-line bg-canvas p-4 text-xs leading-5 text-action dark:bg-subtle"
                   >
                     <AlertCircle
                       size={15}
@@ -1898,7 +1740,7 @@ export default function CreatorCreateBooking() {
                 {formError && (
                   <div
                     role="alert"
-                    className="mt-6 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm leading-6 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/[0.08] dark:text-rose-200"
+                    className="mt-6 flex items-start gap-3 rounded-md border border-line bg-canvas p-4 text-sm leading-6 text-action dark:bg-subtle"
                   >
                     <AlertCircle
                       size={17}
@@ -1911,25 +1753,25 @@ export default function CreatorCreateBooking() {
 
                 {createdBooking && (
                   <div
-                    className="mt-6 flex flex-col gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:flex-row sm:items-center sm:justify-between dark:border-amber-400/20 dark:bg-amber-400/[0.08]"
+                    className="mt-6 flex flex-col gap-4 rounded-md border border-line bg-canvas p-4 sm:flex-row sm:items-center sm:justify-between dark:bg-subtle"
                   >
                     <div
                       className="flex items-start gap-3"
                     >
                       <Clock3
                         size={18}
-                        className="mt-0.5 shrink-0 text-amber-700 dark:text-amber-300"
+                        className="mt-0.5 shrink-0 text-action"
                       />
 
                       <div>
                         <h3
-                          className="font-semibold text-amber-900 dark:text-amber-100"
+                          className="font-semibold text-action"
                         >
                           Booking created — payment pending
                         </h3>
 
                         <p
-                          className="mt-1 text-xs leading-5 text-amber-700/75 dark:text-amber-200/65"
+                          className="mt-1 text-xs leading-5 text-muted"
                         >
                           Booking #
                           {String(createdBooking.id).slice(0, 8).toUpperCase()}{" "}
@@ -1942,7 +1784,7 @@ export default function CreatorCreateBooking() {
                     <button
                       type="button"
                       onClick={() => setCheckoutOpen(true)}
-                      className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-amber-700 px-4 text-xs font-semibold tracking-normal text-white dark:bg-amber-300 dark:text-black"
+                      className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-action px-4 text-xs font-semibold tracking-normal text-on-action"
                     >
                       <CreditCard size={13} />
                       Continue Payment
@@ -1955,13 +1797,14 @@ export default function CreatorCreateBooking() {
                 <div
                   className="mt-7 space-y-7"
                 >
-                  {/* Selected Designer */}
+                  {/* Direct Showcase bookings identify the designer in the heading. */}
+                  {!designIdFromUrl && (
 
                   <div
-                    className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/[0.06] dark:bg-white/[0.025]"
+                    className="relative overflow-hidden rounded-md border border-line bg-canvas p-4 dark:bg-subtle"
                   >
                     <div
-                      className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#D4AF37]/10 blur-[50px]"
+                      className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-subtle blur-[50px]"
                     />
 
                     <div
@@ -1969,14 +1812,14 @@ export default function CreatorCreateBooking() {
                     >
                       <div>
                         <p
-                          className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/28"
+                          className="text-xs font-semibold tracking-normal text-muted"
                         >
                           Selected Designer
                         </p>
 
                         {loadingDesigners && directMode ? (
                           <div
-                            className="mt-3 flex items-center gap-2 text-sm text-[#98751A] dark:text-[#D4AF37]"
+                            className="mt-3 flex items-center gap-2 text-sm text-action"
                           >
                             <Loader2 size={15} className="animate-spin" />
                             Loading designer
@@ -1986,7 +1829,7 @@ export default function CreatorCreateBooking() {
                             className="mt-3 flex min-w-0 items-center gap-3"
                           >
                             <div
-                              className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/10 font-serif text-lg text-[#98751A] dark:text-[#D4AF37]"
+                              className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-md border border-line bg-subtle font-serif text-lg text-action"
                             >
                               {designerAvatar(selectedDesigner) ? (
                                 <img
@@ -2003,13 +1846,13 @@ export default function CreatorCreateBooking() {
 
                             <div className="min-w-0">
                               <h3
-                                className="truncate font-serif text-xl text-slate-900 sm:text-2xl dark:text-white"
+                                className="truncate font-serif text-xl text-ink sm:text-2xl"
                               >
                                 {designerName(selectedDesigner)}
                               </h3>
 
                               <p
-                                className="mt-1 text-xs font-semibold tracking-normal text-[#98751A] dark:text-[#D4AF37]"
+                                className="mt-1 text-xs font-semibold tracking-normal text-action"
                               >
                                 {designIdFromUrl
                                   ? "Showcase booking"
@@ -2019,7 +1862,7 @@ export default function CreatorCreateBooking() {
                           </div>
                         ) : (
                           <p
-                            className="mt-3 text-sm text-slate-500 dark:text-white/35"
+                            className="mt-3 text-sm text-muted"
                           >
                             {designerError || "Select a designer to continue."}
                           </p>
@@ -2029,11 +1872,12 @@ export default function CreatorCreateBooking() {
                       {selectedDesigner && (
                         <CheckCircle2
                           size={22}
-                          className="shrink-0 text-emerald-500"
+                          className="shrink-0 text-action"
                         />
                       )}
                     </div>
                   </div>
+                  )}
 
                   {/*=================================================
                   Private WhatsApp Coordination
@@ -2048,7 +1892,7 @@ export default function CreatorCreateBooking() {
                   =================================================*/}
 
                   {selectedDesigner && (
-                    <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-white/70">Contact options appear in your booking after the designer accepts, when they have enabled contact sharing.</p>
+                    <p className="mt-4 text-sm leading-6 text-muted">Contact options appear in your booking after the designer accepts, when they have enabled contact sharing.</p>
                   )}
 
                   {/* Amount + Deadline */}
@@ -2058,18 +1902,18 @@ export default function CreatorCreateBooking() {
                   >
                     <label className="block">
                       <span
-                        className="mb-2.5 flex items-center gap-2 text-xs font-semibold tracking-normal text-slate-500 dark:text-white/40"
+                        className="mb-2.5 flex items-center gap-2 text-xs font-semibold tracking-normal text-muted"
                       >
                         <BadgeDollarSign
                           size={13}
-                          className="text-[#A17D1C] dark:text-[#D4AF37]"
+                          className="text-action"
                         />
                         Agreed price
                       </span>
 
                       <div className="relative">
                         <span
-                          className="absolute left-4 top-1/2 -translate-y-1/2 font-serif text-lg text-[#98751A] dark:text-[#D4AF37]"
+                          className="absolute left-4 top-1/2 -translate-y-1/2 font-serif text-lg text-action"
                         >
                           $
                         </span>
@@ -2090,13 +1934,13 @@ export default function CreatorCreateBooking() {
                             setFormError("");
                           }}
                           placeholder="500.00"
-                          className="h-[54px] w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm outline-none transition focus:border-[#D4AF37]/60 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.035] dark:text-white dark:focus:bg-white/[0.05]"
+                          className="h-[54px] w-full rounded-md border border-line bg-canvas pl-10 pr-4 text-sm outline-none transition focus:border-line focus:bg-surface focus:ring-4 focus:ring-action disabled:cursor-not-allowed disabled:opacity-50 dark:bg-subtle dark:text-ink dark:focus:bg-subtle"
                         />
                       </div>
 
                       {budgetFromUrl && !createdBooking && (
                         <p
-                          className="mt-2 text-xs leading-4 text-slate-400 dark:text-white/25"
+                          className="mt-2 text-xs leading-4 text-muted"
                         >
                           Pre-filled from the designer's indicative booking
                           starting budget. You may adjust it before creating the
@@ -2107,11 +1951,11 @@ export default function CreatorCreateBooking() {
 
                     <label className="block">
                       <span
-                        className="mb-2.5 flex items-center gap-2 text-xs font-semibold tracking-normal text-slate-500 dark:text-white/40"
+                        className="mb-2.5 flex items-center gap-2 text-xs font-semibold tracking-normal text-muted"
                       >
                         <CalendarDays
                           size={13}
-                          className="text-[#A17D1C] dark:text-[#D4AF37]"
+                          className="text-action"
                         />
                         Deadline
                       </span>
@@ -2127,7 +1971,7 @@ export default function CreatorCreateBooking() {
 
                           setFormError("");
                         }}
-                        className="h-[54px] w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-[#D4AF37]/60 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.035] dark:text-white dark:[color-scheme:dark] dark:focus:border-[#D4AF37]/60 dark:focus:bg-white/[0.05]"
+                        className="h-[54px] w-full rounded-md border border-line bg-canvas px-4 text-sm outline-none transition focus:border-line focus:bg-surface focus:ring-4 focus:ring-action disabled:cursor-not-allowed disabled:opacity-50 dark:bg-subtle dark:text-ink dark:[color-scheme:dark] dark:focus:bg-subtle"
                       />
                     </label>
                   </div>
@@ -2136,15 +1980,15 @@ export default function CreatorCreateBooking() {
 
                   <label className="block">
                     <span
-                      className="mb-2.5 flex flex-wrap items-center gap-2 text-xs font-semibold tracking-normal text-slate-500 dark:text-white/40"
+                      className="mb-2.5 flex flex-wrap items-center gap-2 text-xs font-semibold tracking-normal text-muted"
                     >
                       <Clock3
                         size={13}
-                        className="text-[#A17D1C] dark:text-[#D4AF37]"
+                        className="text-action"
                       />
                       Preferred start time
                       <span
-                        className="rounded-full bg-slate-100 px-2 py-0.5 text-xs tracking-normal text-slate-400 dark:bg-white/5 dark:text-white/25"
+                        className="rounded-md bg-subtle px-2 py-0.5 text-xs tracking-normal text-muted"
                       >
                         Optional
                       </span>
@@ -2160,11 +2004,11 @@ export default function CreatorCreateBooking() {
 
                         setFormError("");
                       }}
-                      className="h-[54px] w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-[#D4AF37]/60 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.035] dark:text-white dark:[color-scheme:dark] dark:focus:border-[#D4AF37]/60 dark:focus:bg-white/[0.05]"
+                      className="h-[54px] w-full rounded-md border border-line bg-canvas px-4 text-sm outline-none transition focus:border-line focus:bg-surface focus:ring-4 focus:ring-action disabled:cursor-not-allowed disabled:opacity-50 dark:bg-subtle dark:text-ink dark:[color-scheme:dark] dark:focus:bg-subtle"
                     />
 
                     <p
-                      className="mt-2 text-xs text-slate-400 dark:text-white/25"
+                      className="mt-2 text-xs text-muted"
                     >
                       Availability is checked when you continue.
                     </p>
@@ -2174,20 +2018,20 @@ export default function CreatorCreateBooking() {
 
                   <label className="block">
                     <span
-                      className="mb-2.5 flex items-center justify-between gap-4 text-xs font-semibold tracking-normal text-slate-500 dark:text-white/40"
+                      className="mb-2.5 flex items-center justify-between gap-4 text-xs font-semibold tracking-normal text-muted"
                     >
                       <span
                         className="flex items-center gap-2"
                       >
                         <FileText
                           size={13}
-                          className="text-[#A17D1C] dark:text-[#D4AF37]"
+                          className="text-action"
                         />
                         What would you like designed?
                       </span>
 
                       <span
-                        className="font-mono text-xs text-slate-400 dark:text-white/25"
+                        className="font-mono text-xs text-muted"
                       >
                         {brief.length}
                         /20,000
@@ -2207,7 +2051,7 @@ export default function CreatorCreateBooking() {
                         setFormError("");
                       }}
                       placeholder="Describe the concept, style direction, intended use, deliverables, dimensions, references, technical requirements and anything the designer should know..."
-                      className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-7 outline-none transition focus:border-[#D4AF37]/60 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.035] dark:text-white dark:placeholder:text-white/20 dark:focus:border-[#D4AF37]/60 dark:focus:bg-white/[0.05]"
+                      className="w-full resize-none rounded-md border border-line bg-canvas p-4 text-sm leading-7 outline-none transition focus:border-line focus:bg-surface focus:ring-4 focus:ring-action disabled:cursor-not-allowed disabled:opacity-50 dark:bg-subtle dark:text-ink dark:placeholder:text-muted dark:focus:bg-subtle"
                     />
 
                     <div
@@ -2219,8 +2063,8 @@ export default function CreatorCreateBooking() {
 
                           ${
                             brief.length > 0 && brief.trim().length < 20
-                              ? "text-amber-600 dark:text-amber-300"
-                              : "text-slate-400 dark:text-white/25"
+                              ? "text-action"
+                              : "text-muted"
                           }
                         `}
                       >
@@ -2229,7 +2073,7 @@ export default function CreatorCreateBooking() {
 
                       {brief.trim().length >= 20 && (
                         <span
-                          className="inline-flex items-center gap-1 text-xs font-semibold tracking-normal text-emerald-600 dark:text-emerald-300"
+                          className="inline-flex items-center gap-1 text-xs font-semibold tracking-normal text-action"
                         >
                           <CheckCircle2 size={10} />
                           Ready
@@ -2241,10 +2085,10 @@ export default function CreatorCreateBooking() {
                   {/* Payment Preview */}
 
                   <section
-                    className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/[0.06] dark:bg-white/[0.025]"
+                    className="relative overflow-hidden rounded-md border border-line bg-canvas p-4 dark:bg-subtle"
                   >
                     <div
-                      className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-emerald-400/[0.08] blur-[50px]"
+                      className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-subtle blur-[50px]"
                     />
 
                     <div
@@ -2252,19 +2096,19 @@ export default function CreatorCreateBooking() {
                     >
                       <div>
                         <p
-                          className="text-xs font-semibold tracking-normal text-[#98751A] dark:text-[#D4AF37]"
+                          className="text-xs font-semibold tracking-normal text-action"
                         >
                           Step 03
                         </p>
 
                         <h3
-                          className="mt-2 font-serif text-2xl"
+                          className="mt-2 font-sans text-2xl"
                         >
                           Review your total
                         </h3>
 
                         <p
-                          className="mt-2 max-w-lg text-xs leading-5 text-slate-500 dark:text-white/35"
+                          className="mt-2 max-w-lg text-xs leading-5 text-muted"
                         >
                           Your total includes any applicable fees.
                         </p>
@@ -2272,17 +2116,18 @@ export default function CreatorCreateBooking() {
 
                       <WalletCards
                         size={23}
-                        className="shrink-0 text-emerald-500"
+                        className="shrink-0 text-action"
                       />
                     </div>
 
                     <div className="relative mt-5 space-y-3 text-sm">
+                      {baseAmount > 0 && <p className="text-sm text-muted">{rewardEstimate}</p>}
                       <div className="flex items-end justify-between gap-4">
                         <div>
-                          <p className="text-xs font-bold tracking-normal text-slate-500 dark:text-white/40">
+                          <p className="text-xs font-bold tracking-normal text-muted">
                             Total to pay
                           </p>
-                          <p className="mt-2 text-xs leading-5 text-slate-400 dark:text-white/35">
+                          <p className="mt-2 text-xs leading-5 text-muted">
                             The total amount payable, including applicable
                             charges.
                           </p>
@@ -2290,14 +2135,14 @@ export default function CreatorCreateBooking() {
 
                         {createdBooking ||
                         (subscribed && !subscriptionLoading) ? (
-                          <strong className="shrink-0 font-mono text-2xl text-[#98751A] dark:text-[#D4AF37]">
+                          <strong className="shrink-0 font-mono text-2xl text-action">
                             {formatMoney(
                               displayedPayment.totalCharged,
                               displayedPayment.currency,
                             )}
                           </strong>
                         ) : (
-                          <strong className="text-xs font-semibold text-slate-500 dark:text-white/40">
+                          <strong className="text-xs font-semibold text-muted">
                             Confirmed at checkout
                           </strong>
                         )}
@@ -2311,18 +2156,18 @@ export default function CreatorCreateBooking() {
                 {/* Footer */}
 
                 <div
-                  className="mt-8 flex flex-col gap-5 border-t border-slate-200 pt-7 sm:flex-row sm:items-center sm:justify-between dark:border-white/[0.06]"
+                  className="mt-8 flex flex-col gap-5 border-t border-line pt-7 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div
                     className="flex max-w-xl items-start gap-3"
                   >
                     <ShieldCheck
                       size={16}
-                      className="mt-0.5 shrink-0 text-emerald-500"
+                      className="mt-0.5 shrink-0 text-action"
                     />
 
                     <p
-                      className="text-xs leading-5 text-slate-500 dark:text-white/35"
+                      className="text-xs leading-5 text-muted"
                     >
                       Next, review your total and enter your card details. You will only be charged when you confirm payment.
                     </p>
@@ -2331,7 +2176,7 @@ export default function CreatorCreateBooking() {
                   <button
                     type="submit"
                     disabled={submitting || !selectedDesigner || Boolean(resumeBookingId && !createdBooking)}
-                    className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-6 text-xs font-semibold tracking-normal text-black shadow-sm transition hover:bg-[#E4C65D] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none dark:disabled:bg-white/5 dark:disabled:text-white/25"
+                    className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-action px-6 text-xs font-semibold tracking-normal text-on-action transition hover:bg-action disabled:cursor-not-allowed disabled:bg-subtle disabled:text-muted hover:text-on-action"
                   >
                     {submitting ? (
                       <Loader2 size={15} className="animate-spin" />
@@ -2360,7 +2205,7 @@ export default function CreatorCreateBooking() {
 
       {checkoutOpen && createdBooking && clientSecret && payment && (
         <div
-          className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/80 p-4 backdrop-blur-md dark:bg-black/85"
+          className="fixed inset-0 z-[100] overflow-y-auto bg-subtle p-4 dark:bg-black/85"
           onMouseDown={() => {
             if (!verifying && !paymentProcessing) {
               setCheckoutOpen(false);
@@ -2377,34 +2222,35 @@ export default function CreatorCreateBooking() {
               aria-modal="true"
               aria-label="Secure booking payment"
               onMouseDown={(event) => event.stopPropagation()}
-              className="relative w-full max-w-lg overflow-hidden rounded-[2rem] border border-white/10 bg-white p-6 shadow-sm sm:p-8 dark:bg-[#090909]"
+              className="relative w-full max-w-lg overflow-hidden rounded-md border border-line bg-surface p-4"
             >
               <div
-                className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-[#D4AF37]/15 blur-[70px]"
+                className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-subtle blur-[70px]"
               />
 
               <div className="relative z-10">
                 <div
-                  className="flex items-start justify-between gap-5 border-b border-slate-200 pb-5 dark:border-white/[0.06]"
+                  className="flex items-start justify-between gap-5 border-b border-line pb-5"
                 >
                   <div>
                     <p
-                      className="text-xs font-semibold tracking-normal text-[#98751A] dark:text-[#D4AF37]"
+                      className="text-xs font-semibold tracking-normal text-action"
                     >
                       Stripe Secure Checkout
                     </p>
 
                     <h2
-                      className="mt-2 font-serif text-3xl"
+                      className="mt-2 font-sans text-3xl"
                     >
                       Secure Payment
                     </h2>
 
                     <p
-                      className="mt-2 text-xs leading-5 text-slate-500 dark:text-white/40"
+                      className="mt-2 text-xs leading-5 text-muted"
                     >
-                      Check your total before confirming payment.
+                      {designIdFromUrl && selectedDesigner ? designLabel + " · " + designerName(selectedDesigner) : "Check your total before confirming payment."}
                     </p>
+                    {baseAmount > 0 && <p className="mt-2 text-xs text-muted">{rewardEstimate}</p>}
                   </div>
 
                   <button
@@ -2412,7 +2258,7 @@ export default function CreatorCreateBooking() {
                     disabled={verifying || paymentProcessing}
                     onClick={() => setCheckoutOpen(false)}
                     aria-label="Close checkout"
-                    className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:text-white/50 dark:hover:bg-white/5 dark:hover:text-white/80"
+                    className="grid h-9 w-10 shrink-0 place-items-center rounded-md border border-line text-muted transition hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40 dark:hover:text-muted"
                   >
                     <X size={16} />
                   </button>
@@ -2438,7 +2284,7 @@ export default function CreatorCreateBooking() {
                     </Elements>
                   ) : (
                     <div
-                      className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm leading-6 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200"
+                      className="rounded-md border border-line bg-canvas p-4 text-sm leading-6 text-action dark:bg-subtle"
                     >
                       Card payments are temporarily unavailable. Please try again later.
                     </div>
@@ -2450,7 +2296,7 @@ export default function CreatorCreateBooking() {
                     type="button"
                     onClick={verifyEscrow}
                     disabled={verifying}
-                    className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-amber-300 bg-amber-50 text-xs font-semibold tracking-normal text-amber-800 disabled:opacity-50 dark:border-amber-400/25 dark:bg-amber-400/10 dark:text-amber-200"
+                    className="mt-4 flex h-9 w-full items-center justify-center gap-2 rounded-md border border-line bg-canvas text-xs font-semibold tracking-normal text-action disabled:opacity-50 dark:bg-subtle"
                   >
                     {verifying ? (
                       <Loader2 size={14} className="animate-spin" />

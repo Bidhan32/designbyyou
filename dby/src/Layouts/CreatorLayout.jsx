@@ -305,6 +305,8 @@ const ACCOUNT_NAVIGATION = [
     description: "Balances, billing and membership.",
   },
 
+  { name: "Subscription", path: "/creator/wallet#subscription", icon: CreditCard, description: "View your plan and manage billing." },
+
   {
     name: "Avatar Studio",
 
@@ -660,7 +662,7 @@ export default function CreatorLayout() {
     setProfileDropdownOpen(false);
 
     setMobileMenuOpen(false);
-  }, [pathname]);
+  }, [pathname, location.key]);
 
   /*=======================================================
   Outside Click + Escape
@@ -786,14 +788,14 @@ export default function CreatorLayout() {
 
   return (
     <div
-      className="relative flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900 antialiased selection:bg-[#D4AF37] selection:text-black transition-colors duration-300 dark:bg-[#030303] dark:text-white"
+      className="relative flex min-h-screen flex-col bg-canvas font-sans text-ink antialiased selection:bg-action selection:text-on-action transition-colors duration-300"
     >
       {/*===================================================
       Header
       ===================================================*/}
 
       <header
-        className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 shadow-sm backdrop-blur-xl transition-colors duration-300 dark:border-white/[0.06] dark:bg-[#080808]/90 shadow-sm"
+        className="sticky top-0 z-50 border-b border-line bg-subtle transition-colors duration-300"
       >
         <div
           className="mx-auto flex h-20 w-full max-w-[1800px] items-center justify-between gap-4 px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12"
@@ -808,7 +810,7 @@ export default function CreatorLayout() {
             className="group flex min-w-0 shrink-0 items-center gap-3"
           >
             <div
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-200 bg-slate-100 font-serif text-lg font-bold text-[#A27D17] shadow-inner transition group-hover:border-[#D4AF37]/50 group-hover:bg-[#D4AF37]/10 dark:border-white/10 dark:bg-[#111] dark:text-[#D4AF37]"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-line bg-subtle font-serif text-lg font-bold text-action transition group-hover:border-line group-hover:bg-subtle dark:bg-surface"
             >
               D
             </div>
@@ -817,13 +819,13 @@ export default function CreatorLayout() {
               className="min-w-0 leading-tight"
             >
               <span
-                className="block truncate font-serif text-sm tracking-normal text-slate-900 transition group-hover:text-[#A27D17] dark:text-white dark:group-hover:text-[#D4AF37]"
+                className="block truncate font-serif text-sm tracking-normal text-ink transition group-hover:text-action"
               >
                 DESIGNBYYOU
               </span>
 
               <span
-                className="block text-xs font-semibold tracking-normal text-slate-400 dark:text-white/30"
+                className="block text-xs font-semibold tracking-normal text-muted"
               >
                 Create
               </span>
@@ -836,7 +838,7 @@ export default function CreatorLayout() {
 
           <nav
             aria-label="Creator navigation"
-            className="hidden items-center gap-1 rounded-full border border-slate-200 bg-slate-100 p-1 shadow-inner dark:border-white/[0.06] dark:bg-[#111] lg:flex"
+            className="hidden items-center gap-1 rounded-full border border-line bg-subtle p-1 dark:bg-surface lg:flex"
           >
             {CREATOR_NAVIGATION.map((item) => {
               const Icon = item.icon;
@@ -847,18 +849,18 @@ export default function CreatorLayout() {
                     key={item.path}
                     aria-disabled="true"
                     title={`${item.description} ${item.status || ""}`.trim()}
-                    className="group relative flex cursor-not-allowed items-center gap-2 rounded-full border border-violet-200/60 bg-violet-50/60 px-3.5 py-2.5 text-xs font-semibold tracking-normal text-violet-500/60 opacity-80 dark:border-violet-400/10 dark:bg-violet-500/[0.06] dark:text-violet-300/45 xl:px-5 xl:text-xs xl:tracking-normal"
+                    className="group relative flex cursor-not-allowed items-center gap-2 rounded-md border border-line bg-subtle px-3.5 py-2.5 text-xs font-semibold tracking-normal text-muted opacity-80 xl:px-5 xl:text-xs xl:tracking-normal"
                   >
                     <Icon
                       size={12}
                       aria-hidden="true"
-                      className="text-violet-400/60 dark:text-violet-300/40"
+                      className="text-muted"
                     />
 
                     {item.name}
 
                     <span
-                      className="absolute -right-1 -top-2 rounded-full border border-violet-200 bg-white px-1.5 py-0.5 text-[5px] font-semibold tracking-normal text-violet-500 dark:border-violet-400/20 dark:bg-[#111] dark:text-violet-300/60"
+                      className="absolute -right-1 -top-2 rounded-md border border-line bg-surface px-1.5 py-0.5 text-[5px] font-semibold tracking-normal text-action dark:text-muted"
                     >
                       {item.status || "Soon"}
                     </span>
@@ -876,69 +878,23 @@ export default function CreatorLayout() {
                   to={item.path}
                   title={item.description}
                   className={`
-                    flex
-                    items-center
-                    gap-2
-                    rounded-full
-                    border
-                    px-3.5
-                    py-2.5
-                    text-xs
-                    font-semibold
-                    
-                    tracking-normal
-                    transition-all
-                    duration-200
-
-                    xl:px-5
-                    xl:text-xs
-                    xl:tracking-normal
+                    flex items-center gap-2 rounded-md border px-3.5 py-2.5 text-xs font-semibold tracking-normal transition-all duration-200 xl:px-5 xl:text-xs xl:tracking-normal
 
                     ${
                       active && sketchStudio
                         ? `
-                            border-violet-300
-                            bg-violet-50
-                            text-violet-700
-                            shadow-sm
-
-                            dark:border-violet-400/20
-                            dark:bg-violet-500/10
-                            dark:text-violet-200
+                            border-line bg-canvas text-action dark:bg-subtle
                           `
                         : active
                           ? `
-                              border-slate-200
-                              bg-white
-                              text-slate-900
-                              shadow-sm
-
-                              dark:border-white/[0.06]
-                              dark:bg-white/10
-                              dark:text-white
+                              border-line bg-surface text-ink dark:bg-subtle
                             `
                           : sketchStudio
                             ? `
-                                border-transparent
-                                text-violet-500
-
-                                hover:bg-violet-50
-                                hover:text-violet-700
-
-                                dark:text-violet-300/60
-                                dark:hover:bg-violet-500/10
-                                dark:hover:text-violet-200
+                                border-transparent text-action hover:bg-canvas hover:text-action dark:text-muted dark:hover:bg-subtle
                               `
                             : `
-                                border-transparent
-                                text-slate-500
-
-                                hover:bg-slate-200
-                                hover:text-slate-900
-
-                                dark:text-white/40
-                                dark:hover:bg-white/5
-                                dark:hover:text-white
+                                border-transparent text-muted hover:bg-subtle hover:text-ink
                               `
                     }
                   `}
@@ -948,12 +904,12 @@ export default function CreatorLayout() {
                     aria-hidden="true"
                     className={
                       active && sketchStudio
-                        ? "text-violet-600 dark:text-violet-300"
+                        ? "text-action"
                         : active
-                          ? "text-[#A27D17] dark:text-[#D4AF37]"
+                          ? "text-action"
                           : sketchStudio
-                            ? "text-violet-400 dark:text-violet-300/50"
-                            : "text-slate-400 dark:text-white/30"
+                            ? "text-action dark:text-muted"
+                            : "text-muted"
                     }
                   />
 
@@ -975,7 +931,7 @@ export default function CreatorLayout() {
 
             <Link
               to="/creator/bookings/new"
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-4 text-xs font-semibold tracking-normal text-black shadow-sm transition hover:bg-[#E4C65D]"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-4 text-xs font-semibold tracking-normal text-on-action transition hover:bg-action hover:text-on-action"
             >
               <Plus size={13} />
 
@@ -990,24 +946,17 @@ export default function CreatorLayout() {
 
             {/* Creator Reward Points */}
 
-            <button
-              type="button"
-              onClick={() =>
-                fetchCreatorRewardPoints({
-                  silent: false,
-                })
-              }
-              disabled={rewardRefreshing}
-              title="Creator reward points"
-              aria-label={`${rewardPoints} Creator reward points`}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-3 text-[#98751A] transition hover:border-[#D4AF37]/50 hover:bg-[#D4AF37]/15 disabled:cursor-wait disabled:opacity-70 dark:border-[#D4AF37]/20 dark:bg-[#D4AF37]/10 dark:text-[#E4C760]"
+            <Link to="/creator/rewards" onClick={() => { setMobileMenuOpen(false); setProfileDropdownOpen(false); }}
+              title="View booking rewards"
+              aria-label={`${rewardPoints} points. View booking rewards`}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-subtle px-3 text-action transition hover:border-line hover:bg-subtle disabled:cursor-wait disabled:opacity-70"
             >
               {rewardRefreshing ? (
                 <RefreshCw size={12} className="animate-spin" />
               ) : (
                 <Sparkles
                   size={12}
-                  className="text-[#B89122] dark:text-[#D4AF37]"
+                  className="text-action"
                 />
               )}
 
@@ -1017,7 +966,7 @@ export default function CreatorLayout() {
                 {rewardPoints}
                 <span className="hidden 2xl:inline"> Points</span>
               </span>
-            </button>
+            </Link>
 
             {/* Membership */}
 
@@ -1025,12 +974,12 @@ export default function CreatorLayout() {
               <Link
                 to="/creator/wallet"
                 title="Creator membership"
-                className="hidden items-center gap-1.5 rounded-lg border border-[#D4AF37]/20 bg-[#D4AF37]/10 px-3 py-2 transition hover:border-[#D4AF37]/40 2xl:flex"
+                className="hidden items-center gap-1.5 rounded-md border border-line bg-subtle px-3 py-2 transition hover:border-line 2xl:flex"
               >
-                <Sparkles size={10} className="text-[#D4AF37]" />
+                <Sparkles size={10} className="text-action" />
 
                 <span
-                  className="text-xs font-semibold tracking-widest text-[#98751A] dark:text-[#D4AF37]"
+                  className="text-xs font-semibold tracking-widest text-action"
                 >
                   {humanize(subscriptionTier)}
                 </span>
@@ -1045,7 +994,7 @@ export default function CreatorLayout() {
               aria-haspopup="menu"
               aria-expanded={profileDropdownOpen}
               aria-label="Open Creator account menu"
-              className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 p-1 pr-2 transition hover:border-[#D4AF37]/50 hover:bg-white dark:border-white/10 dark:bg-[#111] dark:hover:bg-white/[0.05]"
+              className="flex items-center gap-2 rounded-md border border-line bg-canvas p-1 pr-2 transition hover:border-line hover:bg-surface dark:hover:bg-subtle"
             >
               {renderCreatorIdentity("sm", "navbar")}
 
@@ -1053,14 +1002,11 @@ export default function CreatorLayout() {
                 size={13}
                 aria-hidden="true"
                 className={`
-                  text-slate-400
-                  transition-transform
-
-                  dark:text-white/30
+                  text-muted transition-transform
 
                   ${
                     profileDropdownOpen
-                      ? "rotate-180 text-[#A27D17] dark:text-[#D4AF37]"
+                      ? "rotate-180 text-action"
                       : ""
                   }
                 `}
@@ -1074,12 +1020,12 @@ export default function CreatorLayout() {
             {profileDropdownOpen && (
               <div
                 role="menu"
-                className="absolute right-0 top-14 mt-2 w-[310px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0A0A0A] shadow-sm"
+                className="absolute right-0 top-14 mt-2 w-[310px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-md border border-line bg-surface"
               >
                 {/* Identity */}
 
                 <div
-                  className="border-b border-slate-100 p-4 dark:border-white/[0.06]"
+                  className="border-b border-line p-4"
                 >
                   <div
                     className="flex items-center gap-3"
@@ -1090,13 +1036,13 @@ export default function CreatorLayout() {
                       className="min-w-0 flex-1"
                     >
                       <p
-                        className="truncate font-serif text-base text-slate-950 dark:text-white"
+                        className="truncate font-serif text-base text-ink"
                       >
                         {creatorName}
                       </p>
 
                       <p
-                        className="mt-1 truncate text-xs text-slate-400 dark:text-white/30"
+                        className="mt-1 truncate text-xs text-muted"
                       >
                         {creatorEmail}
                       </p>
@@ -1107,7 +1053,7 @@ export default function CreatorLayout() {
                     className="mt-4 flex flex-wrap gap-2"
                   >
                     <span
-                      className="rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/10 px-2.5 py-1 text-xs font-semibold tracking-normal text-[#98751A] dark:text-[#D4AF37]"
+                      className="rounded-md border border-line bg-subtle px-2.5 py-1 text-xs font-semibold tracking-normal text-action"
                     >
                       Creator
                     </span>
@@ -1115,7 +1061,7 @@ export default function CreatorLayout() {
                     {/* Reward Points */}
 
                     <span
-                      className="inline-flex items-center gap-1.5 rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-2.5 py-1 text-xs font-semibold tracking-normal text-[#98751A] dark:border-[#D4AF37]/20 dark:text-[#E4C760]"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-line bg-subtle px-2.5 py-1 text-xs font-semibold tracking-normal text-action"
                     >
                       <Sparkles size={9} />
                       {rewardPoints} Reward Points
@@ -1123,22 +1069,12 @@ export default function CreatorLayout() {
 
                     <span
                       className={`
-                        inline-flex
-                        items-center
-                        gap-1.5
-                        rounded-full
-                        border
-                        px-2.5
-                        py-1
-                        text-xs
-                        font-semibold
-                        
-                        tracking-normal
+                        inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-semibold tracking-normal
 
                         ${
                           emailVerified
-                            ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300"
-                            : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300"
+                            ? "border-line bg-canvas text-action dark:bg-subtle"
+                            : "border-line bg-canvas text-action dark:bg-subtle"
                         }
                       `}
                     >
@@ -1153,7 +1089,7 @@ export default function CreatorLayout() {
 
                     {hasPaidTier && (
                       <span
-                        className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-semibold tracking-normal text-violet-700 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300"
+                        className="inline-flex items-center gap-1.5 rounded-md border border-line bg-canvas px-2.5 py-1 text-xs font-semibold tracking-normal text-action dark:bg-subtle"
                       >
                         <Sparkles size={9} />
 
@@ -1166,20 +1102,13 @@ export default function CreatorLayout() {
                 {/* Reward Summary */}
 
                 <div
-                  className="border-b border-slate-100 p-2 dark:border-white/[0.06]"
+                  className="border-b border-line p-2"
                 >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      fetchCreatorRewardPoints({
-                        silent: false,
-                      })
-                    }
-                    disabled={rewardRefreshing}
-                    className="flex w-full items-center gap-3 rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/5 px-3 py-3 text-left transition hover:border-[#D4AF37]/40 hover:bg-[#D4AF37]/10 disabled:opacity-70"
+                  <Link to="/creator/rewards" onClick={() => { setMobileMenuOpen(false); setProfileDropdownOpen(false); }}
+                    className="flex w-full items-center gap-3 rounded-md border border-line bg-subtle px-3 py-3 text-left transition hover:border-line hover:bg-subtle disabled:opacity-70"
                   >
                     <div
-                      className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#D4AF37] text-black"
+                      className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-action text-on-action"
                     >
                       {rewardRefreshing ? (
                         <RefreshCw size={15} className="animate-spin" />
@@ -1192,38 +1121,38 @@ export default function CreatorLayout() {
                       className="min-w-0 flex-1"
                     >
                       <p
-                        className="text-xs font-semibold tracking-normal text-[#98751A] dark:text-[#D4AF37]"
+                        className="text-xs font-semibold tracking-normal text-action"
                       >
                         Creator Rewards
                       </p>
 
                       <p
-                        className="mt-1 text-sm font-semibold text-slate-950 dark:text-white"
+                        className="mt-1 text-sm font-semibold text-ink"
                       >
                         {rewardPoints} Points
                       </p>
 
                       <p
-                        className="mt-0.5 text-xs text-slate-400 dark:text-white/30"
+                        className="mt-0.5 text-xs text-muted"
                       >
                         Earned from completed bookings
                       </p>
                     </div>
-                  </button>
+                  </Link>
                 </div>
 
                 {/* Quick Action */}
 
                 <div
-                  className="border-b border-slate-100 p-2 dark:border-white/[0.06]"
+                  className="border-b border-line p-2"
                 >
                   <Link
                     to="/creator/bookings/new"
                     role="menuitem"
-                    className="flex items-center gap-3 rounded-xl bg-[#D4AF37] px-4 py-3 text-black transition hover:bg-[#E4C65D]"
+                    className="flex items-center gap-3 rounded-md bg-action px-4 py-3 text-on-action transition hover:bg-action hover:text-on-action"
                   >
                     <div
-                      className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-black/10"
+                      className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-subtle"
                     >
                       <FilePlus2 size={14} />
                     </div>
@@ -1238,7 +1167,7 @@ export default function CreatorLayout() {
                       </p>
 
                       <p
-                        className="mt-0.5 text-xs text-black/60"
+                        className="mt-0.5 text-xs text-muted"
                       >
                         Start a secure Designer contract
                       </p>
@@ -1262,24 +1191,17 @@ export default function CreatorLayout() {
                         to={item.path}
                         role="menuitem"
                         className={`
-                          mb-1
-                          flex
-                          items-center
-                          gap-3
-                          rounded-xl
-                          px-3
-                          py-2.5
-                          transition
+                          mb-1 flex items-center gap-3 rounded-md px-3 py-2.5 transition
 
                           ${
                             active
-                              ? "bg-[#D4AF37]/10 text-[#98751A] dark:text-[#D4AF37]"
-                              : "text-slate-600 hover:bg-slate-50 hover:text-slate-950 dark:text-white/55 dark:hover:bg-white/[0.05] dark:hover:text-white"
+                              ? "bg-subtle text-action"
+                              : "text-muted hover:bg-canvas hover:text-ink dark:hover:bg-subtle"
                           }
                         `}
                       >
                         <div
-                          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-100 dark:bg-white/[0.04]"
+                          className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-subtle"
                         >
                           <Icon size={14} />
                         </div>
@@ -1294,7 +1216,7 @@ export default function CreatorLayout() {
                           </p>
 
                           <p
-                            className="mt-0.5 truncate text-xs font-normal normal-case tracking-normal text-slate-400 dark:text-white/25"
+                            className="mt-0.5 truncate text-xs font-normal normal-case tracking-normal text-muted"
                           >
                             {item.description}
                           </p>
@@ -1307,16 +1229,16 @@ export default function CreatorLayout() {
                 {/* Logout */}
 
                 <div
-                  className="border-t border-slate-100 p-2 dark:border-white/[0.06]"
+                  className="border-t border-line p-2"
                 >
                   <button
                     type="button"
                     onClick={handleLogout}
                     role="menuitem"
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-rose-600 transition hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
+                    className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-action transition hover:bg-canvas dark:hover:bg-subtle"
                   >
                     <div
-                      className="grid h-8 w-8 place-items-center rounded-lg bg-rose-50 dark:bg-rose-500/10"
+                      className="grid h-8 w-8 place-items-center rounded-md bg-canvas dark:bg-subtle"
                     >
                       <LogOut size={14} />
                     </div>
@@ -1341,16 +1263,9 @@ export default function CreatorLayout() {
           >
             {/* Mobile Reward Points */}
 
-            <button
-              type="button"
-              onClick={() =>
-                fetchCreatorRewardPoints({
-                  silent: false,
-                })
-              }
-              disabled={rewardRefreshing}
-              aria-label={`${rewardPoints} Creator reward points`}
-              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-2.5 text-[#98751A] dark:border-[#D4AF37]/20 dark:text-[#E4C760]"
+            <Link to="/creator/rewards" onClick={() => { setMobileMenuOpen(false); setProfileDropdownOpen(false); }}
+              aria-label={`${rewardPoints} points. View booking rewards`}
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-line bg-subtle px-2.5 text-action"
             >
               {rewardRefreshing ? (
                 <RefreshCw size={12} className="animate-spin" />
@@ -1363,12 +1278,12 @@ export default function CreatorLayout() {
               >
                 {rewardPoints}
               </span>
-            </button>
+            </Link>
 
             <Link
               to="/creator/bookings/new"
               aria-label="Create new commission"
-              className="grid h-10 w-10 place-items-center rounded-xl bg-[#D4AF37] text-black shadow-sm"
+              className="grid h-9 w-10 place-items-center rounded-md bg-action text-on-action"
             >
               <Plus size={17} />
             </Link>
@@ -1385,33 +1300,15 @@ export default function CreatorLayout() {
                   : "Open creator navigation"
               }
               className={`
-                grid
-                h-10
-                w-10
-                place-items-center
-                rounded-xl
-                border
-                transition
+                grid h-9 w-10 place-items-center rounded-md border transition
 
                 ${
                   mobileMenuOpen
                     ? `
-                        border-[#D4AF37]/40
-                        bg-[#D4AF37]/10
-                        text-[#98751A]
-
-                        dark:text-[#D4AF37]
+                        border-line bg-subtle text-action
                       `
                     : `
-                        border-slate-200
-                        bg-slate-50
-                        text-slate-600
-
-                        hover:border-[#D4AF37]/30
-
-                        dark:border-white/10
-                        dark:bg-white/[0.035]
-                        dark:text-white/55
+                        border-line bg-canvas text-muted hover:border-line dark:bg-subtle
                       `
                 }
               `}
@@ -1439,7 +1336,7 @@ export default function CreatorLayout() {
             tabIndex={-1}
             aria-hidden="true"
             onClick={() => setMobileMenuOpen(false)}
-            className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm dark:bg-black/70"
+            className="absolute inset-0 bg-subtle dark:bg-black/70"
           />
 
           {/* Drawer */}
@@ -1450,15 +1347,15 @@ export default function CreatorLayout() {
             aria-modal="true"
             tabIndex={-1}
             aria-label="Creator mobile navigation"
-            className="mobile-navigation absolute bottom-0 right-0 top-20 flex w-full max-w-[420px] flex-col border-l border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#080808] shadow-sm sm:w-[400px]"
+            className="mobile-navigation absolute bottom-0 right-0 top-20 flex w-full max-w-[420px] flex-col border-l border-line bg-surface dark:bg-canvas sm:w-[400px]"
           >
-            <button type="button" onClick={() => setMobileMenuOpen(false)} className="min-h-11 shrink-0 self-end px-5 text-sm font-semibold">Close navigation</button>
+            <button type="button" onClick={() => setMobileMenuOpen(false)} className="min-h-9 shrink-0 self-end px-5 text-sm font-semibold">Close navigation</button>
             {/*=============================================
             Identity
             =============================================*/}
 
             <div
-              className="border-b border-slate-100 p-5 dark:border-white/[0.06]"
+              className="border-b border-line p-4"
             >
               <div
                 className="flex items-center gap-4"
@@ -1469,13 +1366,13 @@ export default function CreatorLayout() {
                   className="min-w-0 flex-1"
                 >
                   <p
-                    className="truncate font-serif text-lg text-slate-950 dark:text-white"
+                    className="truncate font-serif text-lg text-ink"
                   >
                     {creatorName}
                   </p>
 
                   <p
-                    className="mt-1 truncate text-xs text-slate-400 dark:text-white/30"
+                    className="mt-1 truncate text-xs text-muted"
                   >
                     {creatorEmail}
                   </p>
@@ -1484,7 +1381,7 @@ export default function CreatorLayout() {
                     className="mt-2 flex flex-wrap gap-1.5"
                   >
                     <span
-                      className="rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/10 px-2 py-1 text-xs font-semibold tracking-normal text-[#98751A] dark:text-[#D4AF37]"
+                      className="rounded-md border border-line bg-subtle px-2 py-1 text-xs font-semibold tracking-normal text-action"
                     >
                       Creator
                     </span>
@@ -1492,7 +1389,7 @@ export default function CreatorLayout() {
                     {/* Mobile Reward Badge */}
 
                     <span
-                      className="inline-flex items-center gap-1 rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-2 py-1 text-xs font-semibold tracking-normal text-[#98751A] dark:border-[#D4AF37]/20 dark:text-[#E4C760]"
+                      className="inline-flex items-center gap-1 rounded-md border border-line bg-subtle px-2 py-1 text-xs font-semibold tracking-normal text-action"
                     >
                       <Sparkles size={8} />
                       {rewardPoints} Points
@@ -1500,22 +1397,12 @@ export default function CreatorLayout() {
 
                     <span
                       className={`
-                        inline-flex
-                        items-center
-                        gap-1
-                        rounded-full
-                        border
-                        px-2
-                        py-1
-                        text-xs
-                        font-semibold
-                        
-                        tracking-normal
+                        inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-semibold tracking-normal
 
                         ${
                           emailVerified
-                            ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300"
-                            : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300"
+                            ? "border-line bg-canvas text-action dark:bg-subtle"
+                            : "border-line bg-canvas text-action dark:bg-subtle"
                         }
                       `}
                     >
@@ -1530,7 +1417,7 @@ export default function CreatorLayout() {
 
                     {hasPaidTier && (
                       <span
-                        className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-semibold tracking-normal text-violet-700 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300"
+                        className="inline-flex items-center gap-1 rounded-md border border-line bg-canvas px-2 py-1 text-xs font-semibold tracking-normal text-action dark:bg-subtle"
                       >
                         <Sparkles size={8} />
 
@@ -1543,18 +1430,11 @@ export default function CreatorLayout() {
 
               {/* Reward Summary */}
 
-              <button
-                type="button"
-                onClick={() =>
-                  fetchCreatorRewardPoints({
-                    silent: false,
-                  })
-                }
-                disabled={rewardRefreshing}
-                className="mt-4 flex w-full items-center gap-3 rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/5 px-4 py-3 text-left transition hover:border-[#D4AF37]/40 hover:bg-[#D4AF37]/10 disabled:opacity-70"
+              <Link to="/creator/rewards" onClick={() => { setMobileMenuOpen(false); setProfileDropdownOpen(false); }}
+                className="mt-4 flex w-full items-center gap-3 rounded-md border border-line bg-subtle px-4 py-3 text-left transition hover:border-line hover:bg-subtle disabled:opacity-70"
               >
                 <div
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#D4AF37] text-black"
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-action text-on-action"
                 >
                   {rewardRefreshing ? (
                     <RefreshCw size={15} className="animate-spin" />
@@ -1565,24 +1445,24 @@ export default function CreatorLayout() {
 
                 <div className="min-w-0 flex-1">
                   <p
-                    className="text-xs font-semibold tracking-normal text-[#98751A] dark:text-[#D4AF37]"
+                    className="text-xs font-semibold tracking-normal text-action"
                   >
                     Creator Rewards
                   </p>
 
                   <p
-                    className="mt-1 text-sm font-semibold text-slate-950 dark:text-white"
+                    className="mt-1 text-sm font-semibold text-ink"
                   >
                     {rewardPoints} Points
                   </p>
                 </div>
-              </button>
+              </Link>
 
               {/* New Commission */}
 
               <Link
                 to="/creator/bookings/new"
-                className="mt-5 flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-5 text-xs font-semibold tracking-normal text-black shadow-sm transition hover:bg-[#E4C65D]"
+                className="mt-5 flex min-h-9 items-center justify-center gap-2 rounded-md bg-action px-5 text-xs font-semibold tracking-normal text-on-action transition hover:bg-action hover:text-on-action"
               >
                 <FilePlus2 size={14} />
                 Start New Booking
@@ -1594,7 +1474,7 @@ export default function CreatorLayout() {
             =============================================*/}
 
             <div
-              className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5"
+              className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"
             >
               {/* Quick Actions */}
 
@@ -1637,13 +1517,13 @@ export default function CreatorLayout() {
 
               <Link
                 to="/creator/wallet"
-                className="group mt-5 block overflow-hidden rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#D4AF37]/10 to-transparent p-4 transition hover:border-[#D4AF37]/40 dark:from-[#D4AF37]/10 dark:to-white/[0.01]"
+                className="group mt-5 block overflow-hidden rounded-md border border-line bg-surface p-4 transition hover:border-line"
               >
                 <div
                   className="flex items-start gap-3"
                 >
                   <div
-                    className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#D4AF37] text-black"
+                    className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-action text-on-action"
                   >
                     <BadgeDollarSign size={17} />
                   </div>
@@ -1652,13 +1532,13 @@ export default function CreatorLayout() {
                     className="min-w-0 flex-1"
                   >
                     <p
-                      className="text-xs font-semibold tracking-normal text-[#98751A] dark:text-[#D4AF37]"
+                      className="text-xs font-semibold tracking-normal text-action"
                     >
                       Wallet & Billing
                     </p>
 
                     <p
-                      className="mt-1 text-xs leading-5 text-slate-500 dark:text-white/35"
+                      className="mt-1 text-xs leading-5 text-muted"
                     >
                       Manage wallet funds, billing history and Creator
                       membership.
@@ -1667,7 +1547,7 @@ export default function CreatorLayout() {
 
                   <ChevronRight
                     size={14}
-                    className="mt-1 shrink-0 text-[#98751A] transition group-hover:translate-x-1 dark:text-[#D4AF37]"
+                    className="mt-1 shrink-0 text-action transition group-hover:translate-x-1"
                   />
                 </div>
               </Link>
@@ -1678,12 +1558,12 @@ export default function CreatorLayout() {
             =============================================*/}
 
             <div
-              className="border-t border-slate-100 bg-slate-50/70 p-4 dark:border-white/[0.06] dark:bg-white/[0.015]"
+              className="border-t border-line bg-subtle p-4"
             >
               <button
                 type="button"
                 onClick={handleLogout}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 text-xs font-semibold tracking-normal text-rose-600 transition hover:bg-rose-600 hover:text-white dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500 dark:hover:text-white"
+                className="flex h-9 w-full items-center justify-center gap-2 rounded-md border border-line bg-canvas text-xs font-semibold tracking-normal text-action transition hover:bg-action hover:text-on-action dark:bg-subtle"
               >
                 <LogOut size={14} />
                 Secure Logout
@@ -1702,7 +1582,7 @@ export default function CreatorLayout() {
         tabIndex={-1}
         className="relative z-10 w-full flex-1"
       >
-        <RouteContent><Outlet /></RouteContent>
+        <RouteContent><Outlet context={{ rewardPoints }} /></RouteContent>
       </main>
     </div>
   );
@@ -1720,13 +1600,13 @@ function NavigationSection({ label, bordered = false, children }) {
 
         ${
           bordered
-            ? "border-t border-slate-100 pt-5 dark:border-white/[0.06]"
+            ? "border-t border-line pt-5"
             : ""
         }
       `}
     >
       <p
-        className="mb-2 px-2 text-xs font-semibold tracking-normal text-slate-400 dark:text-white/20"
+        className="mb-2 px-2 text-xs font-semibold tracking-normal text-muted"
       >
         {label}
       </p>
@@ -1760,28 +1640,13 @@ function MobileNavigationItem({ item, pathname, compact = false }) {
         aria-disabled="true"
         title={`${item.description || ""} ${item.status || ""}`.trim()}
         className={`
-          relative
-          flex
-          cursor-not-allowed
-          items-center
-          gap-3
-          rounded-xl
-          border
-          border-violet-200/60
-          bg-violet-50/60
-          px-3.5
-          text-violet-500/65
-          opacity-80
-
-          dark:border-violet-400/10
-          dark:bg-violet-500/[0.06]
-          dark:text-violet-300/45
+          relative flex cursor-not-allowed items-center gap-3 rounded-md border border-line bg-subtle px-3.5 text-muted opacity-80
 
           ${compact ? "min-h-[50px] py-2.5" : "min-h-[58px] py-3"}
         `}
       >
         <div
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-violet-100 dark:bg-violet-500/10"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-subtle"
         >
           <Icon size={15} />
         </div>
@@ -1797,7 +1662,7 @@ function MobileNavigationItem({ item, pathname, compact = false }) {
             </p>
 
             <span
-              className="rounded-full border border-violet-200 bg-white px-1.5 py-0.5 text-[6px] font-semibold tracking-normal text-violet-500 dark:border-violet-400/20 dark:bg-[#111] dark:text-violet-300/60"
+              className="rounded-md border border-line bg-surface px-1.5 py-0.5 text-[6px] font-semibold tracking-normal text-action dark:text-muted"
             >
               {item.status || "Soon"}
             </span>
@@ -1805,7 +1670,7 @@ function MobileNavigationItem({ item, pathname, compact = false }) {
 
           {!compact && item.description && (
             <p
-              className="mt-1 truncate text-xs font-normal normal-case tracking-normal text-violet-400/70 dark:text-violet-300/30"
+              className="mt-1 truncate text-xs font-normal normal-case tracking-normal text-muted"
             >
               {item.description}
             </p>
@@ -1823,82 +1688,41 @@ function MobileNavigationItem({ item, pathname, compact = false }) {
     <Link
       to={item.path}
       className={`
-        group
-        flex
-        items-center
-        gap-3
-        rounded-xl
-        border
-        px-3.5
-        transition
+        group flex items-center gap-3 rounded-md border px-3.5 transition
 
         ${compact ? "min-h-[50px] py-2.5" : "min-h-[58px] py-3"}
 
         ${
           active && sketchStudio
             ? `
-                border-violet-300
-                bg-violet-50
-                text-violet-700
-
-                dark:border-violet-400/20
-                dark:bg-violet-500/10
-                dark:text-violet-200
+                border-line bg-canvas text-action dark:bg-subtle
               `
             : active
               ? `
-                  border-[#D4AF37]/30
-                  bg-[#D4AF37]/10
-                  text-[#876810]
-
-                  dark:text-[#F0D783]
+                  border-line bg-subtle text-action
                 `
               : sketchStudio
                 ? `
-                    border-transparent
-                    text-violet-600
-
-                    hover:border-violet-200
-                    hover:bg-violet-50
-
-                    dark:text-violet-300/70
-                    dark:hover:border-violet-400/20
-                    dark:hover:bg-violet-500/10
-                    dark:hover:text-violet-200
+                    border-transparent text-action hover:border-line hover:bg-canvas dark:text-muted dark:hover:bg-subtle dark:hover:text-action
                   `
                 : `
-                    border-transparent
-                    text-slate-600
-
-                    hover:border-slate-200
-                    hover:bg-slate-100
-
-                    dark:text-white/50
-                    dark:hover:border-white/10
-                    dark:hover:bg-white/[0.05]
-                    dark:hover:text-white
+                    border-transparent text-muted hover:border-line hover:bg-subtle dark:hover:text-ink
                   `
         }
       `}
     >
       <div
         className={`
-          grid
-          h-9
-          w-9
-          shrink-0
-          place-items-center
-          rounded-lg
-          transition
+          grid h-9 w-9 shrink-0 place-items-center rounded-md transition
 
           ${
             active && sketchStudio
-              ? "bg-violet-500/10"
+              ? "bg-subtle"
               : active
-                ? "bg-[#D4AF37]/15"
+                ? "bg-subtle"
                 : sketchStudio
-                  ? "bg-violet-50 group-hover:bg-violet-100 dark:bg-violet-500/[0.06] dark:group-hover:bg-violet-500/10"
-                  : "bg-slate-100 group-hover:bg-white dark:bg-white/[0.04] dark:group-hover:bg-white/[0.07]"
+                  ? "bg-canvas group-hover:bg-subtle"
+                  : "bg-subtle group-hover:bg-surface dark:group-hover:bg-subtle"
           }
         `}
       >
@@ -1917,17 +1741,12 @@ function MobileNavigationItem({ item, pathname, compact = false }) {
         {!compact && item.description && (
           <p
             className={`
-              mt-1
-              truncate
-              text-xs
-              font-normal
-              normal-case
-              tracking-normal
+              mt-1 truncate text-xs font-normal normal-case tracking-normal
 
               ${
                 sketchStudio
-                  ? "text-violet-400 dark:text-violet-300/40"
-                  : "text-slate-400 dark:text-white/25"
+                  ? "text-action dark:text-muted"
+                  : "text-muted"
               }
             `}
           >
@@ -1941,7 +1760,7 @@ function MobileNavigationItem({ item, pathname, compact = false }) {
       ) : (
         <ChevronRight
           size={13}
-          className="shrink-0 text-slate-300 transition group-hover:translate-x-0.5 dark:text-white/15"
+          className="shrink-0 text-muted transition group-hover:translate-x-0.5"
         />
       )}
     </Link>

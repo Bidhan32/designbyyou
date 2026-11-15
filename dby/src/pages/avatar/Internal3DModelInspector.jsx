@@ -467,7 +467,7 @@ function InspectorModel({
 function InspectorLoading() {
   return (
     <Html center>
-      <div className="whitespace-nowrap rounded-xl border border-white/10 bg-slate-950/90 px-4 py-3 text-sm font-medium text-white shadow-xl">
+      <div className="whitespace-nowrap rounded-md border border-line bg-subtle px-4 py-3 text-sm font-medium text-ink">
         Loading Internal3D model...
       </div>
     </Html>
@@ -523,13 +523,13 @@ class InspectorErrorBoundary extends Component {
   render() {
     if (this.state.error) {
       return (
-        <div className="flex h-full min-h-[450px] items-center justify-center p-6">
-          <div className="max-w-md rounded-2xl border border-red-500/30 bg-red-950/20 p-6 text-center">
-            <p className="font-semibold text-red-300">
+        <div className="flex h-full min-h-[450px] items-center justify-center p-4">
+          <div className="max-w-md rounded-md border border-line bg-subtle p-4 text-center">
+            <p className="font-semibold text-action">
               Unable to load Internal3D model
             </p>
 
-            <p className="mt-2 break-words text-sm text-red-200/70">
+            <p className="mt-2 break-words text-sm text-muted">
               {this.state.error?.message ||
                 "Unknown GLB loading error."}
             </p>
@@ -554,12 +554,12 @@ function StatusBadge({
   return (
     <span
       className={[
-        "inline-flex items-center rounded-full px-2.5 py-1",
+        "inline-flex items-center rounded-md px-2.5 py-1",
         "text-xs font-semibold",
 
         success
-          ? "bg-emerald-500/15 text-emerald-300"
-          : "bg-amber-500/15 text-amber-300",
+          ? "bg-subtle text-action"
+          : "bg-subtle text-action",
       ].join(" ")}
     >
       {success
@@ -573,16 +573,16 @@ function RequirementRow({
   item,
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-white/5 py-2 last:border-b-0">
-      <code className="break-all text-xs text-slate-300">
+    <div className="flex items-center justify-between gap-4 border-b border-line py-2 last:border-b-0">
+      <code className="break-all text-xs text-muted">
         {item.name}
       </code>
 
       <span
         className={
           item.found
-            ? "shrink-0 text-sm font-bold text-emerald-400"
-            : "shrink-0 text-sm font-bold text-red-400"
+            ? "shrink-0 text-sm font-bold text-action"
+            : "shrink-0 text-sm font-bold text-action"
         }
       >
         {item.found
@@ -602,12 +602,12 @@ function StatCard({
   value,
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-      <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+    <div className="rounded-md border border-line bg-subtle p-4">
+      <p className="text-xs font-medium uppercase tracking-wider text-muted">
         {title}
       </p>
 
-      <p className="mt-2 text-xl font-bold text-white">
+      <p className="mt-2 text-xl font-bold text-ink">
         {Number(
           value || 0,
         ).toLocaleString()}
@@ -626,16 +626,16 @@ function InspectorSection({
   children,
 }) {
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/[0.025]">
-      <div className="flex items-center justify-between gap-4 border-b border-white/10 px-5 py-4">
-        <h3 className="font-semibold text-white">
+    <section className="rounded-md border border-line bg-subtle">
+      <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-4">
+        <h3 className="font-semibold text-ink">
           {title}
         </h3>
 
         {badge}
       </div>
 
-      <div className="p-5">
+      <div className="p-4">
         {children}
       </div>
     </section>
@@ -662,7 +662,7 @@ export default function Internal3DModelInspector({
   return (
     <div
       className={[
-        "overflow-hidden rounded-3xl border border-white/10 bg-slate-950 text-white",
+        "overflow-hidden rounded-md border border-line bg-surface text-ink",
         className,
       ]
         .filter(Boolean)
@@ -672,10 +672,10 @@ export default function Internal3DModelInspector({
           Header
           =================================================== */}
 
-      <div className="border-b border-white/10 px-6 py-5">
+      <div className="border-b border-line px-6 py-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-violet-400">
+            <p className="text-xs font-semibold uppercase tracking-normal text-action">
               DesignByYou Internal3D
             </p>
 
@@ -683,7 +683,7 @@ export default function Internal3DModelInspector({
               Model Inspector
             </h2>
 
-            <p className="mt-2 break-all text-xs text-slate-500">
+            <p className="mt-2 break-all text-xs text-muted">
               {modelUrl}
             </p>
           </div>
@@ -719,7 +719,7 @@ export default function Internal3DModelInspector({
                 ? `${height}px`
                 : height,
           }}
-          className="relative bg-gradient-to-b from-slate-900 to-slate-950"
+          className="relative bg-surface"
         >
           <Canvas
             shadows
@@ -796,7 +796,7 @@ export default function Internal3DModelInspector({
             />
           </Canvas>
 
-          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-white/10 bg-black/40 px-4 py-2 text-xs text-slate-300 backdrop-blur-xl">
+          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-md border border-line bg-black/40 px-4 py-2 text-xs text-muted">
             Drag to rotate · Scroll to zoom
           </div>
         </div>
@@ -807,7 +807,7 @@ export default function Internal3DModelInspector({
           =================================================== */}
 
       {report ? (
-        <div className="space-y-6 p-6">
+        <div className="space-y-6 p-4">
           {/* =================================================
               Statistics
               ================================================= */}
@@ -884,8 +884,8 @@ export default function Internal3DModelInspector({
             title="Internal3D V1 Readiness"
           >
             <div className="grid gap-3 md:grid-cols-3">
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-sm font-medium text-slate-300">
+              <div className="rounded-md border border-line bg-subtle p-4">
+                <p className="text-sm font-medium text-muted">
                   Materials
                 </p>
 
@@ -900,8 +900,8 @@ export default function Internal3DModelInspector({
                 </div>
               </div>
 
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-sm font-medium text-slate-300">
+              <div className="rounded-md border border-line bg-subtle p-4">
+                <p className="text-sm font-medium text-muted">
                   Skeleton
                 </p>
 
@@ -916,8 +916,8 @@ export default function Internal3DModelInspector({
                 </div>
               </div>
 
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-sm font-medium text-slate-300">
+              <div className="rounded-md border border-line bg-subtle p-4">
+                <p className="text-sm font-medium text-muted">
                   V1 Morphs
                 </p>
 
@@ -964,7 +964,7 @@ export default function Internal3DModelInspector({
             )}
 
             <div className="mt-5">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">
                 Detected materials
               </p>
 
@@ -976,14 +976,14 @@ export default function Internal3DModelInspector({
                         key={
                           material
                         }
-                        className="rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-xs text-slate-300"
+                        className="rounded-md border border-line bg-subtle px-2 py-1 text-xs text-muted"
                       >
                         {material}
                       </code>
                     ),
                   )
                 ) : (
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-muted">
                     No named materials found.
                   </p>
                 )}
@@ -1023,7 +1023,7 @@ export default function Internal3DModelInspector({
             </div>
 
             <div className="mt-5">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">
                 Detected bones
               </p>
 
@@ -1035,7 +1035,7 @@ export default function Internal3DModelInspector({
                         key={
                           bone
                         }
-                        className="rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-xs text-slate-300"
+                        className="rounded-md border border-line bg-subtle px-2 py-1 text-xs text-muted"
                       >
                         {bone}
                       </code>
@@ -1043,12 +1043,12 @@ export default function Internal3DModelInspector({
                   )}
                 </div>
               ) : (
-                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
-                  <p className="text-sm text-amber-300">
+                <div className="rounded-md border border-line bg-subtle p-4">
+                  <p className="text-sm text-action">
                     No skeleton detected.
                   </p>
 
-                  <p className="mt-1 text-xs leading-5 text-slate-400">
+                  <p className="mt-1 text-xs leading-5 text-muted">
                     This model is currently not rigged.
                     Our next Blender milestone is
                     adding the humanoid armature and
@@ -1091,7 +1091,7 @@ export default function Internal3DModelInspector({
             </div>
 
             <div className="mt-5">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">
                 All detected morph targets
               </p>
 
@@ -1103,7 +1103,7 @@ export default function Internal3DModelInspector({
                         key={
                           morph
                         }
-                        className="rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-xs text-slate-300"
+                        className="rounded-md border border-line bg-subtle px-2 py-1 text-xs text-muted"
                       >
                         {morph}
                       </code>
@@ -1111,12 +1111,12 @@ export default function Internal3DModelInspector({
                   )}
                 </div>
               ) : (
-                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
-                  <p className="text-sm text-amber-300">
+                <div className="rounded-md border border-line bg-subtle p-4">
+                  <p className="text-sm text-action">
                     No morph targets detected.
                   </p>
 
-                  <p className="mt-1 text-xs leading-5 text-slate-400">
+                  <p className="mt-1 text-xs leading-5 text-muted">
                     The GLB loads correctly, but the
                     face and body cannot be reshaped
                     yet.
@@ -1141,15 +1141,15 @@ export default function Internal3DModelInspector({
                 ) => (
                   <div
                     key={`${mesh.name}-${index}`}
-                    className="rounded-xl border border-white/10 bg-white/[0.025] p-4"
+                    className="rounded-md border border-line bg-subtle p-4"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="font-medium text-white">
+                        <p className="font-medium text-ink">
                           {mesh.name}
                         </p>
 
-                        <p className="mt-1 text-xs text-slate-500">
+                        <p className="mt-1 text-xs text-muted">
                           {mesh.type}
                         </p>
                       </div>
@@ -1171,41 +1171,41 @@ export default function Internal3DModelInspector({
 
                     <div className="mt-4 grid grid-cols-2 gap-3 text-xs md:grid-cols-4">
                       <div>
-                        <span className="text-slate-500">
+                        <span className="text-muted">
                           Vertices
                         </span>
 
-                        <p className="mt-1 text-slate-300">
+                        <p className="mt-1 text-muted">
                           {mesh.vertices.toLocaleString()}
                         </p>
                       </div>
 
                       <div>
-                        <span className="text-slate-500">
+                        <span className="text-muted">
                           Triangles
                         </span>
 
-                        <p className="mt-1 text-slate-300">
+                        <p className="mt-1 text-muted">
                           {mesh.triangles.toLocaleString()}
                         </p>
                       </div>
 
                       <div>
-                        <span className="text-slate-500">
+                        <span className="text-muted">
                           Materials
                         </span>
 
-                        <p className="mt-1 text-slate-300">
+                        <p className="mt-1 text-muted">
                           {mesh.materials.length}
                         </p>
                       </div>
 
                       <div>
-                        <span className="text-slate-500">
+                        <span className="text-muted">
                           Morphs
                         </span>
 
-                        <p className="mt-1 text-slate-300">
+                        <p className="mt-1 text-muted">
                           {mesh.morphTargets.length}
                         </p>
                       </div>
@@ -1231,13 +1231,13 @@ export default function Internal3DModelInspector({
                       key={
                         animation.name
                       }
-                      className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.025] px-4 py-3"
+                      className="flex items-center justify-between rounded-md border border-line bg-subtle px-4 py-3"
                     >
-                      <code className="text-sm text-slate-300">
+                      <code className="text-sm text-muted">
                         {animation.name}
                       </code>
 
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-muted">
                         {animation.duration}s
                       </span>
                     </div>
@@ -1245,14 +1245,14 @@ export default function Internal3DModelInspector({
                 )}
               </div>
             ) : (
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted">
                 No animations embedded in this GLB.
               </p>
             )}
           </InspectorSection>
         </div>
       ) : (
-        <div className="p-6 text-sm text-slate-500">
+        <div className="p-4 text-sm text-muted">
           Inspecting model...
         </div>
       )}

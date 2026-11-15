@@ -214,9 +214,9 @@ function getStatusDetails(status, designerName) {
         description: `${firstName} is reviewing your project request.`,
         icon: Hourglass,
         badgeClass:
-          "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
         panelClass:
-          "border-amber-200 bg-amber-50/80 dark:border-amber-400/15 dark:bg-amber-400/5",
+          "border-line bg-subtle",
       };
 
     case BOOKING_STATUS.AWAITING_PAYMENT:
@@ -227,9 +227,9 @@ function getStatusDetails(status, designerName) {
           "The designer accepted your request, but the payment has not yet been confirmed.",
         icon: WalletCards,
         badgeClass:
-          "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-400/20 dark:bg-orange-400/10 dark:text-orange-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
         panelClass:
-          "border-orange-200 bg-orange-50/80 dark:border-orange-400/15 dark:bg-orange-400/5",
+          "border-line bg-subtle",
       };
 
     case BOOKING_STATUS.FUNDED:
@@ -240,9 +240,9 @@ function getStatusDetails(status, designerName) {
           "Your payment is secured while the designer reviews or accepts the project.",
         icon: ShieldCheck,
         badgeClass:
-          "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
         panelClass:
-          "border-emerald-200 bg-emerald-50/80 dark:border-emerald-400/15 dark:bg-emerald-400/5",
+          "border-line bg-subtle",
       };
 
     case BOOKING_STATUS.ACCEPTED:
@@ -253,8 +253,8 @@ function getStatusDetails(status, designerName) {
         description: `${firstName} is preparing your first prototype.`,
         icon: Clock3,
         badgeClass:
-          "border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#8F7118] dark:text-[#E4C760]",
-        panelClass: "border-[#D4AF37]/25 bg-[#D4AF37]/5",
+          "border-line bg-subtle text-action",
+        panelClass: "border-line bg-subtle",
       };
 
     case BOOKING_STATUS.REVIEW_PROTOTYPE:
@@ -264,9 +264,9 @@ function getStatusDetails(status, designerName) {
         description: "Review the prototype, approve it or request a revision.",
         icon: FileCheck2,
         badgeClass:
-          "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-400/20 dark:bg-indigo-400/10 dark:text-indigo-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
         panelClass:
-          "border-indigo-200 bg-indigo-50/80 dark:border-indigo-400/15 dark:bg-indigo-400/5",
+          "border-line bg-subtle",
       };
 
     case BOOKING_STATUS.FINAL_PRODUCTION:
@@ -276,9 +276,9 @@ function getStatusDetails(status, designerName) {
         description: `${firstName} is preparing the final deliverables.`,
         icon: Clock3,
         badgeClass:
-          "border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
         panelClass:
-          "border-cyan-200 bg-cyan-50/80 dark:border-cyan-400/15 dark:bg-cyan-400/5",
+          "border-line bg-subtle",
       };
 
     case BOOKING_STATUS.REVIEW_FINAL:
@@ -290,9 +290,9 @@ function getStatusDetails(status, designerName) {
           "Review the final 2D and optional 3D deliverables before approving the Designer payment.",
         icon: FileCheck2,
         badgeClass:
-          "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
         panelClass:
-          "border-violet-200 bg-violet-50/80 dark:border-violet-400/15 dark:bg-violet-400/5",
+          "border-line bg-subtle",
       };
 
     case BOOKING_STATUS.REFUND_PENDING:
@@ -308,9 +308,9 @@ function getStatusDetails(status, designerName) {
         icon: Loader2,
         spinning: true,
         badgeClass:
-          "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
         panelClass:
-          "border-rose-200 bg-rose-50/80 dark:border-rose-400/15 dark:bg-rose-400/5",
+          "border-line bg-subtle",
       };
 
     case BOOKING_STATUS.COMPLETED:
@@ -322,9 +322,9 @@ function getStatusDetails(status, designerName) {
           "The final work was approved and the Designer payment was released.",
         icon: CheckCircle2,
         badgeClass:
-          "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
         panelClass:
-          "border-emerald-200 bg-emerald-50/80 dark:border-emerald-400/15 dark:bg-emerald-400/5",
+          "border-line bg-subtle",
       };
 
     case BOOKING_STATUS.CANCELLED:
@@ -335,9 +335,9 @@ function getStatusDetails(status, designerName) {
           "No further work or Creator action is required for this booking.",
         icon: Ban,
         badgeClass:
-          "border-slate-200 bg-slate-100 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/45",
+          "border-line bg-subtle text-muted",
         panelClass:
-          "border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.03]",
+          "border-line bg-canvas dark:bg-subtle",
       };
 
     default:
@@ -347,9 +347,9 @@ function getStatusDetails(status, designerName) {
         description: "Refresh this page to get the latest booking status.",
         icon: Info,
         badgeClass:
-          "border-slate-200 bg-slate-100 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/50",
+          "border-line bg-subtle text-muted",
         panelClass:
-          "border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.03]",
+          "border-line bg-canvas dark:bg-subtle",
       };
   }
 }
@@ -1034,14 +1034,14 @@ export default function CreatorBookingDetail() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-[#030303]">
+      <main className="flex min-h-screen items-center justify-center bg-canvas">
         <div className="text-center">
           <Loader2
             size={38}
-            className="mx-auto animate-spin text-[#B89122] dark:text-[#D4AF37]"
+            className="mx-auto animate-spin text-action"
           />
 
-          <p className="mt-4 text-xs font-semibold tracking-normal text-slate-400 dark:text-white/35">
+          <p className="mt-4 text-xs font-semibold tracking-normal text-muted">
             Loading booking workspace
           </p>
         </div>
@@ -1051,26 +1051,26 @@ export default function CreatorBookingDetail() {
 
   if (pageError || !booking) {
     return (
-      <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-50 p-6 text-slate-950 dark:bg-[#030303] dark:text-white">
-        <div className="absolute left-1/2 top-1/2 h-[36rem] w-[36rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-rose-500/10 blur-[170px]" />
+      <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-canvas p-4 text-ink">
 
-        <section className="relative z-10 w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-2xl dark:border-white/5 dark:bg-[#0A0A0A]">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-300">
+
+        <section className="relative z-10 w-full max-w-lg rounded-md border border-line bg-surface p-4 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-md border border-line bg-canvas text-action dark:bg-subtle">
             <AlertCircle size={28} />
           </div>
 
-          <h1 className="mt-6 font-semibold text-3xl font-semibold text-3xl sm:text-4xl">
+          <h1 className="mt-6 font-semibold text-3xl sm:text-4xl">
             Booking unavailable
           </h1>
 
-          <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-white/45">
+          <p className="mt-3 text-sm leading-6 text-muted">
             {pageError || "The booking could not be loaded."}
           </p>
 
           <div className="mt-7 grid gap-3 sm:grid-cols-2">
             <Link
               to="/creator/bookings"
-              className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-xs font-semibold tracking-normal text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-white/65"
+              className="inline-flex h-9 items-center justify-center rounded-md border border-line bg-surface text-xs font-semibold tracking-normal text-ink dark:bg-subtle dark:text-muted"
             >
               Back to bookings
             </Link>
@@ -1078,7 +1078,7 @@ export default function CreatorBookingDetail() {
             <button
               type="button"
               onClick={() => fetchBooking()}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] text-xs font-semibold tracking-normal text-black"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action text-xs font-semibold tracking-normal text-on-action"
             >
               <RefreshCw size={15} />
               Retry
@@ -1140,51 +1140,50 @@ export default function CreatorBookingDetail() {
   const paymentStatusLabel = paymentLabel(booking);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-50 pb-20 text-slate-950 antialiased dark:bg-[#030303] dark:text-white">
+    <main className="relative min-h-screen overflow-hidden bg-canvas pb-20 text-ink antialiased">
       {/* Background */}
 
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute -right-[12rem] -top-[14rem] h-[36rem] w-[36rem] rounded-full bg-[#D4AF37]/10 blur-[160px] dark:bg-[#D4AF37]/15" />
 
-        <div className="absolute -bottom-[17rem] -left-[16rem] h-[40rem] w-[40rem] rounded-full bg-indigo-500/5 blur-[180px] dark:bg-indigo-500/10" />
 
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(15,23,42,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.025)_1px,transparent_1px)] bg-[size:40px_40px] dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.018)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.018)_1px,transparent_1px)]" />
+
+
       </div>
 
       {/* Header */}
 
-      <header className="lg:sticky lg:top-0 z-40 border-b border-slate-200/80 bg-white/80 backdrop-blur-2xl dark:border-white/5 dark:bg-[#070707]/80">
+      <header className="lg:sticky lg:top-0 z-40 border-b border-line bg-subtle">
         <div className="mx-auto flex max-w-[1280px] flex-col gap-2 px-4 py-3 sm:gap-5 sm:py-6 sm:px-8 lg:flex-row lg:items-center lg:justify-between lg:px-10">
           <div>
             <Link
               to="/creator/bookings"
-              className="inline-flex items-center gap-2 text-xs font-semibold tracking-normal text-slate-400 transition hover:text-[#9B791D] dark:text-white/35 dark:hover:text-[#D4AF37]"
+              className="inline-flex items-center gap-2 text-xs font-semibold tracking-normal text-muted transition hover:text-action"
             >
               <ArrowLeft size={14} />
               Back to bookings
             </Link>
 
-            <h1 className="mt-3 font-semibold text-3xl font-semibold tracking-tight text-3xl sm:text-4xl">
+            <h1 className="mt-3 font-semibold text-3xl tracking-tight sm:text-4xl">
               Booking
-              <span className="ml-2 italic text-[#A17D1C] dark:text-[#D4AF37]">
+              <span className="ml-2 italic text-action">
                 details
               </span>
             </h1>
 
-            <p className="mt-2 hidden max-w-2xl text-sm leading-6 sm:block text-slate-500 dark:text-white/45">
+            <p className="mt-2 hidden max-w-2xl text-sm leading-6 sm:block text-muted">
               Review your designer’s work and see what happens next.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <span className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 font-mono text-xs tracking-normal text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/40">
+            <span className="rounded-md border border-line bg-surface px-3.5 py-2 font-mono text-xs tracking-normal text-muted dark:bg-subtle">
               {String(booking.id || "")
                 .slice(0, 8)
                 .toUpperCase()}
             </span>
 
             <span
-              className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold  tracking-normal ${statusDetails.badgeClass}`}
+              className={`inline-flex items-center gap-2 rounded-md border px-3.5 py-2 text-xs font-semibold tracking-normal ${statusDetails.badgeClass}`}
             >
               <StatusIcon
                 size={13}
@@ -1202,7 +1201,7 @@ export default function CreatorBookingDetail() {
                 })
               }
               disabled={refreshing || Boolean(actionName)}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold tracking-normal text-slate-600 transition hover:border-[#D4AF37]/50 hover:text-[#9B791D] disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/60 dark:hover:text-[#D4AF37]"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-3.5 text-xs font-semibold tracking-normal text-muted transition hover:border-line hover:text-action disabled:opacity-50 dark:bg-subtle"
             >
               <RefreshCw
                 size={14}
@@ -1218,11 +1217,11 @@ export default function CreatorBookingDetail() {
         {/* Current stage */}
 
         <section
-          className={`mb-4 rounded-3xl border p-4 sm:p-7 ${statusDetails.panelClass}`}
+          className={`mb-4 rounded-md border p-4 ${statusDetails.panelClass}`}
         >
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-current/10 bg-white/70 text-[#9B791D] dark:bg-black/20 dark:text-[#D4AF37]">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-current/10 bg-subtle text-action">
                 <StatusIcon
                   size={22}
                   className={statusDetails.spinning ? "animate-spin" : ""}
@@ -1230,7 +1229,7 @@ export default function CreatorBookingDetail() {
               </div>
 
               <div>
-                <p className="text-xs font-semibold tracking-normal text-slate-500 dark:text-white/40">
+                <p className="text-xs font-semibold tracking-normal text-muted">
                   Current stage
                 </p>
 
@@ -1238,19 +1237,19 @@ export default function CreatorBookingDetail() {
                   {statusDetails.title}
                 </h2>
 
-                <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600 dark:text-white/50">
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
                   {statusDetails.description}
                 </p>
               </div>
             </div>
 
             {reviewState && (
-              <a href="#booking-review" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white dark:bg-white dark:text-slate-900">{prototypeReview ? "Review prototype" : "Review final files"}</a>
+              <a href="#booking-review" className="inline-flex min-h-9 items-center justify-center rounded-md bg-action px-4 text-sm font-semibold text-on-action dark:bg-surface dark:text-ink">{prototypeReview ? "Review prototype" : "Review final files"}</a>
             )}
             {paymentCheckAvailable && (
               <Link
                 to={`/creator/bookings/new?booking_id=${encodeURIComponent(bookingId)}`}
-                className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-[#D4AF37] px-5 text-sm font-semibold text-black"
+                className="mt-4 inline-flex min-h-9 items-center rounded-md bg-action px-5 text-sm font-semibold text-on-action"
               >
                 Continue payment
               </Link>
@@ -1260,7 +1259,7 @@ export default function CreatorBookingDetail() {
                 type="button"
                 onClick={handleVerifyEscrow}
                 disabled={Boolean(actionName)}
-                className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-orange-700 px-4 text-xs font-semibold tracking-normal text-white transition hover:bg-orange-800 disabled:opacity-50"
+                className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-action px-4 text-xs font-semibold tracking-normal text-on-action transition hover:bg-action disabled:opacity-50 hover:text-on-action"
               >
                 {actionName === "verify-escrow" ? (
                   <Loader2 size={15} className="animate-spin" />
@@ -1273,7 +1272,7 @@ export default function CreatorBookingDetail() {
           </div>
 
           {paymentCheckAvailable && (
-            <div className="mt-5 flex items-start gap-3 rounded-2xl border border-orange-200 bg-white/60 p-4 text-sm text-orange-800 dark:border-orange-400/15 dark:bg-black/15 dark:text-orange-200">
+            <div className="mt-5 flex items-start gap-3 rounded-md border border-line bg-subtle p-4 text-sm text-action">
               <Info size={17} className="mt-0.5 shrink-0" />
 
               <p>
@@ -1288,24 +1287,24 @@ export default function CreatorBookingDetail() {
         {/* Cancelled */}
 
         {status === BOOKING_STATUS.CANCELLED && (
-          <section className="mb-7 rounded-3xl border border-rose-200 bg-rose-50 p-6 dark:border-rose-400/20 dark:bg-rose-400/10">
+          <section className="mb-7 rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
             <div className="flex items-start gap-4">
               <Ban
                 size={22}
-                className="mt-0.5 shrink-0 text-rose-700 dark:text-rose-300"
+                className="mt-0.5 shrink-0 text-action"
               />
 
               <div>
-                <h2 className="font-semibold text-rose-900 dark:text-rose-100">
+                <h2 className="font-semibold text-action">
                   Booking cancelled
                 </h2>
 
-                <p className="mt-2 text-sm leading-6 text-rose-700/80 dark:text-rose-200/70">
+                <p className="mt-2 text-sm leading-6 text-muted">
                   {booking.cancellation_reason || "No reason was provided."}
                 </p>
 
                 {booking.cancelled_at && (
-                  <p className="mt-2 text-xs text-rose-600/70 dark:text-rose-200/50">
+                  <p className="mt-2 text-xs text-muted">
                     Closed {formatDate(booking.cancelled_at, true)}
                   </p>
                 )}
@@ -1321,25 +1320,25 @@ export default function CreatorBookingDetail() {
                 ===================================================== */}
 
             {reviewState && (
-              <section id="booking-review" tabIndex={-1} className="scroll-mt-24 overflow-hidden rounded-3xl border border-[#D4AF37]/30 bg-white shadow-sm dark:bg-[#0B0B0B] dark:shadow-2xl">
-                <div className="border-b border-slate-200 bg-[#D4AF37]/5 p-6 dark:border-white/5 sm:p-7">
+              <section id="booking-review" tabIndex={-1} className="scroll-mt-24 overflow-hidden rounded-md border border-line bg-surface">
+                <div className="border-b border-line bg-subtle p-4">
                   <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#D4AF37]/25 bg-[#D4AF37]/10 text-[#9B791D] dark:text-[#D4AF37]">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-line bg-subtle text-action">
                       <Sparkles size={22} />
                     </div>
 
                     <div>
-                      <p className="text-xs font-semibold tracking-normal text-[#9B791D] dark:text-[#D4AF37]">
+                      <p className="text-xs font-semibold tracking-normal text-action">
                         Your review is needed
                       </p>
 
-                      <h2 className="mt-1 font-serif text-2xl font-light">
+                      <h2 className="mt-1 font-sans text-2xl font-light">
                         {prototypeReview
                           ? "Prototype Review"
                           : "Final Delivery Review"}
                       </h2>
 
-                      <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-white/45">
+                      <p className="mt-2 text-sm leading-6 text-muted">
                         Review the submitted 2D work and any optional 3D model
                         carefully before approving it or asking for revisions.
                       </p>
@@ -1347,13 +1346,13 @@ export default function CreatorBookingDetail() {
                   </div>
                 </div>
 
-                <div className="space-y-6 p-6 sm:p-7">
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/5 dark:bg-white/[0.025]">
+                <div className="space-y-6 p-4">
+                  <div className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
                     <div className="grid gap-3 sm:grid-cols-2">
                       {/* 2D */}
 
-                      <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-white/5 dark:bg-black/20">
-                        <p className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/30">
+                      <div className="rounded-md border border-line bg-surface p-4 dark:bg-subtle">
+                        <p className="text-xs font-semibold tracking-normal text-muted">
                           2D deliverable
                         </p>
 
@@ -1362,7 +1361,7 @@ export default function CreatorBookingDetail() {
                             href={currentReviewUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="mt-3 inline-flex items-center gap-2 text-xs font-semibold tracking-normal text-[#9B791D] transition hover:text-slate-950 dark:text-[#D4AF37] dark:hover:text-white"
+                            className="mt-3 inline-flex items-center gap-2 text-xs font-semibold tracking-normal text-action transition hover:text-ink"
                           >
                             <FileText size={16} />
 
@@ -1373,7 +1372,7 @@ export default function CreatorBookingDetail() {
                             <ArrowUpRight size={14} />
                           </a>
                         ) : (
-                          <div className="mt-3 flex items-start gap-3 text-sm text-rose-700 dark:text-rose-300">
+                          <div className="mt-3 flex items-start gap-3 text-sm text-action">
                             <AlertCircle
                               size={17}
                               className="mt-0.5 shrink-0"
@@ -1389,8 +1388,8 @@ export default function CreatorBookingDetail() {
 
                       {/* 3D */}
 
-                      <div className="rounded-xl border border-cyan-200 bg-cyan-50/60 p-4 dark:border-cyan-400/15 dark:bg-cyan-400/[0.05]">
-                        <p className="text-xs font-semibold tracking-normal text-cyan-700/70 dark:text-cyan-300/70">
+                      <div className="rounded-md border border-line bg-subtle p-4">
+                        <p className="text-xs font-semibold tracking-normal text-muted">
                           3D model
                         </p>
 
@@ -1399,14 +1398,14 @@ export default function CreatorBookingDetail() {
                             href={currentReviewModelUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="mt-3 inline-flex items-center gap-2 text-xs font-semibold tracking-normal text-cyan-700 transition hover:text-cyan-950 dark:text-cyan-300 dark:hover:text-white"
+                            className="mt-3 inline-flex items-center gap-2 text-xs font-semibold tracking-normal text-action transition hover:text-action dark:hover:text-ink"
                           >
                             <Sparkles size={16} />
                             Open 3D model
                             <ArrowUpRight size={14} />
                           </a>
                         ) : (
-                          <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-white/35">
+                          <p className="mt-3 text-sm leading-6 text-muted">
                             No optional 3D model was submitted for this
                             milestone.
                           </p>
@@ -1429,25 +1428,25 @@ export default function CreatorBookingDetail() {
                     )}
 
                     {currentReviewMessage && (
-                      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-white/5 dark:bg-black/20">
-                        <p className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/30">
+                      <div className="mt-4 rounded-md border border-line bg-surface p-4 dark:bg-subtle">
+                        <p className="text-xs font-semibold tracking-normal text-muted">
                           Designer message
                         </p>
 
-                        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-white/55">
+                        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted">
                           {currentReviewMessage}
                         </p>
                       </div>
                     )}
 
-                    <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50/70 p-4 dark:border-violet-400/15 dark:bg-violet-400/[0.06]">
+                    <div className="mt-4 rounded-md border border-line bg-subtle p-4">
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
-                          <p className="text-xs font-semibold tracking-normal text-violet-700 dark:text-violet-300">
+                          <p className="text-xs font-semibold tracking-normal text-action">
                             Virtual Try-On
                           </p>
 
-                          <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-white/45">
+                          <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
                             Upload your own photo to preview this garment on you
                             before making your milestone decision.
                           </p>
@@ -1460,13 +1459,13 @@ export default function CreatorBookingDetail() {
                               openTryOn(prototypeReview ? "prototype" : "final")
                             }
                             disabled={Boolean(actionName) || tryOnLoading}
-                            className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-violet-700 px-5 text-xs font-semibold tracking-normal text-white transition hover:bg-violet-800 disabled:opacity-50 dark:bg-violet-500 dark:hover:bg-violet-400"
+                            className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-action px-5 text-xs font-semibold tracking-normal text-on-action transition hover:bg-action disabled:opacity-50 hover:text-on-action"
                           >
                             <Sparkles size={15} />
                             Try it on
                           </button>
                         ) : (
-                          <p className="text-xs leading-5 text-slate-500 dark:text-white/35">
+                          <p className="text-xs leading-5 text-muted">
                             The designer has not supplied a Virtual Try-On
                             garment image for this milestone.
                           </p>
@@ -1478,11 +1477,11 @@ export default function CreatorBookingDetail() {
                   {revisionOpen ? (
                     <form
                       onSubmit={handleRevisionSubmit}
-                      className="rounded-2xl border border-rose-200 bg-rose-50 p-5 dark:border-rose-400/20 dark:bg-rose-400/10"
+                      className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle"
                     >
                       <div className="flex items-center justify-between gap-4">
                         <div>
-                          <p className="text-xs font-semibold tracking-normal text-rose-700 dark:text-rose-300">
+                          <p className="text-xs font-semibold tracking-normal text-action">
                             Request revision
                           </p>
 
@@ -1500,7 +1499,7 @@ export default function CreatorBookingDetail() {
                           }}
                           disabled={Boolean(actionName)}
                           aria-label="Close revision form"
-                          className="flex h-9 w-9 items-center justify-center rounded-xl border border-rose-200 bg-white/60 text-rose-700 disabled:opacity-50 dark:border-rose-400/20 dark:bg-black/15 dark:text-rose-300"
+                          className="flex h-9 w-9 items-center justify-center rounded-md border border-line bg-subtle text-action disabled:opacity-50"
                         >
                           <X size={16} />
                         </button>
@@ -1514,7 +1513,7 @@ export default function CreatorBookingDetail() {
                         rows={5}
                         maxLength={10000}
                         placeholder="Describe the required corrections, files, dimensions, 2D changes or 3D model changes..."
-                        className="mt-4 w-full resize-none rounded-xl border border-rose-200 bg-white p-4 text-sm leading-6 text-slate-900 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-500/10 dark:border-rose-400/20 dark:bg-black/20 dark:text-white"
+                        className="mt-4 w-full resize-none rounded-md border border-line bg-surface p-4 text-sm leading-6 text-ink outline-none transition focus:border-line focus:ring-4 focus:ring-action dark:bg-subtle"
                       />
 
                       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-end">
@@ -1526,7 +1525,7 @@ export default function CreatorBookingDetail() {
                             setRevisionNotes("");
                           }}
                           disabled={Boolean(actionName)}
-                          className="h-11 rounded-xl border border-rose-200 bg-white px-4 text-xs font-semibold tracking-normal text-rose-700 disabled:opacity-50 dark:border-rose-400/20 dark:bg-black/15 dark:text-rose-300"
+                          className="h-9 rounded-md border border-line bg-surface px-4 text-xs font-semibold tracking-normal text-action disabled:opacity-50 dark:bg-subtle"
                         >
                           Keep current delivery
                         </button>
@@ -1536,7 +1535,7 @@ export default function CreatorBookingDetail() {
                           disabled={
                             Boolean(actionName) || !revisionNotes.trim()
                           }
-                          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-rose-700 px-5 text-xs font-semibold tracking-normal text-white transition hover:bg-rose-800 disabled:opacity-50"
+                          className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-5 text-xs font-semibold tracking-normal text-on-action transition hover:bg-action disabled:opacity-50 hover:text-on-action"
                         >
                           {actionName === "request-revision" ? (
                             <Loader2 size={15} className="animate-spin" />
@@ -1553,7 +1552,7 @@ export default function CreatorBookingDetail() {
                         type="button"
                         onClick={() => setRevisionOpen(true)}
                         disabled={Boolean(actionName)}
-                        className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-5 text-xs font-semibold tracking-normal text-rose-700 transition hover:bg-rose-100 disabled:opacity-50 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-300 dark:hover:bg-rose-400/15"
+                        className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-canvas px-5 text-xs font-semibold tracking-normal text-action transition hover:bg-subtle disabled:opacity-50 dark:bg-subtle"
                       >
                         <RotateCcw size={15} />
                         Request changes
@@ -1567,7 +1566,7 @@ export default function CreatorBookingDetail() {
                             : handleReleasePayout
                         }
                         disabled={Boolean(actionName)}
-                        className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-5 text-xs font-semibold tracking-normal text-black shadow-sm transition hover:bg-[#E2C45D] disabled:opacity-50"
+                        className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-5 text-xs font-semibold tracking-normal text-on-action transition hover:bg-action disabled:opacity-50 hover:text-on-action"
                       >
                         {["approve-prototype", "release"].includes(
                           actionName,
@@ -1589,30 +1588,30 @@ export default function CreatorBookingDetail() {
 
             {/* Project Brief */}
 
-            <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-[#0B0B0B] dark:shadow-2xl sm:p-7">
-              <div className="flex items-start justify-between gap-5 border-b border-slate-200 pb-5 dark:border-white/5">
+            <section className="rounded-md border border-line bg-surface p-4">
+              <div className="flex items-start justify-between gap-5 border-b border-line pb-5">
                 <div>
-                  <p className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/30">
+                  <p className="text-xs font-semibold tracking-normal text-muted">
                     Project information
                   </p>
 
-                  <h2 className="mt-1 font-serif text-2xl font-light">
+                  <h2 className="mt-1 font-sans text-2xl font-light">
                     What would you like designed?
                   </h2>
                 </div>
 
-                <FileText className="text-[#9B791D] dark:text-[#D4AF37]" />
+                <FileText className="text-action" />
               </div>
 
-              <p className="mt-5 whitespace-pre-wrap rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-7 text-slate-600 dark:border-white/5 dark:bg-white/[0.025] dark:text-white/55">
+              <p className="mt-5 whitespace-pre-wrap rounded-md border border-line bg-canvas p-4 text-sm leading-7 text-muted dark:bg-subtle">
                 {booking.brief_text || "No project brief was supplied."}
               </p>
 
               <BookingDesignAttachment bookingId={bookingId} />
 
               {booking.revision_notes && (
-                <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-400/20 dark:bg-amber-400/10">
-                  <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                <div className="mt-5 rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
+                  <div className="flex items-center gap-2 text-action">
                     <MessageSquareText size={17} />
 
                     <h3 className="text-xs font-semibold tracking-normal">
@@ -1620,7 +1619,7 @@ export default function CreatorBookingDetail() {
                     </h3>
                   </div>
 
-                  <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-amber-800/80 dark:text-amber-200/70">
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted">
                     {booking.revision_notes}
                   </p>
                 </div>
@@ -1629,13 +1628,13 @@ export default function CreatorBookingDetail() {
 
             {/* Delivery Archive */}
 
-            <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-[#0B0B0B] dark:shadow-2xl sm:p-7">
-              <div className="border-b border-slate-200 pb-5 dark:border-white/5">
-                <p className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/30">
+            <section className="rounded-md border border-line bg-surface p-4">
+              <div className="border-b border-line pb-5">
+                <p className="text-xs font-semibold tracking-normal text-muted">
                   Delivery archive
                 </p>
 
-                <h2 className="mt-1 font-serif text-2xl font-light">
+                <h2 className="mt-1 font-sans text-2xl font-light">
                   Files
                 </h2>
               </div>
@@ -1643,17 +1642,17 @@ export default function CreatorBookingDetail() {
               <div className="mt-5 grid gap-4 md:grid-cols-2">
                 {/* Prototype Archive */}
 
-                <article className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/5 dark:bg-white/[0.025]">
+                <article className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <p className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/30">
+                      <p className="text-xs font-semibold tracking-normal text-muted">
                         Milestone one
                       </p>
 
                       <h3 className="mt-1 font-semibold">Prototype</h3>
                     </div>
 
-                    <FileCheck2 className="text-indigo-600 dark:text-indigo-300" />
+                    <FileCheck2 className="text-action" />
                   </div>
 
                   {isHttpUrl(booking.prototype_file_url) ? (
@@ -1661,13 +1660,13 @@ export default function CreatorBookingDetail() {
                       href={booking.prototype_file_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="mt-5 inline-flex items-center gap-2 text-xs font-semibold tracking-normal text-indigo-700 hover:text-indigo-900 dark:text-indigo-300 dark:hover:text-indigo-200"
+                      className="mt-5 inline-flex items-center gap-2 text-xs font-semibold tracking-normal text-action hover:text-action"
                     >
                       Open 2D prototype
                       <ArrowUpRight size={14} />
                     </a>
                   ) : (
-                    <p className="mt-5 text-sm text-slate-500 dark:text-white/35">
+                    <p className="mt-5 text-sm text-muted">
                       No prototype has been submitted.
                     </p>
                   )}
@@ -1678,7 +1677,7 @@ export default function CreatorBookingDetail() {
                         href={booking.prototype_model_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="mt-3 flex w-fit items-center gap-2 text-xs font-semibold tracking-normal text-cyan-700 hover:text-cyan-900 dark:text-cyan-300 dark:hover:text-cyan-200"
+                        className="mt-3 flex w-fit items-center gap-2 text-xs font-semibold tracking-normal text-action hover:text-action"
                       >
                         Open 3D prototype
                         <ArrowUpRight size={14} />
@@ -1695,7 +1694,7 @@ export default function CreatorBookingDetail() {
                   )}
 
                   {booking.prototype_message && (
-                    <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-slate-500 dark:text-white/45">
+                    <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-muted">
                       {booking.prototype_message}
                     </p>
                   )}
@@ -1705,7 +1704,7 @@ export default function CreatorBookingDetail() {
                       type="button"
                       onClick={() => openTryOn("prototype")}
                       disabled={tryOnLoading}
-                      className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 text-xs font-semibold tracking-normal text-violet-700 transition hover:bg-violet-100 disabled:opacity-50 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300 dark:hover:bg-violet-400/15"
+                      className="mt-5 inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-canvas px-4 text-xs font-semibold tracking-normal text-action transition hover:bg-subtle disabled:opacity-50 dark:bg-subtle"
                     >
                       <Sparkles size={14} />
                       Virtual Try-On
@@ -1715,17 +1714,17 @@ export default function CreatorBookingDetail() {
 
                 {/* Final Archive */}
 
-                <article className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/5 dark:bg-white/[0.025]">
+                <article className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <p className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/30">
+                      <p className="text-xs font-semibold tracking-normal text-muted">
                         Milestone two
                       </p>
 
                       <h3 className="mt-1 font-semibold">Final Delivery</h3>
                     </div>
 
-                    <CheckCircle2 className="text-emerald-600 dark:text-emerald-300" />
+                    <CheckCircle2 className="text-action" />
                   </div>
 
                   {isHttpUrl(booking.delivery_file_url) ? (
@@ -1733,13 +1732,13 @@ export default function CreatorBookingDetail() {
                       href={booking.delivery_file_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="mt-5 inline-flex items-center gap-2 text-xs font-semibold tracking-normal text-emerald-700 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-200"
+                      className="mt-5 inline-flex items-center gap-2 text-xs font-semibold tracking-normal text-action hover:text-action"
                     >
                       Open final 2D
                       <ArrowUpRight size={14} />
                     </a>
                   ) : (
-                    <p className="mt-5 text-sm text-slate-500 dark:text-white/35">
+                    <p className="mt-5 text-sm text-muted">
                       No final delivery has been submitted.
                     </p>
                   )}
@@ -1750,7 +1749,7 @@ export default function CreatorBookingDetail() {
                         href={booking.delivery_model_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="mt-3 flex w-fit items-center gap-2 text-xs font-semibold tracking-normal text-cyan-700 hover:text-cyan-900 dark:text-cyan-300 dark:hover:text-cyan-200"
+                        className="mt-3 flex w-fit items-center gap-2 text-xs font-semibold tracking-normal text-action hover:text-action"
                       >
                         Open final 3D
                         <ArrowUpRight size={14} />
@@ -1767,7 +1766,7 @@ export default function CreatorBookingDetail() {
                   )}
 
                   {booking.delivery_message && (
-                    <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-slate-500 dark:text-white/45">
+                    <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-muted">
                       {booking.delivery_message}
                     </p>
                   )}
@@ -1777,7 +1776,7 @@ export default function CreatorBookingDetail() {
                       type="button"
                       onClick={() => openTryOn("final")}
                       disabled={tryOnLoading}
-                      className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 text-xs font-semibold tracking-normal text-violet-700 transition hover:bg-violet-100 disabled:opacity-50 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300 dark:hover:bg-violet-400/15"
+                      className="mt-5 inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-canvas px-4 text-xs font-semibold tracking-normal text-action transition hover:bg-subtle disabled:opacity-50 dark:bg-subtle"
                     >
                       <Sparkles size={14} />
                       Virtual Try-On
@@ -1789,25 +1788,25 @@ export default function CreatorBookingDetail() {
 
             {/* Timeline */}
 
-            <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-[#0B0B0B] dark:shadow-2xl sm:p-7">
-              <div className="border-b border-slate-200 pb-5 dark:border-white/5">
-                <p className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/30">
+            <section className="rounded-md border border-line bg-surface p-4">
+              <div className="border-b border-line pb-5">
+                <p className="text-xs font-semibold tracking-normal text-muted">
                   Booking progress
                 </p>
 
-                <h2 className="mt-1 font-serif text-2xl font-light">
+                <h2 className="mt-1 font-sans text-2xl font-light">
                   Progress
                 </h2>
               </div>
 
-              <div className="relative mt-6 space-y-7 before:absolute before:bottom-4 before:left-[17px] before:top-4 before:w-px before:bg-slate-200 dark:before:bg-white/10">
+              <div className="relative mt-6 space-y-7 before:absolute before:bottom-4 before:left-[17px] before:top-4 before:w-px before:bg-subtle">
                 {timeline.map((step) => (
                   <div key={step.label} className="relative pl-12">
                     <div
-                      className={`absolute left-0 top-0 z-10 flex h-9 w-9 items-center justify-center rounded-full border-2 bg-white dark:bg-[#0B0B0B] ${
+                      className={`absolute left-0 top-0 z-10 flex h-9 w-9 items-center justify-center rounded-full border-2 bg-surface ${
                         step.complete
-                          ? "border-[#D4AF37] text-[#9B791D] shadow-[0_0_18px_rgba(212,175,55,0.16)] dark:text-[#D4AF37]"
-                          : "border-slate-200 text-slate-300 dark:border-white/10 dark:text-white/20"
+                          ? "border-line text-action"
+                          : "border-line text-muted"
                       }`}
                     >
                       {step.complete ? (<CheckCircle2 size={16} />) : (<span className="h-2 w-2 rounded-full bg-current" />)}
@@ -1816,14 +1815,14 @@ export default function CreatorBookingDetail() {
                     <h3
                       className={`text-sm font-semibold ${
                         step.complete
-                          ? "text-slate-900 dark:text-white"
-                          : "text-slate-400 dark:text-white/30"
+                          ? "text-ink"
+                          : "text-muted"
                       }`}
                     >
                       {step.label}
                     </h3>
 
-                    <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-white/35">
+                    <p className="mt-1 text-xs leading-5 text-muted">
                       {step.description}
                     </p>
                   </div>
@@ -1837,22 +1836,22 @@ export default function CreatorBookingDetail() {
           <aside className="space-y-6 xl:sticky xl:top-28 xl:self-start">
             {/* Payment Summary */}
 
-            <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-white/5 dark:bg-[#0B0B0B] dark:shadow-2xl">
-              <div className="border-b border-slate-200 bg-slate-50 p-6 dark:border-white/5 dark:bg-white/[0.025]">
-                <p className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/30">
+            <section className="overflow-hidden rounded-md border border-line bg-surface">
+              <div className="border-b border-line bg-canvas p-4 dark:bg-subtle">
+                <p className="text-xs font-semibold tracking-normal text-muted">
                   Payment summary
                 </p>
 
                 <div className="mt-3 flex items-end justify-between gap-4">
-                  <h2 className="font-serif text-4xl font-light">
+                  <h2 className="font-sans text-4xl font-light">
                     {formatCurrency(booking.agreed_price)}
                   </h2>
 
                   <span
-                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold  tracking-normal ${
+                    className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-semibold tracking-normal ${
                       booking.escrow_locked
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300"
-                        : "border-slate-200 bg-white text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-white/40"
+                        ? "border-line bg-canvas text-action dark:bg-subtle"
+                        : "border-line bg-surface text-muted dark:bg-subtle"
                     }`}
                   >
                     {booking.escrow_locked ? (
@@ -1866,15 +1865,15 @@ export default function CreatorBookingDetail() {
                 </div>
               </div>
 
-              <div className="space-y-4 p-6">
-                <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/5 dark:bg-white/[0.025]">
+              <div className="space-y-4 p-4">
+                <div className="flex items-start gap-3 rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
                   <CalendarDays
                     size={17}
-                    className="mt-0.5 shrink-0 text-[#9B791D] dark:text-[#D4AF37]"
+                    className="mt-0.5 shrink-0 text-action"
                   />
 
                   <div>
-                    <p className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/30">
+                    <p className="text-xs font-semibold tracking-normal text-muted">
                       Final deadline
                     </p>
 
@@ -1882,20 +1881,20 @@ export default function CreatorBookingDetail() {
                       {formatDate(booking.deadline)}
                     </p>
 
-                    <p className="mt-1 text-xs text-slate-500 dark:text-white/35">
+                    <p className="mt-1 text-xs text-muted">
                       {getDeadlineMessage(booking.deadline, booking.status)}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/5 dark:bg-white/[0.025]">
+                <div className="flex items-start gap-3 rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
                   <Clock3
                     size={17}
-                    className="mt-0.5 shrink-0 text-[#9B791D] dark:text-[#D4AF37]"
+                    className="mt-0.5 shrink-0 text-action"
                   />
 
                   <div>
-                    <p className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/30">
+                    <p className="text-xs font-semibold tracking-normal text-muted">
                       Preferred start
                     </p>
 
@@ -1905,14 +1904,14 @@ export default function CreatorBookingDetail() {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/5 dark:bg-white/[0.025]">
+                <div className="flex items-start gap-3 rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
                   <BadgeDollarSign
                     size={17}
-                    className="mt-0.5 shrink-0 text-[#9B791D] dark:text-[#D4AF37]"
+                    className="mt-0.5 shrink-0 text-action"
                   />
 
                   <div>
-                    <p className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/30">
+                    <p className="text-xs font-semibold tracking-normal text-muted">
                       Booking type
                     </p>
 
@@ -1926,13 +1925,13 @@ export default function CreatorBookingDetail() {
 
             {/* Designer */}
 
-            <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-[#0B0B0B] dark:shadow-2xl">
-              <p className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/30">
+            <section className="rounded-md border border-line bg-surface p-4">
+              <p className="text-xs font-semibold tracking-normal text-muted">
                 Your designer
               </p>
 
               <div className="mt-4 flex items-center gap-4">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md border border-line bg-canvas dark:bg-subtle">
                   {designerAvatar ? (
                     <img
                       src={designerAvatar}
@@ -1940,7 +1939,7 @@ export default function CreatorBookingDetail() {
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <UserRound className="text-slate-400 dark:text-white/30" />
+                    <UserRound className="text-muted" />
                   )}
                 </div>
 
@@ -1949,7 +1948,7 @@ export default function CreatorBookingDetail() {
                     {designerName}
                   </h2>
 
-                  <p className="mt-1 text-xs font-semibold tracking-normal text-[#9B791D] dark:text-[#D4AF37]">
+                  <p className="mt-1 text-xs font-semibold tracking-normal text-action">
                     Assigned designer
                   </p>
                 </div>
@@ -1961,20 +1960,20 @@ export default function CreatorBookingDetail() {
                 ===================================================== */}
 
             {whatsappContactEligible && (
-              <section className="overflow-hidden rounded-3xl border border-emerald-200 bg-white shadow-sm dark:border-emerald-400/15 dark:bg-[#0B0B0B] dark:shadow-2xl">
-                <div className="border-b border-emerald-100 bg-emerald-50/70 p-6 dark:border-emerald-400/10 dark:bg-emerald-400/[0.06]">
+              <section className="overflow-hidden rounded-md border border-line bg-surface">
+                <div className="border-b border-line bg-subtle p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-emerald-200 bg-white text-emerald-700 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-line bg-surface text-action dark:bg-subtle">
                         <MessageCircle size={20} />
                       </div>
 
                       <div>
-                        <p className="text-xs font-semibold tracking-normal text-emerald-700 dark:text-emerald-300">
+                        <p className="text-xs font-semibold tracking-normal text-action">
                           Contact your designer
                         </p>
 
-                        <h2 className="mt-1 font-serif text-xl font-light text-slate-950 dark:text-white">
+                        <h2 className="mt-1 font-serif text-xl font-light text-ink">
                           WhatsApp Contact
                         </h2>
                       </div>
@@ -1986,7 +1985,7 @@ export default function CreatorBookingDetail() {
                       disabled={whatsappLoading}
                       title="Refresh WhatsApp availability"
                       aria-label="Refresh WhatsApp contact availability"
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-200 bg-white text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-400/20 dark:bg-white/5 dark:text-emerald-300 dark:hover:bg-emerald-400/10"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-line bg-surface text-action transition hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50 dark:bg-subtle dark:hover:bg-subtle"
                     >
                       <RefreshCw
                         size={14}
@@ -1996,30 +1995,30 @@ export default function CreatorBookingDetail() {
                   </div>
                 </div>
 
-                <div className="p-6">
+                <div className="p-4">
                   {whatsappLoading ? (
-                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500 dark:border-white/5 dark:bg-white/[0.025] dark:text-white/40">
+                    <div className="flex items-center gap-3 rounded-md border border-line bg-canvas p-4 text-sm text-muted dark:bg-subtle">
                       <Loader2
                         size={17}
-                        className="shrink-0 animate-spin text-emerald-600 dark:text-emerald-300"
+                        className="shrink-0 animate-spin text-action"
                       />
 
                       <p>Checking private booking contact availability...</p>
                     </div>
                   ) : whatsappError ? (
-                    <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-400/20 dark:bg-rose-400/10">
+                    <div className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
                       <div className="flex items-start gap-3">
                         <AlertCircle
                           size={17}
-                          className="mt-0.5 shrink-0 text-rose-700 dark:text-rose-300"
+                          className="mt-0.5 shrink-0 text-action"
                         />
 
                         <div>
-                          <p className="text-sm font-semibold text-rose-900 dark:text-rose-100">
+                          <p className="text-sm font-semibold text-action">
                             Contact could not be loaded
                           </p>
 
-                          <p className="mt-1 text-xs leading-5 text-rose-700/80 dark:text-rose-200/70">
+                          <p className="mt-1 text-xs leading-5 text-muted">
                             {whatsappError}
                           </p>
                         </div>
@@ -2027,19 +2026,19 @@ export default function CreatorBookingDetail() {
                     </div>
                   ) : whatsappAvailable ? (
                     <div className="space-y-4">
-                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-400/15 dark:bg-emerald-400/[0.06]">
+                      <div className="rounded-md border border-line bg-subtle p-4">
                         <div className="flex items-start gap-3">
                           <CheckCircle2
                             size={18}
-                            className="mt-0.5 shrink-0 text-emerald-700 dark:text-emerald-300"
+                            className="mt-0.5 shrink-0 text-action"
                           />
 
                           <div>
-                            <p className="text-sm font-semibold text-emerald-950 dark:text-emerald-100">
+                            <p className="text-sm font-semibold text-action">
                               {whatsappPartnerName} is available on WhatsApp
                             </p>
 
-                            <p className="mt-1 text-xs leading-5 text-emerald-800/70 dark:text-emerald-200/60">
+                            <p className="mt-1 text-xs leading-5 text-muted">
                               Their contact is available to you through this
                               active booking. The phone number is intentionally
                               not displayed on this page.
@@ -2057,7 +2056,7 @@ export default function CreatorBookingDetail() {
                               "message",
                             )
                           }
-                          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-xs font-semibold tracking-normal text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-500/15 dark:bg-emerald-500 dark:hover:bg-emerald-400"
+                          className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-action px-4 text-xs font-semibold tracking-normal text-on-action transition hover:bg-action focus:outline-none focus:ring-4 focus:ring-action hover:text-on-action"
                         >
                           <MessageCircle size={16} />
                           Message on WhatsApp
@@ -2075,7 +2074,7 @@ export default function CreatorBookingDetail() {
                           disabled={
                             !isSafeWhatsAppUrl(whatsappContact?.video_call_url)
                           }
-                          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 text-xs font-semibold tracking-normal text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200 dark:hover:bg-emerald-400/15"
+                          className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-line bg-surface px-4 text-xs font-semibold tracking-normal text-action transition hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50 dark:bg-subtle dark:hover:bg-subtle"
                         >
                           <Video size={16} />
                           Open WhatsApp for Video Call
@@ -2083,20 +2082,20 @@ export default function CreatorBookingDetail() {
                         </button>
                       </div>
 
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/5 dark:bg-white/[0.025]">
-                        <p className="text-xs leading-5 text-slate-500 dark:text-white/40">
+                      <div className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
+                        <p className="text-xs leading-5 text-muted">
                           {whatsappContact?.video_call_instruction ||
                             "Open the WhatsApp chat, then use WhatsApp's video icon to start a video call."}
                         </p>
                       </div>
 
-                      <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-400/15 dark:bg-amber-400/[0.06]">
+                      <div className="flex items-start gap-3 rounded-md border border-line bg-subtle p-4">
                         <ShieldCheck
                           size={17}
-                          className="mt-0.5 shrink-0 text-amber-700 dark:text-amber-300"
+                          className="mt-0.5 shrink-0 text-action"
                         />
 
-                        <p className="text-xs leading-5 text-amber-800/80 dark:text-amber-100/60">
+                        <p className="text-xs leading-5 text-muted">
                           Use WhatsApp for communication or call coordination
                           only. Keep acceptance, revisions, milestone approvals,
                           cancellations, payments and final approval inside
@@ -2105,19 +2104,19 @@ export default function CreatorBookingDetail() {
                       </div>
                     </div>
                   ) : (
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/5 dark:bg-white/[0.025]">
+                    <div className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
                       <div className="flex items-start gap-3">
                         <LockKeyhole
                           size={17}
-                          className="mt-0.5 shrink-0 text-slate-500 dark:text-white/35"
+                          className="mt-0.5 shrink-0 text-muted"
                         />
 
                         <div>
-                          <p className="text-sm font-semibold text-slate-800 dark:text-white/70">
+                          <p className="text-sm font-semibold text-ink dark:text-muted">
                             WhatsApp contact unavailable
                           </p>
 
-                          <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-white/40">
+                          <p className="mt-1 text-xs leading-5 text-muted">
                             {whatsappContact?.message ||
                               "WhatsApp contact is not available for this booking."}
                           </p>
@@ -2133,32 +2132,32 @@ export default function CreatorBookingDetail() {
 
             {status === BOOKING_STATUS.COMPLETED ||
             status === BOOKING_STATUS.DELIVERED ? (
-              <section className="rounded-3xl border border-emerald-200 bg-emerald-50 p-6 dark:border-emerald-400/20 dark:bg-emerald-400/10">
-                <CheckCircle2 className="text-emerald-700 dark:text-emerald-300" />
+              <section className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
+                <CheckCircle2 className="text-action" />
 
-                <h2 className="mt-4 font-semibold text-emerald-900 dark:text-emerald-100">
+                <h2 className="mt-4 font-semibold text-action">
                   Booking completed
                 </h2>
 
-                <p className="mt-2 text-sm leading-6 text-emerald-700/80 dark:text-emerald-200/70">
+                <p className="mt-2 text-sm leading-6 text-muted">
                   The Designer payment was released. Your 2D and 3D delivery
                   links remain available in the archive.
                 </p>
 
                 {booking.creator_reward_awarded_at && (
-                  <div className="mt-4 rounded-2xl border border-emerald-200 bg-white/70 p-4 dark:border-emerald-400/20 dark:bg-black/15">
+                  <div className="mt-4 rounded-md border border-line bg-subtle p-4">
                     <div className="flex items-center gap-3">
                       <Sparkles
                         size={18}
-                        className="shrink-0 text-[#9B791D] dark:text-[#D4AF37]"
+                        className="shrink-0 text-action"
                       />
 
                       <div>
-                        <p className="text-xs font-semibold tracking-normal text-emerald-700 dark:text-emerald-300">
+                        <p className="text-xs font-semibold tracking-normal text-action">
                           Creator reward
                         </p>
 
-                        <p className="mt-1 text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+                        <p className="mt-1 text-sm font-semibold text-action">
                           +{Number(booking.creator_reward_points || 0)} points
                           earned from this booking
                         </p>
@@ -2168,28 +2167,28 @@ export default function CreatorBookingDetail() {
                 )}
               </section>
             ) : status === BOOKING_STATUS.CANCELLATION_PENDING ? (
-              <section className="rounded-3xl border border-rose-200 bg-rose-50 p-6 dark:border-rose-400/20 dark:bg-rose-400/10">
-                <Loader2 className="animate-spin text-rose-700 dark:text-rose-300" />
+              <section className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
+                <Loader2 className="animate-spin text-action" />
 
-                <h2 className="mt-4 font-semibold text-rose-900 dark:text-rose-100">
+                <h2 className="mt-4 font-semibold text-action">
                   Cancellation in progress
                 </h2>
 
-                <p className="mt-2 text-sm leading-6 text-rose-700/80 dark:text-rose-200/70">
+                <p className="mt-2 text-sm leading-6 text-muted">
                   We’re checking the cancellation and payment status. Please wait before trying again.
                 </p>
               </section>
             ) : status !== BOOKING_STATUS.CANCELLED && cancellationAllowed ? (
-              <section className="rounded-3xl border border-rose-200 bg-white p-6 shadow-sm dark:border-rose-400/15 dark:bg-[#0B0B0B] dark:shadow-2xl">
-                <p className="text-xs font-semibold tracking-normal text-rose-600 dark:text-rose-300">
+              <section className="rounded-md border border-line bg-surface p-4">
+                <p className="text-xs font-semibold tracking-normal text-action">
                   Booking management
                 </p>
 
-                <h2 className="mt-2 font-serif text-2xl font-light">
+                <h2 className="mt-2 font-sans text-2xl font-light">
                   Need to cancel?
                 </h2>
 
-                <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-white/40">
+                <p className="mt-2 text-sm leading-6 text-muted">
                   Cancellation may trigger a Stripe refund when the payment was
                   already secured.
                 </p>
@@ -2204,7 +2203,7 @@ export default function CreatorBookingDetail() {
                       rows={4}
                       maxLength={5000}
                       placeholder="Explain why this booking should be cancelled..."
-                      className="w-full resize-none rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-slate-900 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-500/10 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-white"
+                      className="w-full resize-none rounded-md border border-line bg-canvas p-4 text-sm leading-6 text-ink outline-none transition focus:border-line focus:ring-4 focus:ring-action dark:bg-subtle"
                     />
 
                     <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
@@ -2216,7 +2215,7 @@ export default function CreatorBookingDetail() {
                           setCancellationReason("");
                         }}
                         disabled={Boolean(actionName)}
-                        className="h-11 rounded-xl border border-slate-200 bg-white text-xs font-semibold tracking-normal text-slate-600 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-white/55"
+                        className="h-9 rounded-md border border-line bg-surface text-xs font-semibold tracking-normal text-muted disabled:opacity-50 dark:bg-subtle"
                       >
                         Keep booking
                       </button>
@@ -2226,7 +2225,7 @@ export default function CreatorBookingDetail() {
                         disabled={
                           Boolean(actionName) || !cancellationReason.trim()
                         }
-                        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-rose-700 text-xs font-semibold tracking-normal text-white transition hover:bg-rose-800 disabled:opacity-50"
+                        className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action text-xs font-semibold tracking-normal text-on-action transition hover:bg-action disabled:opacity-50 hover:text-on-action"
                       >
                         {actionName === "cancel" ? (
                           <Loader2 size={15} className="animate-spin" />
@@ -2242,7 +2241,7 @@ export default function CreatorBookingDetail() {
                     type="button"
                     onClick={() => setCancellationOpen(true)}
                     disabled={Boolean(actionName)}
-                    className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 text-xs font-semibold tracking-normal text-rose-700 transition hover:bg-rose-100 disabled:opacity-50 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-300 dark:hover:bg-rose-400/15"
+                    className="mt-5 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-line bg-canvas text-xs font-semibold tracking-normal text-action transition hover:bg-subtle disabled:opacity-50 dark:bg-subtle"
                   >
                     <Ban size={15} />
                     Request cancellation
@@ -2256,7 +2255,7 @@ export default function CreatorBookingDetail() {
         <div className="mt-8 flex justify-center">
           <Link
             to="/creator/bookings"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-xs font-semibold tracking-normal text-slate-600 transition hover:border-[#D4AF37]/50 hover:text-[#9B791D] dark:border-white/10 dark:bg-white/[0.04] dark:text-white/55 dark:hover:text-[#D4AF37]"
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-5 text-xs font-semibold tracking-normal text-muted transition hover:border-line hover:text-action dark:bg-subtle"
           >
             Back to bookings
             <ArrowRight size={14} />
@@ -2270,24 +2269,24 @@ export default function CreatorBookingDetail() {
 
       {tryOnOpen && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4"
           role="dialog"
           aria-modal="true"
           aria-label="Virtual Try-On"
         >
-          <section className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-3xl border border-white/10 bg-white shadow-2xl dark:bg-[#090909]">
-            <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white/95 p-5 backdrop-blur-xl dark:border-white/10 dark:bg-[#090909]/95 sm:p-6">
+          <section className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-md border border-line bg-surface">
+            <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-line bg-subtle p-4">
               <div>
-                <p className="text-xs font-semibold tracking-normal text-violet-700 dark:text-violet-300">
+                <p className="text-xs font-semibold tracking-normal text-action">
                   AI Virtual Try-On
                 </p>
 
-                <h2 className="mt-1 font-serif text-2xl font-light text-slate-950 dark:text-white">
+                <h2 className="mt-1 font-sans text-2xl font-light text-ink">
                   Preview the{" "}
                   {tryOnPhase === "prototype" ? "prototype" : "final garment"}
                 </h2>
 
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-white/45">
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
                   Choose a clear photo of yourself. Your photo is used for this
                   generation and is not written to the booking record by this
                   feature.
@@ -2299,20 +2298,20 @@ export default function CreatorBookingDetail() {
                 onClick={closeTryOn}
                 disabled={tryOnLoading}
                 aria-label="Close Virtual Try-On"
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-slate-100 disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/10"
+                className="flex h-9 w-10 shrink-0 items-center justify-center rounded-md border border-line bg-canvas text-muted transition hover:bg-subtle disabled:opacity-40 dark:bg-subtle"
               >
                 <X size={17} />
               </button>
             </div>
 
-            <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-2">
+            <div className="grid gap-6 p-4 lg:grid-cols-2">
               <div className="space-y-5">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/5 dark:bg-white/[0.025]">
-                  <p className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/30">
+                <div className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
+                  <p className="text-xs font-semibold tracking-normal text-muted">
                     Your photo
                   </p>
 
-                  <label className="mt-4 block cursor-pointer rounded-2xl border border-dashed border-violet-300 bg-violet-50/60 p-5 text-center transition hover:bg-violet-50 dark:border-violet-400/25 dark:bg-violet-400/[0.06] dark:hover:bg-violet-400/10">
+                  <label className="mt-4 block cursor-pointer rounded-md border border-dashed border-line bg-subtle p-4 text-center transition hover:bg-canvas dark:hover:bg-subtle">
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
@@ -2321,21 +2320,21 @@ export default function CreatorBookingDetail() {
                       className="sr-only"
                     />
 
-                    <Sparkles className="mx-auto text-violet-700 dark:text-violet-300" />
+                    <Sparkles className="mx-auto text-action" />
 
-                    <p className="mt-3 text-sm font-semibold text-slate-900 dark:text-white">
+                    <p className="mt-3 text-sm font-semibold text-ink">
                       {tryOnFile
                         ? "Choose a different photo"
                         : "Choose your photo"}
                     </p>
 
-                    <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-white/35">
+                    <p className="mt-1 text-xs leading-5 text-muted">
                       JPEG, PNG or WEBP · maximum 12 MB
                     </p>
                   </label>
 
                   {tryOnPreviewUrl && (
-                    <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-black/5 dark:border-white/10 dark:bg-black/30">
+                    <div className="mt-4 overflow-hidden rounded-md border border-line bg-subtle">
                       <img
                         src={tryOnPreviewUrl}
                         alt="Selected Virtual Try-On person"
@@ -2345,7 +2344,7 @@ export default function CreatorBookingDetail() {
                   )}
 
                   {tryOnError && (
-                    <div className="mt-4 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">
+                    <div className="mt-4 flex items-start gap-3 rounded-md border border-line bg-canvas p-4 text-sm leading-6 text-action dark:bg-subtle">
                       <AlertCircle size={17} className="mt-0.5 shrink-0" />
 
                       <p>{tryOnError}</p>
@@ -2356,7 +2355,7 @@ export default function CreatorBookingDetail() {
                     type="button"
                     onClick={handleGenerateTryOn}
                     disabled={tryOnLoading || !tryOnFile}
-                    className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-violet-700 px-5 text-xs font-semibold tracking-normal text-white transition hover:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-violet-500 dark:hover:bg-violet-400"
+                    className="mt-5 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-action px-5 text-xs font-semibold tracking-normal text-on-action transition hover:bg-action disabled:cursor-not-allowed disabled:opacity-50 hover:text-on-action"
                   >
                     {tryOnLoading ? (
                       <Loader2 size={16} className="animate-spin" />
@@ -2367,21 +2366,21 @@ export default function CreatorBookingDetail() {
                     {tryOnLoading ? "Generating..." : "Generate Virtual Try-On"}
                   </button>
 
-                  <p className="mt-3 text-center text-xs leading-5 text-slate-400 dark:text-white/30">
+                  <p className="mt-3 text-center text-xs leading-5 text-muted">
                     Generation can take several seconds. Keep this window open
                     until the result is ready.
                   </p>
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/5 dark:bg-white/[0.025]">
-                <p className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/30">
+              <div className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
+                <p className="text-xs font-semibold tracking-normal text-muted">
                   Generated result
                 </p>
 
                 {tryOnResultImage ? (
                   <>
-                    <div className="mt-4 overflow-hidden rounded-2xl border border-violet-200 bg-black/5 dark:border-violet-400/20 dark:bg-black/30">
+                    <div className="mt-4 overflow-hidden rounded-md border border-line bg-subtle">
                       <img
                         src={tryOnResultImage}
                         alt="Generated Virtual Try-On result"
@@ -2389,7 +2388,7 @@ export default function CreatorBookingDetail() {
                       />
                     </div>
 
-                    <div className="mt-4 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200">
+                    <div className="mt-4 flex items-start gap-3 rounded-md border border-line bg-canvas p-4 text-sm leading-6 text-action dark:bg-subtle">
                       <CheckCircle2 size={17} className="mt-0.5 shrink-0" />
 
                       <p>
@@ -2406,33 +2405,33 @@ export default function CreatorBookingDetail() {
                         setTryOnError("");
                       }}
                       disabled={tryOnLoading}
-                      className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold tracking-normal text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/10"
+                      className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-line bg-surface px-4 text-xs font-semibold tracking-normal text-ink transition hover:bg-canvas disabled:opacity-50 dark:bg-subtle dark:text-muted dark:hover:bg-subtle"
                     >
                       <RefreshCw size={14} />
                       Try another result
                     </button>
                   </>
                 ) : (
-                  <div className="mt-4 flex min-h-[360px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center dark:border-white/10 dark:bg-black/20">
+                  <div className="mt-4 flex min-h-[360px] flex-col items-center justify-center rounded-md border border-dashed border-line bg-surface p-4 text-center dark:bg-subtle">
                     {tryOnLoading ? (
                       <Loader2
                         size={34}
-                        className="animate-spin text-violet-700 dark:text-violet-300"
+                        className="animate-spin text-action"
                       />
                     ) : (
                       <Sparkles
                         size={34}
-                        className="text-violet-700 dark:text-violet-300"
+                        className="text-action"
                       />
                     )}
 
-                    <h3 className="mt-4 font-serif text-xl font-light text-slate-900 dark:text-white">
+                    <h3 className="mt-4 font-serif text-xl font-light text-ink">
                       {tryOnLoading
                         ? "Creating your preview"
                         : "Your result will appear here"}
                     </h3>
 
-                    <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500 dark:text-white/35">
+                    <p className="mt-2 max-w-sm text-sm leading-6 text-muted">
                       {tryOnLoading
                         ? "FASHN is generating the Virtual Try-On. Please keep this window open."
                         : "Choose a clear, front-facing photo and generate the preview when you are ready."}

@@ -1,31 +1,46 @@
+import { useEffect, useState } from "react";
 import { ThemeContext } from "./ThemeContext.helpers.js";
-import React, { useEffect, useState } from 'react';
 
+const preferenceKey = "theme";
+const darkPreference = "(prefers-color-scheme: dark)";
 
+function readPreference() {
+  try {
+    const value = localStorage.getItem(preferenceKey);
+    return value === "light" || value === "dark" ? value : null;
+  } catch {
+    return null;
+  }
+}
 
-export const ThemeProvider = ({ children }) => {
-    // Default to 'dark' so your current hardcoded dark UI stays exactly the same
-    const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+export function ThemeProvider({ children }) {
+  const [preference, setPreference] = useState(readPreference);
+  const [systemDark, setSystemDark] = useState(() => window.matchMedia(darkPreference).matches);
+  const theme = preference || (systemDark ? "dark" : "light");
 
-    useEffect(() => {
-        const root = window.document.documentElement;
-        
-        if (theme === 'dark') {
-            root.classList.add('dark');
-        } else {
-            root.classList.remove('dark');
-        }
-        
-        localStorage.setItem('theme', theme);
-    }, [theme]);
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+  }, [theme]);
 
-    const toggleTheme = () => {
-        setTheme((prevTheme) => (prevTheme === 'dark' ? 'light' : 'dark'));
+  useEffect(() => {
+    const media = window.matchMedia(darkPreference);
+    const onSystemChange = event => setSystemDark(event.matches);
+    const onStorage = event => {
+      if (event.key === preferenceKey || event.key === null) setPreference(readPreference());
     };
+    media.addEventListener("change", onSystemChange);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      media.removeEventListener("change", onSystemChange);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
 
-    return (
-        <ThemeContext.Provider value={{ theme, toggleTheme }}>
-            {children}
-        </ThemeContext.Provider>
-    );
-};
+  function toggleTheme() {
+    const next = theme === "dark" ? "light" : "dark";
+    setPreference(next);
+    try { localStorage.setItem(preferenceKey, next); } catch { /* This visit still uses the chosen theme. */ }
+  }
+
+  return <ThemeContext.Provider value={{ theme, toggleTheme }}>{children}</ThemeContext.Provider>;
+}

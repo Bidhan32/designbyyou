@@ -1244,12 +1244,12 @@ function HeaderButton({
       disabled={disabled}
       title={title}
       className={[
-        "inline-flex h-9 shrink-0 items-center justify-center rounded-lg border px-3 text-xs font-semibold transition",
+        "inline-flex h-9 shrink-0 items-center justify-center rounded-md border px-3 text-xs font-semibold transition",
         active
-          ? "border-violet-500 bg-violet-500 text-white"
-          : "border-slate-700 bg-slate-800 text-slate-200 hover:border-slate-500 hover:bg-slate-700",
+          ? "border-line bg-action text-on-action"
+          : "border-line bg-subtle text-ink hover:border-line hover:bg-subtle",
         disabled
-          ? "cursor-not-allowed opacity-40 hover:border-slate-700 hover:bg-slate-800"
+          ? "cursor-not-allowed opacity-40 hover:border-line hover:bg-subtle"
           : "",
         className,
       ]
@@ -1278,23 +1278,23 @@ function ToolButton({ tool, active, onClick, horizontal = false }) {
       }
       aria-pressed={active}
       className={[
-        "group shrink-0 rounded-xl border transition",
+        "group shrink-0 rounded-md border transition",
         horizontal
-          ? "flex h-14 min-w-[58px] flex-col items-center justify-center px-2"
-          : "flex h-14 w-14 flex-col items-center justify-center",
+          ? "flex h-9 min-w-[58px] flex-col items-center justify-center px-2"
+          : "flex h-9 w-14 flex-col items-center justify-center",
         active
-          ? "border-violet-500 bg-violet-500 text-white shadow-lg shadow-violet-950/40"
-          : "border-transparent bg-slate-900 text-slate-400 hover:border-slate-700 hover:bg-slate-800 hover:text-white",
+          ? "border-line bg-action text-on-action"
+          : "border-transparent bg-surface text-muted hover:border-line hover:bg-subtle hover:text-ink",
         !tool.enabled
-          ? "cursor-not-allowed opacity-35 hover:border-transparent hover:bg-slate-900 hover:text-slate-400"
+          ? "cursor-not-allowed opacity-35 hover:border-transparent hover:bg-surface hover:text-muted"
           : "",
       ]
         .filter(Boolean)
         .join(" ")}
     >
-      <span className="text-sm font-black">{tool.symbol}</span>
+      <span className="text-sm font-semibold">{tool.symbol}</span>
 
-      <span className="mt-1 text-[9px] font-semibold uppercase tracking-wider">
+      <span className="mt-1 text-[11px] font-semibold uppercase tracking-wider">
         {tool.label}
       </span>
     </button>
@@ -1303,9 +1303,9 @@ function ToolButton({ tool, active, onClick, horizontal = false }) {
 
 function PanelSection({ title, children, action = null }) {
   return (
-    <section className="border-b border-slate-800 p-4">
+    <section className="border-b border-line p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
+        <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
           {title}
         </h3>
 
@@ -1336,9 +1336,9 @@ function SliderField({
         .join(" ")}
     >
       <div className="mb-2 flex items-center justify-between gap-3">
-        <span className="text-xs font-medium text-slate-300">{label}</span>
+        <span className="text-xs font-medium text-muted">{label}</span>
 
-        <span className="min-w-12 text-right text-xs font-semibold text-slate-100">
+        <span className="min-w-12 text-right text-xs font-semibold text-ink">
           {value}
           {suffix}
         </span>
@@ -1358,7 +1358,7 @@ function SliderField({
         onPointerUp={onEnd}
         onPointerCancel={onEnd}
         onBlur={onEnd}
-        className="h-1.5 w-full cursor-pointer accent-violet-500 disabled:cursor-not-allowed"
+        className="h-1.5 w-full cursor-pointer accent-action disabled:cursor-not-allowed"
       />
     </label>
   );
@@ -1408,7 +1408,7 @@ function LayerNameField({ layer, renameLayer }) {
       onClick={(event) => {
         event.stopPropagation();
       }}
-      className="min-w-0 flex-1 border-none bg-transparent text-xs font-semibold text-slate-200 outline-none"
+      className="min-w-0 flex-1 border-none bg-transparent text-xs font-semibold text-ink outline-none"
     />
   );
 }
@@ -1454,7 +1454,7 @@ function DocumentNameField({ documentData, setDocumentName }) {
           event.currentTarget.blur();
         }
       }}
-      className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-1 text-xs font-semibold text-slate-200 outline-none transition hover:border-slate-700 focus:border-violet-500 focus:bg-slate-900 sm:text-sm"
+      className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-1 text-xs font-semibold text-ink outline-none transition hover:border-line focus:border-line focus:bg-surface sm:text-sm"
       aria-label="Document name"
     />
   );
@@ -1660,77 +1660,77 @@ function ClothingMultiRegionColourPanel({
   ];
 
   return (
-    <details open className="mt-4 rounded-xl border border-violet-500/40 bg-slate-950/80 p-3">
-      <summary className="cursor-pointer text-xs font-semibold text-violet-200">
-        Multi-region color editor <span className="text-[10px] font-normal text-slate-400">({selected.length} selected)</span>
+    <details open className="mt-4 rounded-md border border-line bg-subtle p-3">
+      <summary className="cursor-pointer text-xs font-semibold text-action">
+        Multi-region color editor <span className="text-[10px] font-normal text-muted">({selected.length} selected)</span>
       </summary>
-      <p className="mb-3 mt-2 text-[10px] leading-relaxed text-slate-400">
+      <p className="mb-3 mt-2 text-[10px] leading-relaxed text-muted">
         Select any combination of parts, then apply one color. One Apply action equals one Undo step.
       </p>
       <div className="mb-3 flex flex-wrap gap-1.5" role="group" aria-label="Quick 2D garment selections">
-        <button type="button" className="rounded-md border border-slate-600 bg-slate-800 px-2 py-1.5 text-[10px] text-slate-100" onClick={() => choose(regions.map((r) => r.id))}>All</button>
-        <button type="button" className="rounded-md border border-slate-600 bg-slate-800 px-2 py-1.5 text-[10px] text-slate-100" onClick={() => choose(regions.filter((r) => getClothingRegionView(r) === "front").map((r) => r.id))}>Front</button>
-        <button type="button" className="rounded-md border border-slate-600 bg-slate-800 px-2 py-1.5 text-[10px] text-slate-100" onClick={() => choose(regions.filter((r) => getClothingRegionView(r) === "back").map((r) => r.id))}>Back</button>
-        <button type="button" className="rounded-md border border-slate-600 bg-slate-800 px-2 py-1.5 text-[10px] text-slate-100" onClick={() => choose([])}>Clear selection</button>
+        <button type="button" className="rounded-md border border-line bg-subtle px-2 py-1.5 text-[10px] text-ink" onClick={() => choose(regions.map((r) => r.id))}>All</button>
+        <button type="button" className="rounded-md border border-line bg-subtle px-2 py-1.5 text-[10px] text-ink" onClick={() => choose(regions.filter((r) => getClothingRegionView(r) === "front").map((r) => r.id))}>Front</button>
+        <button type="button" className="rounded-md border border-line bg-subtle px-2 py-1.5 text-[10px] text-ink" onClick={() => choose(regions.filter((r) => getClothingRegionView(r) === "back").map((r) => r.id))}>Back</button>
+        <button type="button" className="rounded-md border border-line bg-subtle px-2 py-1.5 text-[10px] text-ink" onClick={() => choose([])}>Clear selection</button>
         {groups.map((group) => (
-          <button key={group.id} type="button" className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-[10px] text-slate-300 hover:bg-slate-800"
+          <button key={group.id} type="button" className="rounded-md border border-line bg-surface px-2 py-1.5 text-[10px] text-muted hover:bg-subtle"
             onClick={() => choose(group.ids)}>{group.label}</button>
         ))}
       </div>
       <div className="grid grid-cols-1 gap-1.5" role="group" aria-label="Select 2D clothing regions">
         {regions.map((region) => (
-          <label key={region.id} className={`flex cursor-pointer items-center gap-2 rounded-md border px-2 py-1.5 text-[10px] ${selectedSet.has(region.id) ? "border-violet-500 bg-violet-950/50 text-slate-100" : "border-slate-800 bg-slate-900 text-slate-300"}`}>
+          <label key={region.id} className={`flex cursor-pointer items-center gap-2 rounded-md border px-2 py-1.5 text-[10px] ${selectedSet.has(region.id) ? "border-line bg-subtle text-ink" : "border-line bg-surface text-muted"}`}>
             <input type="checkbox" checked={selectedSet.has(region.id)} onChange={() => toggle(region.id)}
-              aria-label={`Select ${region.label}`} className="shrink-0 accent-violet-500" />
+              aria-label={`Select ${region.label}`} className="shrink-0 accent-action" />
             <span className="min-w-0 flex-1 truncate">{region.label}</span>
-            <span className="text-[9px] text-slate-500">{CLOTHING_VIEW_LABELS[getClothingRegionView(region)] || "Other"}</span>
+            <span className="text-[11px] text-muted">{CLOTHING_VIEW_LABELS[getClothingRegionView(region)] || "Other"}</span>
           </label>
         ))}
       </div>
-      <div className="mt-3 border-t border-slate-800 pt-3">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Apply color to selected parts</p>
+      <div className="mt-3 border-t border-line pt-3">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">Apply color to selected parts</p>
         <div className="mb-3 grid grid-cols-6 gap-1.5">
           {presets.map((swatch) => (
             <button key={swatch} type="button" title={swatch} aria-label={`Select ${swatch}`}
               aria-pressed={paintColour.toLowerCase() === swatch}
               onClick={() => setPaintColour(swatch)}
-              className={`h-7 rounded-md border-2 ${paintColour.toLowerCase() === swatch ? "border-violet-400 ring-1 ring-violet-400" : "border-slate-600"}`}
+              className={`h-7 rounded-md border-2 ${paintColour.toLowerCase() === swatch ? "border-line ring-1 ring-action" : "border-line"}`}
               style={{ backgroundColor: swatch }}/>
           ))}
         </div>
         <div className="mb-3 flex items-center gap-2">
           <input type="color" aria-label="Choose custom 2D garment color" value={hexValid ? paintColour : "#111111"}
-            onChange={(event) => setPaintColour(event.target.value)} className="h-9 w-11 shrink-0 cursor-pointer rounded border border-slate-600 bg-slate-950"/>
+            onChange={(event) => setPaintColour(event.target.value)} className="h-9 w-11 shrink-0 cursor-pointer rounded border border-line bg-surface"/>
           <input type="text" aria-label="2D garment color hex" maxLength={7} value={paintColour}
             onChange={(event) => setPaintColour(event.target.value)}
-            className="min-w-0 flex-1 rounded-lg border border-slate-600 bg-slate-900 px-2 py-1.5 font-mono text-xs text-slate-100"/>
+            className="min-w-0 flex-1 rounded-md border border-line bg-surface px-2 py-1.5 font-mono text-xs text-ink"/>
         </div>
         <button type="button" disabled={disabled || !selected.length || !hexValid || typeof onApply !== "function"}
           onClick={() => onApply(selected, paintColour)}
-          className="min-h-10 w-full rounded-lg border border-violet-500 bg-violet-700 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-600 disabled:cursor-not-allowed disabled:opacity-40">
+          className="min-h-9 w-full rounded-md border border-line bg-action px-3 py-2 text-xs font-semibold text-on-action hover:bg-action disabled:cursor-not-allowed disabled:opacity-40 hover:text-on-action">
           Apply to {selected.length} region{selected.length === 1 ? "" : "s"}
         </button>
-        {disabled && <p className="mt-2 text-[10px] text-amber-300">Unlock the garment and its layer to edit colors.</p>}
+        {disabled && <p className="mt-2 text-[10px] text-action">Unlock the garment and its layer to edit colors.</p>}
       </div>
-      <div className="mt-4 space-y-2 border-t border-slate-700 pt-3">
-        <strong className="block text-[11px] uppercase tracking-wide text-violet-200">Apply artwork to selected regions</strong>
-        <p className="text-[10px] text-slate-400">Add a separate editable logo, text, or pattern layer to each selected garment part. Existing artwork stays intact (patterns replace the pattern on each selected part). One Apply = one Undo.</p>
+      <div className="mt-4 space-y-2 border-t border-line pt-3">
+        <strong className="block text-[11px] uppercase tracking-wide text-action">Apply artwork to selected regions</strong>
+        <p className="text-[10px] text-muted">Add a separate editable logo, text, or pattern layer to each selected garment part. Existing artwork stays intact (patterns replace the pattern on each selected part). One Apply = one Undo.</p>
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Batch 2D artwork type">
           {[{ id: "image", label: "Logo" }, { id: "pattern", label: "Pattern" }, { id: "text", label: "Text" }].map(({id, label}) =>
             <button type="button" key={id} aria-pressed={artworkType === id}
               onClick={() => setArtworkType(id)}
-              className={`rounded-md border px-2.5 py-1.5 text-xs ${artworkType === id ? "border-violet-400 bg-violet-700 text-white" : "border-slate-700 bg-slate-900 text-slate-300"}`}>{label}</button>)}
+              className={`rounded-md border px-2.5 py-1.5 text-xs ${artworkType === id ? "border-line bg-action text-on-action" : "border-line bg-surface text-muted"}`}>{label}</button>)}
         </div>
         {artworkType === "text" ? <>
-          <input aria-label="2D batch garment text" className="w-full rounded-md border border-slate-600 bg-slate-900 px-2 py-2 text-xs text-slate-100" maxLength={60} value={artworkText} onChange={(event) => setArtworkText(event.target.value)} />
-          <label className="flex items-center gap-2 text-[10px] text-slate-300">Text color
+          <input aria-label="2D batch garment text" className="w-full rounded-md border border-line bg-surface px-2 py-2 text-xs text-ink" maxLength={60} value={artworkText} onChange={(event) => setArtworkText(event.target.value)} />
+          <label className="flex items-center gap-2 text-[10px] text-muted">Text color
             <input type="color" value={artworkTextColour} onChange={(event) => setArtworkTextColour(event.target.value)} className="h-8 w-10 rounded" />
           </label>
           <GarmentTextStyleFields value={{ ...newTextStyle, color: artworkTextColour }}
             onChange={(value) => { setNewTextStyle(value); setArtworkTextColour(value.color); }}
             disabled={disabled || applyingArtwork}/>
           <button type="button" disabled={disabled || applyingArtwork || !selected.length || !artworkText.trim() || !onApplyArtwork}
-            className="min-h-10 w-full rounded-lg border border-violet-500 bg-violet-700 px-2 py-2 text-xs font-semibold text-white disabled:opacity-40"
+            className="min-h-9 w-full rounded-md border border-line bg-action px-2 py-2 text-xs font-semibold text-on-action disabled:opacity-40"
             onClick={() => void doBatchArtwork("text", {text: artworkText,
               color: artworkTextColour, textStyle: { ...newTextStyle, color: artworkTextColour }})}>
             {applyingArtwork ? "Applying…" : `Add text to ${selected.length} regions`}
@@ -1738,25 +1738,25 @@ function ClothingMultiRegionColourPanel({
         </> : <>
           <input ref={batchInputRef} type="file" className="hidden" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={(event) => void handleBatchFile(event)} />
           <button type="button" disabled={disabled || applyingArtwork || !selected.length || !onApplyArtwork}
-            className="min-h-10 w-full rounded-lg border border-violet-500 bg-violet-700 px-2 py-2 text-xs font-semibold text-white disabled:opacity-40"
+            className="min-h-9 w-full rounded-md border border-line bg-action px-2 py-2 text-xs font-semibold text-on-action disabled:opacity-40"
             onClick={() => batchInputRef.current?.click()}>
             {applyingArtwork ? "Applying…" : `Upload ${artworkType === "pattern" ? "pattern" : "logo"} to ${selected.length} regions`}
           </button>
         </>}
-        <p className="text-[10px] text-slate-500">New artwork remains editable per region in 3D Studio. Existing single-region 2D artwork controls are unchanged.</p>
+        <p className="text-[10px] text-muted">New artwork remains editable per region in 3D Studio. Existing single-region 2D artwork controls are unchanged.</p>
       </div>
-      <div className="mt-4 space-y-2 border-t border-cyan-800/70 pt-3" aria-label="Edit existing 2D garment text">
-        <strong className="block text-xs text-cyan-200">Phase 3.3 · Existing text layers</strong>
-        <p className="text-[10px] text-slate-400">Choose a region and one of its saved text layers. Update its content or typography without affecting other layers.</p>
-        <label className="block space-y-1 text-[10px] text-slate-300">Region
-          <select className="w-full rounded-md border border-slate-600 bg-slate-900 p-2 text-xs" value={editRegion}
+      <div className="mt-4 space-y-2 border-t border-line pt-3" aria-label="Edit existing 2D garment text">
+        <strong className="block text-xs text-action">Phase 3.3 · Existing text layers</strong>
+        <p className="text-[10px] text-muted">Choose a region and one of its saved text layers. Update its content or typography without affecting other layers.</p>
+        <label className="block space-y-1 text-[10px] text-muted">Region
+          <select className="w-full rounded-md border border-line bg-surface p-2 text-xs" value={editRegion}
             onChange={(event) => { setEditingTextRegion(event.target.value); setEditingTextId(""); }}>
             {regions.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
           </select>
         </label>
         {editableTexts.length ? <>
-          <label className="block space-y-1 text-[10px] text-slate-300">Text layer
-            <select className="w-full rounded-md border border-slate-600 bg-slate-900 p-2 text-xs"
+          <label className="block space-y-1 text-[10px] text-muted">Text layer
+            <select className="w-full rounded-md border border-line bg-surface p-2 text-xs"
               value={currentText?.id || ""} onChange={(event) => setEditingTextId(event.target.value)}>
               {editableTexts.map((item) => <option key={item.id} value={item.id}>{item.text}</option>)}
             </select>
@@ -1764,13 +1764,13 @@ function ClothingMultiRegionColourPanel({
           {currentText && <GarmentTextControls key={`${editRegion}:${currentText.id}`}
             entry={currentText} disabled={disabled || applyingArtwork || transferBusy}
             onSave={saveExisting2DText}/>}
-        </> : <p className="rounded-md border border-slate-800 bg-slate-900 p-2 text-[10px] text-slate-400">No editable text on this region. Add text using the artwork controls above first.</p>}
+        </> : <p className="rounded-md border border-line bg-surface p-2 text-[10px] text-muted">No editable text on this region. Add text using the artwork controls above first.</p>}
       </div>
-      <div className="mt-4 space-y-2 border-t border-emerald-800/70 pt-3" aria-label="Edit existing 2D fabric patterns">
-        <strong className="block text-xs text-emerald-200">Phase 3.4 · Fabric Pattern Studio</strong>
-        <p className="text-[10px] text-slate-400">Edit the pattern in one region or copy its saved repeat design to your selected panels above. Text and logos are retained.</p>
-        <label className="block space-y-1 text-[10px] text-slate-300">Pattern source region
-          <select className="w-full rounded-md border border-slate-600 bg-slate-900 p-2 text-xs" value={patternRegion}
+      <div className="mt-4 space-y-2 border-t border-line pt-3" aria-label="Edit existing 2D fabric patterns">
+        <strong className="block text-xs text-action">Phase 3.4 · Fabric Pattern Studio</strong>
+        <p className="text-[10px] text-muted">Edit the pattern in one region or copy its saved repeat design to your selected panels above. Text and logos are retained.</p>
+        <label className="block space-y-1 text-[10px] text-muted">Pattern source region
+          <select className="w-full rounded-md border border-line bg-surface p-2 text-xs" value={patternRegion}
             onChange={(event) => setEditingPatternRegion(event.target.value)}>
             {regions.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
           </select>
@@ -1779,19 +1779,19 @@ function ClothingMultiRegionColourPanel({
           entry={savedPattern} disabled={disabled || applyingArtwork || transferBusy || patternBusy}
           onSave={saveExisting2DPattern} onSync={syncPattern2D}
           syncTargets={patternTargets.length}/>
-          : <p className="rounded border border-slate-800 bg-slate-900 p-2 text-[10px] text-slate-400">This region has no fabric pattern yet. Upload one using the multi-region artwork tools above.</p>}
+          : <p className="rounded border border-line bg-surface p-2 text-[10px] text-muted">This region has no fabric pattern yet. Upload one using the multi-region artwork tools above.</p>}
       </div>
-      <div className="mt-4 space-y-2 border-t border-slate-700 pt-3" aria-label="2D copy mirror and synchronize garment artwork">
-        <strong className="block text-[11px] uppercase tracking-wide text-cyan-200">Phase 3.2 · Copy / Mirror / Sync artwork</strong>
-        <p className="text-[10px] text-slate-400">Choose the source region and layer, copy it, then use the region checkboxes above to select destinations. Paste appends; Sync replaces every destination's full artwork stack.</p>
-        <label className="block space-y-1 text-[10px] text-slate-300">Copy from region
-          <select className="w-full rounded border border-slate-600 bg-slate-900 p-2 text-xs" value={resolvedSource}
+      <div className="mt-4 space-y-2 border-t border-line pt-3" aria-label="2D copy mirror and synchronize garment artwork">
+        <strong className="block text-[11px] uppercase tracking-wide text-action">Phase 3.2 · Copy / Mirror / Sync artwork</strong>
+        <p className="text-[10px] text-muted">Choose the source region and layer, copy it, then use the region checkboxes above to select destinations. Paste appends; Sync replaces every destination's full artwork stack.</p>
+        <label className="block space-y-1 text-[10px] text-muted">Copy from region
+          <select className="w-full rounded border border-line bg-surface p-2 text-xs" value={resolvedSource}
             onChange={(event) => { setTransferSource(event.target.value); setTransferLayer("all"); }}>
             {regions.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
           </select>
         </label>
-        <label className="block space-y-1 text-[10px] text-slate-300">Artwork to copy
-          <select className="w-full rounded border border-slate-600 bg-slate-900 p-2 text-xs" value={availableSourceLayers.some((item) => item.id === transferLayer) ? transferLayer : "all"}
+        <label className="block space-y-1 text-[10px] text-muted">Artwork to copy
+          <select className="w-full rounded border border-line bg-surface p-2 text-xs" value={availableSourceLayers.some((item) => item.id === transferLayer) ? transferLayer : "all"}
             onChange={(event) => setTransferLayer(event.target.value)}>
             <option value="all">All artwork in source region</option>
             {availableSourceLayers.map((layer) => <option key={layer.id} value={layer.id}>{layer.name}</option>)}
@@ -1799,24 +1799,24 @@ function ClothingMultiRegionColourPanel({
         </label>
         <button type="button" disabled={disabled || transferBusy || !canCopySource}
           onClick={() => void copyRegionArtwork()}
-          className="w-full rounded border border-cyan-700 bg-cyan-900/40 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">Copy artwork</button>
-        {artworkClipboard && <p className="text-[10px] text-cyan-200">Copied: {artworkClipboard.label} from {artworkClipboard.sourceRegionId}. {targetIds.length} destination(s) selected.</p>}
-        {mirrorPartner && <button type="button" className="w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-xs text-slate-100"
+          className="w-full rounded border border-line bg-subtle px-3 py-2 text-xs font-semibold text-ink disabled:opacity-40">Copy artwork</button>
+        {artworkClipboard && <p className="text-[10px] text-action">Copied: {artworkClipboard.label} from {artworkClipboard.sourceRegionId}. {targetIds.length} destination(s) selected.</p>}
+        {mirrorPartner && <button type="button" className="w-full rounded border border-line bg-surface px-2 py-2 text-xs text-ink"
           onClick={() => choose([mirrorPartner])}>Select opposite left/right region ({regions.find((r) => r.id === mirrorPartner)?.label})</button>}
         <div className="grid grid-cols-2 gap-2">
           <button type="button" disabled={disabled || transferBusy || !targetIds.length || !artworkClipboard || !onTransferArtwork} onClick={() => void transferArtwork("paste", false)}
-            className="rounded border border-slate-600 bg-slate-800 px-2 py-2 text-xs text-white disabled:opacity-40">Paste to selected</button>
+            className="rounded border border-line bg-action px-2 py-2 text-xs text-on-action disabled:opacity-40">Paste to selected</button>
           <button type="button" disabled={disabled || transferBusy || !targetIds.length || !artworkClipboard || !onTransferArtwork} onClick={() => void transferArtwork("paste", true)}
-            className="rounded border border-slate-600 bg-slate-800 px-2 py-2 text-xs text-white disabled:opacity-40">Mirror placement</button>
+            className="rounded border border-line bg-action px-2 py-2 text-xs text-on-action disabled:opacity-40">Mirror placement</button>
           <button type="button" disabled={disabled || transferBusy || !targetIds.length || artworkClipboard?.scope !== "region" || !onTransferArtwork} onClick={() => void transferArtwork("sync", false)}
-            className="col-span-2 rounded border border-amber-700 bg-amber-950/40 px-2 py-2 text-xs text-amber-100 disabled:opacity-40">Sync now (replace target artwork)</button>
+            className="col-span-2 rounded border border-line bg-subtle px-2 py-2 text-xs text-action disabled:opacity-40">Sync now (replace target artwork)</button>
         </div>
-        <p className="text-[10px] text-slate-500">Mirroring reverses horizontal position and rotation, not logo pixels or readable text. Sync is a one-time copy, not a permanent link. The source region is never overwritten.</p>
+        <p className="text-[10px] text-muted">Mirroring reverses horizontal position and rotation, not logo pixels or readable text. Sync is a one-time copy, not a permanent link. The source region is never overwritten.</p>
       </div>
-      <section className="mt-4 space-y-3 border-t border-rose-800/60 pt-3" aria-label="Phase 3.5 2D artwork layer management">
-        <strong className="block text-xs text-rose-200">Phase 3.5 · Manage &amp; clear artwork</strong>
-        <p className="text-[10px] text-slate-400">Delete logos, text, or patterns in the selected regions above. Artwork resets never change garment colors; each confirmed change is one Undo step.</p>
-        <p className="text-[10px] text-slate-400">Selected: {selected.length} region(s) · {selectionSummary.logos} logos · {selectionSummary.texts} text · {selectionSummary.pattern} patterns</p>
+      <section className="mt-4 space-y-3 border-t border-line pt-3" aria-label="Phase 3.5 2D artwork layer management">
+        <strong className="block text-xs text-action">Phase 3.5 · Manage &amp; clear artwork</strong>
+        <p className="text-[10px] text-muted">Delete logos, text, or patterns in the selected regions above. Artwork resets never change garment colors; each confirmed change is one Undo step.</p>
+        <p className="text-[10px] text-muted">Selected: {selected.length} region(s) · {selectionSummary.logos} logos · {selectionSummary.texts} text · {selectionSummary.pattern} patterns</p>
         <div className="grid grid-cols-2 gap-2">
           {[
             ["clear-logos", "Clear logos", selectionSummary.logos],
@@ -1825,33 +1825,33 @@ function ClothingMultiRegionColourPanel({
             ["clear-all", "Clear selected regions", selectionSummary.total],
           ].map(([operation, label, count]) =>
             <button key={operation} type="button" disabled={!canManageArtwork || !selected.length || !count}
-              className="rounded border border-rose-800/70 bg-rose-950/30 px-2 py-2 text-xs text-rose-100 disabled:opacity-40"
+              className="rounded border border-line bg-subtle px-2 py-2 text-xs text-action disabled:opacity-40"
               onClick={() => void runCleanup(operation)}>{label}</button>)}
         </div>
-        <label className="block space-y-1 text-[10px] text-slate-300">Region for individual layer removal
-          <select className="w-full rounded border border-slate-600 bg-slate-900 p-2 text-xs" value={cleanupRegionId}
+        <label className="block space-y-1 text-[10px] text-muted">Region for individual layer removal
+          <select className="w-full rounded border border-line bg-surface p-2 text-xs" value={cleanupRegionId}
             onChange={(event) => { setCleanupRegion(event.target.value); setCleanupLayerId(""); }}>
             {regions.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
           </select>
         </label>
-        <label className="block space-y-1 text-[10px] text-slate-300">Artwork layer
-          <select className="w-full rounded border border-slate-600 bg-slate-900 p-2 text-xs" value={cleanupLayer?.id || ""}
+        <label className="block space-y-1 text-[10px] text-muted">Artwork layer
+          <select className="w-full rounded border border-line bg-surface p-2 text-xs" value={cleanupLayer?.id || ""}
             disabled={!cleanupSourceSummary.total} onChange={(event) => setCleanupLayerId(event.target.value)}>
             {!cleanupSourceSummary.total && <option value="">No artwork on this region</option>}
             {cleanupSourceSummary.layers.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
           </select>
         </label>
         <button type="button" disabled={!canManageArtwork || !cleanupLayer}
-          className="w-full rounded border border-rose-800 bg-rose-950/40 px-3 py-2 text-xs font-semibold text-rose-100 disabled:opacity-40"
+          className="w-full rounded border border-line bg-subtle px-3 py-2 text-xs font-semibold text-action disabled:opacity-40"
           onClick={() => void runCleanup("remove-layer", [cleanupRegionId], cleanupLayer?.id)}>
           Remove selected artwork layer
         </button>
         <button type="button" disabled={!canManageArtwork || !allArtworkCount}
-          className="w-full rounded border border-rose-600 bg-rose-900/40 px-3 py-2 text-xs font-bold text-white disabled:opacity-40"
+          className="w-full rounded border border-line bg-subtle px-3 py-2 text-xs font-bold text-ink disabled:opacity-40"
           onClick={() => void runCleanup("reset-garment", regions.map((r) => r.id))}>
           Reset all garment artwork ({allArtworkCount} layer{allArtworkCount === 1 ? "" : "s"})
         </button>
-        {!onManageArtwork && <p className="text-[10px] text-amber-300">Install the updated FashionEditor artwork management bridge.</p>}
+        {!onManageArtwork && <p className="text-[10px] text-action">Install the updated FashionEditor artwork management bridge.</p>}
       </section>
     </details>
   );
@@ -7415,7 +7415,7 @@ function FashionEditor() {
 
   const rightPanelContent = (
     <>
-      <div className="sticky top-0 z-10 flex h-12 shrink-0 items-center border-b border-slate-800 bg-slate-950">
+      <div className="sticky top-0 z-10 flex h-12 shrink-0 items-center border-b border-line bg-surface">
         <button
           type="button"
           onClick={() => {
@@ -7426,8 +7426,8 @@ function FashionEditor() {
           className={[
             "h-full flex-1 border-b-2 text-[10px] font-bold uppercase tracking-[0.16em] transition",
             rightPanelTab === "layers"
-              ? "border-violet-500 text-white"
-              : "border-transparent text-slate-500 hover:text-slate-300",
+              ? "border-line text-ink"
+              : "border-transparent text-muted hover:text-muted",
           ].join(" ")}
         >
           Layers
@@ -7443,8 +7443,8 @@ function FashionEditor() {
           className={[
             "h-full flex-1 border-b-2 text-[10px] font-bold uppercase tracking-[0.16em] transition",
             rightPanelTab === "properties"
-              ? "border-violet-500 text-white"
-              : "border-transparent text-slate-500 hover:text-slate-300",
+              ? "border-line text-ink"
+              : "border-transparent text-muted hover:text-muted",
           ].join(" ")}
         >
           Properties
@@ -7457,7 +7457,7 @@ function FashionEditor() {
               setPanelDrawerOpen(false);
             }}
             title="Close panel"
-            className="mr-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-lg text-slate-300 hover:bg-slate-800"
+            className="mr-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-line bg-surface text-lg text-muted hover:bg-subtle"
           >
             ×
           </button>
@@ -7473,7 +7473,7 @@ function FashionEditor() {
                 <button
                   type="button"
                   onClick={() => addLayer()}
-                  className="rounded-md bg-violet-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white hover:bg-violet-400"
+                  className="rounded-md bg-action px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-on-action hover:bg-action hover:text-on-action"
                 >
                   + Add
                 </button>
@@ -7494,10 +7494,10 @@ function FashionEditor() {
                         setActiveLayer(layer.id);
                       }}
                       className={[
-                        "cursor-pointer rounded-xl border p-2 transition",
+                        "cursor-pointer rounded-md border p-2 transition",
                         active
-                          ? "border-violet-500 bg-violet-500/10"
-                          : "border-slate-800 bg-slate-900 hover:border-slate-700",
+                          ? "border-line bg-subtle"
+                          : "border-line bg-surface hover:border-line",
                       ].join(" ")}
                     >
                       <div className="flex items-center gap-2">
@@ -7509,7 +7509,7 @@ function FashionEditor() {
 
                             toggleLayerVisibility(layer.id);
                           }}
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-xs text-slate-300 hover:bg-slate-700"
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-subtle text-xs text-muted hover:bg-subtle"
                         >
                           {layer.visible ? "◉" : "○"}
                         </button>
@@ -7527,13 +7527,13 @@ function FashionEditor() {
 
                             toggleLayerLock(layer.id);
                           }}
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-xs text-slate-300 hover:bg-slate-700"
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-subtle text-xs text-muted hover:bg-subtle"
                         >
                           {layer.locked ? "■" : "□"}
                         </button>
                       </div>
 
-                      <div className="mt-2 flex items-center justify-between pl-11 text-[10px] text-slate-500">
+                      <div className="mt-2 flex items-center justify-between pl-11 text-[10px] text-muted">
                         <span>
                           {layer.objectIds.length} object
                           {layer.objectIds.length === 1 ? "" : "s"}
@@ -7552,7 +7552,7 @@ function FashionEditor() {
 
                               handleMoveLayerUp(layer.id);
                             }}
-                            className="min-h-9 rounded-md bg-slate-800 py-1.5 text-[10px] text-slate-300 hover:bg-slate-700 disabled:opacity-30"
+                            className="min-h-9 rounded-md bg-subtle py-1.5 text-[10px] text-muted hover:bg-subtle disabled:opacity-30"
                           >
                             Up
                           </button>
@@ -7565,7 +7565,7 @@ function FashionEditor() {
 
                               handleMoveLayerDown(layer.id);
                             }}
-                            className="min-h-9 rounded-md bg-slate-800 py-1.5 text-[10px] text-slate-300 hover:bg-slate-700 disabled:opacity-30"
+                            className="min-h-9 rounded-md bg-subtle py-1.5 text-[10px] text-muted hover:bg-subtle disabled:opacity-30"
                           >
                             Down
                           </button>
@@ -7577,7 +7577,7 @@ function FashionEditor() {
 
                               duplicateLayer(layer.id);
                             }}
-                            className="min-h-9 rounded-md bg-slate-800 py-1.5 text-[10px] text-slate-300 hover:bg-slate-700"
+                            className="min-h-9 rounded-md bg-subtle py-1.5 text-[10px] text-muted hover:bg-subtle"
                           >
                             Copy
                           </button>
@@ -7590,7 +7590,7 @@ function FashionEditor() {
 
                               handleDeleteActiveLayer();
                             }}
-                            className="min-h-9 rounded-md bg-red-950/60 py-1.5 text-[10px] text-red-300 hover:bg-red-900 disabled:opacity-30"
+                            className="min-h-9 rounded-md bg-subtle py-1.5 text-[10px] text-action hover:bg-surface disabled:opacity-30"
                           >
                             Delete
                           </button>
@@ -7623,7 +7623,7 @@ function FashionEditor() {
                   />
 
                   <label className="block">
-                    <span className="mb-2 block text-xs font-medium text-slate-300">
+                    <span className="mb-2 block text-xs font-medium text-muted">
                       Blend mode
                     </span>
 
@@ -7632,7 +7632,7 @@ function FashionEditor() {
                       onChange={(event) => {
                         setLayerBlendMode(activeLayer.id, event.target.value);
                       }}
-                      className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                      className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                     >
                       {BLEND_MODES.map((blendMode) => (
                         <option key={blendMode} value={blendMode}>
@@ -7657,10 +7657,10 @@ function FashionEditor() {
                   onClick={handleToggleSymmetry}
                   aria-pressed={Boolean(symmetry.enabled)}
                   className={[
-                    "rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wide transition",
+                    "rounded-md border px-3 py-1 text-[10px] font-bold uppercase tracking-wide transition",
                     symmetry.enabled
-                      ? "border-violet-400 bg-violet-500 text-white"
-                      : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500 hover:text-white",
+                      ? "border-line bg-action text-on-action"
+                      : "border-line bg-surface text-muted hover:border-line hover:text-ink",
                   ].join(" ")}
                 >
                   {symmetry.enabled ? "On" : "Off"}
@@ -7669,7 +7669,7 @@ function FashionEditor() {
             >
               <div className="space-y-5">
                 <div>
-                  <span className="mb-2 block text-xs font-medium text-slate-300">
+                  <span className="mb-2 block text-xs font-medium text-muted">
                     Mirror mode
                   </span>
 
@@ -7683,10 +7683,10 @@ function FashionEditor() {
                         }}
                         aria-pressed={symmetry.mode === option.value}
                         className={[
-                          "min-h-11 rounded-lg border px-2 py-2 text-[10px] font-bold uppercase tracking-wide transition",
+                          "min-h-9 rounded-md border px-2 py-2 text-[10px] font-bold uppercase tracking-wide transition",
                           symmetry.mode === option.value
-                            ? "border-violet-500 bg-violet-500/20 text-violet-200"
-                            : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500 hover:text-white",
+                            ? "border-line bg-subtle text-action"
+                            : "border-line bg-surface text-muted hover:border-line hover:text-ink",
                         ].join(" ")}
                       >
                         {option.label}
@@ -7736,14 +7736,14 @@ function FashionEditor() {
                 <button
                   type="button"
                   onClick={handleCenterSymmetryAxes}
-                  className="min-h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-slate-500 hover:bg-slate-800"
+                  className="min-h-9 w-full rounded-md border border-line bg-surface px-3 py-2 text-xs font-semibold text-ink hover:border-line hover:bg-subtle"
                 >
                   Center symmetry axes
                 </button>
 
                 <div className="space-y-2">
-                  <label className="flex min-h-11 items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900 px-3 py-2">
-                    <span className="text-xs font-medium text-slate-300">
+                  <label className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-line bg-surface px-3 py-2">
+                    <span className="text-xs font-medium text-muted">
                       Show guide
                     </span>
 
@@ -7755,12 +7755,12 @@ function FashionEditor() {
                           showGuide: event.target.checked,
                         });
                       }}
-                      className="h-4 w-4 accent-violet-500"
+                      className="h-4 w-4 accent-action"
                     />
                   </label>
 
-                  <label className="flex min-h-11 items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900 px-3 py-2">
-                    <span className="text-xs font-medium text-slate-300">
+                  <label className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-line bg-surface px-3 py-2">
+                    <span className="text-xs font-medium text-muted">
                       Snap near axis
                     </span>
 
@@ -7772,12 +7772,12 @@ function FashionEditor() {
                           snapToAxis: event.target.checked,
                         });
                       }}
-                      className="h-4 w-4 accent-violet-500"
+                      className="h-4 w-4 accent-action"
                     />
                   </label>
 
-                  <label className="flex min-h-11 items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900 px-3 py-2">
-                    <span className="text-xs font-medium text-slate-300">
+                  <label className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-line bg-surface px-3 py-2">
+                    <span className="text-xs font-medium text-muted">
                       Link mirrored copies
                     </span>
 
@@ -7789,14 +7789,14 @@ function FashionEditor() {
                           linkedMirrors: event.target.checked,
                         });
                       }}
-                      className="h-4 w-4 accent-violet-500"
+                      className="h-4 w-4 accent-action"
                     />
                   </label>
                 </div>
 
                 <div className="grid grid-cols-[1fr_72px] items-center gap-3">
                   <label className="block">
-                    <span className="mb-2 block text-xs font-medium text-slate-300">
+                    <span className="mb-2 block text-xs font-medium text-muted">
                       Guide colour
                     </span>
 
@@ -7810,12 +7810,12 @@ function FashionEditor() {
                           guideColor: event.target.value,
                         });
                       }}
-                      className="h-11 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-1"
+                      className="h-11 w-full cursor-pointer rounded-md border border-line bg-surface p-1"
                     />
                   </label>
 
                   <label className="block">
-                    <span className="mb-2 block text-xs font-medium text-slate-300">
+                    <span className="mb-2 block text-xs font-medium text-muted">
                       Opacity
                     </span>
 
@@ -7836,13 +7836,13 @@ function FashionEditor() {
                           ),
                         });
                       }}
-                      className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 text-xs text-slate-200 outline-none focus:border-violet-500"
+                      className="h-11 w-full rounded-md border border-line bg-surface px-2 text-xs text-ink outline-none focus:border-line"
                     />
                   </label>
                 </div>
 
                 <div>
-                  <span className="mb-2 block text-xs font-medium text-slate-300">
+                  <span className="mb-2 block text-xs font-medium text-muted">
                     Mirrored tools
                   </span>
 
@@ -7867,12 +7867,12 @@ function FashionEditor() {
                               : "Mirrored erasing will be added when EraserTool is integrated."
                           }
                           className={[
-                            "min-h-11 rounded-lg border px-3 py-2 text-xs font-semibold transition",
+                            "min-h-9 rounded-md border px-3 py-2 text-xs font-semibold transition",
                             available && enabled
-                              ? "border-violet-500 bg-violet-500/15 text-violet-200"
-                              : "border-slate-700 bg-slate-900 text-slate-400",
+                              ? "border-line bg-subtle text-action"
+                              : "border-line bg-surface text-muted",
                             available
-                              ? "hover:border-slate-500 hover:text-white"
+                              ? "hover:border-line hover:text-ink"
                               : "cursor-not-allowed opacity-40",
                           ].join(" ")}
                         >
@@ -7888,7 +7888,7 @@ function FashionEditor() {
                   <button
                     type="button"
                     onClick={openSymmetryProperties}
-                    className="min-h-11 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-slate-500 hover:bg-slate-800"
+                    className="min-h-9 rounded-md border border-line bg-surface px-3 py-2 text-xs font-semibold text-ink hover:border-line hover:bg-subtle"
                   >
                     Keep panel open
                   </button>
@@ -7896,13 +7896,13 @@ function FashionEditor() {
                   <button
                     type="button"
                     onClick={handleResetSymmetry}
-                    className="min-h-11 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-400 hover:border-slate-500 hover:text-white"
+                    className="min-h-9 rounded-md border border-line bg-surface px-3 py-2 text-xs font-semibold text-muted hover:border-line hover:text-ink"
                   >
                     Reset
                   </button>
                 </div>
 
-                <p className="rounded-lg border border-slate-800 bg-slate-900/70 p-3 text-[10px] leading-relaxed text-slate-500">
+                <p className="rounded-md border border-line bg-subtle p-3 text-[10px] leading-relaxed text-muted">
                   Symmetry currently works with Pencil, Brush, Line and Shape.
                   Turn it on, choose a mode, then draw on the canvas.
                 </p>
@@ -7965,7 +7965,7 @@ function FashionEditor() {
                     }}
                   />
 
-                  <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-slate-300">
+                  <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-muted">
                     Pressure enabled
                     <input
                       type="checkbox"
@@ -7975,11 +7975,11 @@ function FashionEditor() {
                           pressureEnabled: event.target.checked,
                         });
                       }}
-                      className="h-5 w-5 accent-violet-500"
+                      className="h-5 w-5 accent-action"
                     />
                   </label>
 
-                  <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-slate-300">
+                  <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-muted">
                     Simulate pressure
                     <input
                       type="checkbox"
@@ -7989,7 +7989,7 @@ function FashionEditor() {
                           simulatePressure: event.target.checked,
                         });
                       }}
-                      className="h-5 w-5 accent-violet-500"
+                      className="h-5 w-5 accent-action"
                     />
                   </label>
                 </div>
@@ -8000,7 +8000,7 @@ function FashionEditor() {
               <PanelSection title="Professional Brush">
                 <div className="space-y-5">
                   <label className="block">
-                    <span className="mb-2 block text-xs font-medium text-slate-300">
+                    <span className="mb-2 block text-xs font-medium text-muted">
                       Brush preset
                     </span>
 
@@ -8009,7 +8009,7 @@ function FashionEditor() {
                       onChange={(event) => {
                         handleBrushPresetChange(event.target.value);
                       }}
-                      className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                      className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                     >
                       {BRUSH_PRESETS.map((preset) => (
                         <option key={preset.id} value={preset.id}>
@@ -8020,31 +8020,31 @@ function FashionEditor() {
                   </label>
 
                   {activeBrushPreset && (
-                    <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-3">
+                    <div className="rounded-md border border-line bg-subtle p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-white">
+                          <p className="text-sm font-semibold text-ink">
                             {activeBrushPreset.name}
                           </p>
 
-                          <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
+                          <p className="mt-1 text-[10px] leading-relaxed text-muted">
                             {activeBrushPreset.description}
                           </p>
                         </div>
 
-                        <span className="shrink-0 rounded-full border border-violet-400/30 bg-violet-500/15 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-violet-200">
+                        <span className="shrink-0 rounded-md border border-line bg-subtle px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-action">
                           {activeBrushPreset.renderMode}
                         </span>
                       </div>
 
-                      <p className="mt-3 text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
                         {activeBrushPreset.category}
                       </p>
                     </div>
                   )}
 
                   <div>
-                    <p className="mb-2 text-xs font-medium text-slate-300">
+                    <p className="mb-2 text-xs font-medium text-muted">
                       Presets
                     </p>
 
@@ -8060,10 +8060,10 @@ function FashionEditor() {
                               handleBrushPresetChange(preset.id);
                             }}
                             className={[
-                              "min-h-14 rounded-lg border px-3 py-2 text-left transition",
+                              "min-h-9 rounded-md border px-3 py-2 text-left transition",
                               selected
-                                ? "border-violet-500 bg-violet-500 text-white"
-                                : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500 hover:bg-slate-800",
+                                ? "border-line bg-action text-on-action"
+                                : "border-line bg-surface text-muted hover:border-line hover:bg-subtle",
                             ].join(" ")}
                           >
                             <span className="block text-[11px] font-semibold">
@@ -8072,8 +8072,8 @@ function FashionEditor() {
 
                             <span
                               className={[
-                                "mt-1 block text-[9px] uppercase tracking-wide",
-                                selected ? "text-violet-100" : "text-slate-500",
+                                "mt-1 block text-[11px] uppercase tracking-wide",
+                                selected ? "text-action" : "text-muted",
                               ].join(" ")}
                             >
                               {preset.renderMode}
@@ -8165,7 +8165,7 @@ function FashionEditor() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <label className="block">
-                      <span className="mb-2 block text-xs font-medium text-slate-300">
+                      <span className="mb-2 block text-xs font-medium text-muted">
                         Start taper
                       </span>
 
@@ -8182,12 +8182,12 @@ function FashionEditor() {
                             ),
                           });
                         }}
-                        className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                        className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                       />
                     </label>
 
                     <label className="block">
-                      <span className="mb-2 block text-xs font-medium text-slate-300">
+                      <span className="mb-2 block text-xs font-medium text-muted">
                         End taper
                       </span>
 
@@ -8204,12 +8204,12 @@ function FashionEditor() {
                             ),
                           });
                         }}
-                        className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                        className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                       />
                     </label>
                   </div>
 
-                  <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-slate-300">
+                  <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-muted">
                     Pressure enabled
                     <input
                       type="checkbox"
@@ -8219,11 +8219,11 @@ function FashionEditor() {
                           pressureEnabled: event.target.checked,
                         });
                       }}
-                      className="h-5 w-5 accent-violet-500"
+                      className="h-5 w-5 accent-action"
                     />
                   </label>
 
-                  <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-slate-300">
+                  <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-muted">
                     Simulate pressure
                     <input
                       type="checkbox"
@@ -8233,7 +8233,7 @@ function FashionEditor() {
                           simulatePressure: event.target.checked,
                         });
                       }}
-                      className="h-5 w-5 accent-violet-500"
+                      className="h-5 w-5 accent-action"
                     />
                   </label>
                 </div>
@@ -8244,7 +8244,7 @@ function FashionEditor() {
               <PanelSection title="Shape">
                 <div className="space-y-5">
                   <label className="block">
-                    <span className="mb-2 block text-xs font-medium text-slate-300">
+                    <span className="mb-2 block text-xs font-medium text-muted">
                       Shape type
                     </span>
 
@@ -8257,7 +8257,7 @@ function FashionEditor() {
                           shapeType: nextShapeType,
                         });
                       }}
-                      className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                      className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                     >
                       {SHAPE_TYPE_OPTIONS.map((option) => (
                         <option key={option.id} value={option.id}>
@@ -8269,7 +8269,7 @@ function FashionEditor() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <label className="block">
-                      <span className="mb-2 block text-xs font-medium text-slate-300">
+                      <span className="mb-2 block text-xs font-medium text-muted">
                         Stroke colour
                       </span>
 
@@ -8285,12 +8285,12 @@ function FashionEditor() {
 
                           setPrimaryColor(nextColour);
                         }}
-                        className="h-11 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-1"
+                        className="h-11 w-full cursor-pointer rounded-md border border-line bg-surface p-1"
                       />
                     </label>
 
                     <label className="block">
-                      <span className="mb-2 block text-xs font-medium text-slate-300">
+                      <span className="mb-2 block text-xs font-medium text-muted">
                         Fill mode
                       </span>
 
@@ -8301,7 +8301,7 @@ function FashionEditor() {
                             fillType: event.target.value,
                           });
                         }}
-                        className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                        className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                       >
                         <option value="none">No fill</option>
 
@@ -8338,7 +8338,7 @@ function FashionEditor() {
                   />
 
                   <label className="block">
-                    <span className="mb-2 block text-xs font-medium text-slate-300">
+                    <span className="mb-2 block text-xs font-medium text-muted">
                       Border style
                     </span>
 
@@ -8354,7 +8354,7 @@ function FashionEditor() {
                           dash: [...selectedStyle.dash],
                         });
                       }}
-                      className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                      className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                     >
                       {LINE_STYLE_OPTIONS.map((option) => (
                         <option key={option.id} value={option.id}>
@@ -8367,7 +8367,7 @@ function FashionEditor() {
                   {shape?.fillType === "solid" && (
                     <>
                       <label className="block">
-                        <span className="mb-2 block text-xs font-medium text-slate-300">
+                        <span className="mb-2 block text-xs font-medium text-muted">
                           Fill colour
                         </span>
 
@@ -8383,7 +8383,7 @@ function FashionEditor() {
 
                             setSecondaryColor(nextColour);
                           }}
-                          className="h-11 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-1"
+                          className="h-11 w-full cursor-pointer rounded-md border border-line bg-surface p-1"
                         />
                       </label>
 
@@ -8422,7 +8422,7 @@ function FashionEditor() {
 
                   {activeShapeType === "polygon" && (
                     <label className="block">
-                      <span className="mb-2 block text-xs font-medium text-slate-300">
+                      <span className="mb-2 block text-xs font-medium text-muted">
                         Polygon sides
                       </span>
 
@@ -8443,12 +8443,12 @@ function FashionEditor() {
                             ),
                           });
                         }}
-                        className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                        className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                       />
                     </label>
                   )}
 
-                  <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-slate-300">
+                  <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-muted">
                     Keep equal proportions
                     <input
                       type="checkbox"
@@ -8458,16 +8458,16 @@ function FashionEditor() {
                           keepAspectRatio: event.target.checked,
                         });
                       }}
-                      className="h-5 w-5 accent-violet-500"
+                      className="h-5 w-5 accent-action"
                     />
                   </label>
 
-                  <div className="rounded-xl border border-slate-800 bg-slate-900 p-3">
-                    <p className="text-xs font-semibold text-slate-200">
+                  <div className="rounded-md border border-line bg-surface p-3">
+                    <p className="text-xs font-semibold text-ink">
                       Drawing shortcuts
                     </p>
 
-                    <p className="mt-1 text-[10px] leading-relaxed text-slate-500">
+                    <p className="mt-1 text-[10px] leading-relaxed text-muted">
                       Hold Shift for equal proportions. Hold Alt to draw outward
                       from the starting point.
                     </p>
@@ -8479,17 +8479,17 @@ function FashionEditor() {
             {activeTool === EDITOR_TOOLS.CLOTHING && (
               <PanelSection title="Clothing">
                 <div className="space-y-3">
-                  <p className="text-xs leading-5 text-slate-400">
+                  <p className="text-xs leading-5 text-muted">
                     Browse the complete garment catalog to select a 2D/3D clothing template.
                   </p>
                   <button
                     type="button"
                     onClick={() => setGarmentLibraryOpen(true)}
-                    className="flex min-h-11 w-full items-center justify-center rounded-xl bg-violet-600 px-4 py-3 text-xs font-bold text-white transition hover:bg-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+                    className="flex min-h-9 w-full items-center justify-center rounded-md bg-action px-4 py-3 text-xs font-bold text-on-action transition hover:bg-action focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action hover:text-on-action"
                   >
                     Browse garment library ({CLOTHING_TEMPLATES.length})
                   </button>
-                  <p className="text-[10px] leading-4 text-slate-500">
+                  <p className="text-[10px] leading-4 text-muted">
                     Select a garment in the modal, choose Place on canvas, then click the canvas once to insert it.
                   </p>
                 </div>
@@ -8527,7 +8527,7 @@ function FashionEditor() {
                   />
 
                   <label className="block">
-                    <span className="mb-2 block text-xs font-medium text-slate-300">
+                    <span className="mb-2 block text-xs font-medium text-muted">
                       Line style
                     </span>
 
@@ -8543,7 +8543,7 @@ function FashionEditor() {
                           dash: [...selectedStyle.dash],
                         });
                       }}
-                      className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                      className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                     >
                       {LINE_STYLE_OPTIONS.map((option) => (
                         <option key={option.id} value={option.id}>
@@ -8554,7 +8554,7 @@ function FashionEditor() {
                   </label>
 
                   <label className="block">
-                    <span className="mb-2 block text-xs font-medium text-slate-300">
+                    <span className="mb-2 block text-xs font-medium text-muted">
                       Line cap
                     </span>
 
@@ -8568,7 +8568,7 @@ function FashionEditor() {
                             event.target.value === "round" ? "round" : "miter",
                         });
                       }}
-                      className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                      className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                     >
                       {LINE_CAP_OPTIONS.map((option) => (
                         <option key={option.id} value={option.id}>
@@ -8579,7 +8579,7 @@ function FashionEditor() {
                   </label>
 
                   <label className="block">
-                    <span className="mb-2 block text-xs font-medium text-slate-300">
+                    <span className="mb-2 block text-xs font-medium text-muted">
                       Line colour
                     </span>
 
@@ -8589,16 +8589,16 @@ function FashionEditor() {
                       onChange={(event) => {
                         setPrimaryColor(event.target.value);
                       }}
-                      className="h-11 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-1"
+                      className="h-11 w-full cursor-pointer rounded-md border border-line bg-surface p-1"
                     />
                   </label>
 
-                  <div className="rounded-xl border border-slate-800 bg-slate-900 p-3">
-                    <p className="text-xs font-semibold text-slate-200">
+                  <div className="rounded-md border border-line bg-surface p-3">
+                    <p className="text-xs font-semibold text-ink">
                       Angle snapping
                     </p>
 
-                    <p className="mt-1 text-[10px] leading-relaxed text-slate-500">
+                    <p className="mt-1 text-[10px] leading-relaxed text-muted">
                       Hold Shift while dragging to snap the line to 15-degree
                       increments.
                     </p>
@@ -8611,7 +8611,7 @@ function FashionEditor() {
               <PanelSection title="Fill Tool">
                 <div className="space-y-5">
                   <label className="block">
-                    <span className="mb-2 block text-xs font-medium text-slate-300">
+                    <span className="mb-2 block text-xs font-medium text-muted">
                       Fill colour
                     </span>
 
@@ -8621,7 +8621,7 @@ function FashionEditor() {
                       onChange={(event) => {
                         handleFillColourChange(event.target.value);
                       }}
-                      className="h-12 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-1"
+                      className="h-12 w-full cursor-pointer rounded-md border border-line bg-surface p-1"
                     />
                   </label>
 
@@ -8639,7 +8639,7 @@ function FashionEditor() {
                   />
 
                   <div>
-                    <p className="mb-2 text-xs font-medium text-slate-300">
+                    <p className="mb-2 text-xs font-medium text-muted">
                       Quick colours
                     </p>
 
@@ -8655,8 +8655,8 @@ function FashionEditor() {
                           className={[
                             "aspect-square min-h-7 rounded-md border-2 transition hover:scale-110",
                             (shape?.fill || colours.primary) === colour
-                              ? "border-violet-400"
-                              : "border-slate-700",
+                              ? "border-line"
+                              : "border-line",
                           ].join(" ")}
                           style={{
                             background: colour,
@@ -8672,7 +8672,7 @@ function FashionEditor() {
                       onClick={() => {
                         handleFillColourChange(colours.primary);
                       }}
-                      className="min-h-11 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-slate-500 hover:bg-slate-800"
+                      className="min-h-9 rounded-md border border-line bg-surface px-3 py-2 text-xs font-semibold text-ink hover:border-line hover:bg-subtle"
                     >
                       Use primary
                     </button>
@@ -8682,25 +8682,25 @@ function FashionEditor() {
                       onClick={() => {
                         handleFillColourChange(colours.secondary);
                       }}
-                      className="min-h-11 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-slate-500 hover:bg-slate-800"
+                      className="min-h-9 rounded-md border border-line bg-surface px-3 py-2 text-xs font-semibold text-ink hover:border-line hover:bg-subtle"
                     >
                       Use secondary
                     </button>
                   </div>
 
-                  <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-3">
-                    <p className="text-xs font-semibold text-violet-100">
+                  <div className="rounded-md border border-line bg-subtle p-3">
+                    <p className="text-xs font-semibold text-action">
                       How to use
                     </p>
 
-                    <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
+                    <p className="mt-1 text-[10px] leading-relaxed text-muted">
                       Click a closed shape to apply this colour. Hold Alt while
                       clicking to remove its fill. Locked or hidden objects are
                       not changed.
                     </p>
                   </div>
 
-                  <p className="text-[10px] leading-relaxed text-slate-500">
+                  <p className="text-[10px] leading-relaxed text-muted">
                     The Fill tool works with rectangles, ellipses, circles,
                     triangles and polygons. Brush and line objects are ignored.
                   </p>
@@ -8712,7 +8712,7 @@ function FashionEditor() {
               <PanelSection title="Text Tool">
                 <div className="space-y-5">
                   <label className="block">
-                    <span className="mb-2 block text-xs font-medium text-slate-300">
+                    <span className="mb-2 block text-xs font-medium text-muted">
                       Text content
                     </span>
 
@@ -8723,12 +8723,12 @@ function FashionEditor() {
                         handleTextContentChange(event.target.value);
                       }}
                       placeholder="Enter text"
-                      className="w-full resize-y rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm leading-relaxed text-slate-100 outline-none placeholder:text-slate-600 focus:border-violet-500"
+                      className="w-full resize-y rounded-md border border-line bg-surface px-3 py-2 text-sm leading-relaxed text-ink outline-none placeholder:text-muted focus:border-line"
                     />
                   </label>
 
                   <label className="block">
-                    <span className="mb-2 block text-xs font-medium text-slate-300">
+                    <span className="mb-2 block text-xs font-medium text-muted">
                       Font family
                     </span>
 
@@ -8739,7 +8739,7 @@ function FashionEditor() {
                           fontFamily: event.target.value,
                         });
                       }}
-                      className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                      className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                     >
                       {TEXT_FONT_OPTIONS.map((fontFamily) => (
                         <option key={fontFamily} value={fontFamily}>
@@ -8751,7 +8751,7 @@ function FashionEditor() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <label className="block">
-                      <span className="mb-2 block text-xs font-medium text-slate-300">
+                      <span className="mb-2 block text-xs font-medium text-muted">
                         Font size
                       </span>
 
@@ -8769,12 +8769,12 @@ function FashionEditor() {
                             ),
                           });
                         }}
-                        className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                        className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                       />
                     </label>
 
                     <label className="block">
-                      <span className="mb-2 block text-xs font-medium text-slate-300">
+                      <span className="mb-2 block text-xs font-medium text-muted">
                         Font weight
                       </span>
 
@@ -8785,7 +8785,7 @@ function FashionEditor() {
                             fontWeight: Number(event.target.value),
                           });
                         }}
-                        className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                        className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                       >
                         {TEXT_WEIGHT_OPTIONS.map((option) => (
                           <option key={option.value} value={option.value}>
@@ -8807,10 +8807,10 @@ function FashionEditor() {
                         });
                       }}
                       className={[
-                        "min-h-11 rounded-lg border px-3 py-2 text-xs font-bold transition",
+                        "min-h-9 rounded-md border px-3 py-2 text-xs font-bold transition",
                         textSettings.fontWeight >= 600
-                          ? "border-violet-500 bg-violet-500 text-white"
-                          : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800",
+                          ? "border-line bg-action text-on-action"
+                          : "border-line bg-surface text-muted hover:bg-subtle",
                       ].join(" ")}
                     >
                       Bold
@@ -8828,10 +8828,10 @@ function FashionEditor() {
                         });
                       }}
                       className={[
-                        "min-h-11 rounded-lg border px-3 py-2 text-xs italic transition",
+                        "min-h-9 rounded-md border px-3 py-2 text-xs italic transition",
                         textSettings.fontStyle === "italic"
-                          ? "border-violet-500 bg-violet-500 text-white"
-                          : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800",
+                          ? "border-line bg-action text-on-action"
+                          : "border-line bg-surface text-muted hover:bg-subtle",
                       ].join(" ")}
                     >
                       Italic
@@ -8849,10 +8849,10 @@ function FashionEditor() {
                         });
                       }}
                       className={[
-                        "min-h-11 rounded-lg border px-3 py-2 text-xs underline transition",
+                        "min-h-9 rounded-md border px-3 py-2 text-xs underline transition",
                         textSettings.textDecoration === "underline"
-                          ? "border-violet-500 bg-violet-500 text-white"
-                          : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800",
+                          ? "border-line bg-action text-on-action"
+                          : "border-line bg-surface text-muted hover:bg-subtle",
                       ].join(" ")}
                     >
                       Underline
@@ -8860,7 +8860,7 @@ function FashionEditor() {
                   </div>
 
                   <label className="block">
-                    <span className="mb-2 block text-xs font-medium text-slate-300">
+                    <span className="mb-2 block text-xs font-medium text-muted">
                       Text colour
                     </span>
 
@@ -8870,7 +8870,7 @@ function FashionEditor() {
                       onChange={(event) => {
                         handleTextColourChange(event.target.value);
                       }}
-                      className="h-12 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-1"
+                      className="h-12 w-full cursor-pointer rounded-md border border-line bg-surface p-1"
                     />
                   </label>
 
@@ -8888,7 +8888,7 @@ function FashionEditor() {
                   />
 
                   <div>
-                    <p className="mb-2 text-xs font-medium text-slate-300">
+                    <p className="mb-2 text-xs font-medium text-muted">
                       Horizontal alignment
                     </p>
 
@@ -8903,10 +8903,10 @@ function FashionEditor() {
                             });
                           }}
                           className={[
-                            "min-h-10 rounded-lg border px-2 py-2 text-[10px] font-semibold transition",
+                            "min-h-9 rounded-md border px-2 py-2 text-[10px] font-semibold transition",
                             textSettings.align === option.value
-                              ? "border-violet-500 bg-violet-500 text-white"
-                              : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800",
+                              ? "border-line bg-action text-on-action"
+                              : "border-line bg-surface text-muted hover:bg-subtle",
                           ].join(" ")}
                         >
                           {option.label}
@@ -8916,7 +8916,7 @@ function FashionEditor() {
                   </div>
 
                   <label className="block">
-                    <span className="mb-2 block text-xs font-medium text-slate-300">
+                    <span className="mb-2 block text-xs font-medium text-muted">
                       Vertical alignment
                     </span>
 
@@ -8927,7 +8927,7 @@ function FashionEditor() {
                           verticalAlign: event.target.value,
                         });
                       }}
-                      className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                      className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                     >
                       {TEXT_VERTICAL_ALIGN_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -8967,7 +8967,7 @@ function FashionEditor() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <label className="block">
-                      <span className="mb-2 block text-xs font-medium text-slate-300">
+                      <span className="mb-2 block text-xs font-medium text-muted">
                         Box width
                       </span>
 
@@ -8985,12 +8985,12 @@ function FashionEditor() {
                             ),
                           });
                         }}
-                        className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                        className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                       />
                     </label>
 
                     <label className="block">
-                      <span className="mb-2 block text-xs font-medium text-slate-300">
+                      <span className="mb-2 block text-xs font-medium text-muted">
                         Box height
                       </span>
 
@@ -9008,14 +9008,14 @@ function FashionEditor() {
                             ),
                           });
                         }}
-                        className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                        className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                       />
                     </label>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <label className="block">
-                      <span className="mb-2 block text-xs font-medium text-slate-300">
+                      <span className="mb-2 block text-xs font-medium text-muted">
                         Wrapping
                       </span>
 
@@ -9026,7 +9026,7 @@ function FashionEditor() {
                             wrap: event.target.value,
                           });
                         }}
-                        className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                        className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                       >
                         <option value="word">Word</option>
 
@@ -9037,7 +9037,7 @@ function FashionEditor() {
                     </label>
 
                     <label className="block">
-                      <span className="mb-2 block text-xs font-medium text-slate-300">
+                      <span className="mb-2 block text-xs font-medium text-muted">
                         Padding
                       </span>
 
@@ -9055,13 +9055,13 @@ function FashionEditor() {
                             ),
                           });
                         }}
-                        className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                        className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                       />
                     </label>
                   </div>
 
                   <div>
-                    <p className="mb-2 text-xs font-medium text-slate-300">
+                    <p className="mb-2 text-xs font-medium text-muted">
                       Quick colours
                     </p>
 
@@ -9077,8 +9077,8 @@ function FashionEditor() {
                           className={[
                             "aspect-square min-h-7 rounded-md border-2 transition hover:scale-110",
                             textSettings.fill === colour
-                              ? "border-violet-400"
-                              : "border-slate-700",
+                              ? "border-line"
+                              : "border-line",
                           ].join(" ")}
                           style={{
                             background: colour,
@@ -9088,12 +9088,12 @@ function FashionEditor() {
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-3">
-                    <p className="text-xs font-semibold text-violet-100">
+                  <div className="rounded-md border border-line bg-subtle p-3">
+                    <p className="text-xs font-semibold text-action">
                       How to place text
                     </p>
 
-                    <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
+                    <p className="mt-1 text-[10px] leading-relaxed text-muted">
                       Click the canvas to place a default text box, or drag to
                       create a custom-sized text box.
                     </p>
@@ -9116,7 +9116,7 @@ function FashionEditor() {
                     onClick={() => {
                       handleChooseImage("place");
                     }}
-                    className="min-h-12 w-full rounded-xl bg-violet-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="min-h-9 w-full rounded-md bg-action px-4 py-3 text-sm font-bold text-on-action transition hover:bg-action disabled:cursor-not-allowed disabled:opacity-40 hover:text-on-action"
                   >
                     {imageImporting ? "Loading image…" : "Choose Image"}
                   </button>
@@ -9134,19 +9134,19 @@ function FashionEditor() {
                     }}
                   />
 
-                  <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-3">
-                    <p className="text-xs font-semibold text-violet-100">
+                  <div className="rounded-md border border-line bg-subtle p-3">
+                    <p className="text-xs font-semibold text-action">
                       Placement workflow
                     </p>
 
-                    <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
+                    <p className="mt-1 text-[10px] leading-relaxed text-muted">
                       Choose an image here, then click the canvas to place it.
                       You can also click the canvas first and choose a file from
                       the picker.
                     </p>
                   </div>
 
-                  <p className="text-[10px] leading-relaxed text-slate-500">
+                  <p className="text-[10px] leading-relaxed text-muted">
                     Supported formats: PNG, JPG, JPEG, WebP and SVG. Large
                     images are scaled to fit the document while keeping their
                     original proportions.
@@ -9164,7 +9164,7 @@ function FashionEditor() {
                     onClick={() => {
                       handleChoosePattern("mask");
                     }}
-                    className="min-h-12 w-full rounded-xl bg-violet-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="min-h-9 w-full rounded-md bg-action px-4 py-3 text-sm font-bold text-on-action transition hover:bg-action disabled:cursor-not-allowed disabled:opacity-40 hover:text-on-action"
                   >
                     {patternImporting
                       ? "Loading fabric…"
@@ -9184,7 +9184,7 @@ function FashionEditor() {
                           selectedShapeObjects.map((object) => object.id),
                         );
                       }}
-                      className="min-h-11 rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-200 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="min-h-9 rounded-md border border-line bg-subtle px-3 py-2 text-xs font-semibold text-action hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Apply Selected
                     </button>
@@ -9203,14 +9203,14 @@ function FashionEditor() {
                           );
                         }
                       }}
-                      className="min-h-11 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-300 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="min-h-9 rounded-md border border-line bg-subtle px-3 py-2 text-xs font-semibold text-action hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Remove Selected
                     </button>
                   </div>
 
                   <label className="block">
-                    <span className="mb-2 block text-xs font-medium text-slate-300">
+                    <span className="mb-2 block text-xs font-medium text-muted">
                       Repeat mode
                     </span>
 
@@ -9225,7 +9225,7 @@ function FashionEditor() {
                           patternRepeat: repeat,
                         });
                       }}
-                      className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                      className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                     >
                       {PATTERN_REPEAT_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -9284,7 +9284,7 @@ function FashionEditor() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <label className="block">
-                      <span className="mb-2 block text-xs font-medium text-slate-300">
+                      <span className="mb-2 block text-xs font-medium text-muted">
                         Offset X
                       </span>
 
@@ -9297,12 +9297,12 @@ function FashionEditor() {
                             offsetX: Number(event.target.value) || 0,
                           });
                         }}
-                        className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                        className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                       />
                     </label>
 
                     <label className="block">
-                      <span className="mb-2 block text-xs font-medium text-slate-300">
+                      <span className="mb-2 block text-xs font-medium text-muted">
                         Offset Y
                       </span>
 
@@ -9315,12 +9315,12 @@ function FashionEditor() {
                             offsetY: Number(event.target.value) || 0,
                           });
                         }}
-                        className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                        className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                       />
                     </label>
                   </div>
 
-                  <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-slate-300">
+                  <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-muted">
                     Smooth fabric
                     <input
                       type="checkbox"
@@ -9330,16 +9330,16 @@ function FashionEditor() {
                           imageSmoothingEnabled: event.target.checked,
                         });
                       }}
-                      className="h-5 w-5 accent-violet-500"
+                      className="h-5 w-5 accent-action"
                     />
                   </label>
 
-                  <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-3">
-                    <p className="text-xs font-semibold text-violet-100">
+                  <div className="rounded-md border border-line bg-subtle p-3">
+                    <p className="text-xs font-semibold text-action">
                       Apply inside a closed shape
                     </p>
 
-                    <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
+                    <p className="mt-1 text-[10px] leading-relaxed text-muted">
                       Choose a fabric, then click a rectangle, circle, ellipse,
                       triangle or polygon. Alt-click a patterned shape to remove
                       its texture.
@@ -9363,13 +9363,13 @@ function FashionEditor() {
                     onClick={() => {
                       handleChoosePattern("place");
                     }}
-                    className="min-h-12 w-full rounded-xl bg-violet-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="min-h-9 w-full rounded-md bg-action px-4 py-3 text-sm font-bold text-on-action transition hover:bg-action disabled:cursor-not-allowed disabled:opacity-40 hover:text-on-action"
                   >
                     {patternImporting ? "Loading pattern…" : "Choose Pattern"}
                   </button>
 
                   <label className="block">
-                    <span className="mb-2 block text-xs font-medium text-slate-300">
+                    <span className="mb-2 block text-xs font-medium text-muted">
                       Repeat mode
                     </span>
 
@@ -9383,7 +9383,7 @@ function FashionEditor() {
                           repeatMode: repeat,
                         });
                       }}
-                      className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                      className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                     >
                       {PATTERN_REPEAT_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -9442,7 +9442,7 @@ function FashionEditor() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <label className="block">
-                      <span className="mb-2 block text-xs font-medium text-slate-300">
+                      <span className="mb-2 block text-xs font-medium text-muted">
                         Offset X
                       </span>
 
@@ -9455,12 +9455,12 @@ function FashionEditor() {
                             offsetX: Number(event.target.value) || 0,
                           });
                         }}
-                        className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                        className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                       />
                     </label>
 
                     <label className="block">
-                      <span className="mb-2 block text-xs font-medium text-slate-300">
+                      <span className="mb-2 block text-xs font-medium text-muted">
                         Offset Y
                       </span>
 
@@ -9473,12 +9473,12 @@ function FashionEditor() {
                             offsetY: Number(event.target.value) || 0,
                           });
                         }}
-                        className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                        className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
                       />
                     </label>
                   </div>
 
-                  <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-slate-300">
+                  <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-muted">
                     Smooth pattern
                     <input
                       type="checkbox"
@@ -9488,23 +9488,23 @@ function FashionEditor() {
                           imageSmoothingEnabled: event.target.checked,
                         });
                       }}
-                      className="h-5 w-5 accent-violet-500"
+                      className="h-5 w-5 accent-action"
                     />
                   </label>
 
-                  <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-3">
-                    <p className="text-xs font-semibold text-violet-100">
+                  <div className="rounded-md border border-line bg-subtle p-3">
+                    <p className="text-xs font-semibold text-action">
                       Placement workflow
                     </p>
 
-                    <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
+                    <p className="mt-1 text-[10px] leading-relaxed text-muted">
                       Choose a texture, then drag on the canvas to create the
                       pattern area. Hold Shift for a square or Alt to draw from
                       the centre.
                     </p>
                   </div>
 
-                  <p className="text-[10px] leading-relaxed text-slate-500">
+                  <p className="text-[10px] leading-relaxed text-muted">
                     Supported formats: PNG, JPG, JPEG and WebP.
                   </p>
                 </div>
@@ -9524,7 +9524,7 @@ function FashionEditor() {
                   />
 
                   <div className="space-y-3">
-                    <p className="text-xs font-medium text-slate-300">
+                    <p className="text-xs font-medium text-muted">
                       Eraser Mode
                     </p>
 
@@ -9535,25 +9535,25 @@ function FashionEditor() {
                       }}
                       aria-pressed={eraser.mode === "precision"}
                       className={[
-                        "min-h-11 w-full rounded-lg border",
+                        "min-h-9 w-full rounded-md border",
                         "px-3 py-2 text-xs font-semibold",
                         "transition",
 
                         eraser.mode === "precision"
-                          ? "border-violet-500 bg-violet-500 text-white"
-                          : "border-slate-700 bg-slate-900 text-slate-300",
+                          ? "border-line bg-action text-on-action"
+                          : "border-line bg-surface text-muted",
                       ].join(" ")}
                     >
                       Precision Eraser
                     </button>
 
-                    <p className="text-[10px] leading-relaxed text-slate-400">
+                    <p className="text-[10px] leading-relaxed text-muted">
                       Drag the eraser over vector strokes to remove affected
                       sections while preserving the remaining parts of the
                       drawing.
                     </p>
 
-                    <p className="text-[10px] leading-relaxed text-slate-500">
+                    <p className="text-[10px] leading-relaxed text-muted">
                       Erasing is limited to the active, unlocked layer. Raster
                       images and stamp brushes are not supported.
                     </p>
@@ -9566,20 +9566,20 @@ function FashionEditor() {
               <PanelSection title="Selection">
                 {selectedObjects.length > 0 ? (
                   <div className="space-y-4">
-                    <div className="rounded-xl border border-slate-800 bg-slate-900 p-3">
-                      <p className="text-sm font-semibold text-white">
+                    <div className="rounded-md border border-line bg-surface p-3">
+                      <p className="text-sm font-semibold text-ink">
                         {selectedObjects.length} selected
                       </p>
 
-                      <p className="mt-1 text-[10px] text-slate-500">
+                      <p className="mt-1 text-[10px] text-muted">
                         Drag to move. Use the handles to resize or rotate.
                       </p>
                     </div>
 
                     {selectedObjects.length === 1 && (
                       <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="rounded-lg bg-slate-900 p-3">
-                          <span className="block text-[9px] uppercase tracking-wide text-slate-500">
+                        <div className="rounded-md bg-surface p-3">
+                          <span className="block text-[11px] uppercase tracking-wide text-muted">
                             X
                           </span>
 
@@ -9588,8 +9588,8 @@ function FashionEditor() {
                           </strong>
                         </div>
 
-                        <div className="rounded-lg bg-slate-900 p-3">
-                          <span className="block text-[9px] uppercase tracking-wide text-slate-500">
+                        <div className="rounded-md bg-surface p-3">
+                          <span className="block text-[11px] uppercase tracking-wide text-muted">
                             Y
                           </span>
 
@@ -9598,8 +9598,8 @@ function FashionEditor() {
                           </strong>
                         </div>
 
-                        <div className="rounded-lg bg-slate-900 p-3">
-                          <span className="block text-[9px] uppercase tracking-wide text-slate-500">
+                        <div className="rounded-md bg-surface p-3">
+                          <span className="block text-[11px] uppercase tracking-wide text-muted">
                             Rotation
                           </span>
 
@@ -9608,8 +9608,8 @@ function FashionEditor() {
                           </strong>
                         </div>
 
-                        <div className="rounded-lg bg-slate-900 p-3">
-                          <span className="block text-[9px] uppercase tracking-wide text-slate-500">
+                        <div className="rounded-md bg-surface p-3">
+                          <span className="block text-[11px] uppercase tracking-wide text-muted">
                             Type
                           </span>
 
@@ -9621,16 +9621,16 @@ function FashionEditor() {
                     )}
 
                     {selectedImageObject && (
-                      <div className="space-y-5 rounded-xl border border-slate-800 bg-slate-900 p-3">
+                      <div className="space-y-5 rounded-md border border-line bg-surface p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="truncate text-xs font-semibold text-slate-100">
+                            <p className="truncate text-xs font-semibold text-ink">
                               {selectedImageObject.fileName ||
                                 selectedImageObject.name ||
                                 "Imported image"}
                             </p>
 
-                            <p className="mt-1 text-[9px] uppercase tracking-wide text-slate-500">
+                            <p className="mt-1 text-[11px] uppercase tracking-wide text-muted">
                               {Math.round(
                                 numberOr(
                                   selectedImageObject.naturalWidth,
@@ -9649,27 +9649,27 @@ function FashionEditor() {
                           </div>
 
                           {selectedImageLocked && (
-                            <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-amber-300">
+                            <span className="shrink-0 rounded-md border border-line bg-subtle px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-action">
                               Locked
                             </span>
                           )}
                         </div>
 
                         {selectedClothingEditable && (
-                          <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-3">
+                          <div className="rounded-md border border-line bg-subtle p-3">
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
-                                <p className="text-xs font-semibold text-violet-100">
+                                <p className="text-xs font-semibold text-action">
                                   {selectedClothingTemplate.label} Design
                                 </p>
 
-                                <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
+                                <p className="mt-1 text-[10px] leading-relaxed text-muted">
                                   {selectedClothingTemplate.description ||
                                     "Edit each garment construction region independently."}
                                 </p>
                               </div>
 
-                              <span className="shrink-0 rounded-full border border-violet-400/30 bg-violet-500/15 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-violet-200">
+                              <span className="shrink-0 rounded-md border border-line bg-subtle px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-action">
                                 {selectedClothingDualView
                                   ? "Front + Back"
                                   : "Editable"}
@@ -9678,23 +9678,23 @@ function FashionEditor() {
 
                             {selectedClothingDualView && (
                               <div className="mt-4 grid grid-cols-2 gap-2">
-                                <div className="rounded-lg border border-slate-700/80 bg-slate-950/70 p-2">
-                                  <span className="block text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500">
+                                <div className="rounded-md border border-line bg-subtle p-2">
+                                  <span className="block text-[11px] font-bold uppercase tracking-[0.15em] text-muted">
                                     Front View
                                   </span>
 
-                                  <span className="mt-1 block text-xs font-semibold text-slate-200">
+                                  <span className="mt-1 block text-xs font-semibold text-ink">
                                     {selectedClothingRegionsByView.front.length}{" "}
                                     editable regions
                                   </span>
                                 </div>
 
-                                <div className="rounded-lg border border-slate-700/80 bg-slate-950/70 p-2">
-                                  <span className="block text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500">
+                                <div className="rounded-md border border-line bg-subtle p-2">
+                                  <span className="block text-[11px] font-bold uppercase tracking-[0.15em] text-muted">
                                     Back View
                                   </span>
 
-                                  <span className="mt-1 block text-xs font-semibold text-slate-200">
+                                  <span className="mt-1 block text-xs font-semibold text-ink">
                                     {selectedClothingRegionsByView.back.length}{" "}
                                     editable regions
                                   </span>
@@ -9732,7 +9732,7 @@ function FashionEditor() {
                                       "front",
                                     );
                                   }}
-                                  className="min-h-10 rounded-lg border border-violet-500/40 bg-violet-500/10 px-2 py-2 text-[10px] font-semibold text-violet-200 transition hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                  className="min-h-9 rounded-md border border-line bg-subtle px-2 py-2 text-[10px] font-semibold text-action transition hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40"
                                 >
                                   Primary → Front
                                 </button>
@@ -9749,7 +9749,7 @@ function FashionEditor() {
                                       "back",
                                     );
                                   }}
-                                  className="min-h-10 rounded-lg border border-violet-500/40 bg-violet-500/10 px-2 py-2 text-[10px] font-semibold text-violet-200 transition hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                  className="min-h-9 rounded-md border border-line bg-subtle px-2 py-2 text-[10px] font-semibold text-action transition hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40"
                                 >
                                   Primary → Back
                                 </button>
@@ -9766,7 +9766,7 @@ function FashionEditor() {
                                       "back",
                                     );
                                   }}
-                                  className="min-h-10 rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-semibold text-slate-300 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                                  className="min-h-9 rounded-md border border-line bg-surface px-2 py-2 text-[10px] font-semibold text-muted transition hover:border-line hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40"
                                 >
                                   Copy Front → Back
                                 </button>
@@ -9783,7 +9783,7 @@ function FashionEditor() {
                                       "front",
                                     );
                                   }}
-                                  className="min-h-10 rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-semibold text-slate-300 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                                  className="min-h-9 rounded-md border border-line bg-surface px-2 py-2 text-[10px] font-semibold text-muted transition hover:border-line hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40"
                                 >
                                   Copy Back → Front
                                 </button>
@@ -9801,15 +9801,15 @@ function FashionEditor() {
                               return (
                                 <div
                                   key={view}
-                                  className="mt-4 rounded-xl border border-slate-700/70 bg-slate-950/50 p-3"
+                                  className="mt-4 rounded-md border border-line bg-subtle p-3"
                                 >
                                   <div className="mb-3 flex items-center justify-between gap-3">
-                                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
                                       {CLOTHING_VIEW_LABELS[view] || "Other"}{" "}
                                       Regions
                                     </p>
 
-                                    <span className="rounded-full border border-slate-700 bg-slate-900 px-2 py-1 text-[8px] font-bold text-slate-500">
+                                    <span className="rounded-md border border-line bg-surface px-2 py-1 text-[11px] font-bold text-muted">
                                       {viewRegions.length}
                                     </span>
                                   </div>
@@ -9823,9 +9823,9 @@ function FashionEditor() {
                                       return (
                                         <label
                                           key={region.id}
-                                          className="block rounded-lg border border-slate-700/80 bg-slate-900/80 p-2"
+                                          className="block rounded-md border border-line bg-subtle p-2"
                                         >
-                                          <span className="mb-2 block min-h-[24px] text-[10px] font-semibold leading-tight text-slate-300">
+                                          <span className="mb-2 block min-h-[24px] text-[10px] font-semibold leading-tight text-muted">
                                             {region.label}
                                           </span>
 
@@ -9840,16 +9840,16 @@ function FashionEditor() {
                                                   event.target.value,
                                                 );
                                               }}
-                                              className="h-10 w-12 shrink-0 cursor-pointer rounded-md border border-slate-700 bg-slate-950 p-1 disabled:cursor-not-allowed disabled:opacity-50"
+                                              className="h-10 w-12 shrink-0 cursor-pointer rounded-md border border-line bg-surface p-1 disabled:cursor-not-allowed disabled:opacity-50"
                                             />
 
-                                            <span className="min-w-0 truncate font-mono text-[8px] uppercase text-slate-500">
+                                            <span className="min-w-0 truncate font-mono text-[11px] uppercase text-muted">
                                               {regionColour}
                                             </span>
                                           </div>
 
                                           {region.group && (
-                                            <span className="mt-2 block truncate text-[8px] font-semibold uppercase tracking-wide text-slate-600">
+                                            <span className="mt-2 block truncate text-[11px] font-semibold uppercase tracking-wide text-muted">
                                               {getClothingGroupLabel(
                                                 region.group,
                                               )}
@@ -9865,7 +9865,7 @@ function FashionEditor() {
 
                             {selectedClothingRegionGroups.length > 0 && (
                               <div className="mt-4">
-                                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
                                   Match Construction Parts
                                 </p>
 
@@ -9880,7 +9880,7 @@ function FashionEditor() {
                                           group.id,
                                         );
                                       }}
-                                      className="min-h-10 rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-semibold text-slate-300 transition hover:border-violet-500 hover:bg-violet-500/10 hover:text-violet-200 disabled:cursor-not-allowed disabled:opacity-40"
+                                      className="min-h-9 rounded-md border border-line bg-surface px-2 py-2 text-[10px] font-semibold text-muted transition hover:border-line hover:bg-subtle hover:text-action disabled:cursor-not-allowed disabled:opacity-40"
                                     >
                                       Match {group.label}
                                     </button>
@@ -9893,33 +9893,33 @@ function FashionEditor() {
                               type="button"
                               disabled={selectedImageLocked}
                               onClick={handleResetSelectedClothingColours}
-                              className="mt-4 min-h-10 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-[10px] font-semibold text-slate-300 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                              className="mt-4 min-h-9 w-full rounded-md border border-line bg-surface px-3 py-2 text-[10px] font-semibold text-muted transition hover:border-line hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               Reset All Garment Colours
                             </button>
 
                             {selectedClothingArtworkEditable && (
-                              <div className="mt-5 rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-3">
+                              <div className="mt-5 rounded-md border border-line bg-subtle p-3">
                                 <div className="flex items-start justify-between gap-3">
                                   <div>
-                                    <p className="text-xs font-semibold text-cyan-100">
+                                    <p className="text-xs font-semibold text-action">
                                       Region Artwork
                                     </p>
 
-                                    <p className="mt-1 text-[9px] leading-relaxed text-slate-400">
+                                    <p className="mt-1 text-[11px] leading-relaxed text-muted">
                                       Add a logo, graphic or repeating fabric
                                       pattern. Artwork is clipped to the
                                       selected garment construction region.
                                     </p>
                                   </div>
 
-                                  <span className="shrink-0 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2 py-1 text-[8px] font-bold uppercase tracking-wide text-cyan-200">
+                                  <span className="shrink-0 rounded-md border border-line bg-subtle px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-action">
                                     Clipped
                                   </span>
                                 </div>
 
                                 <label className="mt-4 block">
-                                  <span className="mb-2 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                  <span className="mb-2 block text-[10px] font-semibold uppercase tracking-wide text-muted">
                                     Artwork Region
                                   </span>
 
@@ -9935,7 +9935,7 @@ function FashionEditor() {
                                         event.target.value,
                                       );
                                     }}
-                                    className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line disabled:cursor-not-allowed disabled:opacity-50"
                                   >
                                     {selectedClothingArtworkRegions.map(
                                       (region) => (
@@ -9954,13 +9954,13 @@ function FashionEditor() {
                                 </label>
 
                                 {selectedClothingArtworkRegion && (
-                                  <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-slate-700/70 bg-slate-950/70 p-2.5">
+                                  <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-line bg-subtle p-2.5">
                                     <div className="min-w-0">
-                                      <span className="block truncate text-[10px] font-semibold text-slate-200">
+                                      <span className="block truncate text-[10px] font-semibold text-ink">
                                         {selectedClothingArtworkRegion.label}
                                       </span>
 
-                                      <span className="mt-0.5 block text-[8px] font-bold uppercase tracking-wide text-slate-500">
+                                      <span className="mt-0.5 block text-[11px] font-bold uppercase tracking-wide text-muted">
                                         {getClothingGroupLabel(
                                           selectedClothingArtworkRegion.group,
                                         )}
@@ -9969,10 +9969,10 @@ function FashionEditor() {
 
                                     <span
                                       className={[
-                                        "shrink-0 rounded-full border px-2 py-1 text-[8px] font-bold uppercase tracking-wide",
+                                        "shrink-0 rounded-md border px-2 py-1 text-[11px] font-bold uppercase tracking-wide",
                                         selectedClothingArtworkEntry
-                                          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                                          : "border-slate-700 bg-slate-900 text-slate-500",
+                                          ? "border-line bg-subtle text-action"
+                                          : "border-line bg-surface text-muted",
                                       ].join(" ")}
                                     >
                                       {selectedClothingArtworkEntry
@@ -9997,7 +9997,7 @@ function FashionEditor() {
                                         CLOTHING_ARTWORK_TYPES.IMAGE,
                                       );
                                     }}
-                                    className="min-h-11 rounded-lg bg-cyan-500 px-3 py-2 text-xs font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
+                                    className="min-h-9 rounded-md bg-action px-3 py-2 text-xs font-bold text-on-action transition hover:bg-action disabled:cursor-not-allowed disabled:opacity-40 hover:text-on-action"
                                   >
                                     {clothingArtworkImporting
                                       ? "Loading…"
@@ -10019,7 +10019,7 @@ function FashionEditor() {
                                         CLOTHING_ARTWORK_TYPES.PATTERN,
                                       );
                                     }}
-                                    className="min-h-11 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-200 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                    className="min-h-9 rounded-md border border-line bg-subtle px-3 py-2 text-xs font-bold text-action transition hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40"
                                   >
                                     {clothingArtworkImporting
                                       ? "Loading…"
@@ -10032,8 +10032,8 @@ function FashionEditor() {
 
                                 {selectedClothingArtworkEntry && (
                                   <div className="mt-4 space-y-4">
-                                    <div className="overflow-hidden rounded-lg border border-slate-700 bg-white p-2">
-                                      <div className="flex h-28 items-center justify-center overflow-hidden rounded-md bg-slate-100">
+                                    <div className="overflow-hidden rounded-md border border-line bg-surface p-2">
+                                      <div className="flex h-28 items-center justify-center overflow-hidden rounded-md bg-subtle">
                                         <img
                                           src={
                                             selectedClothingArtworkEntry.source
@@ -10060,11 +10060,11 @@ function FashionEditor() {
                                           );
                                         }}
                                         className={[
-                                          "min-h-10 rounded-lg border px-2 py-2 text-[10px] font-semibold transition",
+                                          "min-h-9 rounded-md border px-2 py-2 text-[10px] font-semibold transition",
                                           selectedClothingArtworkEntry.type ===
                                           CLOTHING_ARTWORK_TYPES.IMAGE
-                                            ? "border-cyan-500 bg-cyan-500/20 text-cyan-100"
-                                            : "border-slate-700 bg-slate-950 text-slate-400 hover:border-slate-500",
+                                            ? "border-line bg-subtle text-action"
+                                            : "border-line bg-surface text-muted hover:border-line",
                                         ].join(" ")}
                                       >
                                         Single Graphic
@@ -10084,11 +10084,11 @@ function FashionEditor() {
                                           );
                                         }}
                                         className={[
-                                          "min-h-10 rounded-lg border px-2 py-2 text-[10px] font-semibold transition",
+                                          "min-h-9 rounded-md border px-2 py-2 text-[10px] font-semibold transition",
                                           selectedClothingArtworkEntry.type ===
                                           CLOTHING_ARTWORK_TYPES.PATTERN
-                                            ? "border-cyan-500 bg-cyan-500/20 text-cyan-100"
-                                            : "border-slate-700 bg-slate-950 text-slate-400 hover:border-slate-500",
+                                            ? "border-line bg-subtle text-action"
+                                            : "border-line bg-surface text-muted hover:border-line",
                                         ].join(" ")}
                                       >
                                         Repeat Pattern
@@ -10096,7 +10096,7 @@ function FashionEditor() {
                                     </div>
 
                                     <label className="block">
-                                      <span className="mb-2 block text-[10px] font-semibold text-slate-300">
+                                      <span className="mb-2 block text-[10px] font-semibold text-muted">
                                         Fit inside region
                                       </span>
 
@@ -10112,7 +10112,7 @@ function FashionEditor() {
                                             event.target.value,
                                           );
                                         }}
-                                        className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line disabled:cursor-not-allowed disabled:opacity-50"
                                       >
                                         {CLOTHING_ARTWORK_FIT_OPTIONS.map(
                                           (option) => (
@@ -10220,7 +10220,7 @@ function FashionEditor() {
 
                                     <div className="grid grid-cols-2 gap-3">
                                       <label className="block">
-                                        <span className="mb-2 block text-[10px] font-semibold text-slate-300">
+                                        <span className="mb-2 block text-[10px] font-semibold text-muted">
                                           Position X
                                         </span>
 
@@ -10242,12 +10242,12 @@ function FashionEditor() {
                                               Number(event.target.value) || 0,
                                             );
                                           }}
-                                          className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                          className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line disabled:cursor-not-allowed disabled:opacity-50"
                                         />
                                       </label>
 
                                       <label className="block">
-                                        <span className="mb-2 block text-[10px] font-semibold text-slate-300">
+                                        <span className="mb-2 block text-[10px] font-semibold text-muted">
                                           Position Y
                                         </span>
 
@@ -10269,7 +10269,7 @@ function FashionEditor() {
                                               Number(event.target.value) || 0,
                                             );
                                           }}
-                                          className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                          className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line disabled:cursor-not-allowed disabled:opacity-50"
                                         />
                                       </label>
                                     </div>
@@ -10281,7 +10281,7 @@ function FashionEditor() {
                                         onClick={
                                           handleResetSelectedClothingArtworkTransform
                                         }
-                                        className="min-h-10 rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-[10px] font-semibold text-slate-300 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                                        className="min-h-9 rounded-md border border-line bg-surface px-2 py-2 text-[10px] font-semibold text-muted transition hover:border-line hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40"
                                       >
                                         Reset Placement
                                       </button>
@@ -10295,7 +10295,7 @@ function FashionEditor() {
                                         onClick={
                                           handleCopySelectedClothingArtworkToPairedRegion
                                         }
-                                        className="min-h-10 rounded-lg border border-violet-500/40 bg-violet-500/10 px-2 py-2 text-[10px] font-semibold text-violet-200 transition hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                        className="min-h-9 rounded-md border border-line bg-subtle px-2 py-2 text-[10px] font-semibold text-action transition hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40"
                                       >
                                         Copy to Paired Side
                                       </button>
@@ -10307,7 +10307,7 @@ function FashionEditor() {
                                       onClick={
                                         handleRemoveSelectedClothingArtwork
                                       }
-                                      className="min-h-10 w-full rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[10px] font-semibold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                      className="min-h-9 w-full rounded-md border border-line bg-subtle px-3 py-2 text-[10px] font-semibold text-action transition hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40"
                                     >
                                       Remove Artwork From Region
                                     </button>
@@ -10315,7 +10315,7 @@ function FashionEditor() {
                                 )}
 
                                 {!selectedClothingArtworkEntry && (
-                                  <p className="mt-3 rounded-lg border border-slate-700/70 bg-slate-950/60 p-2.5 text-[9px] leading-relaxed text-slate-500">
+                                  <p className="mt-3 rounded-md border border-line bg-subtle p-2.5 text-[11px] leading-relaxed text-muted">
                                     This region has no artwork yet. Add a
                                     graphic for logos/prints, or add a pattern
                                     for repeating fabric-style artwork.
@@ -10324,7 +10324,7 @@ function FashionEditor() {
                               </div>
                             )}
 
-                            <p className="mt-3 text-[9px] leading-relaxed text-slate-500">
+                            <p className="mt-3 text-[11px] leading-relaxed text-muted">
                               Front and back stay inside one movable image
                               object. Colour and region-artwork changes
                               regenerate the SVG only, so the garment keeps its
@@ -10335,7 +10335,7 @@ function FashionEditor() {
                         )}
 
                         <label className="block">
-                          <span className="mb-2 block text-xs font-medium text-slate-300">
+                          <span className="mb-2 block text-xs font-medium text-muted">
                             Image fit
                           </span>
 
@@ -10345,7 +10345,7 @@ function FashionEditor() {
                             onChange={(event) => {
                               handleSelectedImageFitChange(event.target.value);
                             }}
-                            className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             {IMAGE_FIT_OPTIONS.map((option) => (
                               <option key={option.value} value={option.value}>
@@ -10423,7 +10423,7 @@ function FashionEditor() {
 
                         <div className="grid grid-cols-2 gap-3">
                           <label className="block">
-                            <span className="mb-2 block text-xs font-medium text-slate-300">
+                            <span className="mb-2 block text-xs font-medium text-muted">
                               Width
                             </span>
 
@@ -10440,12 +10440,12 @@ function FashionEditor() {
                                   Number(event.target.value),
                                 );
                               }}
-                              className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line disabled:cursor-not-allowed disabled:opacity-50"
                             />
                           </label>
 
                           <label className="block">
-                            <span className="mb-2 block text-xs font-medium text-slate-300">
+                            <span className="mb-2 block text-xs font-medium text-muted">
                               Height
                             </span>
 
@@ -10462,12 +10462,12 @@ function FashionEditor() {
                                   Number(event.target.value),
                                 );
                               }}
-                              className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line disabled:cursor-not-allowed disabled:opacity-50"
                             />
                           </label>
                         </div>
 
-                        <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-slate-300">
+                        <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-muted">
                           Smooth image
                           <input
                             type="checkbox"
@@ -10487,7 +10487,7 @@ function FashionEditor() {
                                 "Change image smoothing",
                               );
                             }}
-                            className="h-5 w-5 accent-violet-500 disabled:cursor-not-allowed"
+                            className="h-5 w-5 accent-action disabled:cursor-not-allowed"
                           />
                         </label>
 
@@ -10501,7 +10501,7 @@ function FashionEditor() {
                                 selectedImageObject.id,
                               );
                             }}
-                            className="min-h-11 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                            className="min-h-9 rounded-md border border-line bg-surface px-3 py-2 text-xs font-semibold text-ink hover:border-line hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             Replace
                           </button>
@@ -10510,7 +10510,7 @@ function FashionEditor() {
                             type="button"
                             disabled={selectedImageLocked}
                             onClick={handleResetSelectedImageSize}
-                            className="min-h-11 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                            className="min-h-9 rounded-md border border-line bg-surface px-3 py-2 text-xs font-semibold text-ink hover:border-line hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             Original Size
                           </button>
@@ -10519,7 +10519,7 @@ function FashionEditor() {
                             type="button"
                             disabled={selectedImageLocked}
                             onClick={handleFitSelectedImageToDocument}
-                            className="col-span-2 min-h-11 rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-200 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                            className="col-span-2 min-h-9 rounded-md border border-line bg-subtle px-3 py-2 text-xs font-semibold text-action hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             Fit to Document
                           </button>
@@ -10528,27 +10528,27 @@ function FashionEditor() {
                     )}
 
                     {selectedPatternMaskShape && (
-                      <div className="space-y-5 rounded-xl border border-slate-800 bg-slate-900 p-3">
+                      <div className="space-y-5 rounded-md border border-line bg-surface p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="truncate text-xs font-semibold text-slate-100">
+                            <p className="truncate text-xs font-semibold text-ink">
                               {selectedPatternMaskShape.name ||
                                 "Selected shape"}
                             </p>
 
-                            <p className="mt-1 text-[9px] uppercase tracking-wide text-slate-500">
+                            <p className="mt-1 text-[11px] uppercase tracking-wide text-muted">
                               Shape pattern mask
                             </p>
                           </div>
 
                           <span
                             className={[
-                              "shrink-0 rounded-full border px-2 py-1 text-[9px] font-bold uppercase tracking-wide",
+                              "shrink-0 rounded-md border px-2 py-1 text-[11px] font-bold uppercase tracking-wide",
                               selectedPatternMaskLocked
-                                ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                                ? "border-line bg-subtle text-action"
                                 : selectedPatternMaskActive
-                                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                                  : "border-slate-700 bg-slate-950 text-slate-400",
+                                  ? "border-line bg-subtle text-action"
+                                  : "border-line bg-surface text-muted",
                             ].join(" ")}
                           >
                             {selectedPatternMaskLocked
@@ -10570,14 +10570,14 @@ function FashionEditor() {
                                 selectedPatternMaskShape.id,
                               ]);
                             }}
-                            className="min-h-11 w-full rounded-lg bg-violet-500 px-3 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-40"
+                            className="min-h-9 w-full rounded-md bg-action px-3 py-2 text-xs font-bold text-on-action hover:bg-action disabled:cursor-not-allowed disabled:opacity-40 hover:text-on-action"
                           >
                             Apply Fabric Texture
                           </button>
                         ) : (
                           <>
                             <label className="block">
-                              <span className="mb-2 block text-xs font-medium text-slate-300">
+                              <span className="mb-2 block text-xs font-medium text-muted">
                                 Repeat mode
                               </span>
 
@@ -10602,7 +10602,7 @@ function FashionEditor() {
                                     "Change shape pattern repeat",
                                   );
                                 }}
-                                className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 {PATTERN_REPEAT_OPTIONS.map((option) => (
                                   <option
@@ -10721,7 +10721,7 @@ function FashionEditor() {
 
                             <div className="grid grid-cols-2 gap-3">
                               <label className="block">
-                                <span className="mb-2 block text-xs font-medium text-slate-300">
+                                <span className="mb-2 block text-xs font-medium text-muted">
                                   Offset X
                                 </span>
 
@@ -10745,12 +10745,12 @@ function FashionEditor() {
                                       "Move shape pattern",
                                     );
                                   }}
-                                  className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                  className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line disabled:cursor-not-allowed disabled:opacity-50"
                                 />
                               </label>
 
                               <label className="block">
-                                <span className="mb-2 block text-xs font-medium text-slate-300">
+                                <span className="mb-2 block text-xs font-medium text-muted">
                                   Offset Y
                                 </span>
 
@@ -10774,12 +10774,12 @@ function FashionEditor() {
                                       "Move shape pattern",
                                     );
                                   }}
-                                  className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                  className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line disabled:cursor-not-allowed disabled:opacity-50"
                                 />
                               </label>
                             </div>
 
-                            <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-slate-300">
+                            <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-muted">
                               Smooth fabric
                               <input
                                 type="checkbox"
@@ -10799,11 +10799,11 @@ function FashionEditor() {
                                     "Change shape pattern smoothing",
                                   );
                                 }}
-                                className="h-5 w-5 accent-violet-500 disabled:cursor-not-allowed"
+                                className="h-5 w-5 accent-action disabled:cursor-not-allowed"
                               />
                             </label>
 
-                            <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-slate-300">
+                            <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-muted">
                               Transparent background
                               <input
                                 type="checkbox"
@@ -10828,7 +10828,7 @@ function FashionEditor() {
                                     "Change shape pattern background",
                                   );
                                 }}
-                                className="h-5 w-5 accent-violet-500 disabled:cursor-not-allowed"
+                                className="h-5 w-5 accent-action disabled:cursor-not-allowed"
                               />
                             </label>
 
@@ -10843,7 +10843,7 @@ function FashionEditor() {
                                     selectedPatternMaskShape.id,
                                   ]);
                                 }}
-                                className="min-h-11 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                                className="min-h-9 rounded-md border border-line bg-surface px-3 py-2 text-xs font-semibold text-ink hover:border-line hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40"
                               >
                                 Replace Fabric
                               </button>
@@ -10861,7 +10861,7 @@ function FashionEditor() {
                                     showToast("Pattern removed from shape.");
                                   }
                                 }}
-                                className="min-h-11 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-300 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                className="min-h-9 rounded-md border border-line bg-subtle px-3 py-2 text-xs font-semibold text-action hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40"
                               >
                                 Remove Pattern
                               </button>
@@ -10872,29 +10872,29 @@ function FashionEditor() {
                     )}
 
                     {selectedPatternObject && (
-                      <div className="space-y-5 rounded-xl border border-slate-800 bg-slate-900 p-3">
+                      <div className="space-y-5 rounded-md border border-line bg-surface p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="truncate text-xs font-semibold text-slate-100">
+                            <p className="truncate text-xs font-semibold text-ink">
                               {selectedPatternObject.fileName ||
                                 selectedPatternObject.name ||
                                 "Imported pattern"}
                             </p>
 
-                            <p className="mt-1 text-[9px] uppercase tracking-wide text-slate-500">
+                            <p className="mt-1 text-[11px] uppercase tracking-wide text-muted">
                               Pattern texture
                             </p>
                           </div>
 
                           {selectedPatternLocked && (
-                            <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-amber-300">
+                            <span className="shrink-0 rounded-md border border-line bg-subtle px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-action">
                               Locked
                             </span>
                           )}
                         </div>
 
                         <label className="block">
-                          <span className="mb-2 block text-xs font-medium text-slate-300">
+                          <span className="mb-2 block text-xs font-medium text-muted">
                             Repeat mode
                           </span>
 
@@ -10906,7 +10906,7 @@ function FashionEditor() {
                                 event.target.value,
                               );
                             }}
-                            className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             {PATTERN_REPEAT_OPTIONS.map((option) => (
                               <option key={option.value} value={option.value}>
@@ -11097,7 +11097,7 @@ function FashionEditor() {
 
                         <div className="grid grid-cols-2 gap-3">
                           <label className="block">
-                            <span className="mb-2 block text-xs font-medium text-slate-300">
+                            <span className="mb-2 block text-xs font-medium text-muted">
                               Width
                             </span>
 
@@ -11114,12 +11114,12 @@ function FashionEditor() {
                                   Number(event.target.value),
                                 );
                               }}
-                              className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line disabled:cursor-not-allowed disabled:opacity-50"
                             />
                           </label>
 
                           <label className="block">
-                            <span className="mb-2 block text-xs font-medium text-slate-300">
+                            <span className="mb-2 block text-xs font-medium text-muted">
                               Height
                             </span>
 
@@ -11136,14 +11136,14 @@ function FashionEditor() {
                                   Number(event.target.value),
                                 );
                               }}
-                              className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line disabled:cursor-not-allowed disabled:opacity-50"
                             />
                           </label>
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                           <label className="block">
-                            <span className="mb-2 block text-xs font-medium text-slate-300">
+                            <span className="mb-2 block text-xs font-medium text-muted">
                               Offset X
                             </span>
 
@@ -11166,12 +11166,12 @@ function FashionEditor() {
                                   "Move pattern texture",
                                 );
                               }}
-                              className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line disabled:cursor-not-allowed disabled:opacity-50"
                             />
                           </label>
 
                           <label className="block">
-                            <span className="mb-2 block text-xs font-medium text-slate-300">
+                            <span className="mb-2 block text-xs font-medium text-muted">
                               Offset Y
                             </span>
 
@@ -11194,12 +11194,12 @@ function FashionEditor() {
                                   "Move pattern texture",
                                 );
                               }}
-                              className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line disabled:cursor-not-allowed disabled:opacity-50"
                             />
                           </label>
                         </div>
 
-                        <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-slate-300">
+                        <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-muted">
                           Smooth pattern
                           <input
                             type="checkbox"
@@ -11219,11 +11219,11 @@ function FashionEditor() {
                                 "Change pattern smoothing",
                               );
                             }}
-                            className="h-5 w-5 accent-violet-500 disabled:cursor-not-allowed"
+                            className="h-5 w-5 accent-action disabled:cursor-not-allowed"
                           />
                         </label>
 
-                        <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-slate-300">
+                        <label className="flex min-h-11 items-center justify-between gap-4 text-xs text-muted">
                           Transparent background
                           <input
                             type="checkbox"
@@ -11247,13 +11247,13 @@ function FashionEditor() {
                                 "Change pattern background",
                               );
                             }}
-                            className="h-5 w-5 accent-violet-500 disabled:cursor-not-allowed"
+                            className="h-5 w-5 accent-action disabled:cursor-not-allowed"
                           />
                         </label>
 
                         {selectedPatternBackground !== "transparent" && (
                           <label className="block">
-                            <span className="mb-2 block text-xs font-medium text-slate-300">
+                            <span className="mb-2 block text-xs font-medium text-muted">
                               Background colour
                             </span>
 
@@ -11281,7 +11281,7 @@ function FashionEditor() {
                                   "Change pattern background",
                                 );
                               }}
-                              className="h-11 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-950 p-1 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="h-11 w-full cursor-pointer rounded-md border border-line bg-surface p-1 disabled:cursor-not-allowed disabled:opacity-50"
                             />
                           </label>
                         )}
@@ -11296,7 +11296,7 @@ function FashionEditor() {
                                 selectedPatternObject.id,
                               );
                             }}
-                            className="min-h-11 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                            className="min-h-9 rounded-md border border-line bg-surface px-3 py-2 text-xs font-semibold text-ink hover:border-line hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             Replace Texture
                           </button>
@@ -11305,7 +11305,7 @@ function FashionEditor() {
                             type="button"
                             disabled={selectedPatternLocked}
                             onClick={handleFitSelectedPatternToDocument}
-                            className="min-h-11 rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-200 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                            className="min-h-9 rounded-md border border-line bg-subtle px-3 py-2 text-xs font-semibold text-action hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             Fit to Document
                           </button>
@@ -11318,7 +11318,7 @@ function FashionEditor() {
                         onClick={() => {
                           duplicateObjects(selectedObjectIds);
                         }}
-                        className="min-h-11 rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700"
+                        className="min-h-9 rounded-md bg-subtle px-3 py-2 text-xs font-semibold text-ink hover:bg-subtle"
                       >
                         Duplicate
                       </button>
@@ -11328,14 +11328,14 @@ function FashionEditor() {
                         onClick={() => {
                           deleteObjects(selectedObjectIds);
                         }}
-                        className="min-h-11 rounded-lg bg-red-950/60 px-3 py-2 text-xs font-semibold text-red-300 hover:bg-red-900"
+                        className="min-h-9 rounded-md bg-subtle px-3 py-2 text-xs font-semibold text-action hover:bg-surface"
                       >
                         Delete
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-xs leading-relaxed text-slate-500">
+                  <p className="text-xs leading-relaxed text-muted">
                     Click an object or drag a selection rectangle across several
                     objects.
                   </p>
@@ -11347,7 +11347,7 @@ function FashionEditor() {
               <div className="space-y-4">
                 <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
                   <label>
-                    <span className="mb-1.5 block text-[10px] uppercase tracking-wide text-slate-500">
+                    <span className="mb-1.5 block text-[10px] uppercase tracking-wide text-muted">
                       Primary
                     </span>
 
@@ -11357,7 +11357,7 @@ function FashionEditor() {
                       onChange={(event) => {
                         setPrimaryColor(event.target.value);
                       }}
-                      className="h-11 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-1"
+                      className="h-11 w-full cursor-pointer rounded-md border border-line bg-surface p-1"
                     />
                   </label>
 
@@ -11365,13 +11365,13 @@ function FashionEditor() {
                     type="button"
                     onClick={swapColors}
                     title="Swap colours"
-                    className="mb-0.5 h-11 w-11 rounded-lg border border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
+                    className="mb-0.5 h-9 w-11 rounded-md border border-line bg-surface text-muted hover:bg-subtle"
                   >
                     ↔
                   </button>
 
                   <label>
-                    <span className="mb-1.5 block text-[10px] uppercase tracking-wide text-slate-500">
+                    <span className="mb-1.5 block text-[10px] uppercase tracking-wide text-muted">
                       Secondary
                     </span>
 
@@ -11381,7 +11381,7 @@ function FashionEditor() {
                       onChange={(event) => {
                         setSecondaryColor(event.target.value);
                       }}
-                      className="h-11 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-1"
+                      className="h-11 w-full cursor-pointer rounded-md border border-line bg-surface p-1"
                     />
                   </label>
                 </div>
@@ -11398,8 +11398,8 @@ function FashionEditor() {
                       className={[
                         "aspect-square min-h-7 rounded-md border-2 transition hover:scale-110",
                         colours.primary === colour
-                          ? "border-violet-400"
-                          : "border-slate-700",
+                          ? "border-line"
+                          : "border-line",
                       ].join(" ")}
                       style={{
                         background: colour,
@@ -11410,7 +11410,7 @@ function FashionEditor() {
 
                 {colours.recent.length > 0 && (
                   <div>
-                    <p className="mb-2 text-[10px] uppercase tracking-wide text-slate-500">
+                    <p className="mb-2 text-[10px] uppercase tracking-wide text-muted">
                       Recent
                     </p>
 
@@ -11422,7 +11422,7 @@ function FashionEditor() {
                           onClick={() => {
                             setPrimaryColor(colour);
                           }}
-                          className="h-8 w-8 rounded-md border border-slate-700"
+                          className="h-8 w-8 rounded-md border border-line"
                           style={{
                             background: colour,
                           }}
@@ -11437,16 +11437,16 @@ function FashionEditor() {
             <PanelSection title="Document">
               <div className="space-y-4 text-xs">
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-lg bg-slate-900 p-3">
-                    <span className="block text-[9px] uppercase tracking-wide text-slate-500">
+                  <div className="rounded-md bg-surface p-3">
+                    <span className="block text-[11px] uppercase tracking-wide text-muted">
                       Width
                     </span>
 
                     <strong>{documentData.width}px</strong>
                   </div>
 
-                  <div className="rounded-lg bg-slate-900 p-3">
-                    <span className="block text-[9px] uppercase tracking-wide text-slate-500">
+                  <div className="rounded-md bg-surface p-3">
+                    <span className="block text-[11px] uppercase tracking-wide text-muted">
                       Height
                     </span>
 
@@ -11455,7 +11455,7 @@ function FashionEditor() {
                 </div>
 
                 <label className="block">
-                  <span className="mb-2 block text-xs font-medium text-slate-300">
+                  <span className="mb-2 block text-xs font-medium text-muted">
                     Background
                   </span>
 
@@ -11465,7 +11465,7 @@ function FashionEditor() {
                     onChange={(event) => {
                       setDocumentBackground(event.target.value);
                     }}
-                    className="h-11 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-1"
+                    className="h-11 w-full cursor-pointer rounded-md border border-line bg-surface p-1"
                   />
                 </label>
               </div>
@@ -11481,17 +11481,17 @@ function FashionEditor() {
     =====================================================*/
 
   return (
-    <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-slate-950 text-slate-100">
-      {draftError && <div role="alert" className="shrink-0 bg-amber-100 p-3 text-sm text-amber-950">{draftError}</div>}
-      {recoveryDrafts.length > 0 && <div className="shrink-0 border-b border-slate-700 bg-slate-900 p-2 text-sm">
+    <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-surface text-ink">
+      {draftError && <div role="alert" className="shrink-0 bg-subtle p-3 text-sm text-action">{draftError}</div>}
+      {recoveryDrafts.length > 0 && <div className="shrink-0 border-b border-line bg-surface p-2 text-sm">
         <button type="button" className="underline" aria-expanded={recoveryOpen} onClick={() => setRecoveryOpen(value => !value)}>
           {recoveryDrafts.length} browser draft{recoveryDrafts.length === 1 ? "" : "s"} available — {recoveryOpen ? "hide" : "review"}
         </button>
         {recoveryOpen && <div className="max-h-48 overflow-y-auto p-2">
-          <p className="mb-2 text-slate-300">These drafts are stored on this browser. Recovery creates a separate cloud project when online.</p>
-          {recoveryDrafts.map(row => <div key={row.key} className="flex flex-wrap items-center gap-3 border-t border-slate-700 py-2">
+          <p className="mb-2 text-muted">These drafts are stored on this browser. Recovery creates a separate cloud project when online.</p>
+          {recoveryDrafts.map(row => <div key={row.key} className="flex flex-wrap items-center gap-3 border-t border-line py-2">
             <span className="min-w-0 flex-1 break-words">{row.project.document.name || "Untitled design"} · {new Date(row.updatedAt).toLocaleString()}</span>
-            <button type="button" disabled={projectSaving} className="rounded bg-white px-3 py-2 text-slate-900 disabled:opacity-50" onClick={() => restoreDraft(row)}>Recover copy</button>
+            <button type="button" disabled={projectSaving} className="rounded bg-surface px-3 py-2 text-ink disabled:opacity-50" onClick={() => restoreDraft(row)}>Recover copy</button>
             <button type="button" className="px-3 py-2 underline" onClick={() => { if (window.confirm("Permanently remove this browser draft?")) void discardDraft(row); }}>Remove</button>
           </div>)}
         </div>}
@@ -11529,15 +11529,15 @@ function FashionEditor() {
       />
 
       {projectLoading && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/90 p-6 backdrop-blur-md">
-          <div className="flex min-w-[260px] flex-col items-center rounded-2xl border border-slate-700 bg-slate-900 p-7 text-center shadow-2xl">
-            <span className="h-10 w-10 animate-spin rounded-full border-2 border-slate-700 border-t-violet-400" />
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-subtle p-4">
+          <div className="flex min-w-[260px] flex-col items-center rounded-md border border-line bg-surface p-4 text-center">
+            <span className="h-10 w-10 animate-spin rounded-full border-2 border-line border-t-action" />
 
-            <p className="mt-5 text-sm font-semibold text-white">
+            <p className="mt-5 text-sm font-semibold text-ink">
               Loading cloud project
             </p>
 
-            <p className="mt-2 text-xs leading-5 text-slate-400">
+            <p className="mt-2 text-xs leading-5 text-muted">
               Restoring layers, objects and editor settings…
             </p>
           </div>
@@ -11546,18 +11546,18 @@ function FashionEditor() {
 
       {/* Header */}
 
-      <header className="relative z-[70] flex h-14 shrink-0 items-center justify-between gap-2 border-b border-slate-800 bg-slate-950 px-2 sm:px-4">
+      <header className="relative z-[70] flex h-14 shrink-0 items-center justify-between gap-2 border-b border-line bg-surface px-2 sm:px-4">
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500 text-xs font-black text-white shadow-lg shadow-violet-950/40">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-action text-xs font-semibold text-on-action">
             FV
           </div>
 
           <div className="hidden shrink-0 lg:block">
-            <p className="text-xs font-bold tracking-wide text-white">
+            <p className="text-xs font-bold tracking-wide text-ink">
               FashionVision
             </p>
 
-            <p className="text-[9px] uppercase tracking-[0.2em] text-slate-500">
+            <p className="text-[11px] uppercase tracking-normal text-muted">
               2D Studio
             </p>
           </div>
@@ -11567,14 +11567,14 @@ function FashionEditor() {
             type="button"
             onClick={handleOpenCreatorShowcase}
             title="Open Creator Showcase"
-            className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-violet-500/40 bg-violet-500/10 px-2.5 text-[10px] font-bold text-violet-200 transition hover:border-violet-400 hover:bg-violet-500/20 hover:text-white sm:px-3"
+            className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-line bg-subtle px-2.5 text-[10px] font-bold text-action transition hover:border-line hover:bg-subtle hover:text-ink sm:px-3"
           >
             <span className="hidden sm:inline">Creator Showcase</span>
             <span className="sm:hidden">Showcase</span>
           </button>
 
-          <button type="button" onClick={handleOpenProjects} disabled={projectLoading || projectSaving} className="shrink-0 rounded-lg border border-slate-600 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-50">My projects</button>
-          <div className="hidden h-6 w-px bg-slate-800 lg:block" />
+          <button type="button" onClick={handleOpenProjects} disabled={projectLoading || projectSaving} className="shrink-0 rounded-md border border-line px-2 py-1.5 text-xs text-ink disabled:opacity-50">My projects</button>
+          <div className="hidden h-6 w-px bg-subtle lg:block" />
 
           <div className="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
             <DocumentNameField
@@ -11584,12 +11584,12 @@ function FashionEditor() {
 
             {persistence.dirty && (
               <span
-                className="h-2 w-2 shrink-0 rounded-full bg-amber-400"
+                className="h-2 w-2 shrink-0 rounded-full bg-action text-on-action"
                 title="Unsaved changes"
               />
             )}
 
-            <span className="hidden shrink-0 rounded-full border border-slate-700 bg-slate-900 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-slate-400 sm:inline-flex">
+            <span className="hidden shrink-0 rounded-md border border-line bg-surface px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-muted sm:inline-flex">
               {cloudSaveLabel}
             </span>
           </div>
@@ -11633,7 +11633,7 @@ function FashionEditor() {
               onClick={handleOpenDesignerBooking}
               disabled={projectLoading || projectSaving || showcaseSharing || objectCount <= 0}
               title="Save the current private design and book an approved designer"
-              className="border-violet-500/70 bg-violet-700/80 text-white hover:bg-violet-600"
+              className="border-line bg-subtle text-ink hover:bg-action hover:text-on-action"
             >
               Book a Designer
             </HeaderButton>
@@ -11721,18 +11721,18 @@ function FashionEditor() {
               onClick={() => {
                 setMobileMenuOpen(false);
               }}
-              className="fixed inset-0 z-[80] cursor-default bg-black/40 backdrop-blur-[2px] xl:hidden"
+              className="fixed inset-0 z-[80] cursor-default bg-black/40 xl:hidden"
             />
 
             <div
               role="menu"
               aria-label="Fashion Editor file menu"
-              className="fixed right-2 top-[calc(3.5rem+6px)] z-[90] max-h-[calc(100dvh-4.5rem)] w-[min(20rem,calc(100vw-1rem))] overflow-y-auto rounded-xl border border-slate-700 bg-slate-950 p-2 shadow-2xl xl:hidden"
+              className="fixed right-2 top-[calc(3.5rem+6px)] z-[90] max-h-[calc(100dvh-4.5rem)] w-[min(20rem,calc(100vw-1rem))] overflow-y-auto rounded-md border border-line bg-surface p-2 xl:hidden"
             >
               <button
                 type="button"
                 onClick={handleNewDocument}
-                className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm text-slate-200 hover:bg-slate-800"
+                className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm text-ink hover:bg-subtle"
               >
                 New project
               </button>
@@ -11740,7 +11740,7 @@ function FashionEditor() {
               <button
                 type="button"
                 onClick={handleOpenProject}
-                className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm text-slate-200 hover:bg-slate-800"
+                className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm text-ink hover:bg-subtle"
               >
                 Open project
               </button>
@@ -11749,7 +11749,7 @@ function FashionEditor() {
                 type="button"
                 disabled={projectLoading || projectSaving}
                 onClick={() => handleSaveProject()}
-                className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-40"
+                className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm text-ink hover:bg-subtle disabled:opacity-40"
               >
                 {projectSaving
                   ? "Saving…"
@@ -11767,7 +11767,7 @@ function FashionEditor() {
                   objectCount <= 0
                 }
                 onClick={handleOpenShowcaseShare}
-                className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm font-semibold text-amber-200 hover:bg-amber-950/40 disabled:opacity-40"
+                className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-semibold text-action hover:bg-subtle disabled:opacity-40"
               >
                 {showcaseSharing ? "Sharing to Showcase…" : "Share to Showcase"}
               </button>
@@ -11776,7 +11776,7 @@ function FashionEditor() {
                 type="button"
                 onClick={handleOpenDesignerBooking}
                 disabled={projectLoading || projectSaving || showcaseSharing || objectCount <= 0}
-                className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm font-semibold text-violet-200 hover:bg-violet-950/50 disabled:opacity-40"
+                className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-semibold text-action hover:bg-subtle disabled:opacity-40"
               >
                 Book a Designer
               </button>
@@ -11784,7 +11784,7 @@ function FashionEditor() {
               <button
                 type="button"
                 onClick={handleDownloadProject}
-                className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm text-slate-200 hover:bg-slate-800"
+                className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm text-ink hover:bg-subtle"
               >
                 Download project file
               </button>
@@ -11793,7 +11793,7 @@ function FashionEditor() {
                 type="button"
                 disabled={exporting}
                 onClick={handleExportPng}
-                className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-40"
+                className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm text-ink hover:bg-subtle disabled:opacity-40"
               >
                 {exporting ? "Exporting PNG…" : "Export PNG"}
               </button>
@@ -11802,7 +11802,7 @@ function FashionEditor() {
                 type="button"
                 disabled={projectLoading}
                 onClick={handleOpenOrGenerateAiFashionPreview}
-                className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm font-semibold text-violet-200 hover:bg-violet-950/50 disabled:opacity-40"
+                className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-semibold text-action hover:bg-subtle disabled:opacity-40"
               >
                 {aiFashionGenerating
                   ? "View AI generation…"
@@ -11811,7 +11811,7 @@ function FashionEditor() {
                     : "Generate AI Preview"}
               </button>
 
-              <div className="my-1 h-px bg-slate-800 sm:hidden" />
+              <div className="my-1 h-px bg-subtle sm:hidden" />
 
               <button
                 type="button"
@@ -11820,7 +11820,7 @@ function FashionEditor() {
 
                   setPanelDrawerOpen(true);
                 }}
-                className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm text-slate-200 hover:bg-slate-800 sm:hidden"
+                className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm text-ink hover:bg-subtle sm:hidden"
               >
                 Layers and properties
               </button>
@@ -11831,12 +11831,12 @@ function FashionEditor() {
 
       {/* Tool options */}
 
-      <div className="flex h-12 shrink-0 items-center gap-3 overflow-x-auto overscroll-x-contain border-b border-slate-800 bg-slate-900 px-3 sm:gap-4 sm:px-4">
-        <div className="shrink-0 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+      <div className="flex h-12 shrink-0 items-center gap-3 overflow-x-auto overscroll-x-contain border-b border-line bg-surface px-3 sm:gap-4 sm:px-4">
+        <div className="shrink-0 text-[10px] font-bold uppercase tracking-[0.18em] text-muted">
           {activeToolDefinition?.label || activeTool}
         </div>
 
-        <div className="h-5 w-px shrink-0 bg-slate-700" />
+        <div className="h-5 w-px shrink-0 bg-subtle" />
 
         {activeSymmetryTool && (
           <>
@@ -11848,14 +11848,14 @@ function FashionEditor() {
               {symmetry.enabled ? "Mirror On" : "Mirror Off"}
             </HeaderButton>
 
-            <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+            <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
               Mode
               <select
                 value={symmetry.mode}
                 onChange={(event) => {
                   handleSetSymmetryMode(event.target.value);
                 }}
-                className="h-9 rounded-lg border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 outline-none focus:border-violet-500"
+                className="h-9 rounded-md border border-line bg-surface px-2 text-xs text-ink outline-none focus:border-line"
               >
                 {SYMMETRY_MODE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -11886,13 +11886,13 @@ function FashionEditor() {
               Settings
             </HeaderButton>
 
-            <div className="h-5 w-px shrink-0 bg-slate-700" />
+            <div className="h-5 w-px shrink-0 bg-subtle" />
           </>
         )}
 
         {activeTool === EDITOR_TOOLS.PENCIL && (
           <>
-            <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+            <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
               Size
               <input
                 type="range"
@@ -11905,14 +11905,14 @@ function FashionEditor() {
                     size: Number(event.target.value),
                   });
                 }}
-                className="w-24 accent-violet-500 sm:w-28"
+                className="w-24 accent-action sm:w-28"
               />
-              <span className="min-w-10 font-semibold text-slate-100">
+              <span className="min-w-10 font-semibold text-ink">
                 {brush.size}px
               </span>
             </label>
 
-            <label className="hidden shrink-0 items-center gap-2 text-xs text-slate-300 sm:flex">
+            <label className="hidden shrink-0 items-center gap-2 text-xs text-muted sm:flex">
               Opacity
               <input
                 type="range"
@@ -11925,9 +11925,9 @@ function FashionEditor() {
                     opacity: Number(event.target.value),
                   });
                 }}
-                className="w-24 accent-violet-500"
+                className="w-24 accent-action"
               />
-              <span className="min-w-10 font-semibold text-slate-100">
+              <span className="min-w-10 font-semibold text-ink">
                 {Math.round(brush.opacity * 100)}%
               </span>
             </label>
@@ -11936,14 +11936,14 @@ function FashionEditor() {
 
         {activeTool === EDITOR_TOOLS.BRUSH && (
           <>
-            <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+            <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
               Preset
               <select
                 value={activeBrushPreset?.id || DEFAULT_BRUSH_PRESET_ID}
                 onChange={(event) => {
                   handleBrushPresetChange(event.target.value);
                 }}
-                className="h-9 max-w-44 rounded-lg border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 outline-none focus:border-violet-500 sm:max-w-52"
+                className="h-9 max-w-44 rounded-md border border-line bg-surface px-2 text-xs text-ink outline-none focus:border-line sm:max-w-52"
               >
                 {BRUSH_PRESETS.map((preset) => (
                   <option key={preset.id} value={preset.id}>
@@ -11953,7 +11953,7 @@ function FashionEditor() {
               </select>
             </label>
 
-            <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+            <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
               Size
               <input
                 type="range"
@@ -11966,15 +11966,15 @@ function FashionEditor() {
                     size: Number(event.target.value),
                   });
                 }}
-                className="w-24 accent-violet-500 sm:w-28"
+                className="w-24 accent-action sm:w-28"
               />
-              <span className="min-w-10 font-semibold text-slate-100">
+              <span className="min-w-10 font-semibold text-ink">
                 {numberOr(brush.size, activeBrushPreset?.size || 4)}
                 px
               </span>
             </label>
 
-            <label className="hidden shrink-0 items-center gap-2 text-xs text-slate-300 md:flex">
+            <label className="hidden shrink-0 items-center gap-2 text-xs text-muted md:flex">
               Opacity
               <input
                 type="range"
@@ -11987,14 +11987,14 @@ function FashionEditor() {
                     opacity: Number(event.target.value),
                   });
                 }}
-                className="w-24 accent-violet-500"
+                className="w-24 accent-action"
               />
-              <span className="min-w-10 font-semibold text-slate-100">
+              <span className="min-w-10 font-semibold text-ink">
                 {Math.round(numberOr(brush.opacity, 1) * 100)}%
               </span>
             </label>
 
-            <span className="hidden shrink-0 rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-slate-400 lg:inline-flex">
+            <span className="hidden shrink-0 rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-muted lg:inline-flex">
               {activeBrushPreset?.renderMode || brush.renderMode || "line"}
             </span>
           </>
@@ -12002,7 +12002,7 @@ function FashionEditor() {
 
         {activeTool === EDITOR_TOOLS.SHAPE && (
           <>
-            <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+            <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
               Shape
               <select
                 value={activeShapeType}
@@ -12011,7 +12011,7 @@ function FashionEditor() {
                     shapeType: event.target.value,
                   });
                 }}
-                className="h-9 rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-violet-500"
+                className="h-9 rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line"
               >
                 {SHAPE_TYPE_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
@@ -12021,7 +12021,7 @@ function FashionEditor() {
               </select>
             </label>
 
-            <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+            <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
               Stroke
               <input
                 type="range"
@@ -12034,15 +12034,15 @@ function FashionEditor() {
                     strokeWidth: Number(event.target.value),
                   });
                 }}
-                className="w-20 accent-violet-500 sm:w-24"
+                className="w-20 accent-action sm:w-24"
               />
-              <span className="min-w-11 font-semibold text-slate-100">
+              <span className="min-w-11 font-semibold text-ink">
                 {numberOr(shape?.strokeWidth, 3)}
                 px
               </span>
             </label>
 
-            <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+            <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
               Fill
               <select
                 value={shape?.fillType || "none"}
@@ -12051,7 +12051,7 @@ function FashionEditor() {
                     fillType: event.target.value,
                   });
                 }}
-                className="h-9 rounded-lg border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 outline-none focus:border-violet-500"
+                className="h-9 rounded-md border border-line bg-surface px-2 text-xs text-ink outline-none focus:border-line"
               >
                 <option value="none">None</option>
 
@@ -12060,7 +12060,7 @@ function FashionEditor() {
             </label>
 
             {activeShapeType === "polygon" && (
-              <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+              <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
                 Sides
                 <input
                   type="number"
@@ -12076,13 +12076,13 @@ function FashionEditor() {
                       ),
                     });
                   }}
-                  className="h-9 w-16 rounded-lg border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 outline-none focus:border-violet-500"
+                  className="h-9 w-16 rounded-md border border-line bg-surface px-2 text-xs text-ink outline-none focus:border-line"
                 />
               </label>
             )}
 
             {activeShapeType === "rectangle" && (
-              <label className="hidden shrink-0 items-center gap-2 text-xs text-slate-300 lg:flex">
+              <label className="hidden shrink-0 items-center gap-2 text-xs text-muted lg:flex">
                 Radius
                 <input
                   type="number"
@@ -12098,12 +12098,12 @@ function FashionEditor() {
                       ),
                     });
                   }}
-                  className="h-9 w-20 rounded-lg border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 outline-none focus:border-violet-500"
+                  className="h-9 w-20 rounded-md border border-line bg-surface px-2 text-xs text-ink outline-none focus:border-line"
                 />
               </label>
             )}
 
-            <span className="hidden shrink-0 rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-slate-400 xl:inline-flex">
+            <span className="hidden shrink-0 rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-muted xl:inline-flex">
               Shift: equal · Alt: center
             </span>
           </>
@@ -12111,7 +12111,7 @@ function FashionEditor() {
 
         {activeTool === EDITOR_TOOLS.LINE && (
           <>
-            <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+            <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
               Width
               <input
                 type="range"
@@ -12124,15 +12124,15 @@ function FashionEditor() {
                     strokeWidth: Number(event.target.value),
                   });
                 }}
-                className="w-24 accent-violet-500 sm:w-28"
+                className="w-24 accent-action sm:w-28"
               />
-              <span className="min-w-12 font-semibold text-slate-100">
+              <span className="min-w-12 font-semibold text-ink">
                 {numberOr(shape?.strokeWidth, 3)}
                 px
               </span>
             </label>
 
-            <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+            <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
               Style
               <select
                 value={activeLineStyle.id}
@@ -12146,7 +12146,7 @@ function FashionEditor() {
                     dash: [...selectedStyle.dash],
                   });
                 }}
-                className="h-9 rounded-lg border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 outline-none focus:border-violet-500"
+                className="h-9 rounded-md border border-line bg-surface px-2 text-xs text-ink outline-none focus:border-line"
               >
                 {LINE_STYLE_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
@@ -12156,7 +12156,7 @@ function FashionEditor() {
               </select>
             </label>
 
-            <label className="hidden shrink-0 items-center gap-2 text-xs text-slate-300 md:flex">
+            <label className="hidden shrink-0 items-center gap-2 text-xs text-muted md:flex">
               Opacity
               <input
                 type="range"
@@ -12169,14 +12169,14 @@ function FashionEditor() {
                     strokeOpacity: Number(event.target.value),
                   });
                 }}
-                className="w-24 accent-violet-500"
+                className="w-24 accent-action"
               />
-              <span className="min-w-10 font-semibold text-slate-100">
+              <span className="min-w-10 font-semibold text-ink">
                 {Math.round(numberOr(shape?.strokeOpacity, 1) * 100)}%
               </span>
             </label>
 
-            <label className="hidden shrink-0 items-center gap-2 text-xs text-slate-300 lg:flex">
+            <label className="hidden shrink-0 items-center gap-2 text-xs text-muted lg:flex">
               Cap
               <select
                 value={shape?.lineCap || "round"}
@@ -12188,7 +12188,7 @@ function FashionEditor() {
                       event.target.value === "round" ? "round" : "miter",
                   });
                 }}
-                className="h-9 rounded-lg border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 outline-none focus:border-violet-500"
+                className="h-9 rounded-md border border-line bg-surface px-2 text-xs text-ink outline-none focus:border-line"
               >
                 {LINE_CAP_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
@@ -12198,7 +12198,7 @@ function FashionEditor() {
               </select>
             </label>
 
-            <span className="hidden shrink-0 rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-slate-400 xl:inline-flex">
+            <span className="hidden shrink-0 rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-muted xl:inline-flex">
               Hold Shift to snap
             </span>
           </>
@@ -12206,7 +12206,7 @@ function FashionEditor() {
 
         {activeTool === EDITOR_TOOLS.FILL && (
           <>
-            <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+            <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
               Colour
               <input
                 type="color"
@@ -12214,11 +12214,11 @@ function FashionEditor() {
                 onChange={(event) => {
                   handleFillColourChange(event.target.value);
                 }}
-                className="h-9 w-12 cursor-pointer rounded-lg border border-slate-700 bg-slate-950 p-1"
+                className="h-9 w-12 cursor-pointer rounded-md border border-line bg-surface p-1"
               />
             </label>
 
-            <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+            <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
               Opacity
               <input
                 type="range"
@@ -12231,18 +12231,18 @@ function FashionEditor() {
                     fillOpacity: Number(event.target.value),
                   });
                 }}
-                className="w-24 accent-violet-500 sm:w-28"
+                className="w-24 accent-action sm:w-28"
               />
-              <span className="min-w-10 font-semibold text-slate-100">
+              <span className="min-w-10 font-semibold text-ink">
                 {Math.round(numberOr(shape?.fillOpacity, 1) * 100)}%
               </span>
             </label>
 
-            <span className="hidden shrink-0 rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-slate-400 md:inline-flex">
+            <span className="hidden shrink-0 rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-muted md:inline-flex">
               Click shape to fill
             </span>
 
-            <span className="hidden shrink-0 rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-slate-400 xl:inline-flex">
+            <span className="hidden shrink-0 rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-muted xl:inline-flex">
               Alt + click: remove
             </span>
           </>
@@ -12250,7 +12250,7 @@ function FashionEditor() {
 
         {activeTool === EDITOR_TOOLS.TEXT && (
           <>
-            <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+            <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
               Text
               <input
                 type="text"
@@ -12259,11 +12259,11 @@ function FashionEditor() {
                   handleTextContentChange(event.target.value);
                 }}
                 placeholder="Enter text"
-                className="h-9 w-40 rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-100 outline-none placeholder:text-slate-600 focus:border-violet-500 sm:w-52"
+                className="h-9 w-40 rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none placeholder:text-muted focus:border-line sm:w-52"
               />
             </label>
 
-            <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+            <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
               Font
               <select
                 value={textSettings.fontFamily}
@@ -12272,7 +12272,7 @@ function FashionEditor() {
                     fontFamily: event.target.value,
                   });
                 }}
-                className="h-9 max-w-40 rounded-lg border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 outline-none focus:border-violet-500"
+                className="h-9 max-w-40 rounded-md border border-line bg-surface px-2 text-xs text-ink outline-none focus:border-line"
               >
                 {TEXT_FONT_OPTIONS.map((fontFamily) => (
                   <option key={fontFamily} value={fontFamily}>
@@ -12282,7 +12282,7 @@ function FashionEditor() {
               </select>
             </label>
 
-            <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+            <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
               Size
               <input
                 type="number"
@@ -12298,7 +12298,7 @@ function FashionEditor() {
                     ),
                   });
                 }}
-                className="h-9 w-20 rounded-lg border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 outline-none focus:border-violet-500"
+                className="h-9 w-20 rounded-md border border-line bg-surface px-2 text-xs text-ink outline-none focus:border-line"
               />
             </label>
 
@@ -12311,10 +12311,10 @@ function FashionEditor() {
                 });
               }}
               className={[
-                "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-xs font-black transition",
+                "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border text-xs font-semibold transition",
                 textSettings.fontWeight >= 600
-                  ? "border-violet-500 bg-violet-500 text-white"
-                  : "border-slate-700 bg-slate-950 text-slate-300 hover:bg-slate-800",
+                  ? "border-line bg-action text-on-action"
+                  : "border-line bg-surface text-muted hover:bg-subtle",
               ].join(" ")}
               title="Bold"
             >
@@ -12331,17 +12331,17 @@ function FashionEditor() {
                 });
               }}
               className={[
-                "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-xs font-semibold italic transition",
+                "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border text-xs font-semibold italic transition",
                 textSettings.fontStyle === "italic"
-                  ? "border-violet-500 bg-violet-500 text-white"
-                  : "border-slate-700 bg-slate-950 text-slate-300 hover:bg-slate-800",
+                  ? "border-line bg-action text-on-action"
+                  : "border-line bg-surface text-muted hover:bg-subtle",
               ].join(" ")}
               title="Italic"
             >
               I
             </button>
 
-            <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+            <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
               Colour
               <input
                 type="color"
@@ -12349,11 +12349,11 @@ function FashionEditor() {
                 onChange={(event) => {
                   handleTextColourChange(event.target.value);
                 }}
-                className="h-9 w-12 cursor-pointer rounded-lg border border-slate-700 bg-slate-950 p-1"
+                className="h-9 w-12 cursor-pointer rounded-md border border-line bg-surface p-1"
               />
             </label>
 
-            <span className="hidden shrink-0 rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-slate-400 xl:inline-flex">
+            <span className="hidden shrink-0 rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-muted xl:inline-flex">
               Click or drag to place
             </span>
           </>
@@ -12372,12 +12372,12 @@ function FashionEditor() {
               onClick={() => {
                 handleChooseImage("place");
               }}
-              className="h-9 shrink-0 rounded-lg bg-violet-500 px-3 text-xs font-bold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-40"
+              className="h-9 shrink-0 rounded-md bg-action px-3 text-xs font-bold text-on-action transition hover:bg-action disabled:cursor-not-allowed disabled:opacity-40 hover:text-on-action"
             >
               {imageImporting ? "Loading…" : "Choose Image"}
             </button>
 
-            <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+            <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
               Opacity
               <input
                 type="range"
@@ -12390,18 +12390,18 @@ function FashionEditor() {
                     opacity: Number(event.target.value),
                   });
                 }}
-                className="w-24 accent-violet-500 sm:w-28"
+                className="w-24 accent-action sm:w-28"
               />
-              <span className="min-w-10 font-semibold text-slate-100">
+              <span className="min-w-10 font-semibold text-ink">
                 {Math.round(clamp(imageSettings.opacity, 0, 1) * 100)}%
               </span>
             </label>
 
-            <span className="hidden shrink-0 rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-slate-400 md:inline-flex">
+            <span className="hidden shrink-0 rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-muted md:inline-flex">
               Choose, then click to place
             </span>
 
-            <span className="hidden shrink-0 rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-slate-400 xl:inline-flex">
+            <span className="hidden shrink-0 rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-muted xl:inline-flex">
               PNG · JPG · WebP · SVG
             </span>
           </>
@@ -12415,7 +12415,7 @@ function FashionEditor() {
               onClick={() => {
                 handleChoosePattern("mask");
               }}
-              className="h-9 shrink-0 rounded-lg bg-violet-500 px-3 text-xs font-bold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-40"
+              className="h-9 shrink-0 rounded-md bg-action px-3 text-xs font-bold text-on-action transition hover:bg-action disabled:cursor-not-allowed disabled:opacity-40 hover:text-on-action"
             >
               {patternImporting ? "Loading…" : "Choose Fabric"}
             </button>
@@ -12430,12 +12430,12 @@ function FashionEditor() {
                   selectedShapeObjects.map((object) => object.id),
                 );
               }}
-              className="h-9 shrink-0 rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 text-xs font-semibold text-violet-200 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+              className="h-9 shrink-0 rounded-md border border-line bg-subtle px-3 text-xs font-semibold text-action hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40"
             >
               Apply Selected
             </button>
 
-            <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+            <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
               Repeat
               <select
                 value={resolvePatternRepeatMode(patternSettings)}
@@ -12448,7 +12448,7 @@ function FashionEditor() {
                     patternRepeat: repeat,
                   });
                 }}
-                className="h-9 rounded-lg border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 outline-none focus:border-violet-500"
+                className="h-9 rounded-md border border-line bg-surface px-2 text-xs text-ink outline-none focus:border-line"
               >
                 {PATTERN_REPEAT_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -12458,7 +12458,7 @@ function FashionEditor() {
               </select>
             </label>
 
-            <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+            <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
               Scale
               <input
                 type="range"
@@ -12475,14 +12475,14 @@ function FashionEditor() {
                     scaleY: scale,
                   });
                 }}
-                className="w-20 accent-violet-500 sm:w-24"
+                className="w-20 accent-action sm:w-24"
               />
-              <span className="min-w-10 font-semibold text-slate-100">
+              <span className="min-w-10 font-semibold text-ink">
                 {Math.round(clamp(patternSettings.scale, 0.02, 5) * 100)}%
               </span>
             </label>
 
-            <span className="hidden shrink-0 rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-slate-400 xl:inline-flex">
+            <span className="hidden shrink-0 rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-muted xl:inline-flex">
               Click shape · Alt-click removes
             </span>
           </>
@@ -12501,12 +12501,12 @@ function FashionEditor() {
               onClick={() => {
                 handleChoosePattern("place");
               }}
-              className="h-9 shrink-0 rounded-lg bg-violet-500 px-3 text-xs font-bold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-40"
+              className="h-9 shrink-0 rounded-md bg-action px-3 text-xs font-bold text-on-action transition hover:bg-action disabled:cursor-not-allowed disabled:opacity-40 hover:text-on-action"
             >
               {patternImporting ? "Loading…" : "Choose Pattern"}
             </button>
 
-            <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+            <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
               Repeat
               <select
                 value={resolvePatternRepeatMode(patternSettings)}
@@ -12518,7 +12518,7 @@ function FashionEditor() {
                     repeatMode: repeat,
                   });
                 }}
-                className="h-9 rounded-lg border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 outline-none focus:border-violet-500"
+                className="h-9 rounded-md border border-line bg-surface px-2 text-xs text-ink outline-none focus:border-line"
               >
                 {PATTERN_REPEAT_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -12528,7 +12528,7 @@ function FashionEditor() {
               </select>
             </label>
 
-            <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+            <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
               Scale
               <input
                 type="range"
@@ -12545,14 +12545,14 @@ function FashionEditor() {
                     scaleY: scale,
                   });
                 }}
-                className="w-20 accent-violet-500 sm:w-24"
+                className="w-20 accent-action sm:w-24"
               />
-              <span className="min-w-10 font-semibold text-slate-100">
+              <span className="min-w-10 font-semibold text-ink">
                 {Math.round(clamp(patternSettings.scale, 0.02, 5) * 100)}%
               </span>
             </label>
 
-            <label className="hidden shrink-0 items-center gap-2 text-xs text-slate-300 lg:flex">
+            <label className="hidden shrink-0 items-center gap-2 text-xs text-muted lg:flex">
               Opacity
               <input
                 type="range"
@@ -12565,18 +12565,18 @@ function FashionEditor() {
                     opacity: Number(event.target.value),
                   });
                 }}
-                className="w-20 accent-violet-500"
+                className="w-20 accent-action"
               />
             </label>
 
-            <span className="hidden shrink-0 rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-slate-400 xl:inline-flex">
+            <span className="hidden shrink-0 rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-muted xl:inline-flex">
               Drag to create pattern area
             </span>
           </>
         )}
 
         {activeTool === EDITOR_TOOLS.ERASER && (
-          <label className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
+          <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
             Size
             <input
               type="range"
@@ -12587,16 +12587,16 @@ function FashionEditor() {
               onChange={(event) => {
                 setEraserSize(Number(event.target.value));
               }}
-              className="w-28 accent-violet-500 sm:w-40"
+              className="w-28 accent-action sm:w-40"
             />
-            <span className="min-w-12 font-semibold text-slate-100">
+            <span className="min-w-12 font-semibold text-ink">
               {eraser.size}px
             </span>
           </label>
         )}
 
         {activeTool === EDITOR_TOOLS.SELECT && (
-          <span className="shrink-0 text-xs text-slate-400">
+          <span className="shrink-0 text-xs text-muted">
             {selectedObjectIds.length > 0
               ? `${selectedObjectIds.length} selected`
               : "Tap or drag to select"}
@@ -12604,7 +12604,7 @@ function FashionEditor() {
         )}
 
         {activeTool === EDITOR_TOOLS.PAN && (
-          <span className="shrink-0 text-xs text-slate-400">
+          <span className="shrink-0 text-xs text-muted">
             Drag to move canvas
           </span>
         )}
@@ -12627,7 +12627,7 @@ function FashionEditor() {
             −
           </HeaderButton>
 
-          <span className="min-w-11 text-center text-xs font-semibold text-slate-300">
+          <span className="min-w-11 text-center text-xs font-semibold text-muted">
             {zoomPercentage}%
           </span>
 
@@ -12651,7 +12651,7 @@ function FashionEditor() {
         {/* Tablet/Desktop toolbar */}
 
         {ui.leftPanelOpen !== false && (
-          <aside className="hidden w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto border-r border-slate-800 bg-slate-950 py-3 md:flex">
+          <aside className="hidden w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto border-r border-line bg-surface py-3 md:flex">
             {TOOL_DEFINITIONS.map((tool) => (
               <ToolButton
                 key={tool.id}
@@ -12661,7 +12661,7 @@ function FashionEditor() {
               />
             ))}
 
-            <div className="my-1 h-px w-10 bg-slate-800" />
+            <div className="my-1 h-px w-10 bg-subtle" />
 
             <div className="relative h-12 w-12">
               <button
@@ -12676,7 +12676,7 @@ function FashionEditor() {
                     setPanelDrawerOpen(true);
                   }
                 }}
-                className="absolute left-0 top-0 h-8 w-8 rounded-lg border-2 border-slate-600 shadow"
+                className="absolute left-0 top-0 h-8 w-8 rounded-md border-2 border-line"
                 style={{
                   background: colours.primary,
                 }}
@@ -12694,7 +12694,7 @@ function FashionEditor() {
                     setPanelDrawerOpen(true);
                   }
                 }}
-                className="absolute bottom-0 right-0 h-8 w-8 rounded-lg border-2 border-slate-600 shadow"
+                className="absolute bottom-0 right-0 h-8 w-8 rounded-md border-2 border-line"
                 style={{
                   background: colours.secondary,
                 }}
@@ -12704,7 +12704,7 @@ function FashionEditor() {
                 type="button"
                 onClick={swapColors}
                 title="Swap colours"
-                className="absolute bottom-0 left-0 text-[10px] font-bold text-slate-400 hover:text-white"
+                className="absolute bottom-0 left-0 text-[10px] font-bold text-muted hover:text-ink"
               >
                 ↔
               </button>
@@ -12714,15 +12714,15 @@ function FashionEditor() {
 
         {/* 2D / 3D workspace. Keep the 2D canvas mounted beneath 3D so
             cloud saves, artwork capture and existing tools remain intact. */}
-        <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-slate-800">
-          <div className="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-slate-700 bg-slate-950 px-3">
-            <span className="truncate text-[11px] font-semibold text-slate-300">
+        <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-subtle">
+          <div className="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-line bg-surface px-3">
+            <span className="truncate text-[11px] font-semibold text-muted">
               {editorViewMode === "3d"
                 ? "3D Garment Studio"
                 : "2D Design Canvas"}
             </span>
             <div
-              className="flex shrink-0 gap-1 rounded-lg border border-slate-700 bg-slate-900 p-0.5"
+              className="flex shrink-0 gap-1 rounded-md border border-line bg-surface p-0.5"
               role="group"
               aria-label="Fashion Editor viewing mode"
             >
@@ -12732,8 +12732,8 @@ function FashionEditor() {
                 onClick={() => setEditorViewMode("2d")}
                 className={`rounded-md px-3 py-1 text-xs font-semibold transition ${
                   editorViewMode === "2d"
-                    ? "bg-violet-600 text-white"
-                    : "text-slate-300 hover:bg-slate-800"
+                    ? "bg-action text-on-action"
+                    : "text-muted hover:bg-subtle"
                 }`}
               >
                 2D
@@ -12744,8 +12744,8 @@ function FashionEditor() {
                 onClick={() => setEditorViewMode("3d")}
                 className={`rounded-md px-3 py-1 text-xs font-semibold transition ${
                   editorViewMode === "3d"
-                    ? "bg-violet-600 text-white"
-                    : "text-slate-300 hover:bg-slate-800"
+                    ? "bg-action text-on-action"
+                    : "text-muted hover:bg-subtle"
                 }`}
               >
                 3D
@@ -12768,10 +12768,10 @@ function FashionEditor() {
             />
 
             {editorViewMode === "3d" && (
-              <div className="fixed inset-0 z-[100] h-dvh bg-slate-950 lg:absolute lg:z-20 lg:h-auto">
+              <div className="fixed inset-0 z-[100] h-dvh bg-surface lg:absolute lg:z-20 lg:h-auto">
                 <React.Suspense
                   fallback={
-                    <div className="flex h-full items-center justify-center text-xs text-slate-300">
+                    <div className="flex h-full items-center justify-center text-xs text-muted">
                       Preparing the 3D studio…
                     </div>
                   }
@@ -12805,7 +12805,7 @@ function FashionEditor() {
         {/* Desktop right panel */}
 
         {editorViewMode !== "3d" && isDesktopPanel && ui.rightPanelOpen !== false && (
-          <aside className="flex w-[320px] shrink-0 flex-col border-l border-slate-800 bg-slate-950">
+          <aside className="flex w-[320px] shrink-0 flex-col border-l border-line bg-surface">
             {rightPanelContent}
           </aside>
         )}
@@ -12813,7 +12813,7 @@ function FashionEditor() {
 
       {/* Mobile bottom toolbar */}
 
-      <nav className="shrink-0 border-t border-slate-800 bg-slate-950 pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav className="shrink-0 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
         <div className="flex h-[68px] items-center gap-2 overflow-x-auto overscroll-x-contain px-2">
           {TOOL_DEFINITIONS.map((tool) => (
             <ToolButton
@@ -12830,11 +12830,11 @@ function FashionEditor() {
             onClick={() => {
               setPanelDrawerOpen(true);
             }}
-            className="flex h-14 min-w-[58px] shrink-0 flex-col items-center justify-center rounded-xl border border-slate-700 bg-slate-900 px-2 text-slate-300"
+            className="flex h-9 min-w-[58px] shrink-0 flex-col items-center justify-center rounded-md border border-line bg-surface px-2 text-muted"
           >
-            <span className="text-sm font-black">☰</span>
+            <span className="text-sm font-semibold">☰</span>
 
-            <span className="mt-1 text-[9px] font-semibold uppercase tracking-wider">
+            <span className="mt-1 text-[11px] font-semibold uppercase tracking-wider">
               Panel
             </span>
           </button>
@@ -12843,28 +12843,28 @@ function FashionEditor() {
 
       {/* Status bar */}
 
-      <footer className="hidden h-7 shrink-0 items-center justify-between gap-4 overflow-hidden border-t border-slate-800 bg-slate-950 px-3 text-[10px] text-slate-500 sm:flex">
+      <footer className="hidden h-7 shrink-0 items-center justify-between gap-4 overflow-hidden border-t border-line bg-surface px-3 text-[10px] text-muted sm:flex">
         <div className="flex min-w-0 items-center gap-4">
           <span className="truncate">
             Tool:{" "}
-            <strong className="text-slate-300">
+            <strong className="text-muted">
               {activeToolDefinition?.label || activeTool}
             </strong>
           </span>
 
           <span>
-            Objects: <strong className="text-slate-300">{objectCount}</strong>
+            Objects: <strong className="text-muted">{objectCount}</strong>
           </span>
 
           <span className="hidden lg:inline">
             Layer:{" "}
-            <strong className="text-slate-300">
+            <strong className="text-muted">
               {activeLayer?.name || "None"}
             </strong>
           </span>
 
           <span
-            className={symmetry.enabled ? "text-violet-300" : "text-slate-600"}
+            className={symmetry.enabled ? "text-action" : "text-muted"}
           >
             Mirror:{" "}
             <strong>{symmetry.enabled ? symmetryModeLabel : "Off"}</strong>
@@ -12884,10 +12884,10 @@ function FashionEditor() {
           <span
             className={
               projectSaving
-                ? "text-violet-300"
+                ? "text-action"
                 : persistence.dirty
-                  ? "text-amber-400"
-                  : "text-emerald-400"
+                  ? "text-action"
+                  : "text-action"
             }
           >
             {cloudSaveLabel}
@@ -12911,7 +12911,7 @@ function FashionEditor() {
       {/* Creator Showcase share modal */}
 
       {showcaseShareOpen && (
-        <div className="fixed inset-0 z-[115] flex items-center justify-center bg-black/80 p-3 backdrop-blur-md sm:p-6">
+        <div className="fixed inset-0 z-[115] flex items-center justify-center bg-black/80 p-3 sm:p-4">
           <button
             type="button"
             aria-label="Close Share to Showcase"
@@ -12924,16 +12924,16 @@ function FashionEditor() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="showcase-share-title"
-            className="relative z-10 flex max-h-[94dvh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-amber-500/20 bg-slate-950 shadow-2xl shadow-black/60"
+            className="relative z-10 flex max-h-[94dvh] w-full max-w-3xl flex-col overflow-hidden rounded-md border border-line bg-surface"
           >
-            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-800 px-4 py-4 sm:px-5">
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-line px-4 py-4 sm:px-5">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-amber-300">
+                  <span className="rounded-md border border-line bg-subtle px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-action">
                     Showcase
                   </span>
 
-                  <span className="rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                  <span className="rounded-md border border-line bg-surface px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
                     {cloudProjectId
                       ? `Private project #${cloudProjectId}`
                       : "Cloud project created on share"}
@@ -12942,12 +12942,12 @@ function FashionEditor() {
 
                 <h2
                   id="showcase-share-title"
-                  className="mt-2 text-base font-bold text-white sm:text-lg"
+                  className="mt-2 text-base font-bold text-ink sm:text-lg"
                 >
                   Share to Creator Showcase
                 </h2>
 
-                <p className="mt-1 max-w-2xl text-[11px] leading-5 text-slate-400">
+                <p className="mt-1 max-w-2xl text-[11px] leading-5 text-muted">
                   Publish a Showcase representation of this Fashion Editor
                   project. The editable source stays private in your account.
                 </p>
@@ -12958,7 +12958,7 @@ function FashionEditor() {
                 disabled={showcaseSharing}
                 onClick={handleCloseShowcaseShare}
                 aria-label="Close Share to Showcase"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-lg text-slate-300 transition hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-line bg-surface text-lg text-muted transition hover:border-line hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
               >
                 ×
               </button>
@@ -12968,19 +12968,19 @@ function FashionEditor() {
               onSubmit={handleShareToShowcase}
               className="flex min-h-0 flex-1 flex-col"
             >
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
                 {showcaseShareError && (
                   <div
                     role="alert"
-                    className="mb-4 rounded-xl border border-red-800 bg-red-950/60 px-4 py-3 text-xs leading-5 text-red-200"
+                    className="mb-4 rounded-md border border-line bg-subtle px-4 py-3 text-xs leading-5 text-action"
                   >
                     {showcaseShareError}
                   </div>
                 )}
 
                 {showcaseMetadataError && (
-                  <div className="mb-4 flex flex-col gap-3 rounded-xl border border-red-800 bg-red-950/40 p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-xs leading-5 text-red-200">
+                  <div className="mb-4 flex flex-col gap-3 rounded-md border border-line bg-subtle p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs leading-5 text-action">
                       {showcaseMetadataError}
                     </p>
 
@@ -12990,7 +12990,7 @@ function FashionEditor() {
                       onClick={() => {
                         void loadShowcaseMetadata();
                       }}
-                      className="min-h-9 shrink-0 rounded-lg border border-red-700 bg-red-950 px-3 text-[10px] font-bold uppercase tracking-wide text-red-200 hover:bg-red-900/70 disabled:opacity-40"
+                      className="min-h-9 shrink-0 rounded-md border border-line bg-surface px-3 text-[10px] font-bold uppercase tracking-wide text-action hover:bg-subtle disabled:opacity-40"
                     >
                       Retry
                     </button>
@@ -12999,7 +12999,7 @@ function FashionEditor() {
 
                 <div className="grid gap-5 md:grid-cols-[220px_minmax(0,1fr)]">
                   <div className="space-y-4">
-                    <div className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-900">
+                    <div className="overflow-hidden rounded-md border border-line bg-surface">
                       <div className="flex aspect-[4/5] items-center justify-center bg-black/40 p-3">
                         {showcasePreviewDataUrl ? (
                           <img
@@ -13010,35 +13010,35 @@ function FashionEditor() {
                           />
                         ) : (
                           <div className="px-4 text-center">
-                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 text-lg font-black text-amber-300">
+                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-subtle text-lg font-semibold text-action">
                               FV
                             </div>
 
-                            <p className="mt-3 text-xs font-semibold text-slate-300">
+                            <p className="mt-3 text-xs font-semibold text-muted">
                               Preview prepared when sharing
                             </p>
                           </div>
                         )}
                       </div>
 
-                      <div className="border-t border-slate-800 px-3 py-3">
-                        <p className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-500">
+                      <div className="border-t border-line px-3 py-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted">
                           Fashion Editor Preview
                         </p>
 
-                        <p className="mt-1 text-[10px] leading-4 text-slate-400">
+                        <p className="mt-1 text-[10px] leading-4 text-muted">
                           {documentData.width} × {documentData.height}px ·{" "}
                           {objectCount} object{objectCount === 1 ? "" : "s"}
                         </p>
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-violet-500/25 bg-violet-500/10 p-3">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-violet-200">
+                    <div className="rounded-md border border-line bg-subtle p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-action">
                         Private editable source
                       </p>
 
-                      <p className="mt-2 text-[10px] leading-5 text-slate-400">
+                      <p className="mt-2 text-[10px] leading-5 text-muted">
                         The Showcase receives this preview and discovery
                         metadata. Your full Fashion Editor project_data stays in
                         the private cloud project.
@@ -13048,7 +13048,7 @@ function FashionEditor() {
 
                   <div className="space-y-4">
                     <label className="block">
-                      <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                      <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
                         Title
                       </span>
 
@@ -13063,17 +13063,17 @@ function FashionEditor() {
                           handleShowcaseFormChange("title", event.target.value);
                         }}
                         placeholder="e.g. Asymmetrical Silk Blazer"
-                        className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-amber-500 disabled:opacity-50"
+                        className="h-11 w-full rounded-md border border-line bg-surface px-3 text-sm text-ink outline-none placeholder:text-muted focus:border-line disabled:opacity-50"
                       />
                     </label>
 
                     <label className="block">
                       <div className="mb-2 flex items-center justify-between gap-3">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
                           Description
                         </span>
 
-                        <span className="font-mono text-[9px] text-slate-600">
+                        <span className="font-mono text-[11px] text-muted">
                           {showcaseShareForm.description.length}/
                           {SHOWCASE_MAX_DESCRIPTION_LENGTH}
                         </span>
@@ -13093,13 +13093,13 @@ function FashionEditor() {
                           );
                         }}
                         placeholder="Describe the silhouette, materials, inspiration, construction details, mood, or visual direction..."
-                        className="w-full resize-y rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm leading-6 text-slate-100 outline-none placeholder:text-slate-600 focus:border-amber-500 disabled:opacity-50"
+                        className="w-full resize-y rounded-md border border-line bg-surface px-3 py-2.5 text-sm leading-6 text-ink outline-none placeholder:text-muted focus:border-line disabled:opacity-50"
                       />
                     </label>
 
                     <div className="grid gap-3 sm:grid-cols-2">
                       <label className="block">
-                        <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                        <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
                           Creative Category
                         </span>
 
@@ -13116,7 +13116,7 @@ function FashionEditor() {
                               event.target.value,
                             );
                           }}
-                          className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-amber-500 disabled:opacity-50"
+                          className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line disabled:opacity-50"
                         >
                           <option value="">
                             {showcaseMetadataLoading
@@ -13133,7 +13133,7 @@ function FashionEditor() {
                       </label>
 
                       <label className="block">
-                        <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                        <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
                           Creative Format
                         </span>
 
@@ -13146,7 +13146,7 @@ function FashionEditor() {
                               event.target.value,
                             );
                           }}
-                          className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-amber-500 disabled:opacity-50"
+                          className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line disabled:opacity-50"
                         >
                           {SHOWCASE_FORMAT_OPTIONS.map((option) => (
                             <option key={option.value} value={option.value}>
@@ -13158,18 +13158,18 @@ function FashionEditor() {
                     </div>
 
                     {selectedShowcaseCategory?.description && (
-                      <p className="-mt-2 text-[9px] leading-4 text-slate-500">
+                      <p className="-mt-2 text-[11px] leading-4 text-muted">
                         {selectedShowcaseCategory.description}
                       </p>
                     )}
 
-                    <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-4">
+                    <div className="rounded-md border border-line bg-subtle p-4">
                       <div className="mb-3">
-                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-300">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-action">
                           Showcase Discovery
                         </p>
 
-                        <p className="mt-1 text-[10px] leading-4 text-slate-500">
+                        <p className="mt-1 text-[10px] leading-4 text-muted">
                           Choose one style and one garment. Occasions are
                           optional and may include more than one.
                         </p>
@@ -13177,7 +13177,7 @@ function FashionEditor() {
 
                       <div className="grid gap-3 sm:grid-cols-2">
                         <label className="block">
-                          <span className="mb-2 block text-[10px] font-semibold text-slate-400">
+                          <span className="mb-2 block text-[10px] font-semibold text-muted">
                             Style
                           </span>
 
@@ -13194,7 +13194,7 @@ function FashionEditor() {
                                 event.target.value,
                               );
                             }}
-                            className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-amber-500 disabled:opacity-50"
+                            className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line disabled:opacity-50"
                           >
                             <option value="">
                               {showcaseMetadataLoading
@@ -13211,7 +13211,7 @@ function FashionEditor() {
                         </label>
 
                         <label className="block">
-                          <span className="mb-2 block text-[10px] font-semibold text-slate-400">
+                          <span className="mb-2 block text-[10px] font-semibold text-muted">
                             Garment
                           </span>
 
@@ -13228,7 +13228,7 @@ function FashionEditor() {
                                 event.target.value,
                               );
                             }}
-                            className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-xs text-slate-200 outline-none focus:border-amber-500 disabled:opacity-50"
+                            className="h-11 w-full rounded-md border border-line bg-surface px-3 text-xs text-ink outline-none focus:border-line disabled:opacity-50"
                           >
                             <option value="">
                               {showcaseMetadataLoading
@@ -13248,7 +13248,7 @@ function FashionEditor() {
 
                       {showcaseDiscovery.occasions.length > 0 && (
                         <div className="mt-4">
-                          <span className="mb-2 block text-[10px] font-semibold text-slate-400">
+                          <span className="mb-2 block text-[10px] font-semibold text-muted">
                             Occasions · Optional
                           </span>
 
@@ -13269,10 +13269,10 @@ function FashionEditor() {
                                     handleToggleShowcaseOccasion(occasion.id);
                                   }}
                                   className={[
-                                    "rounded-full border px-3 py-2 text-[10px] font-semibold transition disabled:opacity-40",
+                                    "rounded-md border px-3 py-2 text-[10px] font-semibold transition disabled:opacity-40",
                                     selected
-                                      ? "border-amber-500 bg-amber-500/15 text-amber-200"
-                                      : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500 hover:text-white",
+                                      ? "border-line bg-subtle text-action"
+                                      : "border-line bg-surface text-muted hover:border-line hover:text-ink",
                                   ].join(" ")}
                                 >
                                   {occasion.emoji ? `${occasion.emoji} ` : ""}
@@ -13287,16 +13287,16 @@ function FashionEditor() {
 
                     <div>
                       <div className="mb-2 flex items-center justify-between gap-3">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
                           Tags · Optional
                         </span>
 
-                        <span className="text-[9px] text-slate-600">
+                        <span className="text-[11px] text-muted">
                           {showcaseTags.length}/{SHOWCASE_MAX_TAGS}
                         </span>
                       </div>
 
-                      <div className="flex min-h-11 items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-2 focus-within:border-amber-500">
+                      <div className="flex min-h-11 items-center gap-2 rounded-md border border-line bg-surface px-2 focus-within:border-line">
                         <input
                           type="text"
                           maxLength={SHOWCASE_MAX_TAG_LENGTH}
@@ -13311,7 +13311,7 @@ function FashionEditor() {
                           }}
                           onKeyDown={handleShowcaseTagKeyDown}
                           placeholder="silk, layered, modern…"
-                          className="h-10 min-w-0 flex-1 bg-transparent px-1 text-xs text-slate-200 outline-none placeholder:text-slate-600 disabled:opacity-50"
+                          className="h-10 min-w-0 flex-1 bg-transparent px-1 text-xs text-ink outline-none placeholder:text-muted disabled:opacity-50"
                         />
 
                         <button
@@ -13322,13 +13322,13 @@ function FashionEditor() {
                             !normalizeShowcaseTag(showcaseTagInput)
                           }
                           onClick={handleAddShowcaseTag}
-                          className="h-8 rounded-md bg-slate-800 px-3 text-[10px] font-bold text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-30"
+                          className="h-8 rounded-md bg-subtle px-3 text-[10px] font-bold text-muted hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-30"
                         >
                           Add
                         </button>
                       </div>
 
-                      <p className="mt-1.5 text-[9px] text-slate-600">
+                      <p className="mt-1.5 text-[11px] text-muted">
                         Press Enter or comma to add a tag.
                       </p>
 
@@ -13337,7 +13337,7 @@ function FashionEditor() {
                           {showcaseTags.map((tag) => (
                             <span
                               key={tag}
-                              className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900 py-1 pl-2.5 pr-1 text-[9px] text-slate-400"
+                              className="inline-flex items-center gap-1 rounded-md border border-line bg-surface py-1 pl-2.5 pr-1 text-[11px] text-muted"
                             >
                               #{tag}
                               <button
@@ -13348,7 +13348,7 @@ function FashionEditor() {
                                     current.filter((item) => item !== tag),
                                   );
                                 }}
-                                className="flex h-5 w-5 items-center justify-center rounded-full text-slate-500 hover:bg-slate-800 hover:text-white disabled:opacity-40"
+                                className="flex h-5 w-5 items-center justify-center rounded-md text-muted hover:bg-subtle hover:text-ink disabled:opacity-40"
                                 aria-label={`Remove ${tag} tag`}
                               >
                                 ×
@@ -13359,7 +13359,7 @@ function FashionEditor() {
                       )}
                     </div>
 
-                    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-violet-500/25 bg-violet-500/10 p-4">
+                    <label className="flex cursor-pointer items-start gap-3 rounded-md border border-line bg-subtle p-4">
                       <input
                         type="checkbox"
                         checked={showcaseShareForm.allow_remix}
@@ -13370,15 +13370,15 @@ function FashionEditor() {
                             event.target.checked,
                           );
                         }}
-                        className="mt-0.5 h-4 w-4 shrink-0 accent-violet-500"
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-action"
                       />
 
                       <span className="min-w-0">
-                        <span className="block text-xs font-semibold text-violet-100">
+                        <span className="block text-xs font-semibold text-action">
                           Allow Remix
                         </span>
 
-                        <span className="mt-1 block text-[10px] leading-5 text-slate-400">
+                        <span className="mt-1 block text-[10px] leading-5 text-muted">
                           Other Creators may make their own private editable
                           copy from the Showcase. Your original project is never
                           changed.
@@ -13389,17 +13389,17 @@ function FashionEditor() {
                 </div>
               </div>
 
-              <div className="shrink-0 border-t border-slate-800 bg-slate-950/95 px-4 py-4 sm:px-5">
+              <div className="shrink-0 border-t border-line bg-subtle px-4 py-4 sm:px-5">
                 {showcaseSharing && (
                   <div className="mb-3">
-                    <div className="mb-1.5 flex items-center justify-between gap-3 text-[9px] font-bold uppercase tracking-[0.14em] text-slate-500">
+                    <div className="mb-1.5 flex items-center justify-between gap-3 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
                       <span>Publishing to Showcase</span>
                       <span>{showcaseUploadProgress}%</span>
                     </div>
 
-                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-subtle">
                       <div
-                        className="h-full rounded-full bg-amber-400 transition-all"
+                        className="h-full rounded-full bg-action transition-all text-on-action"
                         style={{
                           width: `${showcaseUploadProgress}%`,
                         }}
@@ -13409,7 +13409,7 @@ function FashionEditor() {
                 )}
 
                 <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-[9px] leading-4 text-slate-500">
+                  <p className="text-[11px] leading-4 text-muted">
                     Sharing saves the latest editor state first. You stay in
                     Fashion Editor after publishing.
                   </p>
@@ -13419,7 +13419,7 @@ function FashionEditor() {
                       type="button"
                       disabled={showcaseSharing}
                       onClick={handleCloseShowcaseShare}
-                      className="min-h-10 rounded-lg border border-slate-700 bg-slate-900 px-4 text-xs font-semibold text-slate-300 hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                      className="min-h-9 rounded-md border border-line bg-surface px-4 text-xs font-semibold text-muted hover:border-line hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Cancel
                     </button>
@@ -13431,7 +13431,7 @@ function FashionEditor() {
                         showcaseMetadataLoading ||
                         !showcaseMetadataReady
                       }
-                      className="min-h-10 rounded-lg bg-amber-400 px-5 text-xs font-black text-slate-950 shadow-lg shadow-amber-950/30 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500 disabled:shadow-none"
+                      className="min-h-9 rounded-md bg-action px-5 text-xs font-semibold text-on-action transition hover:bg-action disabled:cursor-not-allowed disabled:bg-subtle disabled:text-muted hover:text-on-action"
                     >
                       {showcaseSharing
                         ? showcaseUploadProgress > 0
@@ -13452,7 +13452,7 @@ function FashionEditor() {
       {/* AI realistic fashion preview */}
 
       {aiFashionPreviewOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/75 p-3 backdrop-blur-md sm:p-6">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/75 p-3 sm:p-4">
           <button
             type="button"
             aria-label="Close AI fashion preview"
@@ -13466,21 +13466,21 @@ function FashionEditor() {
             role="dialog"
             aria-modal="true"
             aria-label="AI realistic fashion preview"
-            className="relative z-10 flex max-h-[92dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 shadow-2xl"
+            className="relative z-10 flex max-h-[92dvh] w-full max-w-4xl flex-col overflow-hidden rounded-md border border-line bg-surface"
           >
-            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-800 px-4 py-3 sm:px-5">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="rounded-full border border-violet-700/70 bg-violet-950/70 px-2 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-violet-300">
+                  <span className="rounded-md border border-line bg-subtle px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-action">
                     AI
                   </span>
 
-                  <h2 className="truncate text-sm font-bold text-white sm:text-base">
+                  <h2 className="truncate text-sm font-bold text-ink sm:text-base">
                     Realistic Fashion Preview
                   </h2>
                 </div>
 
-                <p className="mt-1 text-[11px] text-slate-400">
+                <p className="mt-1 text-[11px] text-muted">
                   Uses the selected clothing template as a clean garment
                   reference when available, otherwise uses the current canvas.
                 </p>
@@ -13491,23 +13491,23 @@ function FashionEditor() {
                 onClick={() => {
                   setAiFashionPreviewOpen(false);
                 }}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-lg text-slate-300 hover:border-slate-600 hover:text-white"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-line bg-surface text-lg text-muted hover:border-line hover:text-ink"
                 aria-label="Close AI preview"
               >
                 ×
               </button>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
               {aiFashionGenerating ? (
-                <div className="flex min-h-[420px] flex-col items-center justify-center rounded-2xl border border-violet-900/60 bg-violet-950/20 p-8 text-center">
-                  <span className="h-12 w-12 animate-spin rounded-full border-2 border-slate-700 border-t-violet-400" />
+                <div className="flex min-h-[420px] flex-col items-center justify-center rounded-md border border-line bg-subtle p-4 text-center">
+                  <span className="h-12 w-12 animate-spin rounded-full border-2 border-line border-t-action" />
 
-                  <p className="mt-5 text-base font-bold text-white">
+                  <p className="mt-5 text-base font-bold text-ink">
                     Generating realistic fashion preview…
                   </p>
 
-                  <p className="mt-2 max-w-lg text-xs leading-5 text-slate-400">
+                  <p className="mt-2 max-w-lg text-xs leading-5 text-muted">
                     {selectedClothingTemplate
                       ? "The clean front + back garment board is being sent through the DesignByYou backend as the strict AI reference."
                       : "Your clean canvas capture is being sent through the DesignByYou backend as the AI reference."}{" "}
@@ -13516,7 +13516,7 @@ function FashionEditor() {
                 </div>
               ) : aiFashionResult?.imageUrl ? (
                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_230px]">
-                  <div className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-900">
+                  <div className="overflow-hidden rounded-md border border-line bg-surface">
                     <img
                       src={aiFashionResult.imageUrl}
                       alt="AI-generated realistic fashion preview"
@@ -13525,12 +13525,12 @@ function FashionEditor() {
                   </div>
 
                   <div className="flex flex-col gap-3">
-                    <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
+                    <div className="rounded-md border border-line bg-surface p-4">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">
                         Generated from
                       </p>
 
-                      <p className="mt-2 text-sm font-semibold text-white">
+                      <p className="mt-2 text-sm font-semibold text-ink">
                         {aiFashionResult.garmentType ||
                           selectedClothingTemplate?.label ||
                           "Fashion design"}
@@ -13538,8 +13538,8 @@ function FashionEditor() {
 
                       <dl className="mt-3 space-y-2 text-xs">
                         <div className="flex items-center justify-between gap-3">
-                          <dt className="text-slate-500">View</dt>
-                          <dd className="text-right font-semibold text-slate-300">
+                          <dt className="text-muted">View</dt>
+                          <dd className="text-right font-semibold text-muted">
                             {aiFashionResult.view === "front-back"
                               ? "Front + Back"
                               : aiFashionResult.view === "back"
@@ -13549,8 +13549,8 @@ function FashionEditor() {
                         </div>
 
                         <div className="flex items-center justify-between gap-3">
-                          <dt className="text-slate-500">Reference</dt>
-                          <dd className="text-right font-semibold text-slate-300">
+                          <dt className="text-muted">Reference</dt>
+                          <dd className="text-right font-semibold text-muted">
                             {aiFashionResult.inputMode === "clean-garment"
                               ? "Clean garment board"
                               : "Canvas capture"}
@@ -13559,8 +13559,8 @@ function FashionEditor() {
 
                         {aiFashionResult.width && aiFashionResult.height ? (
                           <div className="flex items-center justify-between gap-3">
-                            <dt className="text-slate-500">Output</dt>
-                            <dd className="text-right font-semibold text-slate-300">
+                            <dt className="text-muted">Output</dt>
+                            <dd className="text-right font-semibold text-muted">
                               {aiFashionResult.width} × {aiFashionResult.height}
                             </dd>
                           </div>
@@ -13571,7 +13571,7 @@ function FashionEditor() {
                     <button
                       type="button"
                       onClick={handleOpenAiFashionImage}
-                      className="flex min-h-11 items-center justify-center rounded-xl bg-violet-600 px-4 text-sm font-bold text-white shadow-lg shadow-violet-950/40 hover:bg-violet-500"
+                      className="flex min-h-9 items-center justify-center rounded-md bg-action px-4 text-sm font-bold text-on-action hover:bg-action hover:text-on-action"
                     >
                       Open Full Image
                     </button>
@@ -13582,7 +13582,7 @@ function FashionEditor() {
                       onClick={() => {
                         void handleSaveAiFashionImage();
                       }}
-                      className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-600/60 bg-emerald-500/10 px-4 text-sm font-bold text-emerald-200 transition hover:border-emerald-500 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex min-h-9 items-center justify-center rounded-md border border-line bg-subtle px-4 text-sm font-bold text-action transition hover:border-line hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {aiFashionSaving ? "Saving Image…" : "Save Image"}
                     </button>
@@ -13590,35 +13590,35 @@ function FashionEditor() {
                     <button
                       type="button"
                       onClick={handleGenerateAiFashionPreview}
-                      className="flex min-h-11 items-center justify-center rounded-xl border border-slate-700 bg-slate-900 px-4 text-sm font-semibold text-slate-200 hover:border-violet-700 hover:text-white"
+                      className="flex min-h-9 items-center justify-center rounded-md border border-line bg-surface px-4 text-sm font-semibold text-ink hover:border-line hover:text-ink"
                     >
                       Generate Again
                     </button>
 
-                    <p className="rounded-xl border border-amber-900/50 bg-amber-950/20 p-3 text-[10px] leading-4 text-amber-200/80">
+                    <p className="rounded-md border border-line bg-subtle p-3 text-[10px] leading-4 text-muted">
                       Generate Again creates another paid AI generation. The
                       current editor design is not modified.
                     </p>
                   </div>
                 </div>
               ) : (
-                <div className="flex min-h-[360px] flex-col items-center justify-center rounded-2xl border border-slate-800 bg-slate-900/60 p-8 text-center">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-950 text-xl font-black text-violet-300">
+                <div className="flex min-h-[360px] flex-col items-center justify-center rounded-md border border-line bg-subtle p-4 text-center">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-md bg-surface text-xl font-semibold text-action">
                     AI
                   </div>
 
-                  <p className="mt-4 text-base font-bold text-white">
+                  <p className="mt-4 text-base font-bold text-ink">
                     No AI preview yet
                   </p>
 
-                  <p className="mt-2 max-w-md text-xs leading-5 text-slate-400">
+                  <p className="mt-2 max-w-md text-xs leading-5 text-muted">
                     Generate a realistic product-style image from the sketch,
                     drawing, image, graphics or clothing template currently on
                     the canvas.
                   </p>
 
                   {aiFashionError ? (
-                    <p className="mt-4 max-w-lg rounded-xl border border-red-900 bg-red-950/50 px-4 py-3 text-xs text-red-200">
+                    <p className="mt-4 max-w-lg rounded-md border border-line bg-subtle px-4 py-3 text-xs text-action">
                       {aiFashionError}
                     </p>
                   ) : null}
@@ -13626,7 +13626,7 @@ function FashionEditor() {
                   <button
                     type="button"
                     onClick={handleGenerateAiFashionPreview}
-                    className="mt-5 min-h-11 rounded-xl bg-violet-600 px-5 text-sm font-bold text-white hover:bg-violet-500"
+                    className="mt-5 min-h-9 rounded-md bg-action px-5 text-sm font-bold text-on-action hover:bg-action hover:text-on-action"
                   >
                     Generate AI Preview
                   </button>
@@ -13634,7 +13634,7 @@ function FashionEditor() {
               )}
 
               {!aiFashionGenerating && aiFashionError && aiFashionResult ? (
-                <p className="mt-4 rounded-xl border border-red-900 bg-red-950/40 px-4 py-3 text-xs text-red-200">
+                <p className="mt-4 rounded-md border border-line bg-subtle px-4 py-3 text-xs text-action">
                   {aiFashionError}
                 </p>
               ) : null}
@@ -13653,14 +13653,14 @@ function FashionEditor() {
             onClick={() => {
               setPanelDrawerOpen(false);
             }}
-            className="absolute inset-0 h-full w-full bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 h-full w-full bg-black/60"
           />
 
           <aside
             role="dialog"
             aria-modal="true"
             aria-label="Editor layers and properties"
-            className="absolute inset-y-0 right-0 flex w-[min(90vw,380px)] flex-col border-l border-slate-700 bg-slate-950 shadow-2xl"
+            className="absolute inset-y-0 right-0 flex w-[min(90vw,380px)] flex-col border-l border-line bg-surface"
           >
             {rightPanelContent}
           </aside>
@@ -13684,10 +13684,10 @@ function FashionEditor() {
       {toast && (
         <div
           className={[
-            "fixed bottom-24 right-3 z-[100] max-w-[calc(100vw-24px)] rounded-xl border px-4 py-3 text-sm font-semibold shadow-2xl sm:bottom-10 sm:right-5 sm:max-w-sm",
+            "fixed bottom-24 right-3 z-[100] max-w-[calc(100vw-24px)] rounded-md border px-4 py-3 text-sm font-semibold sm:bottom-10 sm:right-5 sm:max-w-sm",
             toast.type === "error"
-              ? "border-red-800 bg-red-950 text-red-200"
-              : "border-emerald-800 bg-emerald-950 text-emerald-200",
+              ? "border-line bg-surface text-action"
+              : "border-line bg-surface text-action",
           ].join(" ")}
         >
           {toast.message}
@@ -13702,7 +13702,7 @@ function FashionEditor() {
           onClick={() => {
             setEditorError(null);
           }}
-          className="fixed left-3 right-3 top-20 z-[100] rounded-xl border border-red-800 bg-red-950 px-4 py-3 text-left text-xs text-red-200 shadow-2xl sm:left-1/2 sm:right-auto sm:max-w-lg sm:-translate-x-1/2"
+          className="fixed left-3 right-3 top-20 z-[100] rounded-md border border-line bg-surface px-4 py-3 text-left text-xs text-action sm:left-1/2 sm:right-auto sm:max-w-lg sm:-translate-x-1/2"
         >
           <strong className="block">Editor error</strong>
 

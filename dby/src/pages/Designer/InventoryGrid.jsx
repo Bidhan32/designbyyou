@@ -368,15 +368,7 @@ function InventoryImage({ src, alt, className = "" }) {
     return (
       <div
         className={`
-          flex
-          h-full
-          w-full
-          items-center
-          justify-center
-          bg-slate-100
-          text-slate-300
-          dark:bg-white/[0.035]
-          dark:text-white/15
+          flex h-full w-full items-center justify-center bg-subtle text-muted
           ${className}
         `}
       >
@@ -405,67 +397,37 @@ function InventorySkeleton() {
   return (
     <div
       className="
-        overflow-hidden
-        rounded-2xl
-        border
-        border-slate-200
-        bg-white
-        shadow-sm
-        dark:border-white/10
-        dark:bg-[#101010]
+        overflow-hidden rounded-md border border-line bg-surface
       "
     >
       <div
         className="
-          aspect-[4/3]
-          animate-pulse
-          bg-slate-200
-          dark:bg-white/10
+          aspect-[4/3] animate-pulse bg-subtle
         "
       />
 
-      <div className="space-y-4 p-5">
+      <div className="space-y-4 p-4">
         <div
           className="
-            h-3
-            w-24
-            animate-pulse
-            rounded-full
-            bg-slate-200
-            dark:bg-white/10
+            h-3 w-24 animate-pulse rounded-full bg-subtle
           "
         />
 
         <div
           className="
-            h-5
-            w-4/5
-            animate-pulse
-            rounded-full
-            bg-slate-200
-            dark:bg-white/10
+            h-5 w-4/5 animate-pulse rounded-full bg-subtle
           "
         />
 
         <div
           className="
-            h-3
-            w-full
-            animate-pulse
-            rounded-full
-            bg-slate-200
-            dark:bg-white/10
+            h-3 w-full animate-pulse rounded-full bg-subtle
           "
         />
 
         <div
           className="
-            h-10
-            w-full
-            animate-pulse
-            rounded-xl
-            bg-slate-200
-            dark:bg-white/10
+            h-10 w-full animate-pulse rounded-md bg-subtle
           "
         />
       </div>
@@ -482,23 +444,7 @@ function SourceBadge({ item }) {
     return (
       <span
         className="
-          inline-flex
-          items-center
-          gap-1.5
-          rounded-full
-          border
-          border-violet-200
-          bg-violet-50
-          px-2.5
-          py-1
-          text-[8px]
-          font-black
-          uppercase
-          tracking-[0.14em]
-          text-violet-700
-          dark:border-violet-400/20
-          dark:bg-violet-400/10
-          dark:text-violet-200
+          inline-flex items-center gap-1.5 rounded-md border border-line bg-canvas px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-action dark:bg-subtle
         "
       >
         {item.isRemix ? <GitFork size={10} /> : <Layers3 size={10} />}
@@ -511,23 +457,7 @@ function SourceBadge({ item }) {
   return (
     <span
       className="
-        inline-flex
-        items-center
-        gap-1.5
-        rounded-full
-        border
-        border-indigo-200
-        bg-indigo-50
-        px-2.5
-        py-1
-        text-[8px]
-        font-black
-        uppercase
-        tracking-[0.14em]
-        text-indigo-700
-        dark:border-indigo-400/20
-        dark:bg-indigo-400/10
-        dark:text-indigo-200
+        inline-flex items-center gap-1.5 rounded-md border border-line bg-canvas px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-action dark:bg-subtle
       "
     >
       <FileImage size={10} />
@@ -749,50 +679,25 @@ const InventoryGrid = () => {
   return (
     <div
       className="
-        selection:bg-indigo-600
-        selection:text-white
-        w-full
-        space-y-6
+        selection:bg-action selection:text-on-action w-full space-y-6
       "
     >
       {/* Header */}
 
       <section
         className="
-          overflow-hidden
-          rounded-2xl
-          border
-          border-slate-200
-          bg-white
-          shadow-sm
-          dark:border-white/10
-          dark:bg-[#0B0B0B]
+          overflow-hidden rounded-md border border-line bg-surface
         "
       >
         <div
           className="
-            flex
-            flex-col
-            gap-5
-            p-5
-            sm:p-6
-            lg:flex-row
-            lg:items-center
-            lg:justify-between
+            flex flex-col gap-5 p-4 lg:flex-row lg:items-center lg:justify-between
           "
         >
           <div>
             <div
               className="
-                flex
-                items-center
-                gap-2
-                text-[9px]
-                font-black
-                uppercase
-                tracking-[0.24em]
-                text-indigo-600
-                dark:text-indigo-300
+                flex items-center gap-2 text-[11px] font-semibold uppercase tracking-normal text-action
               "
             >
               <Sparkles size={13} />
@@ -801,13 +706,7 @@ const InventoryGrid = () => {
 
             <h1
               className="
-                mt-2
-                text-xl
-                font-bold
-                tracking-tight
-                text-slate-900
-                dark:text-white
-                sm:text-2xl
+                mt-2 text-xl font-bold tracking-tight text-ink sm:text-2xl
               "
             >
               Portfolio Catalog Inventory
@@ -815,10 +714,7 @@ const InventoryGrid = () => {
 
             <p
               className="
-                mt-1
-                text-sm
-                text-slate-500
-                dark:text-white/40
+                mt-1 text-sm text-muted
               "
             >
               Manage your uploaded designer assets and published showcase
@@ -828,32 +724,14 @@ const InventoryGrid = () => {
 
           <div
             className="
-              flex
-              flex-col
-              gap-2
-              sm:flex-row
+              flex flex-col gap-2 sm:flex-row
             "
           >
             <button
               type="button"
               onClick={() => navigate("/designer/upload")}
               className="
-                inline-flex
-                h-11
-                items-center
-                justify-center
-                gap-2
-                rounded-xl
-                bg-indigo-600
-                px-4
-                text-[9px]
-                font-black
-                uppercase
-                tracking-[0.16em]
-                text-white
-                shadow-sm
-                transition
-                hover:bg-indigo-700
+                inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-on-action transition hover:bg-action hover:text-on-action
               "
             >
               <UploadCloud size={14} />
@@ -866,12 +744,7 @@ const InventoryGrid = () => {
 
         <div
           className="
-            grid
-            grid-cols-2
-            border-t
-            border-slate-100
-            dark:border-white/5
-            sm:grid-cols-4
+            grid grid-cols-2 border-t border-line sm:grid-cols-4
           "
         >
           {[
@@ -899,22 +772,17 @@ const InventoryGrid = () => {
             <div
               key={statistic.label}
               className={`
-                  px-4
-                  py-4
-                  text-center
+                  px-4 py-4 text-center
                   ${
                     index > 0
-                      ? "border-l border-slate-100 dark:border-white/5"
+                      ? "border-l border-line"
                       : ""
                   }
                 `}
             >
               <p
                 className="
-                    text-xl
-                    font-bold
-                    text-slate-900
-                    dark:text-white
+                    text-xl font-bold text-ink
                   "
               >
                 {statistic.value}
@@ -922,13 +790,7 @@ const InventoryGrid = () => {
 
               <p
                 className="
-                    mt-1
-                    text-[8px]
-                    font-black
-                    uppercase
-                    tracking-[0.14em]
-                    text-slate-400
-                    dark:text-white/30
+                    mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted
                   "
               >
                 {statistic.label}
@@ -942,33 +804,17 @@ const InventoryGrid = () => {
 
       <section
         className="
-          rounded-2xl
-          border
-          border-slate-200
-          bg-white
-          p-4
-          shadow-sm
-          dark:border-white/10
-          dark:bg-[#0B0B0B]
-          sm:p-5
+          rounded-md border border-line bg-surface p-4
         "
       >
         <div
           className="
-            flex
-            flex-col
-            gap-3
-            xl:flex-row
-            xl:items-center
-            xl:justify-between
+            flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between
           "
         >
           <label
             className="
-              relative
-              block
-              w-full
-              xl:max-w-md
+              relative block w-full xl:max-w-md
             "
           >
             <span className="sr-only">Search inventory</span>
@@ -976,12 +822,7 @@ const InventoryGrid = () => {
             <Search
               size={16}
               className="
-                pointer-events-none
-                absolute
-                left-4
-                top-1/2
-                -translate-y-1/2
-                text-slate-400
+                pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted
               "
             />
 
@@ -991,26 +832,7 @@ const InventoryGrid = () => {
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search title, SKU, style, or tag"
               className="
-                h-11
-                w-full
-                rounded-xl
-                border
-                border-slate-200
-                bg-slate-50
-                pl-11
-                pr-10
-                text-sm
-                text-slate-900
-                outline-none
-                transition
-                placeholder:text-slate-400
-                focus:border-indigo-500
-                focus:ring-4
-                focus:ring-indigo-500/10
-                dark:border-white/10
-                dark:bg-white/[0.035]
-                dark:text-white
-                dark:placeholder:text-white/25
+                h-11 w-full rounded-md border border-line bg-canvas pl-11 pr-10 text-sm text-ink outline-none transition placeholder:text-muted focus:border-line focus:ring-4 focus:ring-action dark:bg-subtle
               "
             />
 
@@ -1020,21 +842,7 @@ const InventoryGrid = () => {
                 onClick={() => setSearchQuery("")}
                 aria-label="Clear inventory search"
                 className="
-                  absolute
-                  right-3
-                  top-1/2
-                  flex
-                  h-7
-                  w-7
-                  -translate-y-1/2
-                  items-center
-                  justify-center
-                  rounded-full
-                  text-slate-400
-                  hover:bg-slate-200
-                  hover:text-slate-700
-                  dark:hover:bg-white/10
-                  dark:hover:text-white
+                  absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-muted hover:bg-subtle hover:text-ink
                 "
               >
                 <X size={14} />
@@ -1044,10 +852,7 @@ const InventoryGrid = () => {
 
           <div
             className="
-              flex
-              flex-col
-              gap-2
-              sm:flex-row
+              flex flex-col gap-2 sm:flex-row
             "
           >
             <select
@@ -1055,22 +860,7 @@ const InventoryGrid = () => {
               onChange={(event) => setSourceFilter(event.target.value)}
               aria-label="Filter inventory by source"
               className="
-                h-11
-                rounded-xl
-                border
-                border-slate-200
-                bg-slate-50
-                px-4
-                text-[9px]
-                font-black
-                uppercase
-                tracking-[0.14em]
-                text-slate-600
-                outline-none
-                focus:border-indigo-500
-                dark:border-white/10
-                dark:bg-white/[0.035]
-                dark:text-white/55
+                h-11 rounded-md border border-line bg-canvas px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted outline-none focus:border-line dark:bg-subtle
               "
             >
               {SOURCE_FILTERS.map((option) => (
@@ -1085,22 +875,7 @@ const InventoryGrid = () => {
               onChange={(event) => setStatusFilter(event.target.value)}
               aria-label="Filter inventory by status"
               className="
-                h-11
-                rounded-xl
-                border
-                border-slate-200
-                bg-slate-50
-                px-4
-                text-[9px]
-                font-black
-                uppercase
-                tracking-[0.14em]
-                text-slate-600
-                outline-none
-                focus:border-indigo-500
-                dark:border-white/10
-                dark:bg-white/[0.035]
-                dark:text-white/55
+                h-11 rounded-md border border-line bg-canvas px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted outline-none focus:border-line dark:bg-subtle
               "
             >
               {STATUS_FILTERS.map((option) => (
@@ -1119,29 +894,7 @@ const InventoryGrid = () => {
               }
               disabled={refreshing}
               className="
-                inline-flex
-                h-11
-                items-center
-                justify-center
-                gap-2
-                rounded-xl
-                border
-                border-slate-200
-                bg-white
-                px-4
-                text-[9px]
-                font-black
-                uppercase
-                tracking-[0.14em]
-                text-slate-600
-                transition
-                hover:border-indigo-400
-                hover:text-indigo-600
-                disabled:opacity-50
-                dark:border-white/10
-                dark:bg-white/[0.035]
-                dark:text-white/50
-                dark:hover:text-indigo-300
+                inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted transition hover:border-line hover:text-action disabled:opacity-50 dark:bg-subtle
               "
             >
               <RefreshCw
@@ -1160,42 +913,24 @@ const InventoryGrid = () => {
         <div
           role="alert"
           className="
-            flex
-            flex-col
-            gap-4
-            rounded-2xl
-            border
-            border-rose-200
-            bg-rose-50
-            p-4
-            text-rose-700
-            dark:border-rose-400/20
-            dark:bg-rose-400/10
-            dark:text-rose-200
-            sm:flex-row
-            sm:items-center
-            sm:justify-between
+            flex flex-col gap-4 rounded-md border border-line bg-canvas p-4 text-action dark:bg-subtle sm:flex-row sm:items-center sm:justify-between
           "
         >
           <div
             className="
-              flex
-              items-start
-              gap-3
+              flex items-start gap-3
             "
           >
             <ShieldAlert
               size={18}
               className="
-                mt-0.5
-                shrink-0
+                mt-0.5 shrink-0
               "
             />
 
             <p
               className="
-                text-sm
-                leading-6
+                text-sm leading-6
               "
             >
               {error}
@@ -1206,20 +941,7 @@ const InventoryGrid = () => {
             type="button"
             onClick={() => fetchInventory()}
             className="
-              inline-flex
-              h-10
-              shrink-0
-              items-center
-              justify-center
-              gap-2
-              rounded-xl
-              bg-rose-600
-              px-4
-              text-[9px]
-              font-black
-              uppercase
-              tracking-[0.14em]
-              text-white
+              inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-action px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-on-action
             "
           >
             <RefreshCw size={13} />
@@ -1233,12 +955,7 @@ const InventoryGrid = () => {
       {loading ? (
         <div
           className="
-            grid
-            grid-cols-1
-            gap-6
-            sm:grid-cols-2
-            xl:grid-cols-3
-            2xl:grid-cols-4
+            grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4
           "
         >
           {Array.from({
@@ -1252,37 +969,12 @@ const InventoryGrid = () => {
 
         <div
           className="
-            flex
-            min-h-[360px]
-            flex-col
-            items-center
-            justify-center
-            rounded-2xl
-            border-2
-            border-dashed
-            border-slate-200
-            bg-white
-            px-6
-            text-center
-            dark:border-white/10
-            dark:bg-[#0B0B0B]
+            flex min-h-[360px] flex-col items-center justify-center rounded-md border-2 border-dashed border-line bg-surface px-6 text-center
           "
         >
           <div
             className="
-              flex
-              h-16
-              w-16
-              items-center
-              justify-center
-              rounded-full
-              border
-              border-indigo-200
-              bg-indigo-50
-              text-indigo-600
-              dark:border-indigo-400/20
-              dark:bg-indigo-400/10
-              dark:text-indigo-200
+              flex h-16 w-16 items-center justify-center rounded-full border border-line bg-canvas text-action dark:bg-subtle
             "
           >
             <Layers3 size={26} />
@@ -1290,11 +982,7 @@ const InventoryGrid = () => {
 
           <h2
             className="
-              mt-6
-              text-xl
-              font-bold
-              text-slate-900
-              dark:text-white
+              mt-6 text-xl font-bold text-ink
             "
           >
             {designs.length === 0
@@ -1304,12 +992,7 @@ const InventoryGrid = () => {
 
           <p
             className="
-              mt-2
-              max-w-md
-              text-sm
-              leading-7
-              text-slate-500
-              dark:text-white/40
+              mt-2 max-w-md text-sm leading-7 text-muted
             "
           >
             {designs.length === 0
@@ -1319,11 +1002,7 @@ const InventoryGrid = () => {
 
           <div
             className="
-              mt-6
-              flex
-              flex-col
-              gap-2
-              sm:flex-row
+              mt-6 flex flex-col gap-2 sm:flex-row
             "
           >
             {designs.length === 0 ? (
@@ -1332,19 +1011,7 @@ const InventoryGrid = () => {
                   type="button"
                   onClick={() => navigate("/designer/upload")}
                   className="
-                    inline-flex
-                    h-11
-                    items-center
-                    justify-center
-                    gap-2
-                    rounded-xl
-                    bg-indigo-600
-                    px-4
-                    text-[9px]
-                    font-black
-                    uppercase
-                    tracking-[0.14em]
-                    text-white
+                    inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-on-action
                   "
                 >
                   <UploadCloud size={14} />
@@ -1356,19 +1023,7 @@ const InventoryGrid = () => {
                 type="button"
                 onClick={clearFilters}
                 className="
-                  inline-flex
-                  h-11
-                  items-center
-                  justify-center
-                  gap-2
-                  rounded-xl
-                  bg-indigo-600
-                  px-4
-                  text-[9px]
-                  font-black
-                  uppercase
-                  tracking-[0.14em]
-                  text-white
+                  inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-on-action
                 "
               >
                 <RefreshCw size={14} />
@@ -1382,12 +1037,7 @@ const InventoryGrid = () => {
 
         <div
           className="
-            grid
-            grid-cols-1
-            gap-6
-            sm:grid-cols-2
-            xl:grid-cols-3
-            2xl:grid-cols-4
+            grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4
           "
         >
           {visibleDesigns.map((item) => {
@@ -1401,21 +1051,7 @@ const InventoryGrid = () => {
               <article
                 key={item.id}
                 className="
-                    group
-                    overflow-hidden
-                    rounded-2xl
-                    border
-                    border-slate-200
-                    bg-white
-                    shadow-sm
-                    transition
-                    duration-200
-                    hover:-translate-y-1
-                    hover:border-slate-300
-                    hover:shadow-xl
-                    dark:border-white/10
-                    dark:bg-[#101010]
-                    dark:hover:border-white/20
+                    group overflow-hidden rounded-md border border-line bg-surface transition duration-200 hover:-translate-y-1 hover:border-line
                   "
               >
                 {/* Card Image */}
@@ -1424,42 +1060,20 @@ const InventoryGrid = () => {
                   type="button"
                   onClick={() => setPreviewItem(item)}
                   className="
-                      relative
-                      block
-                      aspect-[4/3]
-                      w-full
-                      overflow-hidden
-                      border-b
-                      border-slate-100
-                      bg-slate-50
-                      text-left
-                      dark:border-white/5
-                      dark:bg-black
+                      relative block aspect-[4/3] w-full overflow-hidden border-b border-line bg-canvas text-left
                     "
                 >
                   <InventoryImage
                     src={item.image}
                     alt={item.title}
                     className="
-                        h-full
-                        w-full
-                        object-contain
-                        p-2
-                        transition
-                        duration-500
-                        group-hover:scale-[1.02]
+                        h-full w-full object-contain p-2 transition duration-500 group-hover:scale-[1.02]
                       "
                   />
 
                   <div
                     className="
-                        absolute
-                        left-3
-                        top-3
-                        flex
-                        max-w-[calc(100%-1.5rem)]
-                        flex-wrap
-                        gap-2
+                        absolute left-3 top-3 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2
                       "
                   >
                     <SourceBadge item={item} />
@@ -1467,26 +1081,11 @@ const InventoryGrid = () => {
 
                   <span
                     className={`
-                        absolute
-                        right-3
-                        top-3
-                        inline-flex
-                        items-center
-                        gap-1.5
-                        rounded-full
-                        border
-                        px-2.5
-                        py-1
-                        text-[8px]
-                        font-black
-                        uppercase
-                        tracking-[0.14em]
-                        text-white
-                        backdrop-blur-md
+                        absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink
                         ${
                           isLive
-                            ? "border-emerald-300/40 bg-emerald-500/85"
-                            : "border-amber-300/40 bg-amber-500/85"
+                            ? "border-line bg-subtle"
+                            : "border-line bg-subtle"
                         }
                       `}
                   >
@@ -1497,19 +1096,7 @@ const InventoryGrid = () => {
 
                   <span
                     className="
-                        absolute
-                        bottom-3
-                        right-3
-                        rounded-lg
-                        bg-slate-950/80
-                        px-2.5
-                        py-1.5
-                        text-xs
-                        font-black
-                        tabular-nums
-                        text-white
-                        shadow-sm
-                        backdrop-blur-md
+                        absolute bottom-3 right-3 rounded-md bg-subtle px-2.5 py-1.5 text-xs font-semibold tabular-nums text-ink
                       "
                   >
                     {formatPrice(item.effectivePrice)}
@@ -1518,24 +1105,16 @@ const InventoryGrid = () => {
 
                 {/* Card Content */}
 
-                <div className="p-5">
+                <div className="p-4">
                   <div
                     className="
-                        flex
-                        items-start
-                        justify-between
-                        gap-3
+                        flex items-start justify-between gap-3
                       "
                   >
                     <div className="min-w-0">
                       <p
                         className="
-                            text-[8px]
-                            font-black
-                            uppercase
-                            tracking-[0.16em]
-                            text-indigo-600
-                            dark:text-indigo-300
+                            text-[11px] font-semibold uppercase tracking-[0.16em] text-action
                           "
                       >
                         {item.category}
@@ -1543,14 +1122,7 @@ const InventoryGrid = () => {
 
                       <h3
                         className="
-                            mt-2
-                            truncate
-                            text-sm
-                            font-bold
-                            uppercase
-                            tracking-tight
-                            text-slate-900
-                            dark:text-white
+                            mt-2 truncate text-sm font-bold uppercase tracking-tight text-ink
                           "
                       >
                         {item.title}
@@ -1560,14 +1132,7 @@ const InventoryGrid = () => {
 
                   <p
                     className="
-                        mt-3
-                        line-clamp-2
-                        min-h-10
-                        text-xs
-                        font-medium
-                        leading-5
-                        text-slate-500
-                        dark:text-white/40
+                        mt-3 line-clamp-2 min-h-10 text-xs font-medium leading-5 text-muted
                       "
                   >
                     {item.description}
@@ -1578,31 +1143,14 @@ const InventoryGrid = () => {
                   {item.tags.length > 0 && (
                     <div
                       className="
-                          mt-4
-                          flex
-                          flex-wrap
-                          gap-1.5
+                          mt-4 flex flex-wrap gap-1.5
                         "
                     >
                       {item.tags.slice(0, 3).map((tag) => (
                         <span
                           key={`${item.id}-${tag}`}
                           className="
-                                  inline-flex
-                                  max-w-full
-                                  items-center
-                                  gap-1
-                                  rounded-full
-                                  bg-slate-100
-                                  px-2.5
-                                  py-1.5
-                                  text-[8px]
-                                  font-bold
-                                  uppercase
-                                  tracking-[0.1em]
-                                  text-slate-500
-                                  dark:bg-white/[0.05]
-                                  dark:text-white/35
+                                  inline-flex max-w-full items-center gap-1 rounded-md bg-subtle px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-muted
                                 "
                         >
                           <Tag size={9} />
@@ -1617,26 +1165,14 @@ const InventoryGrid = () => {
 
                   <div
                     className="
-                        mt-4
-                        flex
-                        items-center
-                        justify-between
-                        border-y
-                        border-slate-100
-                        py-3
-                        text-[9px]
-                        text-slate-400
-                        dark:border-white/5
-                        dark:text-white/30
+                        mt-4 flex items-center justify-between border-y border-line py-3 text-[11px] text-muted
                       "
                   >
                     <span className="font-medium">
                       SKU:{" "}
                       <strong
                         className="
-                            font-mono
-                            text-slate-600
-                            dark:text-white/50
+                            font-mono text-muted
                           "
                       >
                         {item.sku}
@@ -1650,31 +1186,14 @@ const InventoryGrid = () => {
 
                   <div
                     className="
-                        mt-4
-                        grid
-                        grid-cols-[1fr_auto]
-                        gap-2
+                        mt-4 grid grid-cols-[1fr_auto] gap-2
                       "
                   >
                     <button
                       type="button"
                       onClick={() => handlePrimaryAction(item)}
                       className="
-                          inline-flex
-                          h-10
-                          items-center
-                          justify-center
-                          gap-2
-                          rounded-xl
-                          bg-indigo-600
-                          px-3
-                          text-[8px]
-                          font-black
-                          uppercase
-                          tracking-[0.14em]
-                          text-white
-                          transition
-                          hover:bg-indigo-700
+                          inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-on-action transition hover:bg-action hover:text-on-action
                         "
                     >
                       <ActionIcon size={13} />
@@ -1691,23 +1210,7 @@ const InventoryGrid = () => {
                           isLive ? "View public showcase" : "Preview design"
                         }
                         className="
-                            flex
-                            h-10
-                            w-10
-                            items-center
-                            justify-center
-                            rounded-xl
-                            border
-                            border-slate-200
-                            bg-slate-50
-                            text-slate-500
-                            transition
-                            hover:border-indigo-400
-                            hover:text-indigo-600
-                            dark:border-white/10
-                            dark:bg-white/[0.035]
-                            dark:text-white/40
-                            dark:hover:text-indigo-300
+                            flex h-9 w-10 items-center justify-center rounded-md border border-line bg-canvas text-muted transition hover:border-line hover:text-action dark:bg-subtle
                           "
                       >
                         <Eye size={14} />
@@ -1734,48 +1237,19 @@ const InventoryGrid = () => {
             }
           }}
           className="
-            fixed
-            inset-0
-            z-[120]
-            flex
-            items-center
-            justify-center
-            bg-black/80
-            p-4
-            backdrop-blur-md
-            sm:p-6
+            fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4
           "
         >
           <section
             className="
-              relative
-              flex
-              max-h-[92dvh]
-              w-full
-              max-w-4xl
-              flex-col
-              overflow-hidden
-              rounded-2xl
-              border
-              border-white/10
-              bg-[#0B0B0B]
-              text-white
-              shadow-2xl
+              relative flex max-h-[92dvh] w-full max-w-4xl flex-col overflow-hidden rounded-md border border-line bg-surface text-ink
             "
           >
             {/* Modal Header */}
 
             <div
               className="
-                flex
-                items-start
-                justify-between
-                gap-4
-                border-b
-                border-white/10
-                px-5
-                py-4
-                sm:px-6
+                flex items-start justify-between gap-4 border-b border-line px-5 py-4 sm:px-6
               "
             >
               <div className="min-w-0">
@@ -1783,10 +1257,7 @@ const InventoryGrid = () => {
 
                 <h2
                   className="
-                    mt-3
-                    truncate
-                    text-xl
-                    font-bold
+                    mt-3 truncate text-xl font-bold
                   "
                 >
                   {previewItem.title}
@@ -1794,9 +1265,7 @@ const InventoryGrid = () => {
 
                 <p
                   className="
-                    mt-1
-                    text-xs
-                    text-white/40
+                    mt-1 text-xs text-muted
                   "
                 >
                   SKU {previewItem.sku}
@@ -1810,19 +1279,7 @@ const InventoryGrid = () => {
                 onClick={() => setPreviewItem(null)}
                 aria-label="Close inventory preview"
                 className="
-                  flex
-                  h-10
-                  w-10
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-xl
-                  border
-                  border-white/10
-                  bg-white/5
-                  text-white/60
-                  hover:bg-white/10
-                  hover:text-white
+                  flex h-9 w-10 shrink-0 items-center justify-center rounded-md border border-line bg-subtle text-muted hover:bg-subtle hover:text-ink
                 "
               >
                 <X size={17} />
@@ -1833,38 +1290,24 @@ const InventoryGrid = () => {
 
             <div
               className="
-                min-h-0
-                flex-1
-                overflow-y-auto
-                p-5
-                sm:p-6
+                min-h-0 flex-1 overflow-y-auto p-4
               "
             >
               <div
                 className="
-                  overflow-hidden
-                  rounded-2xl
-                  border
-                  border-white/10
-                  bg-black
+                  overflow-hidden rounded-md border border-line bg-canvas
                 "
               >
                 <div
                   className="
-                    flex
-                    min-h-[300px]
-                    max-h-[65vh]
-                    items-center
-                    justify-center
+                    flex min-h-[300px] max-h-[65vh] items-center justify-center
                   "
                 >
                   <InventoryImage
                     src={previewItem.image}
                     alt={previewItem.title}
                     className="
-                      max-h-[65vh]
-                      w-full
-                      object-contain
+                      max-h-[65vh] w-full object-contain
                     "
                   />
                 </div>
@@ -1872,11 +1315,7 @@ const InventoryGrid = () => {
 
               <p
                 className="
-                  mt-5
-                  whitespace-pre-wrap
-                  text-sm
-                  leading-7
-                  text-white/55
+                  mt-5 whitespace-pre-wrap text-sm leading-7 text-muted
                 "
               >
                 {previewItem.description}
@@ -1887,35 +1326,14 @@ const InventoryGrid = () => {
 
             <div
               className="
-                flex
-                flex-col-reverse
-                gap-2
-                border-t
-                border-white/10
-                px-5
-                py-4
-                sm:flex-row
-                sm:justify-end
-                sm:px-6
+                flex flex-col-reverse gap-2 border-t border-line px-5 py-4 sm:flex-row sm:justify-end sm:px-6
               "
             >
               <button
                 type="button"
                 onClick={() => setPreviewItem(null)}
                 className="
-                  h-11
-                  rounded-xl
-                  border
-                  border-white/10
-                  bg-white/5
-                  px-5
-                  text-[9px]
-                  font-black
-                  uppercase
-                  tracking-[0.14em]
-                  text-white/60
-                  hover:bg-white/10
-                  hover:text-white
+                  h-9 rounded-md border border-line bg-subtle px-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted hover:bg-subtle hover:text-ink
                 "
               >
                 Close
@@ -1936,22 +1354,7 @@ const InventoryGrid = () => {
                       );
                     }}
                     className="
-                      inline-flex
-                      h-11
-                      items-center
-                      justify-center
-                      gap-2
-                      rounded-xl
-                      border
-                      border-indigo-400/30
-                      bg-indigo-500/10
-                      px-5
-                      text-[9px]
-                      font-black
-                      uppercase
-                      tracking-[0.14em]
-                      text-indigo-200
-                      hover:bg-indigo-500/20
+                      inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-subtle px-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-action hover:bg-subtle
                     "
                   >
                     <Eye size={14} />

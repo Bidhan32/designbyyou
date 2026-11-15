@@ -752,16 +752,7 @@ export const DrawingCanvas = ({
     return (
         <div
             className="
-                h-[600px]
-                w-[800px]
-                max-w-full
-                touch-none
-                overflow-auto
-                rounded-lg
-                border
-                border-gray-300
-                bg-white
-                cursor-crosshair
+                h-[600px] w-[800px] max-w-full touch-none overflow-auto rounded-md border border-line bg-surface cursor-crosshair
             "
         >
 

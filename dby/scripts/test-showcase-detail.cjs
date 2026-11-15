@@ -57,6 +57,7 @@ function Probe() { location = useLocation(); return null; }
   const params = new URL(booking.href).searchParams;
   assert.equal(params.get('design_id'), fixture.design_id);
   assert.equal(params.get('designer_id'), fixture.designer_id);
+  assert.equal(params.get('design_title'), fixture.title);
   await click(button('Open in Fashion Editor'));
   assert.equal(location.pathname, '/creator/fashion-editor/123');
   assert.equal(calls.find(call => call[0] === 'post')[1], `/creators/showcase/${fixture.design_id}/open-in-editor`);

@@ -127,13 +127,13 @@ const BUTTON_FOCUS =
 
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#0b0b0b]";
 
-const GOLD_BUTTON = `inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-5 py-3.5 text-xs font-bold text-black transition hover:bg-[#e7cb75] disabled:cursor-not-allowed disabled:opacity-50 ${BUTTON_FOCUS}`;
+const GOLD_BUTTON = `inline-flex w-full items-center justify-center gap-2 rounded-md bg-action px-5 py-3.5 text-xs font-bold text-on-action transition hover:bg-action disabled:cursor-not-allowed disabled:opacity-50 ${BUTTON_FOCUS}`;
 
-const OUTLINE_BUTTON = `inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:border-[#D4AF37]/60 hover:bg-[#D4AF37]/5 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/75 dark:hover:bg-white/[0.08] ${BUTTON_FOCUS}`;
+const OUTLINE_BUTTON = `inline-flex items-center justify-center gap-2 rounded-md border border-line bg-surface px-4 py-2.5 text-xs font-semibold text-ink transition hover:border-line hover:bg-subtle dark:text-muted ${BUTTON_FOCUS}`;
 
 const PANEL =
 
-  "rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-white/10 dark:bg-[#101011]";
+  "rounded-md border border-line bg-surface";
 
 /* =========================================================
 
@@ -400,6 +400,7 @@ function bookingUrlFor(item) {
     designer_id: String(item.designer_id),
 
     design_id: String(item.design_id),
+    design_title: item.title || "Untitled design",
 
   });
 
@@ -417,19 +418,19 @@ function LoadingScreen() {
 
   return (
 
-    <main className="flex min-h-[70vh] flex-col items-center justify-center gap-4 bg-slate-50 text-slate-700 dark:bg-[#050506] dark:text-white/80">
+    <main className="flex min-h-[70vh] flex-col items-center justify-center gap-4 bg-canvas text-ink dark:text-muted">
 
       <Loader2
 
         size={36}
 
-        className="animate-spin text-[#D4AF37]"
+        className="animate-spin text-action"
 
         aria-hidden="true"
 
       />
 
-      <p className="text-xs font-semibold uppercase tracking-[0.22em]">
+      <p className="text-xs font-semibold uppercase tracking-normal">
 
         Loading Showcase
 
@@ -445,21 +446,21 @@ function ErrorScreen({ message, showcaseRoute, onRetry }) {
 
   return (
 
-    <main className="flex min-h-[70vh] items-center justify-center bg-slate-50 px-4 py-16 dark:bg-[#050506]">
+    <main className="flex min-h-[70vh] items-center justify-center bg-canvas px-4 py-16">
 
-      <div className={`${PANEL} w-full max-w-md p-8 text-center sm:p-10`}>
+      <div className={`${PANEL} w-full max-w-md p-4 text-center sm:p-4`}>
 
         <Sparkles
 
           size={35}
 
-          className="mx-auto text-[#D4AF37]"
+          className="mx-auto text-action"
 
           aria-hidden="true"
 
         />
 
-        <h1 className="mt-5 font-serif text-2xl text-slate-900 dark:text-white">
+        <h1 className="mt-5 font-sans text-2xl text-ink">
 
           Showcase Item Unavailable
 
@@ -469,7 +470,7 @@ function ErrorScreen({ message, showcaseRoute, onRetry }) {
 
           role="alert"
 
-          className="mt-3 text-sm leading-6 text-slate-600 dark:text-white/60"
+          className="mt-3 text-sm leading-6 text-muted"
 
         >
 
@@ -1130,7 +1131,7 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
   return (
 
-    <main className="showcase-detail min-h-screen overflow-x-hidden bg-slate-50 pb-20 text-slate-900 dark:bg-[#050506] dark:text-white">
+    <main className="showcase-detail min-h-screen overflow-x-hidden bg-canvas pb-20 text-ink">
 
       {/* =================================================
 
@@ -1138,7 +1139,7 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
       ================================================= */}
 
-      <div className="showcase-detail-toolbar z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#09090b]/95 sm:top-20">
+      <div className="showcase-detail-toolbar z-30 border-b border-line bg-subtle sm:top-20">
 
         <div className="mx-auto flex max-w-[1240px] items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
 
@@ -1146,7 +1147,7 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
             to={showcaseRoute}
 
-            className={`inline-flex min-w-0 items-center gap-2 text-xs font-semibold text-slate-600 hover:text-[#b68c23] dark:text-white/65 dark:hover:text-[#D4AF37] ${BUTTON_FOCUS}`}
+            className={`inline-flex min-w-0 items-center gap-2 text-xs font-semibold text-muted hover:text-action ${BUTTON_FOCUS}`}
 
           >
 
@@ -1161,7 +1162,7 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
         </div>
 
-        {shareFeedback && <p role="status" className="mx-auto max-w-[1240px] px-4 pb-3 text-sm text-slate-600 dark:text-white/70">{shareFeedback}</p>}
+        {shareFeedback && <p role="status" className="mx-auto max-w-[1240px] px-4 pb-3 text-sm text-muted">{shareFeedback}</p>}
 
       </div>
 
@@ -1179,7 +1180,7 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
           <div className="min-w-0 max-w-4xl">
 
-            <p className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-[#ad8723] dark:text-[#D4AF37]">
+            <p className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-normal text-action">
 
               <Sparkles size={13} />
 
@@ -1193,7 +1194,12 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
             </h1>
 
-            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-500 dark:text-white/50">
+            {bookingUrl && <div className="mt-2 flex flex-wrap items-center gap-3 lg:hidden">
+              <span className="min-w-0 break-words text-sm text-muted">By {ownerName}</span>
+              <Link to={bookingUrl} className="inline-flex items-center gap-2 rounded-md bg-action px-3 text-sm font-semibold text-on-action">Book this designer<ArrowRight size={16} /></Link>
+            </div>}
+
+            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted">
 
               <span className="inline-flex items-center gap-2">
 
@@ -1233,7 +1239,7 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
           {has3D && (
 
-            <span className="inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-3 py-2 text-xs font-semibold text-[#957019] dark:text-[#D4AF37]">
+            <span className="inline-flex items-center gap-2 rounded-md border border-line bg-subtle px-3 py-2 text-xs font-semibold text-action">
 
               <Box size={15} />
 
@@ -1269,7 +1275,7 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
                 <div
 
-                  className="inline-flex w-full rounded-xl bg-slate-100 p-1 dark:bg-white/[0.07] sm:w-auto"
+                  className="inline-flex w-full rounded-md bg-subtle p-1 sm:w-auto"
 
                   role="group"
 
@@ -1285,13 +1291,13 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
                     onClick={() => setPreviewMode("2d")}
 
-                    className={`inline-flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-bold transition sm:flex-none ${BUTTON_FOCUS} ${
+                    className={`inline-flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2.5 text-xs font-bold transition sm:flex-none ${BUTTON_FOCUS} ${
 
                       !is3D
 
-                        ? "bg-white text-slate-950 shadow-sm dark:bg-[#28282b] dark:text-white"
+                        ? "bg-surface text-ink dark:bg-subtle"
 
-                        : "text-slate-500 hover:text-slate-900 dark:text-white/55 dark:hover:text-white"
+                        : "text-muted hover:text-ink"
 
                     }`}
 
@@ -1313,13 +1319,13 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
                       onClick={() => setPreviewMode("3d")}
 
-                      className={`inline-flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-bold transition sm:flex-none ${BUTTON_FOCUS} ${
+                      className={`inline-flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2.5 text-xs font-bold transition sm:flex-none ${BUTTON_FOCUS} ${
 
                         is3D
 
-                          ? "bg-[#D4AF37] text-black shadow-sm"
+                          ? "bg-action text-on-action"
 
-                          : "text-slate-500 hover:text-slate-900 dark:text-white/55 dark:hover:text-white"
+                          : "text-muted hover:text-ink"
 
                       }`}
 
@@ -1335,7 +1341,7 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
                 </div>
 
-                <p className="text-xs text-slate-500 dark:text-white/45">
+                <p className="text-xs text-muted">
 
                   {is3D
 
@@ -1355,7 +1361,7 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
               {/* Main preview area */}
 
-              <div className="showcase-detail-viewer relative min-w-0 overflow-hidden rounded-xl bg-slate-100 dark:bg-[#161619]">
+              <div className="showcase-detail-viewer relative min-w-0 overflow-hidden rounded-md bg-subtle dark:bg-surface">
 
                 {is3D ? (
 
@@ -1363,11 +1369,11 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
                     fallback={
 
-                      <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-slate-500 dark:text-white/55">
+                      <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-muted">
 
                         <Loader2
 
-                          className="animate-spin text-[#D4AF37]"
+                          className="animate-spin text-action"
 
                           size={28}
 
@@ -1436,7 +1442,7 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
                     ) : (
 
-                      <div className="flex flex-col items-center gap-3 text-slate-400 dark:text-white/35">
+                      <div className="flex flex-col items-center gap-3 text-muted">
 
                         <ImageIcon size={44} />
 
@@ -1462,7 +1468,7 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
                           onClick={() => changeImage(-1)}
 
-                          className={`absolute left-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/70 text-white transition hover:bg-[#D4AF37] hover:text-black sm:left-5 ${BUTTON_FOCUS}`}
+                          className={`absolute left-3 top-1/2 grid h-9 w-10 -translate-y-1/2 place-items-center rounded-md bg-black/70 text-ink transition hover:bg-action hover:text-on-action sm:left-5 ${BUTTON_FOCUS}`}
 
                         >
 
@@ -1478,7 +1484,7 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
                           onClick={() => changeImage(1)}
 
-                          className={`absolute right-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/70 text-white transition hover:bg-[#D4AF37] hover:text-black sm:right-5 ${BUTTON_FOCUS}`}
+                          className={`absolute right-3 top-1/2 grid h-9 w-10 -translate-y-1/2 place-items-center rounded-md bg-black/70 text-ink transition hover:bg-action hover:text-on-action sm:right-5 ${BUTTON_FOCUS}`}
 
                         >
 
@@ -1490,7 +1496,7 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
                           aria-live="polite"
 
-                          className="absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1.5 text-xs font-semibold text-white"
+                          className="absolute left-1/2 top-3 -translate-x-1/2 rounded-md bg-black/70 px-3 py-1.5 text-xs font-semibold text-ink"
 
                         >
 
@@ -1502,9 +1508,9 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
                     )}
 
-                    <span className="pointer-events-none absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-black/65 px-3 py-1.5 text-[11px] text-white">
+                    <span className="pointer-events-none absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-md bg-black/65 px-3 py-1.5 text-[11px] text-ink">
 
-                      <ShieldCheck size={13} className="text-[#D4AF37]" />
+                      <ShieldCheck size={13} className="text-action" />
 
                       Showcase Preview
 
@@ -1516,11 +1522,11 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
               </div>
 
-              {previewError && <p role="status" className="mt-3 text-sm text-slate-500 dark:text-white/60">{previewError}</p>}
+              {previewError && <p role="status" className="mt-3 text-sm text-muted">{previewError}</p>}
 
               {/* Preview footer */}
 
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-slate-500 dark:text-white/45">
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted">
 
                 <span className="inline-flex items-center gap-1.5">
 
@@ -1541,40 +1547,40 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
             </section>
 
           <aside className="showcase-detail-sidebar">
-            <section className={`${PANEL} p-5 sm:p-6`}>
-              <p className="text-xs text-slate-500 dark:text-white/60">Designed by</p>
+            <section className={`${PANEL} p-4`}>
+              <p className="text-xs text-muted">Designed by</p>
               <div className="mt-3 flex min-w-0 items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-subtle">
                   {ownerAvatar && isPublicImageUrl(ownerAvatar) ? <img src={ownerAvatar} alt="" className="h-full w-full object-cover" /> : <UserRound size={22} />}
                 </div>
                 <div className="min-w-0">
                   <h2 className="break-words text-lg font-semibold">{ownerName}</h2>
-                  <p className="mt-1 flex items-center gap-1 text-xs text-slate-500 dark:text-white/60"><ShieldCheck size={13} />{designerOwned ? "Approved designer" : "Creator"}</p>
+                  <p className="mt-1 flex items-center gap-1 text-xs text-muted"><ShieldCheck size={13} />{designerOwned ? "Approved designer" : "Creator"}</p>
                 </div>
               </div>
-              {designerOwned && <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-white/60">
+              {designerOwned && <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-muted">
                 <span className="inline-flex items-center gap-1"><Star size={14} />{designerRating ? designerRating.toFixed(1) : "New designer"}</span>
                 <span>{completedBookings} completed bookings</span>
                 {item.city && <span className="inline-flex items-center gap-1"><MapPin size={13} />{item.city}</span>}
               </div>}
-              {(bookingUrl || canOpenInEditor) && <div className="mt-5 space-y-3 border-t border-slate-200 pt-5 dark:border-white/10">
-                {bookingUrl && <>
+              {(bookingUrl || canOpenInEditor) && <div className="mt-5 space-y-3 border-t border-line pt-5">
+                {bookingUrl && <div className="hidden space-y-2 lg:block">
                   <Link to={bookingUrl} className={GOLD_BUTTON}>Book this designer<ArrowRight size={16} /></Link>
-                  <p className="text-xs leading-5 text-slate-500 dark:text-white/60">This design will be included with your booking request.</p>
-                </>}
+                  <p className="text-xs leading-5 text-muted">This design will be included with your booking request.</p>
+                </div>}
                 {canOpenInEditor && <>
                   <button type="button" disabled={openingEditor} onClick={handleOpenInEditor}
                     className={bookingUrl ? `${OUTLINE_BUTTON} w-full` : GOLD_BUTTON}>
                     {openingEditor ? <Loader2 size={16} className="shrink-0 animate-spin" /> : <MousePointer2 size={16} className="shrink-0" />}
                     <span>{openingEditor ? "Opening editor…" : editorActionLabel}</span>
                   </button>
-                  <p className="text-xs leading-5 text-slate-500 dark:text-white/60">Continue in your private workspace. Other creators’ published designs stay unchanged.</p>
+                  <p className="text-xs leading-5 text-muted">Continue in your private workspace. Other creators’ published designs stay unchanged.</p>
                 </>}
-                {editorError && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">{editorError}</p>}
+                {editorError && <p role="alert" className="rounded-md bg-canvas p-3 text-sm text-action dark:bg-subtle">{editorError}</p>}
               </div>}
-              {designerOwned && item.designer_bio && <details className="mt-5 border-t border-slate-200 pt-4 dark:border-white/10">
+              {designerOwned && item.designer_bio && <details className="mt-5 border-t border-line pt-4">
                 <summary className="cursor-pointer text-sm font-medium">About the designer</summary>
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-white/65">{item.designer_bio}</p>
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted">{item.designer_bio}</p>
               </details>}
             </section>
             <Link to={showcaseRoute} className={`${OUTLINE_BUTTON} mt-4 w-full`}>Explore more designs<ArrowRight size={14} /></Link>
@@ -1590,7 +1596,7 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
               <section
 
-                className={`${PANEL} showcase-detail-gallery p-4 sm:p-5`}
+                className={`${PANEL} showcase-detail-gallery p-4`}
 
                 aria-label="Gallery images and editor selection"
 
@@ -1606,7 +1612,7 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
                       aria-live="polite"
 
-                      className="mt-1 text-xs text-slate-500 dark:text-white/45"
+                      className="mt-1 text-xs text-muted"
 
                     >
 
@@ -1712,13 +1718,13 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
                           }}
 
-                          className={`block aspect-square w-full overflow-hidden rounded-xl border-2 bg-slate-100 transition dark:bg-[#1c1c1f] ${BUTTON_FOCUS} ${
+                          className={`block aspect-square w-full overflow-hidden rounded-md border-2 bg-subtle transition dark:bg-surface ${BUTTON_FOCUS} ${
 
                             activeImageIndex === index
 
-                              ? "border-[#D4AF37] ring-2 ring-[#D4AF37]/25"
+                              ? "border-line ring-2 ring-action"
 
-                              : "border-slate-200 hover:border-[#D4AF37]/60 dark:border-white/10"
+                              : "border-line hover:border-line"
 
                           }`}
 
@@ -1742,7 +1748,7 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
                         {selectable && (
 
-                          <label className="absolute left-1 top-1 flex cursor-pointer items-center gap-1 rounded-md bg-black/75 px-1.5 py-1 text-[10px] font-semibold text-white sm:left-2 sm:top-2">
+                          <label className="absolute left-1 top-1 flex cursor-pointer items-center gap-1 rounded-md bg-black/75 px-1.5 py-1 text-[10px] font-semibold text-ink sm:left-2 sm:top-2">
 
                             <input
 
@@ -1760,7 +1766,7 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
                               } for Fashion Editor`}
 
-                              className="h-3.5 w-3.5 accent-[#D4AF37]"
+                              className="h-3.5 w-3.5 accent-action"
 
                             />
 
@@ -1788,7 +1794,7 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
                 </div>
 
-                {isCreator && <p className="mt-3 text-xs text-slate-500 dark:text-white/45">
+                {isCreator && <p className="mt-3 text-xs text-muted">
 
                   Maximum 6 images per editing session. Original Showcase
 
@@ -1806,19 +1812,19 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
             ========================================= */}
 
-            <section className={`${PANEL} showcase-detail-description space-y-6 p-5 sm:p-7`}>
+            <section className={`${PANEL} showcase-detail-description space-y-6 p-4`}>
 
               <div>
 
                 <h2 className="flex items-center gap-2 text-sm font-bold">
 
-                  <Sparkles size={16} className="text-[#D4AF37]" />
+                  <Sparkles size={16} className="text-action" />
 
                   About this design
 
                 </h2>
 
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-600 dark:text-white/65">
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-muted">
 
                   {item.description ||
 
@@ -1830,9 +1836,9 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
               {tags.length > 0 && (
 
-                <div className="border-t border-slate-200 pt-5 dark:border-white/10">
+                <div className="border-t border-line pt-5">
 
-                  <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-white/50">
+                  <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.15em] text-muted">
 
                     Tags
 
@@ -1846,7 +1852,7 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
                         key={`${tag}-${index}`}
 
-                        className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs text-slate-600 dark:bg-white/[0.07] dark:text-white/65"
+                        className="inline-flex items-center gap-1.5 rounded-md bg-subtle px-3 py-1.5 text-xs text-muted"
 
                       >
 

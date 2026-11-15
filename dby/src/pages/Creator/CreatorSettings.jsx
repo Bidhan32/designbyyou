@@ -203,29 +203,7 @@ Shared Input Style
 =========================================================*/
 
 const INPUT_CLASS = `
-  h-[52px]
-  w-full
-  rounded-xl
-  border
-  border-slate-200
-  bg-slate-50
-  px-4
-  text-sm
-  outline-none
-  transition
-
-  placeholder:text-slate-400
-
-  focus:border-[#D4AF37]/60
-  focus:bg-white
-  focus:ring-4
-  focus:ring-[#D4AF37]/10
-
-  dark:border-white/10
-  dark:bg-white/[0.035]
-  dark:text-white
-  dark:placeholder:text-white/20
-  dark:focus:bg-white/[0.05]
+  h-[52px] w-full rounded-md border border-line bg-canvas px-4 text-sm outline-none transition placeholder:text-muted focus:border-line focus:bg-surface focus:ring-4 focus:ring-action dark:bg-subtle dark:text-ink dark:focus:bg-subtle
 `;
 
 /*=========================================================
@@ -480,27 +458,19 @@ function Notice({ type, children }) {
     <div
       role={success ? "status" : "alert"}
       className={`
-        flex
-        items-start
-        gap-3
-        rounded-2xl
-        border
-        p-4
-        text-sm
-        leading-6
+        flex items-start gap-3 rounded-md border p-4 text-sm leading-6
 
         ${
           success
-            ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/[0.08] dark:text-emerald-200"
-            : "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/[0.08] dark:text-rose-200"
+            ? "border-line bg-canvas text-action dark:bg-subtle"
+            : "border-line bg-canvas text-action dark:bg-subtle"
         }
       `}
     >
       <Icon
         size={17}
         className="
-          mt-0.5
-          shrink-0
+          mt-0.5 shrink-0
         "
       />
 
@@ -517,25 +487,13 @@ function FieldLabel({ icon: Icon, children }) {
   return (
     <span
       className="
-        mb-2.5
-        flex
-        items-center
-        gap-2
-        text-[9px]
-        font-black
-        uppercase
-        tracking-[0.17em]
-        text-slate-500
-
-        dark:text-white/40
+        mb-2.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.17em] text-muted
       "
     >
       <Icon
         size={13}
         className="
-          text-[#98751A]
-
-          dark:text-[#D4AF37]
+          text-action
         "
       />
 
@@ -562,15 +520,7 @@ function PasswordField({
     <label className="block">
       <span
         className="
-          mb-2.5
-          block
-          text-[9px]
-          font-black
-          uppercase
-          tracking-[0.17em]
-          text-slate-500
-
-          dark:text-white/40
+          mb-2.5 block text-[11px] font-semibold uppercase tracking-[0.17em] text-muted
         "
       >
         {label}
@@ -580,14 +530,7 @@ function PasswordField({
         <KeyRound
           size={14}
           className="
-            pointer-events-none
-            absolute
-            left-4
-            top-1/2
-            -translate-y-1/2
-            text-slate-400
-
-            dark:text-white/25
+            pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted
           "
         />
 
@@ -601,28 +544,7 @@ function PasswordField({
           required
           maxLength={PASSWORD_MAX_LENGTH}
           className="
-            h-[52px]
-            w-full
-            rounded-xl
-            border
-            border-slate-200
-            bg-slate-50
-            pl-10
-            pr-12
-            text-sm
-            outline-none
-            transition
-
-            focus:border-rose-400/60
-            focus:bg-white
-            focus:ring-4
-            focus:ring-rose-500/[0.06]
-
-            dark:border-white/10
-            dark:bg-white/[0.035]
-            dark:text-white
-            dark:placeholder:text-white/20
-            dark:focus:bg-white/[0.05]
+            h-[52px] w-full rounded-md border border-line bg-canvas pl-10 pr-12 text-sm outline-none transition focus:border-line focus:bg-surface focus:ring-4 focus:ring-action dark:bg-subtle dark:text-ink dark:placeholder:text-muted dark:focus:bg-subtle
           "
         />
 
@@ -631,23 +553,7 @@ function PasswordField({
           onClick={onToggle}
           aria-label={visible ? `Hide ${label}` : `Show ${label}`}
           className="
-            absolute
-            right-3
-            top-1/2
-            grid
-            h-8
-            w-8
-            -translate-y-1/2
-            place-items-center
-            rounded-lg
-            text-slate-400
-            transition
-
-            hover:bg-slate-200
-            hover:text-slate-700
-
-            dark:hover:bg-white/10
-            dark:hover:text-white
+            absolute right-3 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-muted transition hover:bg-subtle hover:text-ink
           "
         >
           {visible ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -663,52 +569,30 @@ Status Card
 
 function StatusCard({ icon: Icon, label, value, helper, accent }) {
   const accentClass = {
-    emerald: "text-emerald-600 dark:text-emerald-300",
+    emerald: "text-action",
 
-    amber: "text-amber-600 dark:text-amber-300",
+    amber: "text-action",
 
-    violet: "text-violet-600 dark:text-violet-300",
+    violet: "text-action",
 
-    gold: "text-[#98751A] dark:text-[#D4AF37]",
+    gold: "text-action",
   }[accent];
 
   return (
     <article
       className="
-        rounded-2xl
-        border
-        border-slate-200/80
-        bg-white/90
-        p-5
-        shadow-sm
-        backdrop-blur
-        transition
-
-        hover:-translate-y-0.5
-        hover:border-[#D4AF37]/25
-
-        dark:border-white/[0.06]
-        dark:bg-[#0A0A0A]/90
+        rounded-md border border-line bg-subtle p-4 transition hover:-translate-y-0.5 hover:border-line
       "
     >
       <div
         className="
-          flex
-          items-start
-          justify-between
-          gap-4
+          flex items-start justify-between gap-4
         "
       >
         <div className="min-w-0">
           <p
             className="
-              text-[8px]
-              font-black
-              uppercase
-              tracking-[0.18em]
-              text-slate-400
-
-              dark:text-white/25
+              text-[11px] font-semibold uppercase tracking-[0.18em] text-muted
             "
           >
             {label}
@@ -716,10 +600,7 @@ function StatusCard({ icon: Icon, label, value, helper, accent }) {
 
           <p
             className="
-              mt-3
-              truncate
-              text-lg
-              font-semibold
+              mt-3 truncate text-lg font-semibold
             "
           >
             {value}
@@ -727,12 +608,7 @@ function StatusCard({ icon: Icon, label, value, helper, accent }) {
 
           <p
             className="
-              mt-2
-              text-[9px]
-              leading-4
-              text-slate-400
-
-              dark:text-white/28
+              mt-2 text-[11px] leading-4 text-muted
             "
           >
             {helper}
@@ -741,18 +617,7 @@ function StatusCard({ icon: Icon, label, value, helper, accent }) {
 
         <div
           className={`
-            grid
-            h-11
-            w-11
-            shrink-0
-            place-items-center
-            rounded-xl
-            border
-            border-slate-200
-            bg-slate-50
-
-            dark:border-white/10
-            dark:bg-white/[0.035]
+            grid h-11 w-11 shrink-0 place-items-center rounded-md border border-line bg-canvas dark:bg-subtle
 
             ${accentClass}
           `}
@@ -772,16 +637,12 @@ function PasswordRequirement({ passed, children }) {
   return (
     <div
       className={`
-        flex
-        items-center
-        gap-2
-        text-[9px]
-        font-semibold
+        flex items-center gap-2 text-[11px] font-semibold
 
         ${
           passed
-            ? "text-emerald-600 dark:text-emerald-300"
-            : "text-slate-400 dark:text-white/25"
+            ? "text-action"
+            : "text-muted"
         }
       `}
     >
@@ -1600,15 +1461,7 @@ export default function CreatorSettings() {
   return (
     <div
       className="
-        relative
-        min-h-screen
-        overflow-hidden
-        bg-slate-50
-        pb-24
-        text-slate-950
-
-        dark:bg-[#030303]
-        dark:text-white
+        relative min-h-screen overflow-hidden bg-canvas pb-24 text-ink
       "
     >
       {/*===================================================
@@ -1617,66 +1470,16 @@ export default function CreatorSettings() {
 
       <div
         className="
-          pointer-events-none
-          fixed
-          inset-0
-          z-0
-          overflow-hidden
+          pointer-events-none fixed inset-0 z-0 overflow-hidden
         "
       >
-        <div
-          className="
-            absolute
-            -right-64
-            -top-64
-            h-[42rem]
-            w-[42rem]
-            rounded-full
-            bg-[#D4AF37]/10
-            blur-[180px]
-          "
-        />
 
-        <div
-          className="
-            absolute
-            -bottom-64
-            -left-64
-            h-[38rem]
-            w-[38rem]
-            rounded-full
-            bg-violet-500/[0.05]
-            blur-[180px]
 
-            dark:bg-violet-500/[0.07]
-          "
-        />
-
-        <div
-          className="
-            absolute
-            inset-0
-            bg-[linear-gradient(to_right,rgba(15,23,42,0.018)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.018)_1px,transparent_1px)]
-            bg-[size:44px_44px]
-
-            dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.012)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.012)_1px,transparent_1px)]
-          "
-        />
       </div>
 
       <div
         className="
-          relative
-          z-10
-          mx-auto
-          max-w-[1200px]
-          px-4
-          pt-9
-
-          sm:px-6
-
-          lg:px-10
-          lg:pt-12
+          relative z-10 mx-auto max-w-[1200px] px-4 pt-9 sm:px-6 lg:px-10 lg:pt-12
         "
       >
         {/*=================================================
@@ -1685,66 +1488,24 @@ export default function CreatorSettings() {
 
         <section
           className="
-            relative
-            mb-7
-            overflow-hidden
-            rounded-[2rem]
-            border
-            border-slate-200/80
-            bg-white/90
-            p-6
-            shadow-[0_24px_80px_rgba(15,23,42,0.06)]
-            backdrop-blur-xl
-
-            sm:p-8
-
-            lg:p-10
-
-            dark:border-white/[0.06]
-            dark:bg-[#090909]/90
-            dark:shadow-[0_30px_100px_rgba(0,0,0,0.5)]
+            relative mb-7 overflow-hidden rounded-md border border-line bg-subtle p-4 lg:p-4
           "
         >
           <div
             className="
-              pointer-events-none
-              absolute
-              -right-24
-              -top-24
-              h-72
-              w-72
-              rounded-full
-              bg-[#D4AF37]/12
-              blur-[85px]
+              pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-subtle blur-[85px]
             "
           />
 
           <div
             className="
-              relative
-              z-10
-              flex
-              flex-col
-              gap-7
-
-              lg:flex-row
-              lg:items-end
-              lg:justify-between
+              relative z-10 flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between
             "
           >
             <div>
               <p
                 className="
-                  inline-flex
-                  items-center
-                  gap-2
-                  text-[9px]
-                  font-black
-                  uppercase
-                  tracking-[0.25em]
-                  text-[#98751A]
-
-                  dark:text-[#D4AF37]
+                  inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-normal text-action
                 "
               >
                 <Sparkles size={12} />
@@ -1753,24 +1514,13 @@ export default function CreatorSettings() {
 
               <h1
                 className="
-                  mt-4
-                  font-serif
-                  text-4xl
-                  font-light
-                  tracking-tight
-
-                  sm:text-5xl
-
-                  lg:text-6xl
+                  mt-4 font-sans text-4xl font-light tracking-tight sm:text-5xl lg:text-6xl
                 "
               >
                 Account &{" "}
                 <span
                   className="
-                    italic
-                    text-[#A17D1C]
-
-                    dark:text-[#D4AF37]
+                    italic text-action
                   "
                 >
                   Settings
@@ -1779,13 +1529,7 @@ export default function CreatorSettings() {
 
               <p
                 className="
-                  mt-5
-                  max-w-2xl
-                  text-sm
-                  leading-7
-                  text-slate-500
-
-                  dark:text-white/40
+                  mt-5 max-w-2xl text-sm leading-7 text-muted
                 "
               >
                 Manage your Creator identity, project preferences, standard
@@ -1797,41 +1541,14 @@ export default function CreatorSettings() {
 
             <div
               className="
-                flex
-                flex-col
-                gap-3
-
-                sm:flex-row
+                flex flex-col gap-3 sm:flex-row
               "
             >
               <button
                 type="button"
                 onClick={() => navigate("/creator/profile")}
                 className="
-                  inline-flex
-                  h-12
-                  items-center
-                  justify-center
-                  gap-2
-                  rounded-xl
-                  border
-                  border-slate-200
-                  bg-white
-                  px-5
-                  text-[9px]
-                  font-black
-                  uppercase
-                  tracking-[0.17em]
-                  text-slate-500
-                  transition
-
-                  hover:border-[#D4AF37]/40
-                  hover:text-[#98751A]
-
-                  dark:border-white/10
-                  dark:bg-white/[0.04]
-                  dark:text-white/50
-                  dark:hover:text-[#D4AF37]
+                  inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-5 text-[11px] font-semibold uppercase tracking-[0.17em] text-muted transition hover:border-line hover:text-action dark:bg-subtle
                 "
               >
                 <User size={14} />
@@ -1843,23 +1560,7 @@ export default function CreatorSettings() {
                   type="button"
                   onClick={() => navigate("/creator/avatar-studio")}
                   className="
-                    inline-flex
-                    h-12
-                    items-center
-                    justify-center
-                    gap-2
-                    rounded-xl
-                    bg-violet-600
-                    px-5
-                    text-[9px]
-                    font-black
-                    uppercase
-                    tracking-[0.17em]
-                    text-white
-                    transition
-
-                    hover:-translate-y-0.5
-                    hover:bg-violet-700
+                    inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-5 text-[11px] font-semibold uppercase tracking-[0.17em] text-on-action transition hover:-translate-y-0.5 hover:bg-action hover:text-on-action
                   "
                 >
                   <Sparkles size={14} />
@@ -1876,9 +1577,7 @@ export default function CreatorSettings() {
 
         <section
           className={`
-            mb-7
-            grid
-            gap-4
+            mb-7 grid gap-4
 
             ${SHOW_FASHION_PERSONA ? "sm:grid-cols-3" : "sm:grid-cols-2"}
           `}
@@ -1933,47 +1632,18 @@ export default function CreatorSettings() {
         <form
           onSubmit={handleProfileSubmit}
           className="
-            mb-7
-            overflow-hidden
-            rounded-[2rem]
-            border
-            border-slate-200/80
-            bg-white/90
-            shadow-sm
-            backdrop-blur
-
-            dark:border-white/[0.06]
-            dark:bg-[#090909]/90
+            mb-7 overflow-hidden rounded-md border border-line bg-subtle
           "
         >
           <div
             className="
-              flex
-              flex-col
-              gap-5
-              border-b
-              border-slate-200
-              p-6
-
-              sm:flex-row
-              sm:items-center
-              sm:justify-between
-
-              lg:p-8
-
-              dark:border-white/[0.06]
+              flex flex-col gap-5 border-b border-line p-4 sm:flex-row sm:items-center sm:justify-between lg:p-4
             "
           >
             <div>
               <p
                 className="
-                  text-[8px]
-                  font-black
-                  uppercase
-                  tracking-[0.2em]
-                  text-[#98751A]
-
-                  dark:text-[#D4AF37]
+                  text-[11px] font-semibold uppercase tracking-normal text-action
                 "
               >
                 Identity & Preferences
@@ -1981,9 +1651,7 @@ export default function CreatorSettings() {
 
               <h2
                 className="
-                  mt-2
-                  font-serif
-                  text-3xl
+                  mt-2 font-sans text-3xl
                 "
               >
                 Creator profile
@@ -1991,13 +1659,7 @@ export default function CreatorSettings() {
 
               <p
                 className="
-                  mt-2
-                  max-w-xl
-                  text-xs
-                  leading-5
-                  text-slate-500
-
-                  dark:text-white/35
+                  mt-2 max-w-xl text-xs leading-5 text-muted
                 "
               >
                 These details help keep your Creator workspace, communication
@@ -2008,22 +1670,7 @@ export default function CreatorSettings() {
             {profileChanged && (
               <span
                 className="
-                  w-fit
-                  rounded-full
-                  border
-                  border-amber-200
-                  bg-amber-50
-                  px-3
-                  py-1.5
-                  text-[8px]
-                  font-black
-                  uppercase
-                  tracking-[0.14em]
-                  text-amber-700
-
-                  dark:border-amber-400/20
-                  dark:bg-amber-400/10
-                  dark:text-amber-300
+                  w-fit rounded-md border border-line bg-canvas px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-action dark:bg-subtle
                 "
               >
                 Unsaved Changes
@@ -2033,12 +1680,7 @@ export default function CreatorSettings() {
 
           <div
             className="
-              grid
-              gap-8
-              p-6
-
-              lg:grid-cols-[250px_minmax(0,1fr)]
-              lg:p-8
+              grid gap-8 p-4 lg:grid-cols-[250px_minmax(0,1fr)] lg:p-4
             "
           >
             {/*=============================================
@@ -2048,14 +1690,7 @@ export default function CreatorSettings() {
             <div>
               <p
                 className="
-                  mb-3
-                  text-[8px]
-                  font-black
-                  uppercase
-                  tracking-[0.18em]
-                  text-slate-400
-
-                  dark:text-white/25
+                  mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted
                 "
               >
                 Standard Profile Image
@@ -2065,22 +1700,7 @@ export default function CreatorSettings() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="
-                  group
-                  relative
-                  aspect-square
-                  w-full
-                  overflow-hidden
-                  rounded-[1.75rem]
-                  border
-                  border-slate-200
-                  bg-slate-100
-                  shadow-sm
-                  transition
-
-                  hover:border-[#D4AF37]/50
-
-                  dark:border-white/10
-                  dark:bg-[#111]
+                  group relative aspect-square w-full overflow-hidden rounded-md border border-line bg-subtle transition hover:border-line dark:bg-surface
                 "
               >
                 {profileImagePreview ? (
@@ -2088,22 +1708,13 @@ export default function CreatorSettings() {
                     src={profileImagePreview}
                     alt={`${profileName} profile preview`}
                     className="
-                      h-full
-                      w-full
-                      object-cover
+                      h-full w-full object-cover
                     "
                   />
                 ) : (
                   <div
                     className="
-                      flex
-                      h-full
-                      w-full
-                      items-center
-                      justify-center
-                      text-slate-300
-
-                      dark:text-white/15
+                      flex h-full w-full items-center justify-center text-muted
                     "
                   >
                     <User size={54} />
@@ -2112,27 +1723,12 @@ export default function CreatorSettings() {
 
                 <div
                   className="
-                    absolute
-                    inset-0
-                    flex
-                    items-center
-                    justify-center
-                    bg-black/60
-                    opacity-0
-                    transition
-
-                    group-hover:opacity-100
+                    absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition group-hover:opacity-100
                   "
                 >
                   <div
                     className="
-                      grid
-                      h-12
-                      w-12
-                      place-items-center
-                      rounded-full
-                      bg-[#D4AF37]
-                      text-black
+                      grid h-12 w-12 place-items-center rounded-full bg-action text-on-action
                     "
                   >
                     <Camera size={19} />
@@ -2152,28 +1748,7 @@ export default function CreatorSettings() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="
-                  mt-4
-                  inline-flex
-                  h-10
-                  w-full
-                  items-center
-                  justify-center
-                  gap-2
-                  rounded-xl
-                  border
-                  border-[#D4AF37]/25
-                  bg-[#D4AF37]/10
-                  text-[8px]
-                  font-black
-                  uppercase
-                  tracking-[0.16em]
-                  text-[#8E6E18]
-                  transition
-
-                  hover:bg-[#D4AF37]
-                  hover:text-black
-
-                  dark:text-[#D4AF37]
+                  mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-line bg-subtle text-[11px] font-semibold uppercase tracking-[0.16em] text-action transition hover:bg-action hover:text-on-action
                 "
               >
                 <Camera size={13} />
@@ -2183,39 +1758,19 @@ export default function CreatorSettings() {
               {profileImageFile && (
                 <div
                   className="
-                    mt-3
-                    flex
-                    items-center
-                    gap-2
-                    rounded-xl
-                    border
-                    border-emerald-200
-                    bg-emerald-50
-                    p-3
-
-                    dark:border-emerald-400/20
-                    dark:bg-emerald-400/[0.07]
+                    mt-3 flex items-center gap-2 rounded-md border border-line bg-canvas p-3 dark:bg-subtle
                   "
                 >
                   <CheckCircle2
                     size={13}
                     className="
-                      shrink-0
-                      text-emerald-600
-
-                      dark:text-emerald-300
+                      shrink-0 text-action
                     "
                   />
 
                   <span
                     className="
-                      min-w-0
-                      flex-1
-                      truncate
-                      text-[9px]
-                      text-emerald-700
-
-                      dark:text-emerald-200
+                      min-w-0 flex-1 truncate text-[11px] text-action
                     "
                   >
                     {profileImageFile.name}
@@ -2226,19 +1781,7 @@ export default function CreatorSettings() {
                     onClick={discardSelectedImage}
                     aria-label="Discard selected image"
                     className="
-                      grid
-                      h-7
-                      w-7
-                      shrink-0
-                      place-items-center
-                      rounded-lg
-                      text-emerald-600
-                      transition
-
-                      hover:bg-emerald-100
-
-                      dark:text-emerald-300
-                      dark:hover:bg-white/10
+                      grid h-7 w-7 shrink-0 place-items-center rounded-md text-action transition hover:bg-subtle
                     "
                   >
                     <X size={12} />
@@ -2248,12 +1791,7 @@ export default function CreatorSettings() {
 
               <p
                 className="
-                  mt-3
-                  text-[9px]
-                  leading-5
-                  text-slate-400
-
-                  dark:text-white/25
+                  mt-3 text-[11px] leading-5 text-muted
                 "
               >
                 JPG, PNG or WEBP. Maximum 5 MB.
@@ -2280,10 +1818,7 @@ export default function CreatorSettings() {
 
               <div
                 className="
-                  grid
-                  gap-5
-
-                  md:grid-cols-2
+                  grid gap-5 md:grid-cols-2
                 "
               >
                 <label className="block">
@@ -2320,10 +1855,7 @@ export default function CreatorSettings() {
 
               <div
                 className="
-                  grid
-                  gap-5
-
-                  md:grid-cols-2
+                  grid gap-5 md:grid-cols-2
                 "
               >
                 <label className="block">
@@ -2380,41 +1912,13 @@ export default function CreatorSettings() {
                   onChange={handleInputChange}
                   placeholder="Describe your visual direction, preferred colors, style language, audience, materials, restrictions, recurring themes, and anything designers should know..."
                   className="
-                    w-full
-                    resize-y
-                    rounded-xl
-                    border
-                    border-slate-200
-                    bg-slate-50
-                    p-4
-                    text-sm
-                    leading-7
-                    outline-none
-                    transition
-
-                    focus:border-[#D4AF37]/60
-                    focus:bg-white
-                    focus:ring-4
-                    focus:ring-[#D4AF37]/10
-
-                    dark:border-white/10
-                    dark:bg-white/[0.035]
-                    dark:text-white
-                    dark:placeholder:text-white/20
-                    dark:focus:bg-white/[0.05]
+                    w-full resize-y rounded-md border border-line bg-canvas p-4 text-sm leading-7 outline-none transition focus:border-line focus:bg-surface focus:ring-4 focus:ring-action dark:bg-subtle dark:text-ink dark:placeholder:text-muted dark:focus:bg-subtle
                   "
                 />
 
                 <div
                   className="
-                    mt-2
-                    flex
-                    justify-end
-                    text-[8px]
-                    font-mono
-                    text-slate-400
-
-                    dark:text-white/25
+                    mt-2 flex justify-end text-[11px] font-mono text-muted
                   "
                 >
                   {form.brand_guidelines_summary.length}
@@ -2428,44 +1932,17 @@ export default function CreatorSettings() {
 
               <section
                 className="
-                  overflow-hidden
-                  rounded-2xl
-                  border
-                  border-emerald-200/80
-                  bg-emerald-50/60
-
-                  dark:border-emerald-400/15
-                  dark:bg-emerald-400/[0.045]
+                  overflow-hidden rounded-md border border-line bg-subtle
                 "
               >
                 <div
                   className="
-                    flex
-                    items-start
-                    gap-4
-                    border-b
-                    border-emerald-200/70
-                    p-5
-
-                    dark:border-emerald-400/10
+                    flex items-start gap-4 border-b border-line p-4
                   "
                 >
                   <div
                     className="
-                      grid
-                      h-10
-                      w-10
-                      shrink-0
-                      place-items-center
-                      rounded-xl
-                      border
-                      border-emerald-200
-                      bg-white
-                      text-emerald-600
-
-                      dark:border-emerald-400/20
-                      dark:bg-emerald-400/10
-                      dark:text-emerald-300
+                      grid h-10 w-10 shrink-0 place-items-center rounded-md border border-line bg-surface text-action dark:bg-subtle
                     "
                   >
                     <MessageCircle size={17} />
@@ -2474,13 +1951,7 @@ export default function CreatorSettings() {
                   <div className="min-w-0">
                     <p
                       className="
-                        text-[8px]
-                        font-black
-                        uppercase
-                        tracking-[0.18em]
-                        text-emerald-700
-
-                        dark:text-emerald-300
+                        text-[11px] font-semibold uppercase tracking-[0.18em] text-action
                       "
                     >
                       WhatsApp Booking Contact
@@ -2488,13 +1959,7 @@ export default function CreatorSettings() {
 
                     <p
                       className="
-                        mt-2
-                        max-w-2xl
-                        text-[10px]
-                        leading-5
-                        text-slate-500
-
-                        dark:text-white/35
+                        mt-2 max-w-2xl text-[10px] leading-5 text-muted
                       "
                     >
                       Optional. Your WhatsApp number remains private account
@@ -2507,11 +1972,7 @@ export default function CreatorSettings() {
 
                 <div
                   className="
-                    grid
-                    gap-5
-                    p-5
-
-                    md:grid-cols-[minmax(0,1fr)_minmax(280px,0.9fr)]
+                    grid gap-5 p-4 md:grid-cols-[minmax(0,1fr)_minmax(280px,0.9fr)]
                   "
                 >
                   <label className="block">
@@ -2535,12 +1996,7 @@ export default function CreatorSettings() {
                     <p
                       id="creator-whatsapp-help"
                       className="
-                        mt-2
-                        text-[9px]
-                        leading-5
-                        text-slate-400
-
-                        dark:text-white/25
+                        mt-2 text-[11px] leading-5 text-muted
                       "
                     >
                       Use international E.164 format with the country code and
@@ -2550,30 +2006,13 @@ export default function CreatorSettings() {
 
                   <div
                     className="
-                      flex
-                      items-center
-                      justify-between
-                      gap-4
-                      rounded-xl
-                      border
-                      border-emerald-200
-                      bg-white
-                      p-4
-
-                      dark:border-emerald-400/15
-                      dark:bg-white/[0.025]
+                      flex items-center justify-between gap-4 rounded-md border border-line bg-surface p-4 dark:bg-subtle
                     "
                   >
                     <div className="min-w-0">
                       <p
                         className="
-                          text-[9px]
-                          font-black
-                          uppercase
-                          tracking-[0.14em]
-                          text-slate-700
-
-                          dark:text-white/70
+                          text-[11px] font-semibold uppercase tracking-[0.14em] text-ink dark:text-muted
                         "
                       >
                         Share with booking partners
@@ -2581,12 +2020,7 @@ export default function CreatorSettings() {
 
                       <p
                         className="
-                          mt-2
-                          text-[9px]
-                          leading-5
-                          text-slate-400
-
-                          dark:text-white/28
+                          mt-2 text-[11px] leading-5 text-muted
                         "
                       >
                         Your number stays hidden until an eligible booking has
@@ -2602,34 +2036,20 @@ export default function CreatorSettings() {
                       onClick={handleWhatsappToggle}
                       disabled={!cleanText(form.whatsapp_number)}
                       className={`
-                        relative
-                        h-7
-                        w-12
-                        shrink-0
-                        rounded-full
-                        border
-                        transition
+                        relative h-7 w-12 shrink-0 rounded-md border transition
 
                         ${
                           form.whatsapp_contact_enabled
-                            ? "border-emerald-500 bg-emerald-500"
-                            : "border-slate-300 bg-slate-200 dark:border-white/15 dark:bg-white/10"
+                            ? "border-line bg-action text-on-action"
+                            : "border-line bg-subtle"
                         }
 
-                        disabled:cursor-not-allowed
-                        disabled:opacity-40
+                        disabled:cursor-not-allowed disabled:opacity-40
                       `}
                     >
                       <span
                         className={`
-                          absolute
-                          top-0.5
-                          h-5
-                          w-5
-                          rounded-full
-                          bg-white
-                          shadow-sm
-                          transition-transform
+                          absolute top-0.5 h-5 w-5 rounded-full bg-surface transition-transform
 
                           ${
                             form.whatsapp_contact_enabled
@@ -2647,34 +2067,13 @@ export default function CreatorSettings() {
 
           <div
             className="
-              flex
-              flex-col
-              gap-4
-              border-t
-              border-slate-200
-              bg-slate-50/60
-              p-5
-
-              sm:flex-row
-              sm:items-center
-              sm:justify-between
-
-              lg:px-8
-
-              dark:border-white/[0.06]
-              dark:bg-white/[0.015]
+              flex flex-col gap-4 border-t border-line bg-subtle p-4 sm:flex-row sm:items-center sm:justify-between lg:px-8
             "
           >
             <div>
               <p
                 className="
-                  text-[8px]
-                  font-black
-                  uppercase
-                  tracking-[0.17em]
-                  text-slate-400
-
-                  dark:text-white/25
+                  text-[11px] font-semibold uppercase tracking-[0.17em] text-muted
                 "
               >
                 Profile completion
@@ -2682,31 +2081,17 @@ export default function CreatorSettings() {
 
               <div
                 className="
-                  mt-2
-                  flex
-                  items-center
-                  gap-3
+                  mt-2 flex items-center gap-3
                 "
               >
                 <div
                   className="
-                    h-1.5
-                    w-32
-                    overflow-hidden
-                    rounded-full
-                    bg-slate-200
-
-                    dark:bg-white/[0.06]
+                    h-1.5 w-32 overflow-hidden rounded-full bg-subtle
                   "
                 >
                   <div
                     className="
-                      h-full
-                      rounded-full
-                      bg-gradient-to-r
-                      from-[#A98520]
-                      to-[#D4AF37]
-                      transition-all
+                      h-full rounded-full bg-surface transition-all
                     "
                     style={{
                       width: `${profileCompleteness}%`,
@@ -2716,11 +2101,7 @@ export default function CreatorSettings() {
 
                 <span
                   className="
-                    font-mono
-                    text-[9px]
-                    text-slate-500
-
-                    dark:text-white/35
+                    font-mono text-[11px] text-muted
                   "
                 >
                   {profileCompleteness}%
@@ -2732,32 +2113,7 @@ export default function CreatorSettings() {
               type="submit"
               disabled={profileSaving || !profileChanged}
               className="
-                inline-flex
-                h-12
-                items-center
-                justify-center
-                gap-2
-                rounded-xl
-                bg-[#D4AF37]
-                px-7
-                text-[9px]
-                font-black
-                uppercase
-                tracking-[0.18em]
-                text-black
-                shadow-[0_14px_35px_rgba(212,175,55,0.2)]
-                transition
-
-                hover:-translate-y-0.5
-                hover:bg-[#E4C65D]
-
-                disabled:cursor-not-allowed
-                disabled:bg-slate-200
-                disabled:text-slate-400
-                disabled:shadow-none
-
-                dark:disabled:bg-white/5
-                dark:disabled:text-white/25
+                inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-7 text-[11px] font-semibold uppercase tracking-[0.18em] text-on-action transition hover:-translate-y-0.5 hover:bg-action disabled:cursor-not-allowed disabled:bg-subtle disabled:text-muted hover:text-on-action
               "
             >
               {profileSaving ? (
@@ -2782,49 +2138,18 @@ export default function CreatorSettings() {
         {SHOW_FASHION_PERSONA && (
           <section
             className="
-              mb-7
-              overflow-hidden
-              rounded-[2rem]
-              border
-              border-violet-200/80
-              bg-white/90
-              shadow-sm
-
-              dark:border-violet-400/15
-              dark:bg-[#090909]
+              mb-7 overflow-hidden rounded-md border border-line bg-subtle dark:bg-surface
             "
           >
             <div
               className="
-              flex
-              flex-col
-              gap-5
-              border-b
-              border-slate-200
-              p-6
-
-              sm:flex-row
-              sm:items-center
-              sm:justify-between
-
-              lg:p-8
-
-              dark:border-white/[0.06]
+              flex flex-col gap-5 border-b border-line p-4 sm:flex-row sm:items-center sm:justify-between lg:p-4
             "
             >
               <div>
                 <p
                   className="
-                  inline-flex
-                  items-center
-                  gap-2
-                  text-[8px]
-                  font-black
-                  uppercase
-                  tracking-[0.2em]
-                  text-violet-600
-
-                  dark:text-violet-300
+                  inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-normal text-action
                 "
                 >
                   <Sparkles size={12} />
@@ -2833,9 +2158,7 @@ export default function CreatorSettings() {
 
                 <h2
                   className="
-                  mt-2
-                  font-serif
-                  text-3xl
+                  mt-2 font-sans text-3xl
                 "
                 >
                   Visual identity
@@ -2843,13 +2166,7 @@ export default function CreatorSettings() {
 
                 <p
                   className="
-                  mt-2
-                  max-w-xl
-                  text-xs
-                  leading-5
-                  text-slate-500
-
-                  dark:text-white/35
+                  mt-2 max-w-xl text-xs leading-5 text-muted
                 "
                 >
                   Preview your shared Fashion Persona here. Customization
@@ -2859,8 +2176,7 @@ export default function CreatorSettings() {
 
               <div
                 className="
-                flex
-                gap-2
+                flex gap-2
               "
               >
                 <button
@@ -2869,26 +2185,7 @@ export default function CreatorSettings() {
                   disabled={avatarLoading}
                   aria-label="Refresh Fashion Persona"
                   className="
-                  grid
-                  h-11
-                  w-11
-                  place-items-center
-                  rounded-xl
-                  border
-                  border-slate-200
-                  bg-slate-50
-                  text-slate-400
-                  transition
-
-                  hover:border-violet-300
-                  hover:text-violet-600
-
-                  disabled:opacity-50
-
-                  dark:border-white/10
-                  dark:bg-white/[0.03]
-                  dark:text-white/30
-                  dark:hover:text-violet-300
+                  grid h-9 w-11 place-items-center rounded-md border border-line bg-canvas text-muted transition hover:border-line hover:text-action disabled:opacity-50 dark:bg-subtle
                 "
                 >
                   <RefreshCw
@@ -2901,22 +2198,7 @@ export default function CreatorSettings() {
                   type="button"
                   onClick={() => navigate("/creator/avatar-studio")}
                   className="
-                  inline-flex
-                  h-11
-                  items-center
-                  justify-center
-                  gap-2
-                  rounded-xl
-                  bg-violet-600
-                  px-5
-                  text-[8px]
-                  font-black
-                  uppercase
-                  tracking-[0.16em]
-                  text-white
-                  transition
-
-                  hover:bg-violet-700
+                  inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-5 text-[11px] font-semibold uppercase tracking-[0.16em] text-on-action transition hover:bg-action hover:text-on-action
                 "
                 >
                   <Palette size={13} />
@@ -2927,51 +2209,27 @@ export default function CreatorSettings() {
 
             <div
               className="
-              grid
-              gap-7
-              p-6
-
-              lg:grid-cols-[minmax(280px,0.9fr)_minmax(0,1.1fr)]
-              lg:p-8
+              grid gap-7 p-4 lg:grid-cols-[minmax(280px,0.9fr)_minmax(0,1.1fr)] lg:p-4
             "
             >
               <div>
                 {avatarLoading ? (
                   <div
                     className="
-                    flex
-                    min-h-[360px]
-                    items-center
-                    justify-center
-                    rounded-[1.5rem]
-                    border
-                    border-slate-200
-                    bg-slate-50
-
-                    dark:border-white/[0.06]
-                    dark:bg-white/[0.02]
+                    flex min-h-[360px] items-center justify-center rounded-md border border-line bg-canvas dark:bg-subtle
                   "
                   >
                     <Loader2
                       size={26}
                       className="
-                      animate-spin
-                      text-violet-500
-
-                      dark:text-violet-300
+                      animate-spin text-action
                     "
                     />
                   </div>
                 ) : avatar ? (
                   <div
                     className="
-                    overflow-hidden
-                    rounded-[1.5rem]
-                    border
-                    border-slate-200
-                    bg-black
-
-                    dark:border-white/10
+                    overflow-hidden rounded-md border border-line bg-canvas
                   "
                   >
                     <FashionPersonaAvatar
@@ -2990,37 +2248,19 @@ export default function CreatorSettings() {
                 ) : (
                   <div
                     className="
-                    flex
-                    min-h-[360px]
-                    flex-col
-                    items-center
-                    justify-center
-                    rounded-[1.5rem]
-                    border
-                    border-dashed
-                    border-slate-200
-                    bg-slate-50
-                    px-6
-                    text-center
-
-                    dark:border-white/10
-                    dark:bg-white/[0.02]
+                    flex min-h-[360px] flex-col items-center justify-center rounded-md border border-dashed border-line bg-canvas px-6 text-center dark:bg-subtle
                   "
                   >
                     <Sparkles
                       size={29}
                       className="
-                      text-slate-300
-
-                      dark:text-white/15
+                      text-muted
                     "
                     />
 
                     <h3
                       className="
-                      mt-5
-                      font-serif
-                      text-2xl
+                      mt-5 font-sans text-2xl
                     "
                     >
                       Create your Persona
@@ -3028,13 +2268,7 @@ export default function CreatorSettings() {
 
                     <p
                       className="
-                      mt-3
-                      max-w-sm
-                      text-xs
-                      leading-6
-                      text-slate-500
-
-                      dark:text-white/35
+                      mt-3 max-w-sm text-xs leading-6 text-muted
                     "
                     >
                       {avatarError ||
@@ -3046,35 +2280,24 @@ export default function CreatorSettings() {
 
               <div
                 className="
-                flex
-                flex-col
-                justify-center
+                flex flex-col justify-center
               "
               >
                 <div
                   className="
-                  flex
-                  flex-wrap
-                  gap-2
+                  flex flex-wrap gap-2
                 "
                 >
                   {avatar && (
                     <>
                       <span
                         className={`
-                        rounded-full
-                        border
-                        px-3
-                        py-1.5
-                        text-[8px]
-                        font-black
-                        uppercase
-                        tracking-[0.15em]
+                        rounded-md border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.15em]
 
                         ${
                           avatar.isPublic
-                            ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300"
-                            : "border-slate-200 bg-slate-50 text-slate-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-white/35"
+                            ? "border-line bg-canvas text-action dark:bg-subtle"
+                            : "border-line bg-canvas text-muted dark:bg-subtle"
                         }
                       `}
                       >
@@ -3083,21 +2306,7 @@ export default function CreatorSettings() {
 
                       <span
                         className="
-                        rounded-full
-                        border
-                        border-slate-200
-                        bg-slate-50
-                        px-3
-                        py-1.5
-                        text-[8px]
-                        font-black
-                        uppercase
-                        tracking-[0.15em]
-                        text-slate-400
-
-                        dark:border-white/10
-                        dark:bg-white/[0.03]
-                        dark:text-white/30
+                        rounded-md border border-line bg-canvas px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted dark:bg-subtle
                       "
                       >
                         Version {avatar.version}
@@ -3108,9 +2317,7 @@ export default function CreatorSettings() {
 
                 <h3
                   className="
-                  mt-5
-                  font-serif
-                  text-3xl
+                  mt-5 font-sans text-3xl
                 "
                 >
                   A separate visual identity
@@ -3118,13 +2325,7 @@ export default function CreatorSettings() {
 
                 <p
                   className="
-                  mt-3
-                  max-w-xl
-                  text-sm
-                  leading-7
-                  text-slate-500
-
-                  dark:text-white/40
+                  mt-3 max-w-xl text-sm leading-7 text-muted
                 "
                 >
                   Your Persona can carry appearance, pose, scene and a featured
@@ -3135,35 +2336,19 @@ export default function CreatorSettings() {
                 {avatar && (
                   <div
                     className="
-                    mt-6
-                    grid
-                    grid-cols-2
-                    gap-3
+                    mt-6 grid grid-cols-2 gap-3
                   "
                   >
                     {personaDetails.map((item) => (
                       <div
                         key={item.label}
                         className="
-                          rounded-xl
-                          border
-                          border-slate-200
-                          bg-slate-50
-                          p-4
-
-                          dark:border-white/[0.06]
-                          dark:bg-white/[0.025]
+                          rounded-md border border-line bg-canvas p-4 dark:bg-subtle
                         "
                       >
                         <p
                           className="
-                            text-[7px]
-                            font-black
-                            uppercase
-                            tracking-[0.15em]
-                            text-slate-400
-
-                            dark:text-white/22
+                            text-[11px] font-semibold uppercase tracking-[0.15em] text-muted
                           "
                         >
                           {item.label}
@@ -3171,9 +2356,7 @@ export default function CreatorSettings() {
 
                         <p
                           className="
-                            mt-2
-                            text-xs
-                            font-semibold
+                            mt-2 text-xs font-semibold
                           "
                         >
                           {item.value}
@@ -3187,32 +2370,7 @@ export default function CreatorSettings() {
                   type="button"
                   onClick={() => navigate("/creator/avatar-studio")}
                   className="
-                  mt-6
-                  inline-flex
-                  h-11
-                  w-fit
-                  items-center
-                  justify-center
-                  gap-2
-                  rounded-xl
-                  border
-                  border-violet-200
-                  bg-violet-50
-                  px-5
-                  text-[8px]
-                  font-black
-                  uppercase
-                  tracking-[0.16em]
-                  text-violet-700
-                  transition
-
-                  hover:bg-violet-100
-
-                  dark:border-violet-400/20
-                  dark:bg-violet-500/10
-                  dark:text-violet-200
-                  dark:hover:bg-violet-500
-                  dark:hover:text-white
+                  mt-6 inline-flex h-9 w-fit items-center justify-center gap-2 rounded-md border border-line bg-canvas px-5 text-[11px] font-semibold uppercase tracking-[0.16em] text-action transition hover:bg-subtle dark:hover:bg-action dark:hover:text-on-action
                 "
                 >
                   Open Avatar Studio
@@ -3230,47 +2388,17 @@ export default function CreatorSettings() {
         <form
           onSubmit={handleSecuritySubmit}
           className="
-            overflow-hidden
-            rounded-[2rem]
-            border
-            border-rose-200/80
-            bg-white/90
-            shadow-sm
-
-            dark:border-rose-400/10
-            dark:bg-[#090909]
+            overflow-hidden rounded-md border border-line bg-subtle dark:bg-surface
           "
         >
           <div
             className="
-              flex
-              items-start
-              gap-4
-              border-b
-              border-slate-200
-              p-6
-
-              lg:p-8
-
-              dark:border-white/[0.06]
+              flex items-start gap-4 border-b border-line p-4 lg:p-4
             "
           >
             <div
               className="
-                grid
-                h-11
-                w-11
-                shrink-0
-                place-items-center
-                rounded-xl
-                border
-                border-rose-200
-                bg-rose-50
-                text-rose-600
-
-                dark:border-rose-400/20
-                dark:bg-rose-400/10
-                dark:text-rose-300
+                grid h-11 w-11 shrink-0 place-items-center rounded-md border border-line bg-canvas text-action dark:bg-subtle
               "
             >
               <Lock size={18} />
@@ -3279,13 +2407,7 @@ export default function CreatorSettings() {
             <div>
               <p
                 className="
-                  text-[8px]
-                  font-black
-                  uppercase
-                  tracking-[0.2em]
-                  text-rose-600
-
-                  dark:text-rose-300
+                  text-[11px] font-semibold uppercase tracking-normal text-action
                 "
               >
                 Account Security
@@ -3293,9 +2415,7 @@ export default function CreatorSettings() {
 
               <h2
                 className="
-                  mt-2
-                  font-serif
-                  text-3xl
+                  mt-2 font-sans text-3xl
                 "
               >
                 Change password
@@ -3303,13 +2423,7 @@ export default function CreatorSettings() {
 
               <p
                 className="
-                  mt-2
-                  max-w-xl
-                  text-xs
-                  leading-5
-                  text-slate-500
-
-                  dark:text-white/35
+                  mt-2 max-w-xl text-xs leading-5 text-muted
                 "
               >
                 Changing your password securely ends all existing sessions. You
@@ -3320,9 +2434,7 @@ export default function CreatorSettings() {
 
           <div
             className="
-              p-6
-
-              lg:p-8
+              p-4 lg:p-4
             "
           >
             {securitySuccess && (
@@ -3360,10 +2472,7 @@ export default function CreatorSettings() {
 
               <div
                 className="
-                  grid
-                  gap-5
-
-                  md:grid-cols-2
+                  grid gap-5 md:grid-cols-2
                 "
               >
                 <PasswordField
@@ -3402,18 +2511,7 @@ export default function CreatorSettings() {
               {passwordForm.newPassword && (
                 <div
                   className="
-                    grid
-                    gap-2
-                    rounded-2xl
-                    border
-                    border-slate-200
-                    bg-slate-50
-                    p-4
-
-                    sm:grid-cols-3
-
-                    dark:border-white/[0.06]
-                    dark:bg-white/[0.02]
+                    grid gap-2 rounded-md border border-line bg-canvas p-4 sm:grid-cols-3 dark:bg-subtle
                   "
                 >
                   <PasswordRequirement
@@ -3436,50 +2534,24 @@ export default function CreatorSettings() {
 
           <div
             className="
-              flex
-              flex-col
-              gap-4
-              border-t
-              border-slate-200
-              bg-slate-50/60
-              p-5
-
-              sm:flex-row
-              sm:items-center
-              sm:justify-between
-
-              lg:px-8
-
-              dark:border-white/[0.06]
-              dark:bg-white/[0.015]
+              flex flex-col gap-4 border-t border-line bg-subtle p-4 sm:flex-row sm:items-center sm:justify-between lg:px-8
             "
           >
             <div
               className="
-                flex
-                items-start
-                gap-3
+                flex items-start gap-3
               "
             >
               <ShieldCheck
                 size={15}
                 className="
-                  mt-0.5
-                  shrink-0
-                  text-emerald-600
-
-                  dark:text-emerald-300
+                  mt-0.5 shrink-0 text-action
                 "
               />
 
               <p
                 className="
-                  max-w-xl
-                  text-[10px]
-                  leading-5
-                  text-slate-500
-
-                  dark:text-white/30
+                  max-w-xl text-[10px] leading-5 text-muted
                 "
               >
                 A successful password change revokes every existing login
@@ -3491,35 +2563,7 @@ export default function CreatorSettings() {
               type="submit"
               disabled={securitySaving}
               className="
-                inline-flex
-                h-12
-                shrink-0
-                items-center
-                justify-center
-                gap-2
-                rounded-xl
-                border
-                border-rose-300
-                bg-rose-50
-                px-6
-                text-[9px]
-                font-black
-                uppercase
-                tracking-[0.17em]
-                text-rose-700
-                transition
-
-                hover:bg-rose-600
-                hover:text-white
-
-                disabled:cursor-not-allowed
-                disabled:opacity-50
-
-                dark:border-rose-400/20
-                dark:bg-rose-400/10
-                dark:text-rose-300
-                dark:hover:bg-rose-500
-                dark:hover:text-white
+                inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-line bg-canvas px-6 text-[11px] font-semibold uppercase tracking-[0.17em] text-action transition hover:bg-action hover:text-on-action disabled:cursor-not-allowed disabled:opacity-50 dark:bg-subtle
               "
             >
               {securitySaving ? (

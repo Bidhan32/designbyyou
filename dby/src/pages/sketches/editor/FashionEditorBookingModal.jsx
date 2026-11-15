@@ -5,6 +5,7 @@
  * Uses Stripe.js from https://js.stripe.com/v3/ (no npm dependency).
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { bookingRewardEstimate } from "../../Creator/bookingRewards";
 import API from "/src/api/axios";
 import { Link } from "react-router-dom";
 
@@ -14,9 +15,9 @@ const PUBLISHABLE_KEY = String(
   import.meta.env.VITE_STRIPE_PUBLIC_KEY || "",
 ).trim();
 
-const INPUT = "w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-violet-400 disabled:opacity-50";
-const LABEL = "mb-1.5 block text-xs font-semibold text-slate-300";
-const BUTTON = "min-h-10 rounded-lg px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40";
+const INPUT = "w-full rounded-md border border-line bg-surface px-3 py-2.5 text-sm text-ink outline-none focus:border-line disabled:opacity-50";
+const LABEL = "mb-1.5 block text-xs font-semibold text-muted";
+const BUTTON = "min-h-10 rounded-md px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40";
 
 function apiMessage(error, fallback) {
   return error?.response?.data?.message || error?.response?.data?.error || error?.message || fallback;
@@ -302,29 +303,29 @@ export default function FashionEditorBookingModal({
     onClose();
   };
   const selectedDesigner = designers.find((item) => item.id === designerId);
-  const card = "rounded-xl border border-slate-700 bg-slate-900/70 p-3";
+  const card = "rounded-md border border-line bg-subtle p-3";
 
   return (
-    <div className="fixed inset-0 z-[135] flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm sm:p-6">
+    <div className="fixed inset-0 z-[135] flex items-center justify-center bg-black/80 p-3 sm:p-4">
       <button type="button" aria-label="Close designer booking" disabled={busy} onClick={requestClose} className="absolute inset-0 cursor-default disabled:cursor-wait" />
-      <section role="dialog" aria-modal="true" aria-labelledby="editor-booking-title" className="relative z-10 flex max-h-[94dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-violet-500/30 bg-slate-950 text-white shadow-2xl">
-        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-800 p-4 sm:p-5">
+      <section role="dialog" aria-modal="true" aria-labelledby="editor-booking-title" className="relative z-10 flex max-h-[94dvh] w-full max-w-2xl flex-col overflow-hidden rounded-md border border-line bg-surface text-ink">
+        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-line p-4">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-violet-300">Private commissioned design</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-action">Private commissioned design</p>
             <h2 id="editor-booking-title" className="mt-1 text-lg font-bold">Book a Designer</h2>
-            <p className="mt-1 text-xs text-slate-400">A private copy of your design is attached to your booking. It will not be posted to Showcase.</p>
+            <p className="mt-1 text-xs text-muted">A private copy of your design is attached to your booking. It will not be posted to Showcase.</p>
           </div>
-          <button type="button" onClick={requestClose} disabled={busy} aria-label="Close designer booking" className="rounded-lg border border-slate-700 px-3 py-1.5 text-lg hover:bg-slate-800 disabled:opacity-40">×</button>
+          <button type="button" onClick={requestClose} disabled={busy} aria-label="Close designer booking" className="rounded-md border border-line px-3 py-1.5 text-lg hover:bg-subtle disabled:opacity-40">×</button>
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
-          {error && <div role="alert" className="mb-4 rounded-lg border border-red-700 bg-red-950/50 p-3 text-xs text-red-200">{error}</div>}
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          {error && <div role="alert" className="mb-4 rounded-md border border-line bg-subtle p-3 text-xs text-action">{error}</div>}
           {phase === "details" && (
             <form id="editor-booking-form" onSubmit={createBooking} className="space-y-4">
               <div className={card}>
-                <p className="mb-2 text-xs font-bold text-violet-300">Design attached from Fashion Editor</p>
+                <p className="mb-2 text-xs font-bold text-action">Design attached from Fashion Editor</p>
                 <div className="flex items-center gap-3">
-                  {previewDataUrl ? <img src={previewDataUrl} alt="Current design preview" className="h-24 w-20 shrink-0 rounded-md bg-white object-contain" /> : null}
-                  <div className="min-w-0"><p className="break-words text-sm font-semibold">{documentTitle}</p><p className="mt-1 text-xs text-slate-400">A copy of this version will be attached to the booking.</p></div>
+                  {previewDataUrl ? <img src={previewDataUrl} alt="Current design preview" className="h-24 w-20 shrink-0 rounded-md bg-surface object-contain" /> : null}
+                  <div className="min-w-0"><p className="break-words text-sm font-semibold">{documentTitle}</p><p className="mt-1 text-xs text-muted">A copy of this version will be attached to the booking.</p></div>
                 </div>
               </div>
               <div>
@@ -333,7 +334,7 @@ export default function FashionEditorBookingModal({
                   <option value="">{loadingDesigners ? "Loading designers…" : "Select a designer"}</option>
                   {designers.map((designer) => <option key={designer.id} value={designer.id}>{designer.full_name || "Designer"} {designer.tier ? `(${designer.tier})` : ""}</option>)}
                 </select>
-                {!loadingDesigners && designers.length === 0 && <p className="mt-1 text-xs text-amber-300">No designers are available right now. Please try again later.</p>}
+                {!loadingDesigners && designers.length === 0 && <p className="mt-1 text-xs text-action">No designers are available right now. Please try again later.</p>}
               </div>
               <div>
                 <label htmlFor="booking-brief" className={LABEL}>What should the designer do? *</label>
@@ -344,42 +345,44 @@ export default function FashionEditorBookingModal({
                 <div><label htmlFor="booking-deadline" className={LABEL}>Project deadline *</label><input id="booking-deadline" required type="date" value={deadline} onChange={(event) => setDeadline(event.target.value)} disabled={busy || !!preparedRequestRef.current} className={INPUT} /></div>
               </div>
               <div><label htmlFor="booking-schedule" className={LABEL}>Scheduled meeting (optional)</label><input id="booking-schedule" type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} disabled={busy || !!preparedRequestRef.current} className={INPUT} /></div>
-              {selectedDesigner && <p className="text-xs text-slate-400">Selected: <span className="font-semibold text-slate-200">{selectedDesigner.full_name}</span>. Your booking price and deadline must already be agreed.</p>}
-              <p className="rounded-lg border border-amber-800/60 bg-amber-950/20 p-3 text-xs leading-5 text-amber-100">Creating a booking starts your existing Stripe checkout and may reserve this designer’s date. Your actual total, including any applicable connection fee, appears on the payment screen. Please confirm the price with the designer before proceeding.</p>
-              {preparedRequestRef.current && <p className="text-xs text-amber-300">Retrying the same booking request and saved design version. Do not open another booking for this request.</p>}
+              {Number(price) > 0 && <p className="text-sm text-muted">{bookingRewardEstimate(price)}</p>}
+              {selectedDesigner && <p className="text-xs text-muted">Selected: <span className="font-semibold text-ink">{selectedDesigner.full_name}</span>. Your booking price and deadline must already be agreed.</p>}
+              <p className="rounded-md border border-line bg-subtle p-3 text-xs leading-5 text-action">Creating a booking starts your existing Stripe checkout and may reserve this designer’s date. Your actual total, including any applicable connection fee, appears on the payment screen. Please confirm the price with the designer before proceeding.</p>
+              {preparedRequestRef.current && <p className="text-xs text-action">Retrying the same booking request and saved design version. Do not open another booking for this request.</p>}
             </form>
           )}
           {phase === "payment" && (
             <div className="space-y-4">
               <div className={card}>
-                <p className="text-xs font-semibold text-violet-200">Private design booking created</p>
-                <p className="mt-1 break-all font-mono text-xs text-slate-300">Booking #{booking?.id}</p>
-                <div className="mt-3 flex justify-between text-sm"><span className="text-slate-400">Designer price</span><span>{formatDollars(paymentSummary?.baseAmount)}</span></div>
-                <div className="mt-1 flex justify-between text-sm"><span className="text-slate-400">Connection fee</span><span>{formatDollars(paymentSummary?.connectionFee)}</span></div>
-                <div className="mt-2 flex justify-between border-t border-slate-700 pt-2 text-base font-bold"><span>Total charge</span><span>{formatDollars(paymentSummary?.totalCharged)}</span></div>
+                <p className="text-xs font-semibold text-action">Private design booking created</p>
+                <p className="mt-1 break-all font-mono text-xs text-muted">Booking #{booking?.id}</p>
+                <div className="mt-3 flex justify-between text-sm"><span className="text-muted">Designer price</span><span>{formatDollars(paymentSummary?.baseAmount)}</span></div>
+                <div className="mt-1 flex justify-between text-sm"><span className="text-muted">Connection fee</span><span>{formatDollars(paymentSummary?.connectionFee)}</span></div>
+                <p className="mt-2 text-sm text-muted">{bookingRewardEstimate(paymentSummary?.baseAmount)}</p>
+                <div className="mt-2 flex justify-between border-t border-line pt-2 text-base font-bold"><span>Total charge</span><span>{formatDollars(paymentSummary?.totalCharged)}</span></div>
               </div>
               <div className={card}>
                 <p className="mb-3 text-sm font-semibold">Secure Stripe payment</p>
                 <div ref={paymentHostRef} aria-label="Stripe payment details" />
-                {!stripeReady && <p className="mt-2 text-xs text-slate-400">Loading secure payment options…</p>}
+                {!stripeReady && <p className="mt-2 text-xs text-muted">Loading secure payment options…</p>}
               </div>
-              <p className="text-xs text-amber-200">The booking exists but is not paid until Stripe confirms payment. Do not create another booking if confirmation fails; use the same booking ID for recovery.</p>
+              <p className="text-xs text-action">The booking exists but is not paid until Stripe confirms payment. Do not create another booking if confirmation fails; use the same booking ID for recovery.</p>
             </div>
           )}
           {phase === "success" && (
             <div className="space-y-4 py-6 text-center">
               <div className="text-4xl" aria-hidden="true">✓</div>
-              <h3 className="text-xl font-semibold text-emerald-300">{verifiedPayment ? "Payment secured" : "Booking created"}</h3>
-              <p className="text-sm text-slate-300">Your design is attached privately. You and your designer can view it from the booking details.</p>
-              <p className="text-xs text-slate-400">Track acceptance, reviews, and delivery from your booking.</p>
+              <h3 className="text-xl font-semibold text-action">{verifiedPayment ? "Payment secured" : "Booking created"}</h3>
+              <p className="text-sm text-muted">Your design is attached privately. You and your designer can view it from the booking details.</p>
+              <p className="text-xs text-muted">Track acceptance, reviews, and delivery from your booking.</p>
             </div>
           )}
         </div>
-        <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-800 p-4 sm:p-5">
-          <button type="button" onClick={requestClose} disabled={busy} className={`${BUTTON} border border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800`}>{phase === "success" ? "Close" : phase === "payment" ? "Close (payment pending)" : "Cancel"}</button>
-          {phase === "details" && <button type="submit" form="editor-booking-form" disabled={busy || loadingDesigners || !designers.length} className={`${BUTTON} bg-violet-600 text-white hover:bg-violet-500`}>{busy ? "Saving and creating…" : "Save design & continue to payment"}</button>}
-          {phase === "payment" && <button type="button" onClick={confirmPayment} disabled={busy || !paymentReady} className={`${BUTTON} bg-violet-600 text-white hover:bg-violet-500`}>{busy ? "Processing payment…" : stripePaymentSucceeded ? "Retry payment verification" : `Pay ${formatDollars(paymentSummary?.totalCharged)}`}</button>}
-          {phase === "success" && <Link to={`/creator/bookings/${booking.id}`} className={`${BUTTON} bg-violet-600 text-white hover:bg-violet-500`}>View booking</Link>}
+        <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-line p-4">
+          <button type="button" onClick={requestClose} disabled={busy} className={`${BUTTON} border border-line bg-surface text-muted hover:bg-subtle`}>{phase === "success" ? "Close" : phase === "payment" ? "Close (payment pending)" : "Cancel"}</button>
+          {phase === "details" && <button type="submit" form="editor-booking-form" disabled={busy || loadingDesigners || !designers.length} className={`${BUTTON} bg-action text-on-action hover:bg-action hover:text-on-action`}>{busy ? "Saving and creating…" : "Save design & continue to payment"}</button>}
+          {phase === "payment" && <button type="button" onClick={confirmPayment} disabled={busy || !paymentReady} className={`${BUTTON} bg-action text-on-action hover:bg-action hover:text-on-action`}>{busy ? "Processing payment…" : stripePaymentSucceeded ? "Retry payment verification" : `Pay ${formatDollars(paymentSummary?.totalCharged)}`}</button>}
+          {phase === "success" && <Link to={`/creator/bookings/${booking.id}`} className={`${BUTTON} bg-action text-on-action hover:bg-action hover:text-on-action`}>View booking</Link>}
         </footer>
       </section>
     </div>

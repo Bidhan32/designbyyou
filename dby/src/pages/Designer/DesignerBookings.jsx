@@ -1,8 +1,9 @@
+import MetricList from "../../components/MetricList";
 import { deadlineMessage as getDeadlineMessage, paymentLabel } from "../../components/bookingProgress";
 /*
 =========================================================
 FashionVision Designer Bookings
-Designer Booking Pipeline
+Designer Bookings
 Version 2.1
 =========================================================
 */
@@ -192,7 +193,7 @@ function getStatusDetails(status) {
         description:
           "Review the Creator's brief and decide whether to accept this booking.",
         badgeClass:
-          "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
         icon: Hourglass,
       };
 
@@ -202,7 +203,7 @@ function getStatusDetails(status) {
         description:
           "You accepted this project. Begin work after the Creator completes payment.",
         badgeClass:
-          "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-400/20 dark:bg-orange-400/10 dark:text-orange-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
         icon: LockKeyhole,
       };
 
@@ -212,7 +213,7 @@ function getStatusDetails(status) {
         description:
           "The payment is secured. Accept the project to begin prototype production.",
         badgeClass:
-          "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
         icon: ShieldCheck,
       };
 
@@ -222,7 +223,7 @@ function getStatusDetails(status) {
         label: "Prototype Production",
         description: "Build and submit the first prototype for creator review.",
         badgeClass:
-          "border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#8f7118] dark:text-[#e4c760]",
+          "border-line bg-subtle text-action",
         icon: PlayCircle,
       };
 
@@ -232,7 +233,7 @@ function getStatusDetails(status) {
         description:
           "Your prototype is with the creator. No action is needed right now.",
         badgeClass:
-          "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-400/20 dark:bg-indigo-400/10 dark:text-indigo-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
         icon: Clock3,
       };
 
@@ -242,7 +243,7 @@ function getStatusDetails(status) {
         description:
           "The prototype was approved. Prepare and submit the final deliverables.",
         badgeClass:
-          "border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#8f7118] dark:text-[#e4c760]",
+          "border-line bg-subtle text-action",
         icon: UploadCloud,
       };
 
@@ -253,7 +254,7 @@ function getStatusDetails(status) {
         description:
           "The Creator is reviewing your final delivery before your payment is released.",
         badgeClass:
-          "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
         icon: FileCheck2,
       };
 
@@ -270,7 +271,7 @@ function getStatusDetails(status) {
         description:
           "Cancellation and any required refund reconciliation are being processed.",
         badgeClass:
-          "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
         icon: Ban,
       };
 
@@ -281,7 +282,7 @@ function getStatusDetails(status) {
         description:
           "The booking is complete and your Designer payment has been released.",
         badgeClass:
-          "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
         icon: CheckCircle2,
       };
 
@@ -290,7 +291,7 @@ function getStatusDetails(status) {
         label: "Cancelled",
         description: "This booking is closed and no further work is required.",
         badgeClass:
-          "border-slate-200 bg-slate-100 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/45",
+          "border-line bg-subtle text-muted",
         icon: Ban,
       };
 
@@ -299,7 +300,7 @@ function getStatusDetails(status) {
         label: status || "Unknown",
         description: "Open the booking to review its current status.",
         badgeClass:
-          "border-slate-200 bg-slate-100 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/50",
+          "border-line bg-subtle text-muted",
         icon: Clock3,
       };
   }
@@ -312,9 +313,9 @@ function getNextAction(status) {
         label: "Review Request",
         detail: "Accept or reject",
         icon: ArrowRight,
-        accentClass: "text-amber-700 dark:text-amber-300",
+        accentClass: "text-action",
         panelClass:
-          "border-amber-200 bg-amber-50/80 dark:border-amber-400/15 dark:bg-amber-400/5",
+          "border-line bg-subtle",
       };
 
     case BOOKING_STATUS.FUNDED:
@@ -322,9 +323,9 @@ function getNextAction(status) {
         label: "Accept & Begin",
         detail: "Payment is secured",
         icon: ShieldCheck,
-        accentClass: "text-emerald-700 dark:text-emerald-300",
+        accentClass: "text-action",
         panelClass:
-          "border-emerald-200 bg-emerald-50/80 dark:border-emerald-400/15 dark:bg-emerald-400/5",
+          "border-line bg-subtle",
       };
 
     case BOOKING_STATUS.ACCEPTED:
@@ -333,8 +334,8 @@ function getNextAction(status) {
         label: "Submit Prototype",
         detail: "Phase one deliverable",
         icon: PlayCircle,
-        accentClass: "text-[#9b791d] dark:text-[#D4AF37]",
-        panelClass: "border-[#D4AF37]/25 bg-[#D4AF37]/5",
+        accentClass: "text-action",
+        panelClass: "border-line bg-subtle",
       };
 
     case BOOKING_STATUS.FINAL_PRODUCTION:
@@ -342,8 +343,8 @@ function getNextAction(status) {
         label: "Submit Final Files",
         detail: "Send the final files for creator approval",
         icon: UploadCloud,
-        accentClass: "text-[#9b791d] dark:text-[#D4AF37]",
-        panelClass: "border-[#D4AF37]/25 bg-[#D4AF37]/5",
+        accentClass: "text-action",
+        panelClass: "border-line bg-subtle",
       };
 
     case BOOKING_STATUS.AWAITING_PAYMENT:
@@ -351,9 +352,9 @@ function getNextAction(status) {
         label: "Awaiting Creator",
         detail: "Creator payment pending",
         icon: LockKeyhole,
-        accentClass: "text-orange-700 dark:text-orange-300",
+        accentClass: "text-action",
         panelClass:
-          "border-orange-200 bg-orange-50/80 dark:border-orange-400/15 dark:bg-orange-400/5",
+          "border-line bg-subtle",
       };
 
     case BOOKING_STATUS.REVIEW_PROTOTYPE:
@@ -361,9 +362,9 @@ function getNextAction(status) {
         label: "Awaiting Review",
         detail: "Prototype submitted",
         icon: Clock3,
-        accentClass: "text-indigo-700 dark:text-indigo-300",
+        accentClass: "text-action",
         panelClass:
-          "border-indigo-200 bg-indigo-50/80 dark:border-indigo-400/15 dark:bg-indigo-400/5",
+          "border-line bg-subtle",
       };
 
     case BOOKING_STATUS.REVIEW_FINAL:
@@ -372,9 +373,9 @@ function getNextAction(status) {
         label: "Awaiting Approval",
         detail: "Final approval pending",
         icon: FileCheck2,
-        accentClass: "text-violet-700 dark:text-violet-300",
+        accentClass: "text-action",
         panelClass:
-          "border-violet-200 bg-violet-50/80 dark:border-violet-400/15 dark:bg-violet-400/5",
+          "border-line bg-subtle",
       };
 
     case BOOKING_STATUS.CANCELLATION_PENDING:
@@ -382,9 +383,9 @@ function getNextAction(status) {
         label: "Processing",
         detail: "Cancellation reconciliation",
         icon: Loader2,
-        accentClass: "text-rose-700 dark:text-rose-300",
+        accentClass: "text-action",
         panelClass:
-          "border-rose-200 bg-rose-50/80 dark:border-rose-400/15 dark:bg-rose-400/5",
+          "border-line bg-subtle",
         spinning: true,
       };
 
@@ -394,9 +395,9 @@ function getNextAction(status) {
         label: "View Record",
         detail: "Completed booking",
         icon: CheckCircle2,
-        accentClass: "text-emerald-700 dark:text-emerald-300",
+        accentClass: "text-action",
         panelClass:
-          "border-emerald-200 bg-emerald-50/80 dark:border-emerald-400/15 dark:bg-emerald-400/5",
+          "border-line bg-subtle",
       };
 
     default:
@@ -404,9 +405,9 @@ function getNextAction(status) {
         label: "View Booking",
         detail: "Open full workspace",
         icon: ArrowRight,
-        accentClass: "text-slate-700 dark:text-white/70",
+        accentClass: "text-ink dark:text-muted",
         panelClass:
-          "border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.03]",
+          "border-line bg-canvas dark:bg-subtle",
       };
   }
 }
@@ -558,29 +559,28 @@ function DesignerBookings() {
   }, [activeTab, bookings, searchQuery]);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-50 pb-20 text-slate-950 antialiased transition-colors duration-300 dark:bg-[#030303] dark:text-white">
+    <main className="relative min-h-screen overflow-hidden bg-canvas pb-20 text-ink antialiased transition-colors duration-300">
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute -right-[12rem] -top-[14rem] h-[34rem] w-[34rem] rounded-full bg-[#D4AF37]/10 blur-[150px] dark:bg-[#D4AF37]/15" />
-        <div className="absolute -bottom-[16rem] -left-[15rem] h-[38rem] w-[38rem] rounded-full bg-violet-500/5 blur-[170px] dark:bg-violet-500/10" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(15,23,42,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.025)_1px,transparent_1px)] bg-[size:38px_38px] dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.018)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.018)_1px,transparent_1px)]" />
+
+
       </div>
 
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/80 backdrop-blur-2xl dark:border-white/5 dark:bg-[#070707]/80">
+      <header className="sticky top-0 z-40 border-b border-line bg-subtle">
         <div className="mx-auto flex max-w-[1280px] flex-col gap-6 px-5 py-7 sm:px-8 lg:flex-row lg:items-end lg:justify-between lg:px-10">
           <div>
-            <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.35em] text-[#B89122] dark:text-[#D4AF37]">
+            <div className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-normal text-action">
               <Compass size={14} />
               Designer Operations
             </div>
 
-            <h1 className="font-serif text-4xl font-light tracking-tight sm:text-5xl">
+            <h1 className="font-sans text-4xl font-light tracking-tight sm:text-5xl">
               Booking
-              <span className="ml-3 italic text-[#B89122] dark:text-[#D4AF37]">
+              <span className="ml-3 italic text-action">
                 Pipeline
               </span>
             </h1>
 
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500 dark:text-white/45">
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
               Review new requests, track secured payments and deliver every
               project from one focused workspace.
             </p>
@@ -594,7 +594,7 @@ function DesignerBookings() {
               })
             }
             disabled={refreshing}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-black uppercase tracking-[0.18em] text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-[#D4AF37]/50 hover:text-[#9B791D] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/70 dark:hover:text-[#D4AF37]"
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-4 text-xs font-semibold uppercase tracking-[0.18em] text-ink transition hover:-translate-y-0.5 hover:border-line hover:text-action disabled:cursor-not-allowed disabled:opacity-50 dark:bg-subtle dark:text-muted"
           >
             <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
             Refresh
@@ -603,91 +603,42 @@ function DesignerBookings() {
       </header>
 
       <div className="relative z-10 mx-auto max-w-[1280px] space-y-8 px-5 pt-8 sm:px-8 lg:px-10">
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            {
-              label: "All Bookings",
-              value: summary.total,
-              icon: Inbox,
-              helper: "Designer assignments",
-            },
-            {
-              label: "Action Required",
-              value: summary.actionRequired,
-              icon: Sparkles,
-              helper: "Ready for your input",
-            },
-            {
-              label: "Awaiting Creator",
-              value: summary.awaitingCreator,
-              icon: Clock3,
-              helper: "Payment or review pending",
-            },
-            {
-              label: "Completed",
-              value: summary.completed,
-              icon: CheckCircle2,
-              helper: "Paid and archived",
-            },
-          ].map((item) => {
-            const Icon = item.icon;
+        <MetricList label="Bookings summary" rows={[
+          ["All bookings", summary.total],
+          ["Action required", summary.actionRequired],
+          ["Awaiting creator", summary.awaitingCreator],
+          ["Completed", summary.completed],
+        ]} />
 
-            return (
-              <article
-                key={item.label}
-                className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md dark:border-white/5 dark:bg-[#0B0B0B]/90 dark:shadow-2xl"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400 dark:text-white/35">
-                      {item.label}
-                    </p>
-                    <p className="mt-3 text-3xl font-semibold tracking-tight">
-                      {item.value}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500 dark:text-white/40">
-                      {item.helper}
-                    </p>
-                  </div>
-
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/10 text-[#9B791D] dark:text-[#D4AF37]">
-                    <Icon size={20} />
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </section>
-
-        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-sm backdrop-blur dark:border-white/5 dark:bg-[#0A0A0A]/90 dark:shadow-2xl">
-          <div className="border-b border-slate-200 p-5 dark:border-white/5 sm:p-6">
+        <section className="overflow-hidden rounded-md border border-line bg-subtle">
+          <div className="border-b border-line p-4">
             <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex gap-7 overflow-x-auto border-b border-slate-200 dark:border-white/10">
+              <div className="flex gap-7 overflow-x-auto border-b border-line">
                 {TAB_DEFINITIONS.map((tab) => (
                   <button
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`relative flex shrink-0 items-center gap-2 pb-4 text-[10px] font-black uppercase tracking-[0.2em] transition ${
+                    className={`relative flex shrink-0 items-center gap-2 pb-4 text-[10px] font-semibold uppercase tracking-normal transition ${
                       activeTab === tab.id
-                        ? "text-slate-950 dark:text-white"
-                        : "text-slate-400 hover:text-slate-700 dark:text-white/35 dark:hover:text-white/70"
+                        ? "text-ink"
+                        : "text-muted hover:text-ink dark:hover:text-muted"
                     }`}
                   >
                     {tab.label}
 
                     <span
-                      className={`rounded-full border px-2 py-0.5 text-[9px] ${
+                      className={`rounded-md border px-2 py-0.5 text-[11px] ${
                         activeTab === tab.id
-                          ? "border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#9B791D] dark:text-[#D4AF37]"
-                          : "border-slate-200 bg-slate-100 text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-white/35"
+                          ? "border-line bg-subtle text-action"
+                          : "border-line bg-subtle text-muted"
                       }`}
                     >
                       {tabCounts[tab.id] || 0}
                     </span>
 
                     {activeTab === tab.id && (
-                      <span className="absolute inset-x-0 -bottom-px h-0.5 bg-[#D4AF37]" />
+                      <span className="absolute inset-x-0 -bottom-px h-0.5 bg-action text-on-action" />
                     )}
                   </button>
                 ))}
@@ -696,7 +647,7 @@ function DesignerBookings() {
               <label className="relative block w-full xl:max-w-sm">
                 <Search
                   size={16}
-                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30"
+                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted"
                 />
 
                 <input
@@ -704,25 +655,25 @@ function DesignerBookings() {
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Search bookings, Creators or IDs"
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/25 dark:focus:bg-white/[0.06]"
+                  className="h-11 w-full rounded-md border border-line bg-canvas pl-11 pr-4 text-sm text-ink outline-none transition placeholder:text-muted focus:border-line focus:bg-surface focus:ring-4 focus:ring-action dark:bg-subtle dark:focus:bg-subtle"
                 />
               </label>
             </div>
           </div>
 
           {error ? (
-            <div className="m-5 rounded-2xl border border-rose-200 bg-rose-50 p-6 dark:border-rose-400/20 dark:bg-rose-400/10 sm:m-6">
+            <div className="m-5 rounded-md border border-line bg-canvas p-4 dark:bg-subtle sm:m-6">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-start gap-4">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700 dark:bg-rose-400/10 dark:text-rose-300">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-subtle text-action">
                     <AlertCircle size={21} />
                   </div>
 
                   <div>
-                    <h2 className="font-semibold text-rose-900 dark:text-rose-100">
+                    <h2 className="font-semibold text-action">
                       Could not load bookings
                     </h2>
-                    <p className="mt-1 text-sm leading-6 text-rose-700/80 dark:text-rose-200/70">
+                    <p className="mt-1 text-sm leading-6 text-muted">
                       {error}
                     </p>
                   </div>
@@ -731,7 +682,7 @@ function DesignerBookings() {
                 <button
                   type="button"
                   onClick={() => fetchBookings()}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-xs font-black uppercase tracking-[0.16em] text-white transition hover:bg-rose-800"
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-4 text-xs font-semibold uppercase tracking-[0.16em] text-on-action transition hover:bg-action hover:text-on-action"
                 >
                   <RefreshCw size={14} />
                   Retry
@@ -739,34 +690,34 @@ function DesignerBookings() {
               </div>
             </div>
           ) : loading ? (
-            <div className="space-y-4 p-5 sm:p-6">
+            <div className="space-y-4 p-4">
               {[1, 2, 3].map((item) => (
                 <div
                   key={item}
-                  className="h-56 animate-pulse rounded-2xl border border-slate-200 bg-slate-100 dark:border-white/5 dark:bg-white/[0.035]"
+                  className="h-56 animate-pulse rounded-md border border-line bg-subtle"
                 />
               ))}
             </div>
           ) : visibleBookings.length === 0 ? (
             <div className="flex min-h-[420px] flex-col items-center justify-center px-6 py-20 text-center">
-              <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-slate-200 bg-slate-50 text-[#B89122] shadow-inner dark:border-white/10 dark:bg-white/[0.03] dark:text-[#D4AF37]">
+              <div className="flex h-20 w-20 items-center justify-center rounded-md border border-line bg-canvas text-action dark:bg-subtle">
                 {searchQuery ? <Search size={30} /> : <Inbox size={30} />}
               </div>
 
-              <h2 className="mt-6 font-serif text-3xl font-light">
+              <h2 className="mt-6 font-sans text-3xl font-light">
                 {searchQuery
                   ? "No matching bookings"
                   : `No ${TAB_DEFINITIONS.find((tab) => tab.id === activeTab)?.label.toLowerCase()} yet`}
               </h2>
 
-              <p className="mt-3 max-w-lg text-sm leading-6 text-slate-500 dark:text-white/40">
+              <p className="mt-3 max-w-lg text-sm leading-6 text-muted">
                 {searchQuery
                   ? "Try a different client name, booking ID, project title or status."
                   : "Bookings for this stage will appear here automatically as the workflow moves forward."}
               </p>
             </div>
           ) : (
-            <div className="space-y-4 p-5 sm:p-6">
+            <div className="space-y-4 p-4">
               {visibleBookings.map((booking) => {
                 const status = normalizeStatus(booking.status);
 
@@ -795,25 +746,25 @@ function DesignerBookings() {
                   <Link
                     key={booking.id}
                     to={`/designer/bookings/${booking.id}`}
-                    className="group block overflow-hidden rounded-2xl border border-slate-200 bg-white transition duration-300 hover:-translate-y-0.5 hover:border-[#D4AF37]/45 hover:shadow-xl dark:border-white/5 dark:bg-[#0D0D0D] dark:hover:border-[#D4AF37]/25 dark:hover:shadow-[0_24px_70px_rgba(0,0,0,0.45)]"
+                    className="group block overflow-hidden rounded-md border border-line bg-surface transition duration-300 hover:-translate-y-0.5 hover:border-line"
                   >
                     <div className="grid gap-0 xl:grid-cols-[1fr_270px]">
-                      <div className="p-5 sm:p-7">
+                      <div className="p-4">
                         <div className="flex flex-wrap items-center gap-2.5">
                           <span
-                            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.17em] ${statusDetails.badgeClass}`}
+                            className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.17em] ${statusDetails.badgeClass}`}
                           >
                             <StatusIcon size={13} />
                             {statusDetails.label}
                           </span>
 
-                          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.15em] text-slate-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-white/35">
+                          <span className="rounded-md border border-line bg-canvas px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.15em] text-muted dark:bg-subtle">
                             {String(booking.id || "")
                               .slice(0, 8)
                               .toUpperCase()}
                           </span>
 
-                          <span className="rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/5 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.17em] text-[#8F7118] dark:text-[#D4AF37]">
+                          <span className="rounded-md border border-line bg-subtle px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.17em] text-action">
                             {booking.booking_type || "commission"}
                           </span>
                         </div>
@@ -821,29 +772,29 @@ function DesignerBookings() {
                         <div className="mt-5">
                           <div className="flex items-start justify-between gap-5">
                             <div>
-                              <h2 className="font-serif text-2xl font-light tracking-tight text-slate-950 transition group-hover:text-[#9B791D] dark:text-white dark:group-hover:text-[#D4AF37] sm:text-3xl">
+                              <h2 className="font-sans text-2xl font-light tracking-tight text-ink transition group-hover:text-action sm:text-3xl">
                                 {projectTitle}
                               </h2>
 
-                              <p className="mt-3 line-clamp-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-white/45">
+                              <p className="mt-3 line-clamp-2 max-w-3xl text-sm leading-6 text-muted">
                                 {booking.brief_text ||
                                   "No project brief was supplied."}
                               </p>
                             </div>
 
-                            <ArrowRight className="hidden shrink-0 -translate-x-2 text-[#D4AF37] opacity-0 transition duration-300 group-hover:translate-x-0 group-hover:opacity-100 sm:block" />
+                            <ArrowRight className="hidden shrink-0 -translate-x-2 text-action opacity-0 transition duration-300 group-hover:translate-x-0 group-hover:opacity-100 sm:block" />
                           </div>
                         </div>
 
                         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 dark:border-white/5 dark:bg-white/[0.025]">
-                            <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-white/30">
+                          <div className="rounded-md border border-line bg-canvas p-3.5 dark:bg-subtle">
+                            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                               <UserRound size={13} />
                               Creator
                             </div>
 
                             <div className="mt-2 flex items-center gap-2.5">
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-white dark:border-white/10 dark:bg-white/5">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-line bg-surface dark:bg-subtle">
                                 {creatorAvatar ? (
                                   <img
                                     src={creatorAvatar}
@@ -851,7 +802,7 @@ function DesignerBookings() {
                                     className="h-full w-full object-cover"
                                   />
                                 ) : (
-                                  <span className="text-xs font-bold text-slate-500 dark:text-white/40">
+                                  <span className="text-xs font-bold text-muted">
                                     {getFirstName(creatorName)
                                       .charAt(0)
                                       .toUpperCase()}
@@ -865,39 +816,39 @@ function DesignerBookings() {
                             </div>
                           </div>
 
-                          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 dark:border-white/5 dark:bg-white/[0.025]">
-                            <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-white/30">
+                          <div className="rounded-md border border-line bg-canvas p-3.5 dark:bg-subtle">
+                            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                               <BadgeDollarSign size={13} />
                               Agreed Value
                             </div>
-                            <p className="mt-2 font-mono text-lg font-semibold text-[#9B791D] dark:text-[#D4AF37]">
+                            <p className="mt-2 font-mono text-lg font-semibold text-action">
                               {formatCurrency(booking.agreed_price)}
                             </p>
                           </div>
 
-                          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 dark:border-white/5 dark:bg-white/[0.025]">
-                            <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-white/30">
+                          <div className="rounded-md border border-line bg-canvas p-3.5 dark:bg-subtle">
+                            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                               <CalendarDays size={13} />
                               Deadline
                             </div>
                             <p className="mt-2 text-sm font-semibold">
                               {formatDate(booking.deadline)}
                             </p>
-                            <p className="mt-0.5 text-[11px] text-slate-500 dark:text-white/35">
+                            <p className="mt-0.5 text-[11px] text-muted">
                               {getDeadlineMessage(booking.deadline, booking.status)}
                             </p>
                           </div>
 
-                          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 dark:border-white/5 dark:bg-white/[0.025]">
-                            <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-white/30">
+                          <div className="rounded-md border border-line bg-canvas p-3.5 dark:bg-subtle">
+                            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                               <ShieldCheck size={13} />
                               Payment
                             </div>
                             <p
                               className={`mt-2 text-sm font-semibold ${
                                 booking.escrow_locked
-                                  ? "text-emerald-700 dark:text-emerald-300"
-                                  : "text-slate-600 dark:text-white/55"
+                                  ? "text-action"
+                                  : "text-muted"
                               }`}
                             >
                               {paymentLabel(booking)}
@@ -907,17 +858,17 @@ function DesignerBookings() {
 
                         <div className="mt-6">
                           <div className="mb-2 flex items-center justify-between gap-4">
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/30">
+                            <p className="text-[10px] font-semibold uppercase tracking-normal text-muted">
                               Workflow Progress
                             </p>
-                            <p className="text-[10px] font-semibold text-slate-500 dark:text-white/35">
+                            <p className="text-[10px] font-semibold text-muted">
                               {progress}%
                             </p>
                           </div>
 
-                          <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/5">
+                          <div className="h-1.5 overflow-hidden rounded-full bg-subtle">
                             <div
-                              className="h-full rounded-full bg-gradient-to-r from-[#A88620] to-[#E2C45D] transition-all duration-700"
+                              className="h-full rounded-full bg-surface transition-all duration-700"
                               style={{
                                 width: `${progress}%`,
                               }}
@@ -927,11 +878,11 @@ function DesignerBookings() {
                       </div>
 
                       <aside
-                        className={`flex flex-col justify-between border-t p-5 dark:border-white/5 xl:border-l xl:border-t-0 ${actionDetails.panelClass}`}
+                        className={`flex flex-col justify-between border-t p-4 dark:border-line xl:border-l xl:border-t-0 ${actionDetails.panelClass}`}
                       >
                         <div>
                           <div
-                            className={`flex h-12 w-12 items-center justify-center rounded-2xl border border-current/15 bg-white/60 ${actionDetails.accentClass} dark:bg-black/20`}
+                            className={`flex h-12 w-12 items-center justify-center rounded-md border border-current/15 bg-subtle ${actionDetails.accentClass} dark:bg-subtle`}
                           >
                             <ActionIcon
                               size={22}
@@ -942,7 +893,7 @@ function DesignerBookings() {
                           </div>
 
                           <p
-                            className={`mt-5 text-[10px] font-black uppercase tracking-[0.2em] ${actionDetails.accentClass}`}
+                            className={`mt-5 text-[10px] font-semibold uppercase tracking-normal ${actionDetails.accentClass}`}
                           >
                             Next Step
                           </p>
@@ -951,17 +902,17 @@ function DesignerBookings() {
                             {actionDetails.label}
                           </h3>
 
-                          <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-white/40">
+                          <p className="mt-1 text-xs leading-5 text-muted">
                             {actionDetails.detail}
                           </p>
                         </div>
 
                         <div className="mt-6 border-t border-current/10 pt-4">
-                          <p className="text-xs leading-5 text-slate-500 dark:text-white/40">
+                          <p className="text-xs leading-5 text-muted">
                             {statusDetails.description}
                           </p>
 
-                          <div className="mt-4 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-700 transition group-hover:text-[#9B791D] dark:text-white/65 dark:group-hover:text-[#D4AF37]">
+                          <div className="mt-4 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink transition group-hover:text-action dark:text-muted">
                             Open workspace
                             <ArrowRight size={14} />
                           </div>

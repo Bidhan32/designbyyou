@@ -20,7 +20,7 @@ globalThis.__checkout = {
       booking: { id, designer_id: 'designer', agreed_price: 100, brief_text: 'Test brief', status: 'pending' },
       designerName: 'Designer', clientSecret: 'pi_test_secret', paymentIntentStatus: status,
       payment: { baseAmount: 100, connectionFee: 5, totalAmount: 105, currency: 'usd' },
-    } : { data: [] } }),
+    } : { data: url.endsWith('/designers') ? [{ id: 'designer', full_name: 'Linen Studio' }] : [] } }),
     post: async url => {
       assert.equal(url, '/p2p-bookings/verify-escrow');
       verifies++;
@@ -49,14 +49,18 @@ globalThis.__checkout = {
   const module = { exports: {} };
   new Function('require', 'module', 'exports', built.outputFiles[0].text)(require, module, module.exports);
   const Page = module.exports.default;
-  async function mount() {
+  async function mount(entry = `/creator/bookings/new?booking_id=${id}`) {
     if (root) await act(() => root.unmount());
     root = createRoot(document.getElementById('root'));
-    await act(async () => root.render(React.createElement(MemoryRouter, { initialEntries: [`/creator/bookings/new?booking_id=${id}`] }, React.createElement(Page))));
+    await act(async () => root.render(React.createElement(MemoryRouter, { initialEntries: [entry] }, React.createElement(Page))));
   }
   const submit = () => act(async () => document.querySelector('[role="dialog"] form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+  await mount(`/creator/bookings/new?designer_id=designer&design_id=${id}&design_title=Linen%20shirt`);
+  assert.equal(document.querySelector('h1').textContent, 'Linen shirt');
+  assert.match(document.querySelector('h1').parentElement.textContent, /Booking with Linen Studio/);
+  assert.equal(document.querySelector('aside input'), null);
   await mount();
-  assert.ok(document.querySelector('[role="dialog"]'));
+  assert.match(document.querySelector('[role="dialog"]').textContent, /Earn 20 points when this \$100(?:\.00)? booking is completed/);
   await submit();
   assert.equal(confirms, 1);
   assert.equal(document.querySelector('[aria-label="Close checkout"]').disabled, true);

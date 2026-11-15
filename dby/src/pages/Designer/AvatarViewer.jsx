@@ -116,23 +116,23 @@ export default function AvatarViewer() {
     };
 
     return (
-        <div className="absolute inset-0 z-[100] bg-[#030303] flex flex-col animate-in fade-in duration-500 transition-colors">
+        <div className="absolute inset-0 z-[100] bg-canvas flex flex-col animate-in fade-in duration-500 transition-colors">
             
             {/* 3D Viewer Header */}
-            <div className="absolute top-0 left-0 w-full p-6 flex justify-between items-center z-10 bg-gradient-to-b from-[#030303]/90 to-transparent pointer-events-none">
+            <div className="absolute top-0 left-0 w-full p-4 flex justify-between items-center z-10 bg-surface pointer-events-none">
                 <div className="pointer-events-auto">
-                    <h2 className="text-2xl font-serif text-white flex items-center gap-3">
-                        <Shirt className="text-[#D4AF37]" /> 
-                        3D Fitting <span className="italic text-[#D4AF37]">Room</span>
+                    <h2 className="text-2xl font-serif text-ink flex items-center gap-3">
+                        <Shirt className="text-action" />
+                        3D Fitting <span className="italic text-action">Room</span>
                     </h2>
-                    <p className="text-[10px] text-white/50 uppercase tracking-[0.3em] font-bold mt-1">
+                    <p className="text-[10px] text-muted uppercase tracking-normal font-bold mt-1">
                         Viewing: {activeGarmentMesh.toUpperCase()}
                     </p>
                 </div>
                 
                 <button 
                     onClick={() => setIs3DMode(false)}
-                    className="pointer-events-auto flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-rose-500/20 text-white hover:text-rose-400 border border-white/10 hover:border-rose-500/50 rounded-full transition-all text-[10px] uppercase tracking-widest font-bold shadow-2xl"
+                    className="pointer-events-auto flex items-center gap-2 px-5 py-2.5 bg-subtle hover:bg-subtle text-ink hover:text-action border border-line hover:border-line rounded-md transition-all text-[10px] uppercase tracking-widest font-bold"
                 >
                     <X size={14} /> Return to 2D Canvas
                 </button>
@@ -174,8 +174,8 @@ export default function AvatarViewer() {
             </div>
 
             {/* Instructions overlay */}
-            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 px-6 py-3 bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 rounded-full pointer-events-none shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-                <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/50">
+            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 px-6 py-3 bg-subtle border border-line rounded-md pointer-events-none">
+                <p className="text-[10px] uppercase tracking-normal font-bold text-muted">
                     Click & Drag to rotate • Scroll to zoom
                 </p>
             </div>

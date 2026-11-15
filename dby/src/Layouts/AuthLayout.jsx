@@ -7,6 +7,5 @@ export default function AuthLayout({ children, title, subtitle, step }) {
     <section className="auth-card" aria-labelledby="auth-title"><header className="auth-heading">
       {step && <p className="auth-step">{step}</p>}<h1 id="auth-title">{title}</h1>
       {subtitle && <p className="auth-subtitle">{subtitle}</p>}</header>{children}</section>
-    <p className="auth-footnote">Your space to create and collaborate.</p>
   </div></main>;
 }

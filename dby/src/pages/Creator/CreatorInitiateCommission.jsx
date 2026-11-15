@@ -201,68 +201,23 @@ export default function CreatorInitiateCommission() {
     return (
       <div
         className="
-          relative
-          flex
-          min-h-[65vh]
-          items-center
-          justify-center
-          overflow-hidden
-          px-4
-          py-16
-          text-slate-950
-
-          dark:text-white
+          relative flex min-h-[65vh] items-center justify-center overflow-hidden px-4 py-16 text-ink
         "
       >
         <div
           className="
-            pointer-events-none
-            absolute
-            left-1/2
-            top-1/2
-            h-96
-            w-96
-            -translate-x-1/2
-            -translate-y-1/2
-            rounded-full
-            bg-[#D4AF37]/10
-            blur-[120px]
+            pointer-events-none absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-subtle blur-[120px]
           "
         />
 
         <section
           className="
-            relative
-            z-10
-            w-full
-            max-w-lg
-            rounded-[2rem]
-            border
-            border-slate-200
-            bg-white
-            p-8
-            text-center
-            shadow-[0_25px_80px_rgba(15,23,42,0.08)]
-
-            dark:border-white/[0.07]
-            dark:bg-[#090909]
-            dark:shadow-[0_35px_100px_rgba(0,0,0,0.55)]
+            relative z-10 w-full max-w-lg rounded-md border border-line bg-surface p-4 text-center
           "
         >
           <div
             className="
-              mx-auto
-              grid
-              h-16
-              w-16
-              place-items-center
-              rounded-2xl
-              border
-              border-[#D4AF37]/25
-              bg-[#D4AF37]/10
-              text-[#997619]
-
-              dark:text-[#D4AF37]
+              mx-auto grid h-16 w-16 place-items-center rounded-md border border-line bg-subtle text-action
             "
           >
             <Sparkles size={27} />
@@ -270,14 +225,7 @@ export default function CreatorInitiateCommission() {
 
           <p
             className="
-              mt-6
-              text-[9px]
-              font-black
-              uppercase
-              tracking-[0.24em]
-              text-[#98751A]
-
-              dark:text-[#D4AF37]
+              mt-6 text-[11px] font-semibold uppercase tracking-normal text-action
             "
           >
             Booking Setup
@@ -285,12 +233,7 @@ export default function CreatorInitiateCommission() {
 
           <h1
             className="
-              mt-3
-              font-serif
-              text-3xl
-              font-light
-
-              sm:text-4xl
+              mt-3 font-sans text-3xl font-light sm:text-4xl
             "
           >
             Designer unavailable
@@ -298,14 +241,7 @@ export default function CreatorInitiateCommission() {
 
           <p
             className="
-              mx-auto
-              mt-4
-              max-w-sm
-              text-sm
-              leading-7
-              text-slate-500
-
-              dark:text-white/40
+              mx-auto mt-4 max-w-sm text-sm leading-7 text-muted
             "
           >
             This booking link does not contain a valid Designer. Return to the
@@ -316,24 +252,7 @@ export default function CreatorInitiateCommission() {
             type="button"
             onClick={() => navigate("/creator/directory")}
             className="
-              mt-7
-              inline-flex
-              h-12
-              items-center
-              justify-center
-              gap-2
-              rounded-xl
-              bg-[#D4AF37]
-              px-6
-              text-[9px]
-              font-black
-              uppercase
-              tracking-[0.18em]
-              text-black
-              transition
-
-              hover:-translate-y-0.5
-              hover:bg-[#E4C65D]
+              mt-7 inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-6 text-[11px] font-semibold uppercase tracking-[0.18em] text-on-action transition hover:-translate-y-0.5 hover:bg-action hover:text-on-action
             "
           >
             <ArrowLeft size={14} />
@@ -353,92 +272,30 @@ export default function CreatorInitiateCommission() {
   return (
     <div
       className="
-        relative
-        flex
-        min-h-[65vh]
-        items-center
-        justify-center
-        overflow-hidden
-        px-4
-        py-16
-        text-slate-950
-
-        dark:text-white
+        relative flex min-h-[65vh] items-center justify-center overflow-hidden px-4 py-16 text-ink
       "
     >
       <div
         className="
-          pointer-events-none
-          absolute
-          left-1/2
-          top-1/2
-          h-[34rem]
-          w-[34rem]
-          -translate-x-1/2
-          -translate-y-1/2
-          rounded-full
-          bg-[#D4AF37]/10
-          blur-[150px]
+          pointer-events-none absolute left-1/2 top-1/2 h-[34rem] w-[34rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-subtle blur-[150px]
         "
       />
 
       <section
         className="
-          relative
-          z-10
-          w-full
-          max-w-md
-          rounded-[2rem]
-          border
-          border-slate-200/80
-          bg-white/90
-          p-8
-          text-center
-          shadow-[0_25px_80px_rgba(15,23,42,0.07)]
-          backdrop-blur-xl
-
-          dark:border-white/[0.07]
-          dark:bg-[#090909]/90
-          dark:shadow-[0_35px_100px_rgba(0,0,0,0.55)]
+          relative z-10 w-full max-w-md rounded-md border border-line bg-subtle p-4 text-center
         "
       >
         <div
           className="
-            relative
-            mx-auto
-            grid
-            h-16
-            w-16
-            place-items-center
-            rounded-2xl
-            border
-            border-emerald-200
-            bg-emerald-50
-            text-emerald-600
-
-            dark:border-emerald-400/20
-            dark:bg-emerald-400/10
-            dark:text-emerald-300
+            relative mx-auto grid h-16 w-16 place-items-center rounded-md border border-line bg-canvas text-action dark:bg-subtle
           "
         >
           <LockKeyhole size={25} />
 
           <span
             className="
-              absolute
-              -right-1
-              -top-1
-              grid
-              h-6
-              w-6
-              place-items-center
-              rounded-full
-              border-2
-              border-white
-              bg-[#D4AF37]
-              text-black
-
-              dark:border-[#090909]
+              absolute -right-1 -top-1 grid h-6 w-6 place-items-center rounded-full border-2 border-line bg-action text-on-action
             "
           >
             <ShieldCheck size={12} />
@@ -447,14 +304,7 @@ export default function CreatorInitiateCommission() {
 
         <p
           className="
-            mt-6
-            text-[9px]
-            font-black
-            uppercase
-            tracking-[0.24em]
-            text-[#98751A]
-
-            dark:text-[#D4AF37]
+            mt-6 text-[11px] font-semibold uppercase tracking-normal text-action
           "
         >
           Secure Booking
@@ -462,10 +312,7 @@ export default function CreatorInitiateCommission() {
 
         <h1
           className="
-            mt-3
-            font-serif
-            text-3xl
-            font-light
+            mt-3 font-sans text-3xl font-light
           "
         >
           Preparing your booking
@@ -473,12 +320,7 @@ export default function CreatorInitiateCommission() {
 
         <p
           className="
-            mt-3
-            text-sm
-            leading-6
-            text-slate-500
-
-            dark:text-white/40
+            mt-3 text-sm leading-6 text-muted
           "
         >
           Moving you to the secure booking and Stripe payment workflow.
@@ -487,12 +329,7 @@ export default function CreatorInitiateCommission() {
         <Loader2
           size={20}
           className="
-            mx-auto
-            mt-7
-            animate-spin
-            text-[#98751A]
-
-            dark:text-[#D4AF37]
+            mx-auto mt-7 animate-spin text-action
           "
         />
       </section>

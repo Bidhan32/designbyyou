@@ -115,7 +115,7 @@ export default function DesignerDirectory() {
 
         setError(
           err?.response?.data?.message ||
-            "Unable to connect to the Visionary Directory.",
+            "Unable to load designers.",
         );
       } finally {
         if (!controller.signal.aborted) {
@@ -214,72 +214,24 @@ export default function DesignerDirectory() {
     return (
       <div
         className="
-          min-h-screen
-          bg-slate-50
-          dark:bg-[#030303]
-          flex
-          items-center
-          justify-center
-          p-6
-          relative
-          overflow-hidden
-          transition-colors
-          duration-300
+          min-h-screen bg-canvas flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-300
         "
       >
-        <div
-          className="
-            absolute
-            inset-0
-            bg-rose-500/5
-            blur-[150px]
-            rounded-full
-            w-[50vw]
-            h-[50vw]
-            top-1/2
-            left-1/2
-            -translate-x-1/2
-            -translate-y-1/2
-            pointer-events-none
-            z-0
-          "
-        />
 
         <div
           className="
-            max-w-md
-            w-full
-            bg-white
-            dark:bg-[#0a0a0a]
-            border
-            border-slate-200
-            dark:border-white/5
-            rounded-3xl
-            p-10
-            text-center
-            shadow-2xl
-            relative
-            z-10
+            max-w-md w-full bg-surface border border-line rounded-md p-4 text-center relative z-10
           "
         >
           <ShieldAlert
             className="
-              w-16
-              h-16
-              text-rose-500/50
-              mx-auto
-              mb-6
+              w-16 h-16 text-muted mx-auto mb-6
             "
           />
 
           <h2
             className="
-              text-2xl
-              font-serif
-              text-slate-900
-              dark:text-white
-              tracking-wide
-              mb-2
+              text-2xl font-serif text-ink tracking-wide mb-2
             "
           >
             Access Restricted
@@ -287,41 +239,17 @@ export default function DesignerDirectory() {
 
           <p
             className="
-              text-[10px]
-              text-slate-600
-              dark:text-white/50
-              uppercase
-              tracking-[0.2em]
-              font-bold
-              mb-8
-              leading-relaxed
+              text-[10px] text-muted uppercase tracking-normal font-bold mb-8 leading-relaxed
             "
           >
-            The Visionary Directory is exclusively reserved for Verified
-            Creators.
+            Sign in with a creator account to browse designers.
           </p>
 
           <button
             type="button"
             onClick={() => navigate("/")}
             className="
-              w-full
-              py-4
-              bg-slate-100
-              dark:bg-white/5
-              hover:bg-slate-200
-              dark:hover:bg-white/10
-              text-slate-900
-              dark:text-white
-              text-[10px]
-              font-bold
-              uppercase
-              tracking-[0.2em]
-              rounded-full
-              transition-all
-              border
-              border-slate-200
-              dark:border-white/10
+              w-full py-4 bg-subtle hover:bg-subtle text-ink text-[10px] font-bold uppercase tracking-normal rounded-md transition-all border border-line
             "
           >
             Return to Dashboard
@@ -334,19 +262,7 @@ export default function DesignerDirectory() {
   return (
     <div
       className="
-        min-h-screen
-        bg-slate-50
-        dark:bg-[#030303]
-        text-slate-900
-        dark:text-white
-        selection:bg-[#D4AF37]
-        selection:text-black
-        font-sans
-        relative
-        overflow-x-hidden
-        pb-32
-        transition-colors
-        duration-300
+        min-h-screen bg-canvas text-ink selection:bg-action selection:text-on-action font-sans relative overflow-x-hidden pb-32 transition-colors duration-300
       "
     >
       {/*===================================================
@@ -355,133 +271,25 @@ export default function DesignerDirectory() {
 
       <div
         className="
-          fixed
-          inset-0
-          pointer-events-none
-          overflow-hidden
-          z-0
+          fixed inset-0 pointer-events-none overflow-hidden z-0
         "
       >
-        <div
-          className="
-            absolute
-            top-[-10%]
-            left-[-10%]
-            w-[50vw]
-            h-[50vw]
-            bg-[#D4AF37]/5
-            blur-[150px]
-            rounded-full
-            animate-pulse
-          "
-        />
 
-        <div
-          className="
-            absolute
-            bottom-[-10%]
-            right-[-10%]
-            w-[40vw]
-            h-[40vw]
-            bg-indigo-500/5
-            blur-[150px]
-            rounded-full
-          "
-        />
       </div>
 
       <main
         className="
-          max-w-[1700px]
-          mx-auto
-          px-6
-          md:px-12
-          pt-12
-          relative
-          z-10
+          max-w-[1700px] mx-auto px-6 md:px-12 pt-12 relative z-10
         "
       >
         {/*=================================================
         Page Header
         =================================================*/}
 
-        <div
-          className="
-            text-center
-            max-w-3xl
-            mx-auto
-            mb-16
-            space-y-4
-          "
-        >
-          <div
-            className="
-              inline-flex
-              items-center
-              gap-2
-              px-4
-              py-1.5
-              rounded-full
-              border
-              border-slate-200
-              dark:border-white/10
-              bg-slate-100
-              dark:bg-white/5
-              backdrop-blur-md
-              text-[9px]
-              uppercase
-              tracking-[0.4em]
-              text-[#D4AF37]
-              font-bold
-              shadow-[0_0_20px_rgba(212,175,55,0.1)]
-            "
-          >
-            <Crown size={12} />
-            Elite Visionary Network
-          </div>
-
-          <h1
-            className="
-              text-5xl
-              md:text-7xl
-              font-serif
-              font-light
-              text-slate-900
-              dark:text-white
-              tracking-tighter
-              drop-shadow-2xl
-            "
-          >
-            Booking{" "}
-            <span
-              className="
-                italic
-                text-[#D4AF37]
-                font-bold
-              "
-            >
-              Designers
-            </span>
-          </h1>
-
-          <p
-            className="
-              text-slate-500
-              dark:text-white/40
-              text-xs
-              md:text-sm
-              font-light
-              uppercase
-              tracking-widest
-              max-w-xl
-              mx-auto
-              leading-relaxed
-            "
-          >
-            Discover top digital architects, filter by rate, and launch instant
-            escrow contracts.
-          </p>
-        </div>
+        <header className="mb-4">
+          <h1 className="text-2xl font-semibold tracking-tight">Designers</h1>
+          <p className="mt-1 text-sm text-muted">Choose a designer to view their profile or start a booking.</p>
+        </header>
 
         {/*=================================================
         Controls Bar
@@ -489,50 +297,24 @@ export default function DesignerDirectory() {
 
         <div
           className="
-            bg-white/90
-            dark:bg-[#0a0a0a]/90
-            backdrop-blur-2xl
-            border
-            border-slate-200
-            dark:border-white/10
-            rounded-3xl
-            p-6
-            md:p-8
-            mb-12
-            shadow-[0_20px_60px_rgba(0,0,0,0.8)]
-            space-y-6
+            bg-subtle border border-line rounded-md p-4 mb-4 space-y-4
           "
         >
           <div
             className="
-              flex
-              flex-col
-              lg:flex-row
-              gap-4
-              justify-between
-              items-center
+              flex flex-col lg:flex-row gap-4 justify-between items-center
             "
           >
             {/* Search Bar */}
 
             <div
               className="
-                relative
-                w-full
-                lg:w-[600px]
-                group
+                relative w-full lg:w-[600px] group
               "
             >
               <Search
                 className="
-                  absolute
-                  left-5
-                  top-1/2
-                  -translate-y-1/2
-                  text-slate-500
-                  dark:text-white/30
-                  group-focus-within:text-[#D4AF37]
-                  transition-colors
+                  absolute left-5 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-action transition-colors
                 "
                 size={18}
               />
@@ -541,37 +323,9 @@ export default function DesignerDirectory() {
                 type="text"
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search by designer name, aesthetic, or keyword..."
+                aria-label="Search designers" placeholder="Search designers"
                 className="
-                  w-full
-                  bg-slate-100
-                  dark:bg-[#111]
-                  border
-                  border-slate-200
-                  dark:border-white/10
-                  rounded-full
-                  py-4
-                  pl-14
-                  pr-6
-                  text-xs
-                  text-slate-900
-                  dark:text-white
-                  caret-slate-900
-                  dark:caret-white
-                  outline-none
-                  focus:border-[#D4AF37]/50
-                  focus:bg-white
-                  focus:ring-4
-                  focus:ring-[#D4AF37]/10
-                  transition-all
-                  placeholder:text-slate-400
-                  dark:placeholder:text-white/20
-                  dark:focus:border-[#D4AF37]/60
-                  dark:focus:bg-[#151515]
-                  dark:focus:text-white
-                  tracking-wide
-                  font-light
-                  shadow-inner
+                  w-full bg-subtle dark:bg-surface border border-line h-9 rounded-md py-1 pl-14 pr-6 text-xs text-ink caret-slate-900 dark:caret-white outline-none focus:border-line focus:bg-surface focus:ring-4 focus:ring-action transition-all placeholder:text-muted dark:focus:text-ink tracking-wide font-light
                 "
               />
 
@@ -580,17 +334,7 @@ export default function DesignerDirectory() {
                   type="button"
                   onClick={() => setSearchQuery("")}
                   className="
-                    absolute
-                    right-5
-                    top-1/2
-                    -translate-y-1/2
-                    text-xs
-                    text-slate-500
-                    dark:text-white/40
-                    hover:text-slate-950
-                    dark:hover:text-white
-                    uppercase
-                    font-bold
+                    absolute right-5 top-1/2 -translate-y-1/2 text-xs text-muted hover:text-ink uppercase font-bold
                   "
                 >
                   Clear
@@ -602,26 +346,12 @@ export default function DesignerDirectory() {
 
             <div
               className="
-                flex
-                items-center
-                gap-3
-                w-full
-                lg:w-auto
-                justify-end
+                flex items-center gap-3 w-full lg:w-auto justify-end
               "
             >
               <label
                 className="
-                  text-[9px]
-                  uppercase
-                  tracking-[0.2em]
-                  text-slate-500
-                  dark:text-white/40
-                  font-bold
-                  shrink-0
-                  flex
-                  items-center
-                  gap-1.5
+                  text-[11px] uppercase tracking-normal text-muted font-bold shrink-0 flex items-center gap-1.5
                 "
               >
                 <SlidersHorizontal size={12} />
@@ -632,39 +362,7 @@ export default function DesignerDirectory() {
                 value={sortBy}
                 onChange={(event) => setSortBy(event.target.value)}
                 className="
-                  bg-slate-100
-                  dark:bg-[#111]
-                  border
-                  border-slate-200
-                  dark:border-white/10
-                  rounded-full
-                  px-5
-                  py-3
-                  text-[10px]
-                  font-bold
-                  uppercase
-                  tracking-[0.2em]
-                  text-[#D4AF37]
-                  outline-none
-                  focus:border-[#D4AF37]/50
-                  focus:bg-white
-                  focus:ring-4
-                  focus:ring-[#D4AF37]/10
-                  cursor-pointer
-
-                  [color-scheme:light]
-
-                  [&>option]:bg-white
-                  [&>option]:text-slate-900
-
-                  dark:[color-scheme:dark]
-
-                  dark:[&>option]:bg-[#111]
-                  dark:[&>option]:text-white
-
-                  dark:focus:border-[#D4AF37]/60
-                  dark:focus:bg-[#151515]
-                  dark:focus:text-[#D4AF37]
+                  bg-subtle dark:bg-surface border border-line rounded-md px-5 py-3 text-[10px] font-bold uppercase tracking-normal text-action outline-none focus:border-line focus:bg-surface focus:ring-4 focus:ring-action cursor-pointer [color-scheme:light] [&>option]:bg-white [&>option]:text-slate-900 dark:[color-scheme:dark] dark:[&>option]:bg-[#111] dark:[&>option]:text-white dark:focus:text-action
                 "
               >
                 <option value="top_rated">Top Rated ★</option>
@@ -680,30 +378,20 @@ export default function DesignerDirectory() {
 
           <div
             className="
-              h-[1px]
-              bg-slate-100
-              dark:bg-white/5
-              w-full
+              h-[1px] bg-subtle w-full
             "
           />
 
           <div
             className="
-              grid
-              grid-cols-1
-              lg:grid-cols-12
-              gap-8
-              items-center
+              grid grid-cols-1 lg:grid-cols-12 gap-8 items-center
             "
           >
             {/* Specialty Tabs */}
 
             <div
               className="
-                lg:col-span-8
-                flex
-                flex-wrap
-                gap-2
+                lg:col-span-8 flex flex-wrap gap-2
               "
             >
               {SPECIALTIES.map((spec) => (
@@ -712,19 +400,12 @@ export default function DesignerDirectory() {
                   key={spec}
                   onClick={() => setSelectedSpecialty(spec)}
                   className={`
-                    px-4
-                    py-2
-                    rounded-full
-                    text-[9px]
-                    font-bold
-                    uppercase
-                    tracking-[0.2em]
-                    transition-all
+                    px-4 py-2 rounded-md text-[11px] font-bold uppercase tracking-normal transition-all
 
                     ${
                       selectedSpecialty === spec
-                        ? "bg-[#D4AF37] text-black shadow-[0_0_15px_rgba(212,175,55,0.4)] scale-105"
-                        : "bg-slate-100 dark:bg-[#111] text-slate-500 dark:text-white/40 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 border border-slate-200 dark:border-white/5"
+                        ? "bg-action text-on-action scale-105"
+                        : "bg-subtle dark:bg-surface text-muted hover:text-ink hover:bg-subtle border border-line"
                     }
                   `}
                 >
@@ -737,48 +418,26 @@ export default function DesignerDirectory() {
 
             <div
               className="
-                lg:col-span-4
-                bg-slate-100
-                dark:bg-[#111]
-                border
-                border-slate-200
-                dark:border-white/5
-                rounded-2xl
-                p-4
-                flex
-                flex-col
-                gap-2
+                lg:col-span-4 bg-subtle dark:bg-surface border border-line rounded-md p-4 flex flex-col gap-2
               "
             >
               <div
                 className="
-                  flex
-                  justify-between
-                  items-center
-                  text-[9px]
-                  font-bold
-                  uppercase
-                  tracking-widest
+                  flex justify-between items-center text-[11px] font-bold uppercase tracking-widest
                 "
               >
                 <span
                   className="
-                    text-slate-500
-                    dark:text-white/40
-                    flex
-                    items-center
-                    gap-1
+                    text-muted flex items-center gap-1
                   "
                 >
-                  <DollarSign size={12} className="text-[#D4AF37]" />
+                  <DollarSign size={12} className="text-action" />
                   Max Starting Rate
                 </span>
 
                 <span
                   className="
-                    font-mono
-                    text-[#D4AF37]
-                    text-xs
+                    font-mono text-action text-xs
                   "
                 >
                   ${maxBudget} USD
@@ -793,14 +452,7 @@ export default function DesignerDirectory() {
                 value={maxBudget}
                 onChange={(event) => setMaxBudget(Number(event.target.value))}
                 className="
-                  w-full
-                  h-1
-                  bg-slate-200
-                  dark:bg-white/10
-                  rounded-lg
-                  appearance-none
-                  cursor-pointer
-                  accent-[#D4AF37]
+                  w-full h-1 bg-subtle rounded-md appearance-none cursor-pointer accent-action
                 "
               />
             </div>
@@ -814,19 +466,7 @@ export default function DesignerDirectory() {
         {error && (
           <div
             className="
-              p-4
-              bg-rose-500/10
-              border
-              border-rose-500/20
-              text-rose-600
-              dark:text-rose-400
-              text-xs
-              font-mono
-              uppercase
-              tracking-widest
-              text-center
-              rounded-2xl
-              mb-12
+              p-4 bg-subtle border border-line text-action text-xs font-mono uppercase tracking-widest text-center rounded-md mb-12
             "
           >
             {error}
@@ -836,31 +476,19 @@ export default function DesignerDirectory() {
         {loading ? (
           <div
             className="
-              flex
-              flex-col
-              items-center
-              justify-center
-              py-32
-              space-y-6
+              flex flex-col items-center justify-center py-32 space-y-6
             "
           >
             <div className="relative">
               <div
                 className="
-                  absolute
-                  inset-0
-                  border-t-2
-                  border-[#D4AF37]
-                  rounded-full
-                  animate-spin
+                  absolute inset-0 border-t-2 border-line rounded-full animate-spin
                 "
               />
 
               <Loader2
                 className="
-                  animate-spin
-                  text-slate-400
-                  dark:text-white/20
+                  animate-spin text-muted
                 "
                 size={48}
               />
@@ -868,60 +496,36 @@ export default function DesignerDirectory() {
 
             <span
               className="
-                text-[10px]
-                text-[#D4AF37]
-                font-bold
-                uppercase
-                tracking-[0.3em]
-                animate-pulse
+                text-[10px] text-action font-bold uppercase tracking-normal animate-pulse
               "
             >
-              Indexing Visionaries...
+              Loading designers...
             </span>
           </div>
         ) : filteredDesigners.length === 0 ? (
           <div
             className="
-              text-center
-              py-28
-              border
-              border-slate-200
-              dark:border-white/5
-              bg-white
-              dark:bg-[#0a0a0a]
-              rounded-3xl
-              space-y-4
+              text-center py-28 border border-line bg-surface rounded-md space-y-4
             "
           >
             <Sparkles
               size={40}
               className="
-                text-slate-300
-                dark:text-white/10
-                mx-auto
+                text-muted mx-auto
               "
             />
 
             <h3
               className="
-                text-2xl
-                font-serif
-                italic
-                text-slate-900
-                dark:text-white
+                text-2xl font-serif italic text-ink
               "
             >
-              No visionaries matched your lens.
+              No designers match these filters.
             </h3>
 
             <p
               className="
-                text-[10px]
-                uppercase
-                tracking-widest
-                text-slate-500
-                dark:text-white/40
-                font-bold
+                text-[10px] uppercase tracking-widest text-muted font-bold
               "
             >
               Try expanding your budget slider or searching a different term.
@@ -937,23 +541,7 @@ export default function DesignerDirectory() {
                 setMaxBudget(5000);
               }}
               className="
-                mt-4
-                px-6
-                py-2.5
-                bg-slate-100
-                dark:bg-white/5
-                hover:bg-slate-200
-                dark:hover:bg-white/10
-                text-[#D4AF37]
-                text-[9px]
-                uppercase
-                tracking-widest
-                font-bold
-                rounded-full
-                border
-                border-slate-200
-                dark:border-white/10
-                transition-colors
+                mt-4 px-6 py-2.5 bg-subtle hover:bg-subtle text-action text-[11px] uppercase tracking-widest font-bold rounded-md border border-line transition-colors
               "
             >
               Reset All Filters
@@ -962,12 +550,7 @@ export default function DesignerDirectory() {
         ) : (
           <div
             className="
-              grid
-              grid-cols-1
-              md:grid-cols-2
-              lg:grid-cols-3
-              xl:grid-cols-4
-              gap-8
+              grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8
             "
           >
             {filteredDesigners.map((designer) => {
@@ -988,51 +571,16 @@ export default function DesignerDirectory() {
                 <div
                   key={designerId}
                   className="
-                    bg-white
-                    dark:bg-[#0a0a0a]
-                    border
-                    border-slate-200
-                    dark:border-white/5
-                    rounded-3xl
-                    p-6
-                    flex
-                    flex-col
-                    justify-between
-                    group
-                    hover:border-[#D4AF37]/40
-                    transition-all
-                    duration-500
-                    shadow-2xl
-                    hover:-translate-y-1
-                    relative
-                    overflow-hidden
+                    bg-surface border border-line rounded-md p-4 flex flex-col justify-between group hover:border-line transition-all duration-500 hover:-translate-y-1 relative overflow-hidden
                   "
                 >
-                  <div
-                    className="
-                      absolute
-                      top-0
-                      right-0
-                      w-32
-                      h-32
-                      bg-[#D4AF37]/5
-                      blur-[40px]
-                      pointer-events-none
-                      group-hover:bg-[#D4AF37]/10
-                      transition-all
-                    "
-                  />
 
                   <div>
                     {/* Card Header */}
 
                     <div
                       className="
-                        flex
-                        items-start
-                        justify-between
-                        gap-4
-                        mb-6
+                        flex items-start justify-between gap-4 mb-6
                       "
                     >
                       <div className="relative">
@@ -1049,31 +597,16 @@ export default function DesignerDirectory() {
                             "Designer"
                           }
                           className="
-                            w-16
-                            h-16
-                            rounded-2xl
-                            object-cover
-                            border
-                            border-slate-200
-                            dark:border-white/10
-                            group-hover:border-[#D4AF37]
-                            transition-colors
-                            shadow-lg
+                            w-16 h-16 rounded-md object-cover border border-line group-hover:border-line transition-colors
                           "
                         />
 
                         <div
                           className="
-                            absolute
-                            -bottom-1
-                            -right-1
-                            bg-white
-                            dark:bg-black
-                            rounded-full
-                            p-0.5
+                            absolute -bottom-1 -right-1 bg-surface dark:bg-canvas rounded-full p-0.5
                           "
                         >
-                          <CheckCircle2 size={14} className="text-[#D4AF37]" />
+                          <CheckCircle2 size={14} className="text-action" />
                         </div>
                       </div>
 
@@ -1081,35 +614,19 @@ export default function DesignerDirectory() {
 
                       <div
                         className="
-                          bg-slate-100
-                          dark:bg-[#111]
-                          border
-                          border-slate-200
-                          dark:border-white/10
-                          px-3
-                          py-1.5
-                          rounded-full
-                          flex
-                          items-center
-                          gap-1.5
-                          shadow-inner
+                          bg-subtle dark:bg-surface border border-line px-3 py-1.5 rounded-md flex items-center gap-1.5
                         "
                       >
                         <Star
                           size={12}
                           className="
-                            text-[#D4AF37]
-                            fill-[#D4AF37]
+                            text-action fill-action
                           "
                         />
 
                         <span
                           className="
-                            text-[10px]
-                            font-mono
-                            font-bold
-                            text-slate-900
-                            dark:text-white
+                            text-[10px] font-mono font-bold text-ink
                           "
                         >
                           {rating}
@@ -1121,13 +638,7 @@ export default function DesignerDirectory() {
 
                     <h3
                       className="
-                        text-xl
-                        font-serif
-                        text-slate-900
-                        dark:text-white
-                        group-hover:text-[#D4AF37]
-                        transition-colors
-                        truncate
+                        text-xl font-serif text-ink group-hover:text-action transition-colors truncate
                       "
                     >
                       {designer.full_name ||
@@ -1137,28 +648,15 @@ export default function DesignerDirectory() {
 
                     <p
                       className="
-                        text-[9px]
-                        uppercase
-                        tracking-[0.2em]
-                        font-bold
-                        text-slate-500
-                        dark:text-white/40
-                        mt-0.5
-                        mb-4
+                        text-[11px] uppercase tracking-normal font-bold text-muted mt-0.5 mb-4
                       "
                     >
-                      {designer.tagline || "Pro Garment Architect"}
+                      {designer.tagline || "Designer"}
                     </p>
 
                     <p
                       className="
-                        text-xs
-                        text-slate-700
-                        dark:text-white/60
-                        font-light
-                        line-clamp-2
-                        leading-relaxed
-                        mb-6
+                        text-xs text-ink dark:text-muted font-light line-clamp-2 leading-relaxed mb-6
                       "
                     >
                       {designer.bio ||
@@ -1169,33 +667,13 @@ export default function DesignerDirectory() {
 
                     <div
                       className="
-                        grid
-                        grid-cols-2
-                        gap-2
-                        bg-slate-100
-                        dark:bg-[#111]
-                        p-3
-                        rounded-2xl
-                        border
-                        border-slate-200
-                        dark:border-white/5
-                        mb-6
-                        text-center
+                        grid grid-cols-2 gap-2 bg-subtle dark:bg-surface p-3 rounded-md border border-line mb-6 text-center
                       "
                     >
                       <div>
                         <p
                           className="
-                            text-[8px]
-                            uppercase
-                            tracking-widest
-                            text-slate-500
-                            dark:text-white/30
-                            font-bold
-                            flex
-                            items-center
-                            justify-center
-                            gap-1
+                            text-[11px] uppercase tracking-widest text-muted font-bold flex items-center justify-center gap-1
                           "
                         >
                           <Briefcase size={10} />
@@ -1204,12 +682,7 @@ export default function DesignerDirectory() {
 
                         <p
                           className="
-                            text-sm
-                            font-mono
-                            font-bold
-                            text-slate-900
-                            dark:text-white
-                            mt-0.5
+                            text-sm font-mono font-bold text-ink mt-0.5
                           "
                         >
                           {completedBookings}
@@ -1218,23 +691,12 @@ export default function DesignerDirectory() {
 
                       <div
                         className="
-                          border-l
-                          border-slate-200
-                          dark:border-white/5
+                          border-l border-line
                         "
                       >
                         <p
                           className="
-                            text-[8px]
-                            uppercase
-                            tracking-widest
-                            text-slate-500
-                            dark:text-white/30
-                            font-bold
-                            flex
-                            items-center
-                            justify-center
-                            gap-1
+                            text-[11px] uppercase tracking-widest text-muted font-bold flex items-center justify-center gap-1
                           "
                         >
                           <DollarSign size={10} />
@@ -1243,11 +705,7 @@ export default function DesignerDirectory() {
 
                         <p
                           className="
-                            text-sm
-                            font-mono
-                            font-bold
-                            text-[#D4AF37]
-                            mt-0.5
+                            text-sm font-mono font-bold text-action mt-0.5
                           "
                         >
                           ${startingRate.toFixed(0)}
@@ -1270,29 +728,12 @@ export default function DesignerDirectory() {
 
                   <div
                     className="
-                      mb-3
-                      rounded-xl
-                      border
-                      border-emerald-200
-                      bg-emerald-50/70
-                      p-3
-
-                      dark:border-emerald-400/15
-                      dark:bg-emerald-400/[0.05]
+                      mb-3 rounded-md border border-line bg-subtle p-3
                     "
                   >
                     <div
                       className="
-                        flex
-                        items-center
-                        gap-2
-                        text-[8px]
-                        font-black
-                        uppercase
-                        tracking-[0.16em]
-                        text-emerald-700
-
-                        dark:text-emerald-300
+                        flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-action
                       "
                     >
                       <MessageCircle size={12} />
@@ -1301,12 +742,7 @@ export default function DesignerDirectory() {
 
                     <p
                       className="
-                        mt-1.5
-                        text-[9px]
-                        leading-4
-                        text-slate-500
-
-                        dark:text-white/35
+                        mt-1.5 text-[11px] leading-4 text-muted
                       "
                     >
                       Chat and video-call coordination can become available
@@ -1316,22 +752,12 @@ export default function DesignerDirectory() {
 
                     <div
                       className="
-                        mt-2
-                        flex
-                        flex-wrap
-                        items-center
-                        gap-3
-                        text-[8px]
-                        text-slate-400
-
-                        dark:text-white/25
+                        mt-2 flex flex-wrap items-center gap-3 text-[11px] text-muted
                       "
                     >
                       <span
                         className="
-                          inline-flex
-                          items-center
-                          gap-1
+                          inline-flex items-center gap-1
                         "
                       >
                         <MessageCircle size={10} />
@@ -1340,9 +766,7 @@ export default function DesignerDirectory() {
 
                       <span
                         className="
-                          inline-flex
-                          items-center
-                          gap-1
+                          inline-flex items-center gap-1
                         "
                       >
                         <Video size={10} />
@@ -1355,34 +779,13 @@ export default function DesignerDirectory() {
 
                   <div
                     className="
-                      space-y-2
-                      pt-2
-                      border-t
-                      border-slate-200
-                      dark:border-white/5
+                      space-y-2 pt-2 border-t border-line
                     "
                   >
                     <Link
                       to={`/creator/bookings/new?designer_id=${designerId}&budget=${startingRate}`}
                       className="
-                        w-full
-                        py-3.5
-                        bg-[#D4AF37]
-                        hover:bg-[#ead28f]
-                        dark:hover:bg-white
-                        text-black
-                        text-[9px]
-                        uppercase
-                        tracking-[0.25em]
-                        font-black
-                        rounded-xl
-                        transition-all
-                        flex
-                        items-center
-                        justify-center
-                        gap-2
-                        shadow-[0_0_20px_rgba(212,175,55,0.2)]
-                        hover:shadow-[0_0_30px_rgba(255,255,255,0.4)]
+                        w-full py-3.5 bg-action hover:bg-action dark:hover:bg-surface text-on-action text-[11px] uppercase tracking-normal font-semibold rounded-md transition-all flex items-center justify-center gap-2
                       "
                     >
                       <Zap size={14} />
@@ -1393,25 +796,7 @@ export default function DesignerDirectory() {
                       type="button"
                       onClick={() => navigate(`/directory/${designerId}`)}
                       className="
-                        w-full
-                        py-2.5
-                        bg-transparent
-                        hover:bg-slate-100
-                        dark:hover:bg-white/5
-                        text-slate-500
-                        dark:text-white/40
-                        hover:text-slate-950
-                        dark:hover:text-white
-                        text-[8px]
-                        uppercase
-                        tracking-[0.2em]
-                        font-bold
-                        rounded-xl
-                        transition-colors
-                        flex
-                        items-center
-                        justify-center
-                        gap-1
+                        w-full py-2.5 bg-transparent hover:bg-subtle text-muted hover:text-ink text-[11px] uppercase tracking-normal font-bold rounded-md transition-colors flex items-center justify-center gap-1
                       "
                     >
                       View Portfolio

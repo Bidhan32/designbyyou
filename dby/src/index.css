@@ -1,0 +1,14 @@
+body { margin: 0; background: var(--ui-canvas); color: var(--ui-ink); font-variant-numeric: tabular-nums; }
+code, kbd, samp, time, .font-mono { font-family: var(--ui-mono); }
+:where(button, a)[class~="rounded-full"] { border-radius: 6px; }
+:where(button, a, label, nav) .lucide { width: 16px; height: 16px; flex-shrink: 0; }
+.bg-action:hover:is(button, a):not(:disabled) { background: color-mix(in srgb, var(--ui-action) 90%, var(--ui-ink)); }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--ui-action); outline-offset: 2px; }
+
+:is(span, div):is(.grid, .flex, .inline-flex):has(> .lucide:only-child):is(.rounded-full, .rounded-md):not([role]) {
+  background-color: transparent;
+  border-color: transparent;
+  color: var(--ui-muted);
+}
+:is(span, div):has(> .lucide:only-child):is(.rounded-full, .rounded-md) > .lucide { width: 16px; height: 16px; color: inherit; }
+.bg-action .lucide { color: inherit; }

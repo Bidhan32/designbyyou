@@ -4,8 +4,8 @@ import {
   normalizeGarmentPatternSettings, applyGarmentPatternPreset,
 } from "./GarmentPatternStudio";
 
-const field = "w-full min-w-0 rounded-md border border-slate-600 bg-slate-900 px-2 py-1.5 text-xs text-slate-100";
-const button = "rounded-md border border-slate-600 bg-slate-800 px-2.5 py-2 text-xs text-slate-100 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40";
+const field = "w-full min-w-0 rounded-md border border-line bg-surface px-2 py-1.5 text-xs text-ink";
+const button = "rounded-md border border-line bg-subtle px-2.5 py-2 text-xs text-ink hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40";
 const sliders = [
   {key: "scale", label: "Repeat size", min: 0.1, max: 3, step: 0.05, unit: "×"},
   {key: "spacingX", label: "Horizontal gap", min: 0, max: 1.5, step: 0.05, unit: "%", factor: 100},
@@ -52,27 +52,27 @@ export default function GarmentPatternControls({ entry, disabled = false, onSave
     } catch (error) { setMessage(error?.message || "Unable to copy fabric pattern."); }
     finally { setSaving(false); }
   };
-  return <section className="space-y-3 rounded-lg border border-emerald-800/60 bg-emerald-950/20 p-3" aria-label="Advanced garment pattern studio">
-    <div><strong className="text-xs text-emerald-200">Phase 3.4 · Pattern Studio</strong>
-      <p className="mt-1 text-[10px] leading-relaxed text-slate-400">Presets change repeat settings, not your uploaded artwork. Preview adjustments using Apply; use Undo to reverse.</p></div>
+  return <section className="space-y-3 rounded-md border border-line bg-subtle p-3" aria-label="Advanced garment pattern studio">
+    <div><strong className="text-xs text-action">Phase 3.4 · Pattern Studio</strong>
+      <p className="mt-1 text-[10px] leading-relaxed text-muted">Presets change repeat settings, not your uploaded artwork. Preview adjustments using Apply; use Undo to reverse.</p></div>
     <div className="grid grid-cols-2 gap-1.5">
       {GARMENT_PATTERN_PRESETS.map((preset) => <button type="button" key={preset.id}
         disabled={disabled || saving} className={button} onClick={() => setDraft((value) => applyGarmentPatternPreset(value, preset.id))}>{preset.label}</button>)}
     </div>
     <div className="grid grid-cols-2 gap-2">
-      <label className="space-y-1 text-[10px] text-slate-300">Alignment
+      <label className="space-y-1 text-[10px] text-muted">Alignment
         <select className={field} value={draft.alignment} disabled={disabled || saving}
           onChange={(e) => update("alignment", e.target.value)}>
           {GARMENT_PATTERN_ALIGNMENT.map(({value,label}) => <option key={value} value={value}>{label}</option>)}
         </select>
       </label>
-      <label className="space-y-1 text-[10px] text-slate-300">Repeat layout
+      <label className="space-y-1 text-[10px] text-muted">Repeat layout
         <select className={field} value={draft.layout} disabled={disabled || saving}
           onChange={(e) => update("layout", e.target.value)}>
           {GARMENT_PATTERN_LAYOUTS.map(({value,label}) => <option key={value} value={value}>{label}</option>)}
         </select>
       </label>
-      <label className="space-y-1 text-[10px] text-slate-300 col-span-2">Motif fit
+      <label className="space-y-1 text-[10px] text-muted col-span-2">Motif fit
         <select className={field} value={draft.fit} disabled={disabled || saving}
           onChange={(e) => update("fit", e.target.value)}>
           <option value="cover">Cover</option><option value="contain">Contain</option><option value="fill">Stretch</option>
@@ -80,20 +80,20 @@ export default function GarmentPatternControls({ entry, disabled = false, onSave
       </label>
     </div>
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-      {sliders.map(({key,label,min,max,step,unit,factor=1}) => <label key={key} className="block space-y-1 text-[10px] text-slate-300">
-        <span>{label}: <span className="font-semibold text-emerald-200">{(draft[key] * factor).toFixed(key === "scale" ? 2 : 0)}{unit}</span></span>
+      {sliders.map(({key,label,min,max,step,unit,factor=1}) => <label key={key} className="block space-y-1 text-[10px] text-muted">
+        <span>{label}: <span className="font-semibold text-action">{(draft[key] * factor).toFixed(key === "scale" ? 2 : 0)}{unit}</span></span>
         <input type="range" min={min} max={max} step={step} disabled={disabled || saving}
-          value={Math.min(max, Math.max(min, draft[key]))} className="w-full accent-emerald-500"
+          value={Math.min(max, Math.max(min, draft[key]))} className="w-full accent-action"
           onChange={(e) => update(key, Number(e.target.value))}/>
       </label>)}
     </div>
-    <button type="button" className={`${button} w-full border-emerald-700 bg-emerald-800/40 font-semibold text-white`}
+    <button type="button" className={`${button} w-full border-line bg-subtle font-semibold text-ink`}
       disabled={disabled || saving || !onSave} onClick={() => void apply()}>{saving ? "Saving…" : "Apply pattern settings"}</button>
-    {onSync && <button type="button" className={`${button} w-full border-cyan-700 bg-cyan-900/40`}
+    {onSync && <button type="button" className={`${button} w-full border-line bg-subtle`}
       disabled={disabled || saving || syncTargets === 0} onClick={() => void sync()}>
       Copy saved pattern to {syncTargets} selected region{syncTargets === 1 ? "" : "s"}
     </button>}
-    {onSync && <p className="text-[10px] text-slate-500">Save changes first, then copy the current pattern. Existing logos/texts are preserved. Each target gets an independent pattern layer; this is not a live link.</p>}
-    {message && <p role="status" className="text-[10px] text-emerald-200">{message}</p>}
+    {onSync && <p className="text-[10px] text-muted">Save changes first, then copy the current pattern. Existing logos/texts are preserved. Each target gets an independent pattern layer; this is not a live link.</p>}
+    {message && <p role="status" className="text-[10px] text-action">{message}</p>}
   </section>;
 }

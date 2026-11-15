@@ -1,3 +1,4 @@
+import MetricList from "../../components/MetricList";
 /*
 =========================================================
 DesignByYou / FashionVision
@@ -251,36 +252,36 @@ function statusClasses(status) {
   const normalized = String(status || "").toLowerCase();
 
   if (normalized === "completed") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300";
+    return "border-line bg-canvas text-action dark:bg-subtle";
   }
 
   if (normalized === "failed") {
-    return "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-300";
+    return "border-line bg-canvas text-action dark:bg-subtle";
   }
 
   if (normalized === "cancelled") {
-    return "border-slate-200 bg-slate-100 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/45";
+    return "border-line bg-subtle text-muted";
   }
 
   if (normalized === "processing") {
-    return "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-400/20 dark:bg-indigo-400/10 dark:text-indigo-300";
+    return "border-line bg-canvas text-action dark:bg-subtle";
   }
 
-  return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300";
+  return "border-line bg-canvas text-action dark:bg-subtle";
 }
 
 function bankStatusClasses(status) {
   const normalized = String(status || "").toLowerCase();
 
   if (normalized === "verified") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300";
+    return "border-line bg-canvas text-action dark:bg-subtle";
   }
 
   if (normalized === "rejected") {
-    return "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-300";
+    return "border-line bg-canvas text-action dark:bg-subtle";
   }
 
-  return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300";
+  return "border-line bg-canvas text-action dark:bg-subtle";
 }
 
 function escapeCsv(value) {
@@ -1000,13 +1001,6 @@ export default function DesignerWallet() {
       value: metrics.available,
 
       description: "Available for verified bank payout reservation",
-
-      icon: Wallet,
-
-      iconClass: "text-emerald-600 dark:text-emerald-300",
-
-      panelClass:
-        "border-emerald-200/70 bg-emerald-50/60 dark:border-emerald-400/10 dark:bg-emerald-400/[0.06]",
     },
 
     {
@@ -1015,12 +1009,6 @@ export default function DesignerWallet() {
       value: metrics.pendingEscrow,
 
       description: "Project funds awaiting release to your wallet",
-
-      icon: LockKeyhole,
-
-      iconClass: "text-[#9B791D] dark:text-[#D4AF37]",
-
-      panelClass: "border-[#D4AF37]/25 bg-[#D4AF37]/[0.07]",
     },
 
     {
@@ -1029,13 +1017,6 @@ export default function DesignerWallet() {
       value: metrics.pendingPayout,
 
       description: "Reserved for pending or processing bank transfers",
-
-      icon: Clock3,
-
-      iconClass: "text-indigo-600 dark:text-indigo-300",
-
-      panelClass:
-        "border-indigo-200/70 bg-indigo-50/60 dark:border-indigo-400/10 dark:bg-indigo-400/[0.06]",
     },
 
     {
@@ -1044,13 +1025,6 @@ export default function DesignerWallet() {
       value: metrics.lifetimeEarnings,
 
       description: "Net earnings released from completed projects",
-
-      icon: TrendingUp,
-
-      iconClass: "text-sky-600 dark:text-sky-300",
-
-      panelClass:
-        "border-sky-200/70 bg-sky-50/60 dark:border-sky-400/10 dark:bg-sky-400/[0.06]",
     },
   ];
 
@@ -1073,35 +1047,35 @@ export default function DesignerWallet() {
           : "Not configured";
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-50 pb-20 text-slate-950 transition-colors duration-300 dark:bg-[#030303] dark:text-white">
+    <main className="relative min-h-screen overflow-hidden bg-canvas pb-20 text-ink transition-colors duration-300">
       {/* Background decoration */}
 
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute -right-40 -top-40 h-[34rem] w-[34rem] rounded-full bg-[#D4AF37]/10 blur-[170px]" />
 
-        <div className="absolute -bottom-48 -left-40 h-[38rem] w-[38rem] rounded-full bg-indigo-500/5 blur-[180px] dark:bg-indigo-500/10" />
+
+
       </div>
 
       {/*===================================================
       Header
       ===================================================*/}
 
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/80 backdrop-blur-2xl dark:border-white/5 dark:bg-[#070707]/80">
+      <header className="sticky top-0 z-40 border-b border-line bg-subtle">
         <div className="mx-auto flex max-w-[1500px] flex-col gap-5 px-5 py-6 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-10">
           <div>
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.32em] text-[#9B791D] dark:text-[#D4AF37]">
+            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-normal text-action">
               <Sparkles size={14} />
               Studio Ledger
             </div>
 
-            <h1 className="mt-2 font-serif text-3xl font-light sm:text-4xl">
+            <h1 className="mt-2 font-sans text-3xl font-light sm:text-4xl">
               Designer{" "}
-              <span className="italic text-[#9B791D] dark:text-[#D4AF37]">
+              <span className="italic text-action">
                 Wallet
               </span>
             </h1>
 
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-white/40">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
               Track project earnings, available balances and verified bank
               payout requests from one secure financial ledger.
             </p>
@@ -1112,7 +1086,7 @@ export default function DesignerWallet() {
               type="button"
               onClick={exportCurrentView}
               disabled={exportDisabled}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-[9px] font-black uppercase tracking-[0.18em] text-slate-600 transition hover:border-[#D4AF37]/50 hover:text-[#8F7118] disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-white/55 dark:hover:text-[#D4AF37]"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted transition hover:border-line hover:text-action disabled:cursor-not-allowed disabled:opacity-40 dark:bg-subtle"
             >
               <Download size={15} />
               Export
@@ -1126,7 +1100,7 @@ export default function DesignerWallet() {
                 })
               }
               disabled={refreshing}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 text-[9px] font-black uppercase tracking-[0.18em] text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-[#D4AF37]"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-on-action transition hover:bg-action disabled:cursor-not-allowed disabled:opacity-60 dark:bg-surface dark:text-ink hover:text-on-action"
             >
               <RefreshCw
                 size={15}
@@ -1147,10 +1121,10 @@ export default function DesignerWallet() {
           <div
             role={error ? "alert" : "status"}
             aria-live="polite"
-            className={`flex items-start justify-between gap-4 rounded-2xl border p-4 text-sm ${
+            className={`flex items-start justify-between gap-4 rounded-md border p-4 text-sm ${
               error
-                ? "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200"
-                : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200"
+                ? "border-line bg-canvas text-action dark:bg-subtle"
+                : "border-line bg-canvas text-action dark:bg-subtle"
             }`}
           >
             <div className="flex items-start gap-3">
@@ -1185,48 +1159,19 @@ export default function DesignerWallet() {
             }).map((_, index) => (
               <div
                 key={index}
-                className="h-40 animate-pulse rounded-3xl border border-slate-200 bg-white dark:border-white/5 dark:bg-[#0A0A0A]"
+                className="h-40 animate-pulse rounded-md border border-line bg-surface"
               />
             ))}
           </div>
         ) : (
-          <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-            {metricCards.map((metric) => (
-              <article
-                key={metric.title}
-                className={`group rounded-3xl border p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg dark:shadow-2xl ${metric.panelClass}`}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-500 dark:text-white/35">
-                      {metric.title}
-                    </p>
-
-                    <p className="mt-3 font-serif text-4xl tracking-tight">
-                      {money(metric.value)}
-                    </p>
-
-                    <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-white/35">
-                      {metric.description}
-                    </p>
-                  </div>
-
-                  <div
-                    className={`rounded-2xl bg-white/70 p-3 shadow-sm transition group-hover:scale-105 dark:bg-white/5 ${metric.iconClass}`}
-                  >
-                    <metric.icon size={20} />
-                  </div>
-                </div>
-              </article>
-            ))}
-          </section>
+          <MetricList label="Wallet balances" rows={metricCards.map(metric => [metric.title, money(metric.value), metric.description])} />
         )}
 
         {/*=================================================
         Secondary Metrics
         =================================================*/}
 
-        <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-[#0A0A0A] dark:shadow-2xl sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 rounded-md border border-line bg-surface p-4 sm:grid-cols-2 xl:grid-cols-4">
           {[
             ["Total wallet value", metrics.total],
 
@@ -1238,9 +1183,9 @@ export default function DesignerWallet() {
           ].map(([label, value]) => (
             <div
               key={label}
-              className="rounded-2xl border border-transparent bg-slate-50 p-4 transition hover:border-slate-200 dark:bg-white/[0.025] dark:hover:border-white/10"
+              className="rounded-md border border-transparent bg-canvas p-4 transition hover:border-line dark:bg-subtle"
             >
-              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-white/30">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                 {label}
               </p>
 
@@ -1256,8 +1201,8 @@ export default function DesignerWallet() {
           Wallet Actions
           ===============================================*/}
 
-          <aside className="h-fit rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-[#0A0A0A] dark:shadow-2xl sm:p-7 xl:sticky xl:top-32">
-            <div className="rounded-2xl border border-slate-200 bg-slate-100 p-1.5 dark:border-white/10 dark:bg-[#111]">
+          <aside className="h-fit rounded-md border border-line bg-surface p-4 xl:sticky xl:top-32">
+            <div className="rounded-md border border-line bg-subtle p-1.5 dark:bg-surface">
               <div className="grid grid-cols-2 gap-1.5">
                 {[
                   ["payout", ArrowUpRight, "Withdraw"],
@@ -1272,10 +1217,10 @@ export default function DesignerWallet() {
 
                       clearMessages();
                     }}
-                    className={`flex h-11 items-center justify-center gap-1.5 rounded-xl px-2 text-[8px] font-black uppercase tracking-[0.12em] transition ${
+                    className={`flex h-9 items-center justify-center gap-1.5 rounded-md px-2 text-[11px] font-semibold uppercase tracking-[0.12em] transition ${
                       actionType === type
-                        ? "border border-slate-200 bg-white text-slate-900 shadow-sm dark:border-transparent dark:bg-[#030303] dark:text-white"
-                        : "text-slate-400 hover:text-slate-700 dark:text-white/35 dark:hover:text-white/70"
+                        ? "border border-line bg-surface text-ink dark:border-transparent dark:bg-canvas"
+                        : "text-muted hover:text-ink dark:hover:text-muted"
                     }`}
                   >
                     <Icon size={14} />
@@ -1296,15 +1241,15 @@ export default function DesignerWallet() {
                 className="mt-7 space-y-5"
               >
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/40">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
                     Withdrawal destination
                   </p>
 
                   {bankAccount ? (
-                    <div className="mt-2.5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/[0.025]">
+                    <div className="mt-2.5 rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex min-w-0 items-start gap-3">
-                          <div className="rounded-xl bg-[#D4AF37]/10 p-2.5 text-[#98761A] dark:text-[#D4AF37]">
+                          <div className="rounded-md bg-subtle p-2.5 text-action">
                             <Landmark size={17} />
                           </div>
 
@@ -1314,7 +1259,7 @@ export default function DesignerWallet() {
                                 bankAccount.bank_name}
                             </p>
 
-                            <p className="mt-1 text-xs text-slate-500 dark:text-white/35">
+                            <p className="mt-1 text-xs text-muted">
                               {bankAccount.account_holder_name} ·{" "}
                               {bankAccount.country_code} ·{" "}
                               {bankAccount.currency}
@@ -1323,7 +1268,7 @@ export default function DesignerWallet() {
                         </div>
 
                         <span
-                          className={`shrink-0 rounded-full border px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.12em] ${bankStatusClasses(
+                          className={`shrink-0 rounded-md border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${bankStatusClasses(
                             bankStatus,
                           )}`}
                         >
@@ -1334,25 +1279,25 @@ export default function DesignerWallet() {
                       <button
                         type="button"
                         onClick={() => setActionType("bank")}
-                        className="mt-4 text-[9px] font-black uppercase tracking-[0.14em] text-[#98761A] transition hover:underline dark:text-[#D4AF37]"
+                        className="mt-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-action transition hover:underline"
                       >
                         Manage bank details
                       </button>
                     </div>
                   ) : (
-                    <div className="mt-2.5 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-400/10">
+                    <div className="mt-2.5 rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
                       <div className="flex items-start gap-3">
                         <AlertCircle
                           size={18}
-                          className="mt-0.5 shrink-0 text-amber-700 dark:text-amber-300"
+                          className="mt-0.5 shrink-0 text-action"
                         />
 
                         <div>
-                          <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                          <p className="text-sm font-semibold text-action">
                             Bank setup required
                           </p>
 
-                          <p className="mt-1 text-xs leading-5 text-amber-700/80 dark:text-amber-200/70">
+                          <p className="mt-1 text-xs leading-5 text-muted">
                             Add and verify a bank payout account before
                             requesting a withdrawal.
                           </p>
@@ -1360,7 +1305,7 @@ export default function DesignerWallet() {
                           <button
                             type="button"
                             onClick={() => setActionType("bank")}
-                            className="mt-3 text-[9px] font-black uppercase tracking-[0.14em] text-amber-800 underline dark:text-amber-200"
+                            className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-action underline"
                           >
                             Set up bank
                           </button>
@@ -1374,7 +1319,7 @@ export default function DesignerWallet() {
                   <div className="flex items-center justify-between gap-3">
                     <label
                       htmlFor="payout-amount"
-                      className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/40"
+                      className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted"
                     >
                       Withdrawal amount
                     </label>
@@ -1385,7 +1330,7 @@ export default function DesignerWallet() {
                         setWithdrawAmount(metrics.available.toFixed(2))
                       }
                       disabled={metrics.available <= 0}
-                      className="text-[9px] font-black uppercase tracking-[0.16em] text-[#98761A] transition hover:underline disabled:cursor-not-allowed disabled:opacity-40 dark:text-[#D4AF37]"
+                      className="text-[11px] font-semibold uppercase tracking-[0.16em] text-action transition hover:underline disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Use maximum
                     </button>
@@ -1394,7 +1339,7 @@ export default function DesignerWallet() {
                   <div className="relative mt-2.5">
                     <BadgeDollarSign
                       size={17}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9B791D] dark:text-[#D4AF37]"
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-action"
                     />
 
                     <input
@@ -1409,11 +1354,11 @@ export default function DesignerWallet() {
                         setWithdrawAmount(event.target.value)
                       }
                       placeholder={`Minimum ${money(MIN_PAYOUT_AMOUNT)}`}
-                      className="h-[52px] w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 font-mono text-sm outline-none transition focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-[#030303] dark:text-white"
+                      className="h-[52px] w-full rounded-md border border-line bg-canvas pl-11 pr-4 font-mono text-sm outline-none transition focus:border-line focus:ring-4 focus:ring-action dark:text-ink"
                     />
                   </div>
 
-                  <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 dark:text-white/30">
+                  <div className="mt-2 flex items-center justify-between text-[11px] text-muted">
                     <span>Minimum {money(MIN_PAYOUT_AMOUNT)}</span>
 
                     <span>Available {money(metrics.available)}</span>
@@ -1421,53 +1366,53 @@ export default function DesignerWallet() {
                 </div>
 
                 <div>
-                  <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/40">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
                     Payout method
                   </span>
 
                   <div className="relative mt-2.5">
                     <Landmark
                       size={16}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-muted"
                     />
 
                     <select
                       value="manual"
                       disabled
                       aria-label="Payout method"
-                      className="h-[52px] w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-11 text-sm font-medium outline-none disabled:cursor-default disabled:opacity-100 dark:border-white/10 dark:bg-[#030303] dark:text-white"
+                      className="h-[52px] w-full appearance-none rounded-md border border-line bg-canvas pl-11 pr-11 text-sm font-medium outline-none disabled:cursor-default disabled:opacity-100 dark:text-ink"
                     >
                       <option value="manual">Verified bank transfer</option>
                     </select>
 
                     <ChevronDown
                       size={16}
-                      className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+                      className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted"
                     />
                   </div>
                 </div>
 
                 {!bankVerified && bankAccount && (
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-200">
+                  <div className="rounded-md border border-line bg-canvas p-4 text-xs leading-5 text-action dark:bg-subtle">
                     This bank account is{" "}
                     <strong>{bankStatusText.toLowerCase()}</strong>. Withdrawals
                     are available only after Super Admin verification.
                   </div>
                 )}
 
-                <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-400/20 dark:bg-indigo-400/10">
+                <div className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
                   <div className="flex items-start gap-3">
                     <Info
                       size={18}
-                      className="mt-0.5 shrink-0 text-indigo-600 dark:text-indigo-300"
+                      className="mt-0.5 shrink-0 text-action"
                     />
 
                     <div>
-                      <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">
+                      <p className="text-sm font-semibold text-action">
                         Manual bank payout
                       </p>
 
-                      <p className="mt-1 text-xs leading-5 text-indigo-700/80 dark:text-indigo-200/70">
+                      <p className="mt-1 text-xs leading-5 text-muted">
                         Your withdrawal is reserved from your available balance.
                         DesignByYou reviews the request and transfers the funds
                         to your verified bank account. You can cancel only while
@@ -1480,7 +1425,7 @@ export default function DesignerWallet() {
                 <button
                   type="submit"
                   disabled={isSubmittingPayout || !payoutAmountIsValid}
-                  className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#D4AF37] text-[10px] font-black uppercase tracking-[0.2em] text-black shadow-[0_12px_35px_rgba(212,175,55,0.18)] transition hover:-translate-y-0.5 hover:bg-[#E2C45D] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none dark:disabled:bg-white/5 dark:disabled:text-white/25"
+                  className="flex h-[52px] w-full items-center justify-center gap-2 rounded-md bg-action text-[10px] font-semibold uppercase tracking-normal text-on-action transition hover:-translate-y-0.5 hover:bg-action disabled:cursor-not-allowed disabled:bg-subtle disabled:text-muted hover:text-on-action"
                 >
                   {isSubmittingPayout ? (
                     <Loader2 size={16} className="animate-spin" />
@@ -1504,11 +1449,11 @@ export default function DesignerWallet() {
                 <div>
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/40">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
                         Bank payout account
                       </p>
 
-                      <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-white/35">
+                      <p className="mt-2 text-xs leading-5 text-muted">
                         Full bank details are sent securely to the backend and
                         encrypted before storage.
                       </p>
@@ -1516,7 +1461,7 @@ export default function DesignerWallet() {
 
                     {bankAccount && (
                       <span
-                        className={`shrink-0 rounded-full border px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.12em] ${bankStatusClasses(
+                        className={`shrink-0 rounded-md border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${bankStatusClasses(
                           bankStatus,
                         )}`}
                       >
@@ -1526,11 +1471,11 @@ export default function DesignerWallet() {
                   </div>
 
                   {bankAccount && (
-                    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/[0.025]">
+                    <div className="mt-4 rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
                       <div className="flex items-start gap-3">
                         <Landmark
                           size={18}
-                          className="mt-0.5 shrink-0 text-[#98761A] dark:text-[#D4AF37]"
+                          className="mt-0.5 shrink-0 text-action"
                         />
 
                         <div>
@@ -1539,7 +1484,7 @@ export default function DesignerWallet() {
                               bankAccount.bank_name}
                           </p>
 
-                          <p className="mt-1 text-xs text-slate-500 dark:text-white/35">
+                          <p className="mt-1 text-xs text-muted">
                             {bankAccount.account_holder_name} ·{" "}
                             {bankAccount.country_code} · {bankAccount.currency}
                           </p>
@@ -1550,14 +1495,14 @@ export default function DesignerWallet() {
                 </div>
 
                 {bankAccount && (
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-400/10">
+                  <div className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
                     <div className="flex items-start gap-3">
                       <Info
                         size={17}
-                        className="mt-0.5 shrink-0 text-amber-700 dark:text-amber-300"
+                        className="mt-0.5 shrink-0 text-action"
                       />
 
-                      <p className="text-xs leading-5 text-amber-800 dark:text-amber-200">
+                      <p className="text-xs leading-5 text-action">
                         For security, the full account number and IBAN are never
                         returned by the API. When replacing bank details, enter
                         the complete destination again. The updated account will
@@ -1569,7 +1514,7 @@ export default function DesignerWallet() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <label className="block">
-                    <span className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
                       Bank country
                     </span>
 
@@ -1584,12 +1529,12 @@ export default function DesignerWallet() {
                         )
                       }
                       placeholder="AE"
-                      className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm uppercase outline-none transition focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-[#030303]"
+                      className="mt-2 h-11 w-full rounded-md border border-line bg-canvas px-3 text-sm uppercase outline-none transition focus:border-line focus:ring-4 focus:ring-action"
                     />
                   </label>
 
                   <label className="block">
-                    <span className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
                       Currency
                     </span>
 
@@ -1604,13 +1549,13 @@ export default function DesignerWallet() {
                         )
                       }
                       placeholder="USD"
-                      className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm uppercase outline-none transition focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-[#030303]"
+                      className="mt-2 h-11 w-full rounded-md border border-line bg-canvas px-3 text-sm uppercase outline-none transition focus:border-line focus:ring-4 focus:ring-action"
                     />
                   </label>
                 </div>
 
                 <label className="block">
-                  <span className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
                     Account holder
                   </span>
 
@@ -1625,12 +1570,12 @@ export default function DesignerWallet() {
                       )
                     }
                     placeholder="Full legal name"
-                    className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none transition focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-[#030303]"
+                    className="mt-2 h-11 w-full rounded-md border border-line bg-canvas px-3 text-sm outline-none transition focus:border-line focus:ring-4 focus:ring-action"
                   />
                 </label>
 
                 <label className="block">
-                  <span className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
                     Bank name
                   </span>
 
@@ -1642,12 +1587,12 @@ export default function DesignerWallet() {
                       handleBankFieldChange("bank_name", event.target.value)
                     }
                     placeholder="Bank name"
-                    className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none transition focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-[#030303]"
+                    className="mt-2 h-11 w-full rounded-md border border-line bg-canvas px-3 text-sm outline-none transition focus:border-line focus:ring-4 focus:ring-action"
                   />
                 </label>
 
                 <label className="block">
-                  <span className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
                     Account number
                   </span>
 
@@ -1662,22 +1607,22 @@ export default function DesignerWallet() {
                       )
                     }
                     placeholder="Full account number"
-                    className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 font-mono text-sm outline-none transition focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-[#030303]"
+                    className="mt-2 h-11 w-full rounded-md border border-line bg-canvas px-3 font-mono text-sm outline-none transition focus:border-line focus:ring-4 focus:ring-action"
                   />
                 </label>
 
                 <div className="flex items-center gap-3">
-                  <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+                  <div className="h-px flex-1 bg-subtle" />
 
-                  <span className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-400 dark:text-white/25">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
                     or
                   </span>
 
-                  <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+                  <div className="h-px flex-1 bg-subtle" />
                 </div>
 
                 <label className="block">
-                  <span className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
                     IBAN
                   </span>
 
@@ -1692,12 +1637,12 @@ export default function DesignerWallet() {
                       )
                     }
                     placeholder="Full IBAN"
-                    className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 font-mono text-sm uppercase outline-none transition focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-[#030303]"
+                    className="mt-2 h-11 w-full rounded-md border border-line bg-canvas px-3 font-mono text-sm uppercase outline-none transition focus:border-line focus:ring-4 focus:ring-action"
                   />
                 </label>
 
                 <label className="block">
-                  <span className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
                     SWIFT / BIC
                   </span>
 
@@ -1713,13 +1658,13 @@ export default function DesignerWallet() {
                       )
                     }
                     placeholder="Optional SWIFT/BIC"
-                    className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 font-mono text-sm uppercase outline-none transition focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-[#030303]"
+                    className="mt-2 h-11 w-full rounded-md border border-line bg-canvas px-3 font-mono text-sm uppercase outline-none transition focus:border-line focus:ring-4 focus:ring-action"
                   />
                 </label>
 
                 <div className="grid grid-cols-2 gap-3">
                   <label className="block">
-                    <span className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
                       Routing number
                     </span>
 
@@ -1734,12 +1679,12 @@ export default function DesignerWallet() {
                         )
                       }
                       placeholder="Optional"
-                      className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none transition focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-[#030303]"
+                      className="mt-2 h-11 w-full rounded-md border border-line bg-canvas px-3 text-sm outline-none transition focus:border-line focus:ring-4 focus:ring-action"
                     />
                   </label>
 
                   <label className="block">
-                    <span className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
                       Branch code
                     </span>
 
@@ -1751,13 +1696,13 @@ export default function DesignerWallet() {
                         handleBankFieldChange("branch_code", event.target.value)
                       }
                       placeholder="Optional"
-                      className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none transition focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-[#030303]"
+                      className="mt-2 h-11 w-full rounded-md border border-line bg-canvas px-3 text-sm outline-none transition focus:border-line focus:ring-4 focus:ring-action"
                     />
                   </label>
                 </div>
 
                 <label className="block">
-                  <span className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
                     Sort code
                   </span>
 
@@ -1769,12 +1714,12 @@ export default function DesignerWallet() {
                       handleBankFieldChange("sort_code", event.target.value)
                     }
                     placeholder="Optional"
-                    className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none transition focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-[#030303]"
+                    className="mt-2 h-11 w-full rounded-md border border-line bg-canvas px-3 text-sm outline-none transition focus:border-line focus:ring-4 focus:ring-action"
                   />
                 </label>
 
                 <label className="block">
-                  <span className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
                     Bank address
                   </span>
 
@@ -1786,12 +1731,12 @@ export default function DesignerWallet() {
                       handleBankFieldChange("bank_address", event.target.value)
                     }
                     placeholder="Optional bank address"
-                    className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm outline-none transition focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-[#030303]"
+                    className="mt-2 w-full resize-none rounded-md border border-line bg-canvas px-3 py-3 text-sm outline-none transition focus:border-line focus:ring-4 focus:ring-action"
                   />
                 </label>
 
                 <label className="block">
-                  <span className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
                     Intermediary bank
                   </span>
 
@@ -1806,18 +1751,18 @@ export default function DesignerWallet() {
                       )
                     }
                     placeholder="Optional"
-                    className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none transition focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-[#030303]"
+                    className="mt-2 h-11 w-full rounded-md border border-line bg-canvas px-3 text-sm outline-none transition focus:border-line focus:ring-4 focus:ring-action"
                   />
                 </label>
 
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-400/20 dark:bg-emerald-400/10">
+                <div className="rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
                   <div className="flex items-start gap-3">
                     <ShieldCheck
                       size={18}
-                      className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-300"
+                      className="mt-0.5 shrink-0 text-action"
                     />
 
-                    <p className="text-xs leading-5 text-emerald-800 dark:text-emerald-200">
+                    <p className="text-xs leading-5 text-action">
                       Full account details are encrypted by the backend.
                       Designer read endpoints return only masked information
                       such as the last four characters.
@@ -1828,7 +1773,7 @@ export default function DesignerWallet() {
                 <button
                   type="submit"
                   disabled={isSavingBank}
-                  className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#D4AF37] text-[10px] font-black uppercase tracking-[0.2em] text-black shadow-[0_12px_35px_rgba(212,175,55,0.18)] transition hover:-translate-y-0.5 hover:bg-[#E2C45D] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex h-[52px] w-full items-center justify-center gap-2 rounded-md bg-action text-[10px] font-semibold uppercase tracking-normal text-on-action transition hover:-translate-y-0.5 hover:bg-action disabled:cursor-not-allowed disabled:opacity-60 hover:text-on-action"
                 >
                   {isSavingBank ? (
                     <Loader2 size={16} className="animate-spin" />
@@ -1850,8 +1795,8 @@ export default function DesignerWallet() {
           Ledger and Payout History
           ===============================================*/}
 
-          <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-white/5 dark:bg-[#0A0A0A] dark:shadow-2xl">
-            <div className="border-b border-slate-200 p-5 dark:border-white/5 sm:p-6">
+          <section className="overflow-hidden rounded-md border border-line bg-surface">
+            <div className="border-b border-line p-4">
               <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
                 <div className="flex gap-7 overflow-x-auto">
                   {[
@@ -1863,10 +1808,10 @@ export default function DesignerWallet() {
                       key={tab}
                       type="button"
                       onClick={() => setActiveTab(tab)}
-                      className={`shrink-0 border-b-2 pb-3 text-[10px] font-black uppercase tracking-[0.2em] transition ${
+                      className={`shrink-0 border-b-2 pb-3 text-[10px] font-semibold uppercase tracking-normal transition ${
                         activeTab === tab
-                          ? "border-[#D4AF37] text-[#98761A] dark:text-[#D4AF37]"
-                          : "border-transparent text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white/60"
+                          ? "border-line text-action"
+                          : "border-transparent text-muted hover:text-ink dark:hover:text-muted"
                       }`}
                     >
                       {label}
@@ -1882,7 +1827,7 @@ export default function DesignerWallet() {
 
                         <Search
                           size={15}
-                          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted"
                         />
 
                         <input
@@ -1890,7 +1835,7 @@ export default function DesignerWallet() {
                           value={search}
                           onChange={(event) => setSearch(event.target.value)}
                           placeholder="Search reference or sender"
-                          className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-xs outline-none transition focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
+                          className="h-10 w-full rounded-md border border-line bg-canvas pl-10 pr-3 text-xs outline-none transition focus:border-line focus:ring-4 focus:ring-action dark:bg-subtle dark:text-ink"
                         />
                       </label>
 
@@ -1899,7 +1844,7 @@ export default function DesignerWallet() {
 
                         <Filter
                           size={14}
-                          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted"
                         />
 
                         <select
@@ -1909,7 +1854,7 @@ export default function DesignerWallet() {
 
                             setLedgerPage(1);
                           }}
-                          className="h-10 w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-9 text-xs outline-none transition focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
+                          className="h-10 w-full appearance-none rounded-md border border-line bg-canvas pl-10 pr-9 text-xs outline-none transition focus:border-line focus:ring-4 focus:ring-action dark:bg-subtle dark:text-ink"
                         >
                           <option value="">All credits</option>
 
@@ -1924,7 +1869,7 @@ export default function DesignerWallet() {
 
                         <ChevronDown
                           size={14}
-                          className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                          className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted"
                         />
                       </label>
                     </>
@@ -1934,7 +1879,7 @@ export default function DesignerWallet() {
 
                       <ListFilter
                         size={14}
-                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted"
                       />
 
                       <select
@@ -1944,7 +1889,7 @@ export default function DesignerWallet() {
 
                           setPayoutPage(1);
                         }}
-                        className="h-10 w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-9 text-xs outline-none transition focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
+                        className="h-10 w-full appearance-none rounded-md border border-line bg-canvas pl-10 pr-9 text-xs outline-none transition focus:border-line focus:ring-4 focus:ring-action dark:bg-subtle dark:text-ink"
                       >
                         <option value="">All statuses</option>
 
@@ -1961,7 +1906,7 @@ export default function DesignerWallet() {
 
                       <ChevronDown
                         size={14}
-                        className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                        className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted"
                       />
                     </label>
                   )}
@@ -1973,7 +1918,7 @@ export default function DesignerWallet() {
               {loading ? (
                 <div className="flex min-h-80 items-center justify-center">
                   <Loader2
-                    className="animate-spin text-[#9B791D] dark:text-[#D4AF37]"
+                    className="animate-spin text-action"
                     size={28}
                   />
                 </div>
@@ -1983,7 +1928,7 @@ export default function DesignerWallet() {
                 =========================================*/
 
                 <table className="w-full min-w-[920px] text-left">
-                  <thead className="bg-slate-50 text-[9px] font-black uppercase tracking-[0.16em] text-slate-400 dark:bg-white/[0.02] dark:text-white/30">
+                  <thead className="bg-canvas text-[11px] font-semibold uppercase tracking-[0.16em] text-muted dark:bg-subtle">
                     <tr>
                       <th className="px-6 py-4">Transaction</th>
 
@@ -2003,11 +1948,11 @@ export default function DesignerWallet() {
                     {earnings.map((entry) => (
                       <tr
                         key={entry.transaction_id}
-                        className="border-t border-slate-100 text-sm transition hover:bg-slate-50/70 dark:border-white/5 dark:hover:bg-white/[0.025]"
+                        className="border-t border-line text-sm transition hover:bg-subtle"
                       >
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-3">
-                            <div className="rounded-xl bg-emerald-50 p-2.5 text-emerald-600 dark:bg-emerald-400/10 dark:text-emerald-300">
+                            <div className="rounded-md bg-canvas p-2.5 text-action dark:bg-subtle">
                               <ArrowDownLeft size={16} />
                             </div>
 
@@ -2016,7 +1961,7 @@ export default function DesignerWallet() {
                                 {transactionLabel(entry.transaction_type)}
                               </p>
 
-                              <p className="mt-1 font-mono text-[10px] text-slate-400 dark:text-white/25">
+                              <p className="mt-1 font-mono text-[10px] text-muted">
                                 {shortReference(entry.transaction_id)}
                               </p>
                             </div>
@@ -2024,33 +1969,33 @@ export default function DesignerWallet() {
                         </td>
 
                         <td className="px-6 py-5">
-                          <p className="font-medium text-slate-700 dark:text-white/70">
+                          <p className="font-medium text-ink dark:text-muted">
                             {entry.sender_name ||
                               (entry.transaction_type === "wallet_deposit"
                                 ? "Historical wallet funding"
                                 : "Booking payment")}
                           </p>
 
-                          <p className="mt-1 font-mono text-[10px] text-slate-400 dark:text-white/25">
+                          <p className="mt-1 font-mono text-[10px] text-muted">
                             {shortReference(entry.reference_id)}
                           </p>
                         </td>
 
-                        <td className="px-6 py-5 text-right font-mono text-slate-600 dark:text-white/55">
+                        <td className="px-6 py-5 text-right font-mono text-muted">
                           {money(entry.gross_amount)}
                         </td>
 
-                        <td className="px-6 py-5 text-right font-mono text-rose-500">
+                        <td className="px-6 py-5 text-right font-mono text-action">
                           {safeNumber(entry.platform_fee_deducted) > 0
                             ? `-${money(entry.platform_fee_deducted)}`
                             : money(0)}
                         </td>
 
-                        <td className="px-6 py-5 text-right font-mono font-bold text-emerald-600 dark:text-emerald-300">
+                        <td className="px-6 py-5 text-right font-mono font-bold text-action">
                           +{money(entry.net_amount)}
                         </td>
 
-                        <td className="px-6 py-5 text-xs text-slate-500 dark:text-white/35">
+                        <td className="px-6 py-5 text-xs text-muted">
                           {formatDate(entry.created_at)}
                         </td>
                       </tr>
@@ -2060,7 +2005,7 @@ export default function DesignerWallet() {
                       <tr>
                         <td colSpan={6} className="px-6 py-20 text-center">
                           <FileText
-                            className="mx-auto text-slate-300 dark:text-white/15"
+                            className="mx-auto text-muted"
                             size={32}
                           />
 
@@ -2068,7 +2013,7 @@ export default function DesignerWallet() {
                             No earnings found
                           </p>
 
-                          <p className="mt-2 text-xs text-slate-400 dark:text-white/25">
+                          <p className="mt-2 text-xs text-muted">
                             Adjust the filters or complete a project to create
                             an earning entry.
                           </p>
@@ -2083,7 +2028,7 @@ export default function DesignerWallet() {
                 =========================================*/
 
                 <table className="w-full min-w-[1080px] text-left">
-                  <thead className="bg-slate-50 text-[9px] font-black uppercase tracking-[0.16em] text-slate-400 dark:bg-white/[0.02] dark:text-white/30">
+                  <thead className="bg-canvas text-[11px] font-semibold uppercase tracking-[0.16em] text-muted dark:bg-subtle">
                     <tr>
                       <th className="px-6 py-4">Request</th>
 
@@ -2105,7 +2050,7 @@ export default function DesignerWallet() {
                     {payouts.map((entry) => (
                       <tr
                         key={entry.request_id}
-                        className="border-t border-slate-100 text-sm transition hover:bg-slate-50/70 dark:border-white/5 dark:hover:bg-white/[0.025]"
+                        className="border-t border-line text-sm transition hover:bg-subtle"
                       >
                         <td className="px-6 py-5 font-mono text-xs">
                           {shortReference(entry.request_id)}
@@ -2117,7 +2062,7 @@ export default function DesignerWallet() {
 
                         <td
                           title={entry.destination_summary || ""}
-                          className="max-w-[240px] truncate px-6 py-5 text-slate-500 dark:text-white/40"
+                          className="max-w-[240px] truncate px-6 py-5 text-muted"
                         >
                           {entry.destination_summary || "—"}
                         </td>
@@ -2129,7 +2074,7 @@ export default function DesignerWallet() {
                         <td className="px-6 py-5">
                           <div className="space-y-1.5">
                             <span
-                              className={`inline-flex rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-[0.14em] ${statusClasses(
+                              className={`inline-flex rounded-md border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${statusClasses(
                                 entry.status,
                               )}`}
                             >
@@ -2137,7 +2082,7 @@ export default function DesignerWallet() {
                             </span>
 
                             {entry.provider_status && (
-                              <p className="max-w-[180px] truncate text-[9px] text-slate-400 dark:text-white/25">
+                              <p className="max-w-[180px] truncate text-[11px] text-muted">
                                 {String(entry.provider_status).replaceAll(
                                   "_",
                                   " ",
@@ -2147,7 +2092,7 @@ export default function DesignerWallet() {
                           </div>
                         </td>
 
-                        <td className="px-6 py-5 text-xs text-slate-500 dark:text-white/35">
+                        <td className="px-6 py-5 text-xs text-muted">
                           {formatDate(entry.requested_at)}
                         </td>
 
@@ -2157,7 +2102,7 @@ export default function DesignerWallet() {
                               type="button"
                               onClick={() => handleCancelPayout(entry)}
                               disabled={cancellingPayoutId === entry.request_id}
-                              className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 text-[9px] font-black uppercase tracking-[0.14em] text-rose-700 transition hover:bg-rose-100 disabled:opacity-60 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-300"
+                              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-canvas px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-action transition hover:bg-subtle disabled:opacity-60 dark:bg-subtle"
                             >
                               {cancellingPayoutId === entry.request_id ? (
                                 <Loader2 size={13} className="animate-spin" />
@@ -2167,7 +2112,7 @@ export default function DesignerWallet() {
                               Cancel
                             </button>
                           ) : (
-                            <span className="text-xs text-slate-300 dark:text-white/15">
+                            <span className="text-xs text-muted">
                               —
                             </span>
                           )}
@@ -2179,7 +2124,7 @@ export default function DesignerWallet() {
                       <tr>
                         <td colSpan={7} className="px-6 py-20 text-center">
                           <ArrowUpRight
-                            className="mx-auto text-slate-300 dark:text-white/15"
+                            className="mx-auto text-muted"
                             size={32}
                           />
 
@@ -2187,7 +2132,7 @@ export default function DesignerWallet() {
                             No bank payout requests found
                           </p>
 
-                          <p className="mt-2 text-xs text-slate-400 dark:text-white/25">
+                          <p className="mt-2 text-xs text-muted">
                             Verified bank withdrawal requests will appear here.
                           </p>
                         </td>
@@ -2202,8 +2147,8 @@ export default function DesignerWallet() {
             Pagination
             =============================================*/}
 
-            <div className="flex flex-col gap-3 border-t border-slate-200 px-5 py-4 dark:border-white/5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <p className="text-xs text-slate-400 dark:text-white/25">
+            <div className="flex flex-col gap-3 border-t border-line px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+              <p className="text-xs text-muted">
                 {activePagination.total > 0
                   ? `${activePagination.total} total record${
                       activePagination.total === 1 ? "" : "s"
@@ -2216,13 +2161,13 @@ export default function DesignerWallet() {
                   type="button"
                   onClick={goToPreviousPage}
                   disabled={activePagination.page <= 1}
-                  className="flex h-9 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-[9px] font-black uppercase tracking-[0.14em] text-slate-500 transition hover:border-[#D4AF37]/50 hover:text-[#98761A] disabled:cursor-not-allowed disabled:opacity-35 dark:border-white/10 dark:text-white/40"
+                  className="flex h-9 items-center justify-center gap-2 rounded-md border border-line px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted transition hover:border-line hover:text-action disabled:cursor-not-allowed disabled:opacity-35"
                 >
                   <ArrowLeft size={13} />
                   Previous
                 </button>
 
-                <span className="min-w-[90px] text-center text-xs text-slate-500 dark:text-white/35">
+                <span className="min-w-[90px] text-center text-xs text-muted">
                   Page {activePagination.page || 1} of{" "}
                   {Math.max(activePagination.totalPages || 1, 1)}
                 </span>
@@ -2234,7 +2179,7 @@ export default function DesignerWallet() {
                     !activePagination.totalPages ||
                     activePagination.page >= activePagination.totalPages
                   }
-                  className="flex h-9 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-[9px] font-black uppercase tracking-[0.14em] text-slate-500 transition hover:border-[#D4AF37]/50 hover:text-[#98761A] disabled:cursor-not-allowed disabled:opacity-35 dark:border-white/10 dark:text-white/40"
+                  className="flex h-9 items-center justify-center gap-2 rounded-md border border-line px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted transition hover:border-line hover:text-action disabled:cursor-not-allowed disabled:opacity-35"
                 >
                   Next
                   <ArrowRight size={13} />

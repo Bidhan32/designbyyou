@@ -35,14 +35,14 @@ function UploadBox({ id, label, help, file, preview, disabled, inputRef, onChang
   return (
     <div className="min-w-0">
       <label htmlFor={id} className="mb-2 block text-xs font-bold uppercase tracking-wider">
-        {label}{optional ? <span className="ml-1 font-normal normal-case text-slate-400">(optional)</span> : null}
+        {label}{optional ? <span className="ml-1 font-normal normal-case text-muted">(optional)</span> : null}
       </label>
-      <label htmlFor={id} className={`flex min-h-48 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border border-dashed border-[#cbb376]/70 bg-[#e5c67d]/5 transition hover:bg-[#e5c67d]/10 ${disabled ? "pointer-events-none opacity-60" : ""}`}>
+      <label htmlFor={id} className={`flex min-h-48 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-md border border-dashed border-line bg-subtle transition hover:bg-subtle ${disabled ? "pointer-events-none opacity-60" : ""}`}>
         {preview ? (
           <img src={preview} alt={`${label} preview`} className="max-h-60 w-full object-contain" />
         ) : (
-          <div className="px-5 py-8 text-center text-slate-500 dark:text-white/60">
-            <ImagePlus size={30} className="mx-auto mb-3 text-[#ac8534]" />
+          <div className="px-5 py-8 text-center text-muted">
+            <ImagePlus size={30} className="mx-auto mb-3 text-action" />
             <p className="text-sm font-semibold">Choose an image</p>
             <p className="mt-2 text-xs">JPG, PNG, WebP · up to 8 MB</p>
           </div>
@@ -51,9 +51,9 @@ function UploadBox({ id, label, help, file, preview, disabled, inputRef, onChang
       <input id={id} ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp"
         className="sr-only" disabled={disabled}
         onChange={(event) => onChange(event.target.files?.[0] || null)} />
-      <div className="mt-2 flex items-start justify-between gap-2 text-xs text-slate-500 dark:text-white/50">
+      <div className="mt-2 flex items-start justify-between gap-2 text-xs text-muted">
         <span>{help}</span>
-        {file && <span className="max-w-28 truncate text-[#ab802c]">{file.name}</span>}
+        {file && <span className="max-w-28 truncate text-action">{file.name}</span>}
       </div>
     </div>
   );
@@ -61,22 +61,22 @@ function UploadBox({ id, label, help, file, preview, disabled, inputRef, onChang
 
 function ViewCard({ title, subtitle, url, state, error, onOpen, onDownload }) {
   return (
-    <div className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-[#101010]">
+    <div className="min-w-0 overflow-hidden rounded-md border border-line bg-canvas dark:bg-surface">
       <div className="flex items-center justify-between gap-2 p-3">
         <strong className="text-sm">{title}</strong>
-        <span className="text-[11px] capitalize text-slate-400">{subtitle || statusLabel(state)}</span>
+        <span className="text-[11px] capitalize text-muted">{subtitle || statusLabel(state)}</span>
       </div>
-      <div className="flex aspect-[3/4] items-center justify-center bg-slate-100 dark:bg-[#0b0b0b]">
+      <div className="flex aspect-[3/4] items-center justify-center bg-subtle dark:bg-surface">
         {url ? <img src={url} alt={`${title} view`} className="h-full w-full object-contain" /> : (
-          <div className="px-3 text-center text-xs text-slate-500 dark:text-white/50">
-            {!["failed", "completed"].includes(state) ? <Loader2 size={22} className="mx-auto mb-2 animate-spin text-[#ab802c]" /> : <Images size={22} className="mx-auto mb-2" />}
+          <div className="px-3 text-center text-xs text-muted">
+            {!["failed", "completed"].includes(state) ? <Loader2 size={22} className="mx-auto mb-2 animate-spin text-action" /> : <Images size={22} className="mx-auto mb-2" />}
             {error || (state === "failed" ? "Generation failed" : "View pending")}
           </div>
         )}
       </div>
       {url && onOpen && <div className="grid grid-cols-2 gap-2 p-2">
-        <button type="button" onClick={onOpen} className="inline-flex min-h-9 items-center justify-center gap-1 rounded-lg border border-slate-200 px-2 text-xs font-semibold dark:border-white/15"><ExternalLink size={13} /> View</button>
-        <button type="button" onClick={onDownload} className="inline-flex min-h-9 items-center justify-center gap-1 rounded-lg bg-[#e5c67d] px-2 text-xs font-semibold text-[#17130b]"><Download size={13} /> Download</button>
+        <button type="button" onClick={onOpen} className="inline-flex min-h-9 items-center justify-center gap-1 rounded-md border border-line px-2 text-xs font-semibold"><ExternalLink size={13} /> View</button>
+        <button type="button" onClick={onDownload} className="inline-flex min-h-9 items-center justify-center gap-1 rounded-md bg-subtle px-2 text-xs font-semibold text-ink"><Download size={13} /> Download</button>
       </div>}
     </div>
   );
@@ -284,70 +284,70 @@ export default function CreatorMultiViewGenerator() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 dark:bg-[#090909] dark:text-white sm:px-8">
+    <main className="min-h-screen bg-canvas px-4 py-8 text-ink dark:bg-surface sm:px-8">
       <div className="mx-auto max-w-7xl">
-        <Link to="/creator/tools" className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 transition hover:text-[#ae852e] dark:text-white/60">
-          <ArrowLeft size={16} /> Back to Creative Hub
+        <Link to="/creator/tools" className="inline-flex items-center gap-2 text-xs font-semibold text-muted transition hover:text-action">
+          <ArrowLeft size={16} /> Back to tools
         </Link>
         <header className="mt-7 flex items-start gap-4">
-          <div className="rounded-2xl bg-[#e5c67d]/20 p-3 text-[#ab802c]"><Images size={27} /></div>
+          <div className="rounded-md bg-subtle p-3 text-action"><Images size={27} /></div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#a78032] dark:text-[#e5c67d]">FASHN AI · Creative tools</p>
-            <h1 className="mt-1 font-serif text-3xl sm:text-4xl">Front, Side &amp; Back Views</h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-white/55">Create matching product-only front, right-side and back garment views, or keep the person for on-model views. Garment-only mode first extracts a standalone front product view before rotating it.</p>
+            <p className="text-[10px] font-bold uppercase tracking-normal text-action">FASHN AI · Creative tools</p>
+            <h1 className="mt-1 font-sans text-3xl sm:text-4xl">Front, Side &amp; Back Views</h1>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">Create matching product-only front, right-side and back garment views, or keep the person for on-model views. Garment-only mode first extracts a standalone front product view before rotating it.</p>
           </div>
         </header>
 
         <div className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(310px,0.9fr)_minmax(0,1.55fr)]">
-          <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#151515] sm:p-6">
-            <div className="flex items-center gap-2"><Sparkles size={18} className="text-[#b38a35]" /><h2 className="font-serif text-xl">Configure your views</h2></div>
+          <form onSubmit={submit} className="rounded-md border border-line bg-surface p-4">
+            <div className="flex items-center gap-2"><Sparkles size={18} className="text-action" /><h2 className="font-serif text-xl">Configure your views</h2></div>
             <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
               <UploadBox id="mv-source" label="Front / original image" help="Your source of truth for garment details." file={source} preview={sourcePreview} disabled={busy} inputRef={sourceInput} onChange={f => updateFile("source", f)} />
               <div>
                 <UploadBox id="mv-context" label="Additional reference" help="Extra visual guidance for garment extraction. Side and back are generated from the isolated front." file={context} preview={contextPreview} optional disabled={busy} inputRef={contextInput} onChange={f => updateFile("context", f)} />
-                {context && <button type="button" disabled={busy} onClick={() => { setContext(null); requestKey.current = null; if (contextInput.current) contextInput.current.value = ""; }} className="mt-2 text-xs font-semibold text-red-600 disabled:opacity-50">Remove reference</button>}
+                {context && <button type="button" disabled={busy} onClick={() => { setContext(null); requestKey.current = null; if (contextInput.current) contextInput.current.value = ""; }} className="mt-2 text-xs font-semibold text-action disabled:opacity-50">Remove reference</button>}
               </div>
             </div>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="mv-subject" className="block text-xs font-bold uppercase tracking-wider">Generation type</label>
-                <select id="mv-subject" value={subject} disabled={busy} onChange={e => { setSubject(e.target.value); if (e.target.value === "garment") setKeepBackground(false); requestKey.current = null; }} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm dark:border-white/10 dark:bg-[#202020]">
+                <select id="mv-subject" value={subject} disabled={busy} onChange={e => { setSubject(e.target.value); if (e.target.value === "garment") setKeepBackground(false); requestKey.current = null; }} className="mt-2 w-full rounded-md border border-line bg-surface p-3 text-sm">
                   <option value="garment">Garment only</option>
                   <option value="model">Model wearing garment</option>
                 </select>
               </div>
               <div>
                 <label htmlFor="mv-mode" className="block text-xs font-bold uppercase tracking-wider">AI quality · 1K</label>
-                <select id="mv-mode" value={mode} disabled={busy} onChange={e => { setMode(e.target.value); requestKey.current = null; }} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm dark:border-white/10 dark:bg-[#202020]">
+                <select id="mv-mode" value={mode} disabled={busy} onChange={e => { setMode(e.target.value); requestKey.current = null; }} className="mt-2 w-full rounded-md border border-line bg-surface p-3 text-sm">
                   {MODES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
               </div>
             </div>
             <label className="mt-5 flex items-center gap-3 text-sm">
-              <input type="checkbox" checked={subject === "garment" ? false : keepBackground} disabled={busy || subject === "garment"} onChange={e => { setKeepBackground(e.target.checked); requestKey.current = null; }} className="accent-[#b38a35]" /> Keep original background
+              <input type="checkbox" checked={subject === "garment" ? false : keepBackground} disabled={busy || subject === "garment"} onChange={e => { setKeepBackground(e.target.checked); requestKey.current = null; }} className="accent-action" /> Keep original background
             </label>
-            {subject === "garment" && <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-white/55">Garment-only uses the same neutral product-photo background in all three views. People and mannequins are excluded from the requested results.</p>}
+            {subject === "garment" && <p className="mt-2 text-xs leading-5 text-muted">Garment-only uses the same neutral product-photo background in all three views. People and mannequins are excluded from the requested results.</p>}
             <label htmlFor="mv-instruction" className="mt-5 block text-xs font-bold uppercase tracking-wider">Additional instructions (optional)</label>
-            <textarea id="mv-instruction" rows={4} maxLength={500} value={instruction} disabled={busy} onChange={e => { setInstruction(e.target.value); requestKey.current = null; }} placeholder="Extract only the gray blazer (not the black turtleneck). Preserve its exact check pattern, collar, buttons, pockets and seams..." className="mt-2 w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm leading-6 outline-none focus:border-[#c9a14c] dark:border-white/10 dark:bg-[#0d0d0d]" />
-            <p className="mt-2 text-xs text-slate-400">{instruction.length}/500 characters</p>
-            <label className="mt-5 flex items-start gap-3 text-xs leading-5 text-slate-600 dark:text-white/65">
-              <input type="checkbox" checked={consent} disabled={busy} onChange={e => setConsent(e.target.checked)} className="mt-1 accent-[#b38a35]" />
+            <textarea id="mv-instruction" rows={4} maxLength={500} value={instruction} disabled={busy} onChange={e => { setInstruction(e.target.value); requestKey.current = null; }} placeholder="Extract only the gray blazer (not the black turtleneck). Preserve its exact check pattern, collar, buttons, pockets and seams..." className="mt-2 w-full resize-y rounded-md border border-line bg-canvas p-3 text-sm leading-6 outline-none focus:border-line dark:bg-surface" />
+            <p className="mt-2 text-xs text-muted">{instruction.length}/500 characters</p>
+            <label className="mt-5 flex items-start gap-3 text-xs leading-5 text-muted">
+              <input type="checkbox" checked={consent} disabled={busy} onChange={e => setConsent(e.target.checked)} className="mt-1 accent-action" />
               <span>I own or have permission to use these images. I understand that uploaded references and generated views are stored in protected Creator history and processed by FASHN.</span>
             </label>
-            <p className="mt-4 text-xs leading-5 text-slate-500 dark:text-white/55">{subject === "garment" ? "Garment-only creates three AI views (front extraction, side and back). Fast: 3 credits · Balanced: 6 · Quality: 9 at 1K." : "On-model uses the original front plus two AI views. Fast: 2 credits · Balanced: 4 · Quality: 6 at 1K."} Testing limit: 5 sets per rolling 24 hours unless changed on the server.</p>
-            {error && <p role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">{error}</p>}
-            <button type="submit" disabled={busy || !source || !consent} className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#e5c67d] px-5 text-sm font-bold text-[#17130b] transition hover:bg-[#f4d995] disabled:cursor-not-allowed disabled:opacity-50">
+            <p className="mt-4 text-xs leading-5 text-muted">{subject === "garment" ? "Garment-only creates three AI views (front extraction, side and back). Fast: 3 credits · Balanced: 6 · Quality: 9 at 1K." : "On-model uses the original front plus two AI views. Fast: 2 credits · Balanced: 4 · Quality: 6 at 1K."} Testing limit: 5 sets per rolling 24 hours unless changed on the server.</p>
+            {error && <p role="alert" className="mt-4 rounded-md border border-line bg-canvas p-3 text-sm text-action dark:bg-subtle">{error}</p>}
+            <button type="submit" disabled={busy || !source || !consent} className="mt-6 flex min-h-9 w-full items-center justify-center gap-2 rounded-md bg-subtle px-5 text-sm font-bold text-ink transition hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-50">
               {busy ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
               {generating ? "Submitting views..." : activeJobId ? "Generation in progress" : subject === "garment" ? "Generate 3 Garment Views" : "Generate Side & Back Views"}
             </button>
           </form>
 
-          <section aria-label="Generated multi-view result" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#151515] sm:p-6">
+          <section aria-label="Generated multi-view result" className="rounded-md border border-line bg-surface p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-serif text-xl">Your three views</h2>
               <div className="flex flex-wrap items-center gap-2">
-                {job && <button type="button" onClick={clearNew} disabled={busy} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#d7b66b] px-3 text-xs font-semibold text-[#997325] disabled:opacity-50 dark:text-[#e5c67d]"><RefreshCw size={14} /> Clear &amp; Create New</button>}
-                {job && <span className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-slate-100 px-3 text-xs dark:bg-white/10">{job.status === "completed" ? <CheckCircle2 size={14} /> : job.status === "failed" ? <X size={14} /> : <Clock3 size={14} />}{statusLabel(job.status)}</span>}
+                {job && <button type="button" onClick={clearNew} disabled={busy} className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-line px-3 text-xs font-semibold text-action disabled:opacity-50"><RefreshCw size={14} /> Clear &amp; Create New</button>}
+                {job && <span className="inline-flex min-h-9 items-center gap-1.5 rounded-md bg-subtle px-3 text-xs">{job.status === "completed" ? <CheckCircle2 size={14} /> : job.status === "failed" ? <X size={14} /> : <Clock3 size={14} />}{statusLabel(job.status)}</span>}
               </div>
             </div>
             {job ? (
@@ -357,14 +357,14 @@ export default function CreatorMultiViewGenerator() {
                   <ViewCard title="Right Side" url={job.views?.side?.image_url} state={job.views?.side?.status} error={job.views?.side?.error_message} onOpen={() => openAsset(job, "side")} onDownload={() => openAsset(job, "side", true)} />
                   <ViewCard title="Back" url={job.views?.back?.image_url} state={job.views?.back?.status} error={job.views?.back?.error_message} onOpen={() => openAsset(job, "back")} onDownload={() => openAsset(job, "back", true)} />
                 </div>
-                <p className="mt-3 text-xs text-slate-400">{dateLabel(job.created_at)} · {job.subject_type} · {job.generation_mode}{job.credits_used != null ? ` · ${job.credits_used} FASHN credits reported` : ""}</p>
-                {job.front_generated && job.source?.image_url && <p className="mt-3 text-xs text-slate-500 dark:text-white/50">Front is an AI-generated garment-only packshot. <button type="button" onClick={() => openOriginal(job)} className="font-semibold underline decoration-[#d7b66b] underline-offset-2">View original upload</button> for comparison.</p>}
-                {job.status === "partial" && <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">Only some views completed. Existing results have been preserved. Review the failed view before starting a new set.</p>}
-                {progressError && <p role="status" className="mt-3 text-xs text-amber-700 dark:text-amber-300">{progressError}</p>}
-                <p className="mt-4 text-xs leading-5 text-slate-500 dark:text-white/50">AI infers unseen details. Review every view carefully before using it as a garment production reference. Results are private and are never automatically published to Showcase.</p>
+                <p className="mt-3 text-xs text-muted">{dateLabel(job.created_at)} · {job.subject_type} · {job.generation_mode}{job.credits_used != null ? ` · ${job.credits_used} FASHN credits reported` : ""}</p>
+                {job.front_generated && job.source?.image_url && <p className="mt-3 text-xs text-muted">Front is an AI-generated garment-only packshot. <button type="button" onClick={() => openOriginal(job)} className="font-semibold underline decoration-action underline-offset-2">View original upload</button> for comparison.</p>}
+                {job.status === "partial" && <p className="mt-3 text-xs text-action">Only some views completed. Existing results have been preserved. Review the failed view before starting a new set.</p>}
+                {progressError && <p role="status" className="mt-3 text-xs text-action">{progressError}</p>}
+                <p className="mt-4 text-xs leading-5 text-muted">AI infers unseen details. Review every view carefully before using it as a garment production reference. Results are private and are never automatically published to Showcase.</p>
               </>
             ) : (
-              <div className="mt-5 flex min-h-[380px] flex-col items-center justify-center rounded-xl bg-slate-100 p-6 text-center text-slate-400 dark:bg-[#0b0b0b]">
+              <div className="mt-5 flex min-h-[380px] flex-col items-center justify-center rounded-md bg-subtle p-4 text-center text-muted dark:bg-surface">
                 <Images size={43} />
                 <p className="mt-4 text-sm">Upload a garment image to generate two matching alternate perspectives.</p>
                 <p className="mt-2 text-xs">Front (original) · Right Side · Back</p>
@@ -375,19 +375,19 @@ export default function CreatorMultiViewGenerator() {
 
         <section aria-label="Recent multi-view sets" className="mt-9">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="font-serif text-2xl">Recent View Sets</h2>
-            <button type="button" disabled={historyLoading} onClick={async () => { setHistoryLoading(true); try { await refreshHistory(); } catch (err) { setHistoryError(errorMessage(err, "Could not refresh history.")); } finally { setHistoryLoading(false); } }} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-semibold disabled:opacity-50 dark:border-white/15"><RefreshCw size={15} className={historyLoading ? "animate-spin" : ""} /> Refresh</button>
+            <h2 className="font-sans text-2xl">Recent View Sets</h2>
+            <button type="button" disabled={historyLoading} onClick={async () => { setHistoryLoading(true); try { await refreshHistory(); } catch (err) { setHistoryError(errorMessage(err, "Could not refresh history.")); } finally { setHistoryLoading(false); } }} className="inline-flex min-h-9 items-center gap-2 rounded-md border border-line px-3 text-xs font-semibold disabled:opacity-50"><RefreshCw size={15} className={historyLoading ? "animate-spin" : ""} /> Refresh</button>
           </div>
-          {historyError && <p role="alert" className="mt-3 text-sm text-red-600">{historyError}</p>}
-          {historyLoading && history.length === 0 ? <p className="mt-4 text-sm text-slate-500">Loading history...</p> : history.length === 0 ? <p className="mt-4 text-sm text-slate-500">No multi-view sets yet.</p> : (
+          {historyError && <p role="alert" className="mt-3 text-sm text-action">{historyError}</p>}
+          {historyLoading && history.length === 0 ? <p className="mt-4 text-sm text-muted">Loading history...</p> : history.length === 0 ? <p className="mt-4 text-sm text-muted">No multi-view sets yet.</p> : (
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {history.map(entry => (
-                <article key={entry.id} className={`overflow-hidden rounded-xl border bg-white dark:bg-[#151515] ${job?.id === entry.id ? "border-[#d7b66b]" : "border-slate-200 dark:border-white/10"}`}>
+                <article key={entry.id} className={`overflow-hidden rounded-md border bg-surface ${job?.id === entry.id ? "border-line" : "border-line"}`}>
                   <button type="button" onClick={() => selectJob(entry)} className="block w-full text-left">
-                    {(entry.front?.image_url || entry.source?.image_url) ? <img src={entry.front?.image_url || entry.source?.image_url} alt="Garment view set preview" loading="lazy" className="aspect-[3/4] w-full object-contain bg-slate-100 dark:bg-[#0b0b0b]" /> : <div className="flex aspect-[3/4] items-center justify-center bg-slate-100 text-xs text-slate-500 dark:bg-[#111]">View set</div>}
-                    <div className="p-3"><p className="text-xs font-semibold capitalize">{statusLabel(entry.status)} · {entry.subject_type}</p><p className="mt-1 text-xs text-slate-400">{dateLabel(entry.created_at)}</p></div>
+                    {(entry.front?.image_url || entry.source?.image_url) ? <img src={entry.front?.image_url || entry.source?.image_url} alt="Garment view set preview" loading="lazy" className="aspect-[3/4] w-full object-contain bg-subtle dark:bg-surface" /> : <div className="flex aspect-[3/4] items-center justify-center bg-subtle text-xs text-muted dark:bg-surface">View set</div>}
+                    <div className="p-3"><p className="text-xs font-semibold capitalize">{statusLabel(entry.status)} · {entry.subject_type}</p><p className="mt-1 text-xs text-muted">{dateLabel(entry.created_at)}</p></div>
                   </button>
-                  {!isActive(entry) && <button type="button" disabled={deletingId === entry.id} onClick={() => remove(entry)} className="flex min-h-9 w-full items-center justify-center gap-2 border-t border-slate-100 p-2 text-xs text-red-600 disabled:opacity-50 dark:border-white/10"><Trash2 size={14}/>{deletingId === entry.id ? "Deleting..." : "Delete view set"}</button>}
+                  {!isActive(entry) && <button type="button" disabled={deletingId === entry.id} onClick={() => remove(entry)} className="flex min-h-9 w-full items-center justify-center gap-2 border-t border-line p-2 text-xs text-action disabled:opacity-50"><Trash2 size={14}/>{deletingId === entry.id ? "Deleting..." : "Delete view set"}</button>}
                 </article>
               ))}
             </div>

@@ -1,10 +1,11 @@
+import MetricList from "../../components/MetricList";
 import { paymentLabel, canResumePayment } from "../../components/bookingProgress";
 "use strict";
 
 /*
 =========================================================
 DesignByYou
-Creator Bookings / Booking Pipeline
+Creator Bookings / Bookings
 Version 4.1
 =========================================================
 
@@ -510,7 +511,7 @@ function getEscrowDetails(booking) {
     return {
       label: "Secured",
 
-      className: "text-emerald-600 dark:text-emerald-300",
+      className: "text-action",
     };
   }
 
@@ -521,7 +522,7 @@ function getEscrowDetails(booking) {
     return {
       label: "Released",
 
-      className: "text-[#9B791D] dark:text-[#D4AF37]",
+      className: "text-action",
     };
   }
 
@@ -529,7 +530,7 @@ function getEscrowDetails(booking) {
     return {
       label: "Closed",
 
-      className: "text-slate-500 dark:text-white/45",
+      className: "text-muted",
     };
   }
 
@@ -537,14 +538,14 @@ function getEscrowDetails(booking) {
     return {
       label: "Reconciling",
 
-      className: "text-rose-600 dark:text-rose-300",
+      className: "text-action",
     };
   }
 
   return {
     label: "Not secured",
 
-    className: "text-slate-500 dark:text-white/45",
+    className: "text-muted",
   };
 }
 
@@ -565,7 +566,7 @@ function getStatusDetails(statusValue, designerName) {
         description: `${shortName} is reviewing your booking request.`,
 
         badgeClass:
-          "border-amber-300/60 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
 
         icon: Hourglass,
       };
@@ -578,7 +579,7 @@ function getStatusDetails(statusValue, designerName) {
           "The booking is ready for payment. Complete payment to secure the agreed amount.",
 
         badgeClass:
-          "border-orange-300/60 bg-orange-50 text-orange-700 dark:border-orange-400/20 dark:bg-orange-400/10 dark:text-orange-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
 
         icon: WalletCards,
       };
@@ -590,7 +591,7 @@ function getStatusDetails(statusValue, designerName) {
         description: `Your payment is secured while ${shortName} moves the booking into production.`,
 
         badgeClass:
-          "border-emerald-300/60 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
 
         icon: ShieldCheck,
       };
@@ -603,7 +604,7 @@ function getStatusDetails(statusValue, designerName) {
         description: `${shortName} is preparing the initial work for your review.`,
 
         badgeClass:
-          "border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#8F7118] dark:text-[#E4C760]",
+          "border-line bg-subtle text-action",
 
         icon: Clock3,
       };
@@ -616,7 +617,7 @@ function getStatusDetails(statusValue, designerName) {
           "A prototype is ready. Review it in the booking workspace and approve it or request changes.",
 
         badgeClass:
-          "border-indigo-300/60 bg-indigo-50 text-indigo-700 dark:border-indigo-400/20 dark:bg-indigo-400/10 dark:text-indigo-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
 
         icon: FileCheck2,
       };
@@ -628,7 +629,7 @@ function getStatusDetails(statusValue, designerName) {
         description: `${shortName} is preparing the final deliverables.`,
 
         badgeClass:
-          "border-cyan-300/60 bg-cyan-50 text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
 
         icon: Clock3,
       };
@@ -642,7 +643,7 @@ function getStatusDetails(statusValue, designerName) {
           "Final work is ready for review. Approval completes the booking and releases the designer payment.",
 
         badgeClass:
-          "border-violet-300/60 bg-violet-50 text-violet-700 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
 
         icon: FileCheck2,
       };
@@ -655,7 +656,7 @@ function getStatusDetails(statusValue, designerName) {
           "The booking is being closed while any required payment or refund checks are still processing.",
 
         badgeClass:
-          "border-rose-300/60 bg-rose-50 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
 
         icon: Loader2,
 
@@ -670,7 +671,7 @@ function getStatusDetails(statusValue, designerName) {
           "Stripe is processing the refund. This booking will remain under review until Stripe confirms the result.",
 
         badgeClass:
-          "border-sky-300/60 bg-sky-50 text-sky-700 dark:border-sky-400/20 dark:bg-sky-400/10 dark:text-sky-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
 
         icon: Loader2,
 
@@ -685,7 +686,7 @@ function getStatusDetails(statusValue, designerName) {
           "Stripe could not complete the refund. Open the booking to review what happened and the available next steps.",
 
         badgeClass:
-          "border-rose-300/70 bg-rose-50 text-rose-700 dark:border-rose-400/25 dark:bg-rose-400/10 dark:text-rose-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
 
         icon: TriangleAlert,
       };
@@ -698,7 +699,7 @@ function getStatusDetails(statusValue, designerName) {
           "The final work was approved and the booking workflow is complete.",
 
         badgeClass:
-          "border-emerald-300/60 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
 
         icon: CheckCircle2,
       };
@@ -710,7 +711,7 @@ function getStatusDetails(statusValue, designerName) {
         description: "This legacy booking is recorded as delivered.",
 
         badgeClass:
-          "border-emerald-300/60 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
 
         icon: CheckCircle2,
       };
@@ -723,7 +724,7 @@ function getStatusDetails(statusValue, designerName) {
           "This booking is closed. Open it to review the cancellation and payment history.",
 
         badgeClass:
-          "border-slate-300 bg-slate-100 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/45",
+          "border-line bg-subtle text-muted",
 
         icon: Ban,
       };
@@ -740,7 +741,7 @@ function getStatusDetails(statusValue, designerName) {
           "This booking has a status that needs review. Open the workspace for the latest details.",
 
         badgeClass:
-          "border-amber-300/60 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300",
+          "border-line bg-canvas text-action dark:bg-subtle",
 
         icon: ShieldAlert,
       };
@@ -763,10 +764,10 @@ function getNextAction(statusValue) {
 
         icon: Hourglass,
 
-        accentClass: "text-amber-700 dark:text-amber-300",
+        accentClass: "text-action",
 
         panelClass:
-          "border-amber-200/80 bg-gradient-to-br from-amber-50 to-white dark:border-amber-400/15 dark:from-amber-400/[0.07] dark:to-transparent",
+          "border-line bg-surface",
       };
 
     case BOOKING_STATUS.AWAITING_PAYMENT:
@@ -777,10 +778,10 @@ function getNextAction(statusValue) {
 
         icon: WalletCards,
 
-        accentClass: "text-orange-700 dark:text-orange-300",
+        accentClass: "text-action",
 
         panelClass:
-          "border-orange-200/80 bg-gradient-to-br from-orange-50 to-white dark:border-orange-400/15 dark:from-orange-400/[0.07] dark:to-transparent",
+          "border-line bg-surface",
       };
 
     case BOOKING_STATUS.FUNDED:
@@ -791,10 +792,10 @@ function getNextAction(statusValue) {
 
         icon: ShieldCheck,
 
-        accentClass: "text-emerald-700 dark:text-emerald-300",
+        accentClass: "text-action",
 
         panelClass:
-          "border-emerald-200/80 bg-gradient-to-br from-emerald-50 to-white dark:border-emerald-400/15 dark:from-emerald-400/[0.07] dark:to-transparent",
+          "border-line bg-surface",
       };
 
     case BOOKING_STATUS.ACCEPTED:
@@ -806,10 +807,10 @@ function getNextAction(statusValue) {
 
         icon: Clock3,
 
-        accentClass: "text-[#967319] dark:text-[#D4AF37]",
+        accentClass: "text-action",
 
         panelClass:
-          "border-[#D4AF37]/25 bg-gradient-to-br from-[#D4AF37]/10 to-white dark:from-[#D4AF37]/[0.08] dark:to-transparent",
+          "border-line bg-surface",
       };
 
     case BOOKING_STATUS.REVIEW_PROTOTYPE:
@@ -820,10 +821,10 @@ function getNextAction(statusValue) {
 
         icon: FileCheck2,
 
-        accentClass: "text-indigo-700 dark:text-indigo-300",
+        accentClass: "text-action",
 
         panelClass:
-          "border-indigo-200/80 bg-gradient-to-br from-indigo-50 to-white dark:border-indigo-400/15 dark:from-indigo-400/[0.07] dark:to-transparent",
+          "border-line bg-surface",
       };
 
     case BOOKING_STATUS.FINAL_PRODUCTION:
@@ -834,10 +835,10 @@ function getNextAction(statusValue) {
 
         icon: Clock3,
 
-        accentClass: "text-cyan-700 dark:text-cyan-300",
+        accentClass: "text-action",
 
         panelClass:
-          "border-cyan-200/80 bg-gradient-to-br from-cyan-50 to-white dark:border-cyan-400/15 dark:from-cyan-400/[0.07] dark:to-transparent",
+          "border-line bg-surface",
       };
 
     case BOOKING_STATUS.REVIEW_FINAL:
@@ -849,10 +850,10 @@ function getNextAction(statusValue) {
 
         icon: FileCheck2,
 
-        accentClass: "text-violet-700 dark:text-violet-300",
+        accentClass: "text-action",
 
         panelClass:
-          "border-violet-200/80 bg-gradient-to-br from-violet-50 to-white dark:border-violet-400/15 dark:from-violet-400/[0.07] dark:to-transparent",
+          "border-line bg-surface",
       };
 
     case BOOKING_STATUS.CANCELLATION_PENDING:
@@ -865,10 +866,10 @@ function getNextAction(statusValue) {
 
         spinning: true,
 
-        accentClass: "text-rose-700 dark:text-rose-300",
+        accentClass: "text-action",
 
         panelClass:
-          "border-rose-200/80 bg-gradient-to-br from-rose-50 to-white dark:border-rose-400/15 dark:from-rose-400/[0.07] dark:to-transparent",
+          "border-line bg-surface",
       };
 
     case BOOKING_STATUS.REFUND_PENDING:
@@ -881,10 +882,10 @@ function getNextAction(statusValue) {
 
         spinning: true,
 
-        accentClass: "text-sky-700 dark:text-sky-300",
+        accentClass: "text-action",
 
         panelClass:
-          "border-sky-200/80 bg-gradient-to-br from-sky-50 to-white dark:border-sky-400/15 dark:from-sky-400/[0.07] dark:to-transparent",
+          "border-line bg-surface",
       };
 
     case BOOKING_STATUS.REFUND_FAILED:
@@ -895,10 +896,10 @@ function getNextAction(statusValue) {
 
         icon: TriangleAlert,
 
-        accentClass: "text-rose-700 dark:text-rose-300",
+        accentClass: "text-action",
 
         panelClass:
-          "border-rose-300 bg-gradient-to-br from-rose-50 to-white dark:border-rose-400/25 dark:from-rose-400/[0.09] dark:to-transparent",
+          "border-line bg-surface",
       };
 
     case BOOKING_STATUS.COMPLETED:
@@ -910,10 +911,10 @@ function getNextAction(statusValue) {
 
         icon: CheckCircle2,
 
-        accentClass: "text-emerald-700 dark:text-emerald-300",
+        accentClass: "text-action",
 
         panelClass:
-          "border-emerald-200/80 bg-gradient-to-br from-emerald-50 to-white dark:border-emerald-400/15 dark:from-emerald-400/[0.07] dark:to-transparent",
+          "border-line bg-surface",
       };
 
     case BOOKING_STATUS.CANCELLED:
@@ -924,10 +925,10 @@ function getNextAction(statusValue) {
 
         icon: Ban,
 
-        accentClass: "text-slate-600 dark:text-white/50",
+        accentClass: "text-muted",
 
         panelClass:
-          "border-slate-200 bg-gradient-to-br from-slate-50 to-white dark:border-white/10 dark:from-white/[0.035] dark:to-transparent",
+          "border-line bg-surface",
       };
 
     default:
@@ -938,10 +939,10 @@ function getNextAction(statusValue) {
 
         icon: ShieldAlert,
 
-        accentClass: "text-amber-700 dark:text-amber-300",
+        accentClass: "text-action",
 
         panelClass:
-          "border-amber-200 bg-gradient-to-br from-amber-50 to-white dark:border-amber-400/15 dark:from-amber-400/[0.07] dark:to-transparent",
+          "border-line bg-surface",
       };
   }
 }
@@ -1164,7 +1165,7 @@ export default function CreatorBookings() {
 
   return (
     <div
-      className="relative min-h-screen overflow-hidden bg-slate-50 pb-24 text-slate-950 antialiased transition-colors duration-300 dark:bg-[#030303] dark:text-white"
+      className="relative min-h-screen overflow-hidden bg-canvas pb-24 text-ink antialiased transition-colors duration-300"
     >
       {/*===================================================
       Ambient Background
@@ -1173,17 +1174,8 @@ export default function CreatorBookings() {
       <div
         className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
       >
-        <div
-          className="absolute -right-[14rem] -top-[18rem] h-[40rem] w-[40rem] rounded-full bg-[#D4AF37]/10 blur-[170px] dark:bg-[#D4AF37]/10"
-        />
 
-        <div
-          className="absolute -bottom-[18rem] -left-[16rem] h-[42rem] w-[42rem] rounded-full bg-indigo-500/[0.04] blur-[180px] dark:bg-indigo-500/[0.07]"
-        />
 
-        <div
-          className="absolute inset-0 bg-[linear-gradient(to_right,rgba(15,23,42,0.022)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.022)_1px,transparent_1px)] bg-[size:40px_40px] dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.014)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.014)_1px,transparent_1px)]"
-        />
       </div>
 
       <div
@@ -1194,14 +1186,14 @@ export default function CreatorBookings() {
         =================================================*/}
 
         <section
-          className="relative mb-8 overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/85 p-6 shadow-sm backdrop-blur-xl sm:p-8 lg:p-10 dark:border-white/[0.06] dark:bg-[#090909]/90 shadow-sm"
+          className="relative mb-8 overflow-hidden rounded-md border border-line bg-subtle p-4 lg:p-4"
         >
           <div
-            className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[#D4AF37]/10 blur-[80px]"
+            className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-subtle blur-[80px]"
           />
 
           <div
-            className="pointer-events-none absolute bottom-0 right-10 hidden font-serif text-[11rem] leading-none text-slate-950/[0.018] xl:block dark:text-white/[0.018]"
+            className="pointer-events-none absolute bottom-0 right-10 hidden font-serif text-[11rem] leading-none text-muted xl:block"
           >
             DBY
           </div>
@@ -1211,21 +1203,21 @@ export default function CreatorBookings() {
           >
             <div>
               <div
-                className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/10 px-3 py-1.5 text-xs font-semibold tracking-normal text-[#95731B] dark:text-[#D4AF37]"
+                className="mb-4 inline-flex items-center gap-2 rounded-md border border-line bg-subtle px-3 py-1.5 text-xs font-semibold tracking-normal text-action"
               >
                 <Compass size={12} />
                 Bookings
               </div>
 
               <h1
-                className="max-w-3xl font-semibold font-semibold leading-[1.05] tracking-tight text-3xl sm:text-4xl"
+                className="max-w-3xl font-semibold leading-[1.05] tracking-tight text-3xl sm:text-4xl"
               >
                 Your bookings{" "}
                 
               </h1>
 
               <p
-                className="mt-5 max-w-2xl text-sm leading-7 text-slate-500 dark:text-white/45"
+                className="mt-5 max-w-2xl text-sm leading-7 text-muted"
               >
                 Track progress, review deliveries, and see what needs your attention.
               </p>
@@ -1242,7 +1234,7 @@ export default function CreatorBookings() {
                   })
                 }
                 disabled={refreshing}
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-xs font-semibold tracking-normal text-slate-600 shadow-sm transition hover:border-[#D4AF37]/50 hover:text-[#94711A] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/60 dark:hover:text-[#D4AF37]"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-5 text-xs font-semibold tracking-normal text-muted transition hover:border-line hover:text-action disabled:cursor-not-allowed disabled:opacity-50 dark:bg-subtle"
               >
                 <RefreshCw
                   size={14}
@@ -1253,7 +1245,7 @@ export default function CreatorBookings() {
 
               <Link
                 to="/creator/bookings/new"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-6 text-xs font-semibold tracking-normal text-black shadow-sm transition hover:bg-[#E6C962] hover:shadow-sm"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-6 text-xs font-semibold tracking-normal text-on-action transition hover:bg-action"
               >
                 <Plus size={15} />
                 New Booking
@@ -1266,163 +1258,32 @@ export default function CreatorBookings() {
         Summary Cards
         =================================================*/}
 
-        <section
-          className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
-        >
-          {[
-            {
-              label: "All Bookings",
-
-              value: summary.total,
-
-              helper: "Your booking history",
-
-              icon: Inbox,
-
-              iconClass: "text-[#9B791D] dark:text-[#D4AF37]",
-
-              glowClass: "bg-[#D4AF37]/10",
-            },
-
-            {
-              label: "Action Required",
-
-              value: summary.actionRequired,
-
-              helper: "Payment, review or recovery",
-
-              icon: Sparkles,
-
-              iconClass:
-                summary.actionRequired > 0
-                  ? "text-violet-600 dark:text-violet-300"
-                  : "text-slate-500 dark:text-white/40",
-
-              glowClass: "bg-violet-500/[0.08]",
-            },
-
-            {
-              label: "Payment Secured",
-
-              value: summary.escrowProtected,
-
-              helper: "Funds currently secured",
-
-              icon: ShieldCheck,
-
-              iconClass: "text-emerald-600 dark:text-emerald-300",
-
-              glowClass: "bg-emerald-500/[0.08]",
-            },
-
-            {
-              label: "Completed",
-
-              value: summary.completed,
-
-              helper: "Finished bookings",
-
-              icon: CheckCircle2,
-
-              iconClass: "text-cyan-600 dark:text-cyan-300",
-
-              glowClass: "bg-cyan-500/[0.07]",
-            },
-          ].map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <article
-                key={item.label}
-                className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white/90 p-5 shadow-sm backdrop-blur transition duration-300 hover:border-[#D4AF37]/25 hover:shadow-sm dark:border-white/[0.06] dark:bg-[#0B0B0B]/90 dark:hover:border-[#D4AF37]/20 dark:hover:shadow-sm"
-              >
-                <div
-                  className={`
-                      pointer-events-none
-                      absolute
-                      -right-8
-                      -top-8
-                      h-28
-                      w-28
-                      rounded-full
-                      blur-[45px]
-
-                      ${item.glowClass}
-                    `}
-                />
-
-                <div
-                  className="relative flex items-start justify-between gap-4"
-                >
-                  <div>
-                    <p
-                      className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/30"
-                    >
-                      {item.label}
-                    </p>
-
-                    <p
-                      className="mt-3 font-serif text-4xl tracking-tight"
-                    >
-                      {item.value}
-                    </p>
-
-                    <p
-                      className="mt-2 text-xs text-slate-500 dark:text-white/35"
-                    >
-                      {item.helper}
-                    </p>
-                  </div>
-
-                  <div
-                    className={`
-                        grid
-                        h-11
-                        w-11
-                        shrink-0
-                        place-items-center
-                        rounded-xl
-                        border
-                        border-slate-200
-                        bg-slate-50
-                        transition
-                        duration-300
-
-                        group-hover:scale-105
-
-                        dark:border-white/10
-                        dark:bg-white/[0.035]
-
-                        ${item.iconClass}
-                      `}
-                  >
-                    <Icon size={19} />
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </section>
+        <MetricList label="Bookings summary" rows={[
+          ["All bookings", summary.total],
+          ["Action required", summary.actionRequired],
+          ["Payment secured", summary.escrowProtected],
+          ["Completed", summary.completed],
+        ]} />
 
         {/*=================================================
-        Booking Pipeline Panel
+        Bookings Panel
         =================================================*/}
 
         <section
-          className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/90 shadow-sm backdrop-blur-xl dark:border-white/[0.06] dark:bg-[#090909]/90 shadow-sm"
+          className="overflow-hidden rounded-md border border-line bg-subtle"
         >
           {/*===============================================
           Tabs / Search
           ===============================================*/}
 
           <div
-            className="border-b border-slate-200/80 p-5 sm:p-6 dark:border-white/[0.06]"
+            className="border-b border-line p-4"
           >
             <div
               className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between"
             >
               <div
-                className="-mx-1 flex gap-1 overflow-x-auto rounded-xl bg-slate-100/80 p-1 dark:bg-white/[0.035]"
+                className="-mx-1 flex gap-1 overflow-x-auto rounded-md bg-subtle p-1"
               >
                 {TAB_DEFINITIONS.map((tab) => {
                   const isActive = activeTab === tab.id;
@@ -1437,24 +1298,12 @@ export default function CreatorBookings() {
                       type="button"
                       onClick={() => setActiveTab(tab.id)}
                       className={`
-                          relative
-                          flex
-                          shrink-0
-                          items-center
-                          gap-2
-                          rounded-lg
-                          px-4
-                          py-3
-                          text-xs
-                          font-semibold
-                          
-                          tracking-normal
-                          transition
+                          relative flex shrink-0 items-center gap-2 rounded-md px-4 py-3 text-xs font-semibold tracking-normal transition
 
                           ${
                             isActive
-                              ? "bg-white text-slate-950 shadow-sm dark:bg-white/10 dark:text-white"
-                              : "text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white/65"
+                              ? "bg-surface text-ink dark:bg-subtle"
+                              : "text-muted hover:text-ink dark:hover:text-muted"
                           }
                         `}
                     >
@@ -1462,20 +1311,14 @@ export default function CreatorBookings() {
 
                       <span
                         className={`
-                            min-w-6
-                            rounded-full
-                            border
-                            px-1.5
-                            py-0.5
-                            text-center
-                            text-xs
+                            min-w-6 rounded-md border px-1.5 py-0.5 text-center text-xs
 
                             ${
                               attention
-                                ? "border-rose-300 bg-rose-50 text-rose-600 dark:border-rose-400/25 dark:bg-rose-400/10 dark:text-rose-300"
+                                ? "border-line bg-canvas text-action dark:bg-subtle"
                                 : isActive
-                                  ? "border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#927019] dark:text-[#D4AF37]"
-                                  : "border-slate-200 bg-slate-50 text-slate-400 dark:border-white/10 dark:bg-white/[0.03] dark:text-white/30"
+                                  ? "border-line bg-subtle text-action"
+                                  : "border-line bg-canvas text-muted dark:bg-subtle"
                             }
                           `}
                       >
@@ -1493,7 +1336,7 @@ export default function CreatorBookings() {
 
                 <Search
                   size={15}
-                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30"
+                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted"
                 />
 
                 <input
@@ -1502,14 +1345,14 @@ export default function CreatorBookings() {
                   maxLength={100}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Search designer, booking, title or ID"
-                  className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50/80 pl-11 pr-11 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/50 focus:bg-white focus:ring-4 focus:ring-[#D4AF37]/10 dark:border-white/10 dark:bg-white/[0.035] dark:text-white dark:placeholder:text-white/25 dark:focus:bg-white/[0.05]"
+                  className="h-12 w-full rounded-md border border-line bg-subtle pl-11 pr-11 text-sm text-ink outline-none transition placeholder:text-muted focus:border-line focus:bg-surface focus:ring-4 focus:ring-action dark:focus:bg-subtle"
                 />
 
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white"
+                    className="absolute right-3 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md text-muted transition hover:bg-subtle hover:text-ink"
                     aria-label="Clear search"
                   >
                     <X size={13} />
@@ -1522,13 +1365,13 @@ export default function CreatorBookings() {
               className="mt-4 flex items-center justify-between gap-4"
             >
               <p
-                className="text-xs text-slate-400 dark:text-white/30"
+                className="text-xs text-muted"
               >
                 {activeTabDefinition.description}
               </p>
 
               <p
-                className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/25"
+                className="text-xs font-semibold tracking-normal text-muted"
               >
                 {visibleBookings.length} visible
               </p>
@@ -1542,7 +1385,7 @@ export default function CreatorBookings() {
           {error ? (
             <div
               role="alert"
-              className="m-5 rounded-2xl border border-rose-200 bg-rose-50/80 p-6 sm:m-6 dark:border-rose-400/20 dark:bg-rose-400/[0.07]"
+              className="m-5 rounded-md border border-line bg-subtle p-4 sm:m-6"
             >
               <div
                 className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between"
@@ -1551,20 +1394,20 @@ export default function CreatorBookings() {
                   className="flex items-start gap-4"
                 >
                   <div
-                    className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-rose-100 text-rose-700 dark:bg-rose-400/10 dark:text-rose-300"
+                    className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-subtle text-action"
                   >
                     <AlertCircle size={20} />
                   </div>
 
                   <div>
                     <h2
-                      className="font-semibold text-rose-900 dark:text-rose-100"
+                      className="font-semibold text-action"
                     >
                       Could not load bookings
                     </h2>
 
                     <p
-                      className="mt-1 max-w-2xl text-sm leading-6 text-rose-700/75 dark:text-rose-200/65"
+                      className="mt-1 max-w-2xl text-sm leading-6 text-muted"
                     >
                       {error}
                     </p>
@@ -1574,7 +1417,7 @@ export default function CreatorBookings() {
                 <button
                   type="button"
                   onClick={() => fetchBookings()}
-                  className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-xs font-semibold tracking-normal text-white transition hover:bg-rose-800"
+                  className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-action px-4 text-xs font-semibold tracking-normal text-on-action transition hover:bg-action hover:text-on-action"
                 >
                   <RefreshCw size={13} />
                   Retry
@@ -1587,22 +1430,22 @@ export default function CreatorBookings() {
             =============================================*/
 
             <div
-              className="space-y-4 p-5 sm:p-6"
+              className="space-y-4 p-4"
             >
               {[1, 2, 3].map((item) => (
                 <div
                   key={item}
-                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-white/[0.06] dark:bg-[#0D0D0D]"
+                  className="overflow-hidden rounded-md border border-line bg-surface"
                 >
                   <div
-                    className="animate-pulse space-y-5 p-6"
+                    className="animate-pulse space-y-5 p-4"
                   >
                     <div
-                      className="h-6 w-48 rounded-full bg-slate-100 dark:bg-white/[0.05]"
+                      className="h-6 w-48 rounded-full bg-subtle"
                     />
 
                     <div
-                      className="h-8 w-2/3 rounded-lg bg-slate-100 dark:bg-white/[0.05]"
+                      className="h-8 w-2/3 rounded-md bg-subtle"
                     />
 
                     <div
@@ -1611,7 +1454,7 @@ export default function CreatorBookings() {
                       {[1, 2, 3, 4].map((block) => (
                         <div
                           key={block}
-                          className="h-24 rounded-xl bg-slate-100 dark:bg-white/[0.04]"
+                          className="h-24 rounded-md bg-subtle"
                         />
                       ))}
                     </div>
@@ -1628,10 +1471,10 @@ export default function CreatorBookings() {
               className="flex min-h-[430px] flex-col items-center justify-center px-6 py-20 text-center"
             >
               <div
-                className="relative grid h-20 w-20 place-items-center rounded-3xl border border-slate-200 bg-slate-50 text-[#A17D1D] shadow-inner dark:border-white/10 dark:bg-white/[0.03] dark:text-[#D4AF37]"
+                className="relative grid h-20 w-20 place-items-center rounded-md border border-line bg-canvas text-action dark:bg-subtle"
               >
                 <div
-                  className="pointer-events-none absolute inset-0 rounded-3xl bg-[#D4AF37]/10 blur-xl"
+                  className="pointer-events-none absolute inset-0 rounded-md bg-subtle blur-xl"
                 />
 
                 {searchQuery ? (
@@ -1642,7 +1485,7 @@ export default function CreatorBookings() {
               </div>
 
               <h2
-                className="mt-7 font-serif text-3xl font-light"
+                className="mt-7 font-sans text-3xl font-light"
               >
                 {searchQuery
                   ? "No matching bookings"
@@ -1650,7 +1493,7 @@ export default function CreatorBookings() {
               </h2>
 
               <p
-                className="mt-3 max-w-lg text-sm leading-7 text-slate-500 dark:text-white/40"
+                className="mt-3 max-w-lg text-sm leading-7 text-muted"
               >
                 {searchQuery
                   ? "Try another designer name, booking ID, design title, booking type, or workflow state."
@@ -1663,7 +1506,7 @@ export default function CreatorBookings() {
                 <button
                   type="button"
                   onClick={() => setSearchQuery("")}
-                  className="mt-7 inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-xs font-semibold tracking-normal text-slate-600 transition hover:border-[#D4AF37]/40 hover:text-[#98751A] dark:border-white/10 dark:bg-white/[0.04] dark:text-white/60 dark:hover:text-[#D4AF37]"
+                  className="mt-7 inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-surface px-5 text-xs font-semibold tracking-normal text-muted transition hover:border-line hover:text-action dark:bg-subtle"
                 >
                   <X size={13} />
                   Clear Search
@@ -1672,7 +1515,7 @@ export default function CreatorBookings() {
                 bookings.length === 0 && (
                   <Link
                     to="/creator/bookings/new"
-                    className="mt-7 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-5 text-xs font-semibold tracking-normal text-black transition hover:bg-[#E4C65E]"
+                    className="mt-7 inline-flex h-9 items-center justify-center gap-2 rounded-md bg-action px-5 text-xs font-semibold tracking-normal text-on-action transition hover:bg-action hover:text-on-action"
                   >
                     <Plus size={14} />
                     Create First Booking
@@ -1686,7 +1529,7 @@ export default function CreatorBookings() {
             =============================================*/
 
             <div
-              className="space-y-4 p-4 sm:p-6"
+              className="space-y-4 p-4"
             >
               {visibleBookings.map((booking) => {
                 const status = normalizeStatus(booking?.status);
@@ -1728,7 +1571,7 @@ export default function CreatorBookings() {
                   <Link
                     key={booking.id}
                     to={`/creator/bookings/${booking.id}`}
-                    className="group block overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm transition duration-300 hover:border-[#D4AF37]/45 hover:shadow-sm dark:border-white/[0.06] dark:bg-[#0C0C0C] dark:hover:border-[#D4AF37]/25 dark:hover:shadow-sm"
+                    className="group block overflow-hidden rounded-md border border-line bg-surface transition duration-300 hover:border-line"
                   >
                     <div
                       className="grid xl:grid-cols-[minmax(0,1fr)_290px]"
@@ -1738,7 +1581,7 @@ export default function CreatorBookings() {
                         =================================*/}
 
                       <div
-                        className="p-5 sm:p-7"
+                        className="p-4"
                       >
                         {/* Badges */}
 
@@ -1747,17 +1590,7 @@ export default function CreatorBookings() {
                         >
                           <span
                             className={`
-                                inline-flex
-                                items-center
-                                gap-1.5
-                                rounded-full
-                                border
-                                px-3
-                                py-1.5
-                                text-xs
-                                font-semibold
-                                
-                                tracking-normal
+                                inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold tracking-normal
 
                                 ${statusDetails.badgeClass}
                               `}
@@ -1773,20 +1606,20 @@ export default function CreatorBookings() {
                           </span>
 
                           <span
-                            className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-mono text-xs tracking-normal text-slate-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-white/35"
+                            className="rounded-md border border-line bg-canvas px-3 py-1.5 font-mono text-xs tracking-normal text-muted dark:bg-subtle"
                           >
                             #{shortId}
                           </span>
 
                           <span
-                            className="rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] px-3 py-1.5 text-xs font-semibold tracking-normal text-[#90701A] dark:text-[#D4AF37]"
+                            className="rounded-md border border-line bg-subtle px-3 py-1.5 text-xs font-semibold tracking-normal text-action"
                           >
                             {formatBookingType(booking?.booking_type)}
                           </span>
 
                           {CREATOR_ACTION_STATUSES.has(status) && (
                             <span
-                              className="inline-flex items-center gap-1 rounded-full border border-violet-300/70 bg-violet-50 px-3 py-1.5 text-xs font-semibold tracking-normal text-violet-700 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300"
+                              className="inline-flex items-center gap-1 rounded-md border border-line bg-canvas px-3 py-1.5 text-xs font-semibold tracking-normal text-action dark:bg-subtle"
                             >
                               <Sparkles size={10} />
                               Your Action
@@ -1801,27 +1634,27 @@ export default function CreatorBookings() {
                         >
                           <div className="min-w-0">
                             <h2
-                              className="font-serif text-2xl font-light leading-tight tracking-tight text-slate-950 transition duration-300 group-hover:text-[#997619] sm:text-3xl dark:text-white dark:group-hover:text-[#D4AF37]"
+                              className="font-sans text-2xl font-light leading-tight tracking-tight text-ink transition duration-300 group-hover:text-action sm:text-3xl"
                             >
                               {projectTitle}
                             </h2>
 
                             <p
-                              className="mt-3 line-clamp-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-white/42"
+                              className="mt-3 line-clamp-2 max-w-3xl text-sm leading-6 text-muted"
                             >
                               {booking?.brief_text ||
                                 "No project brief was supplied for this booking."}
                             </p>
 
                             <p
-                              className="mt-3 text-xs font-bold tracking-normal text-slate-400 dark:text-white/25"
+                              className="mt-3 text-xs font-bold tracking-normal text-muted"
                             >
                               Created {formatCreatedDate(booking?.created_at)}
                             </p>
                           </div>
 
                           <div
-                            className="hidden h-10 w-10 shrink-0 -translate-x-2 place-items-center rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/10 text-[#98751A] opacity-0 transition duration-300 group-hover:translate-x-0 group-hover:opacity-100 sm:grid dark:text-[#D4AF37]"
+                            className="hidden h-10 w-10 shrink-0 -translate-x-2 place-items-center rounded-full border border-line bg-subtle text-action opacity-0 transition duration-300 group-hover:translate-x-0 group-hover:opacity-100 sm:grid"
                           >
                             <ArrowRight size={16} />
                           </div>
@@ -1835,10 +1668,10 @@ export default function CreatorBookings() {
                           {/* Designer */}
 
                           <div
-                            className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-white/[0.06] dark:bg-white/[0.025]"
+                            className="rounded-md border border-line bg-subtle p-4"
                           >
                             <div
-                              className="flex items-center gap-2 text-xs font-semibold tracking-normal text-slate-400 dark:text-white/28"
+                              className="flex items-center gap-2 text-xs font-semibold tracking-normal text-muted"
                             >
                               <UserRound size={12} />
                               Designer
@@ -1848,7 +1681,7 @@ export default function CreatorBookings() {
                               className="mt-3 flex min-w-0 items-center gap-2.5"
                             >
                               <div
-                                className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full border border-slate-200 bg-white dark:border-white/10 dark:bg-white/5"
+                                className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full border border-line bg-surface dark:bg-subtle"
                               >
                                 {designerAvatar ? (
                                   <img
@@ -1859,7 +1692,7 @@ export default function CreatorBookings() {
                                   />
                                 ) : (
                                   <span
-                                    className="text-xs font-bold text-slate-500 dark:text-white/40"
+                                    className="text-xs font-bold text-muted"
                                   >
                                     {getFirstName(designerName)
                                       .charAt(0)
@@ -1879,17 +1712,17 @@ export default function CreatorBookings() {
                           {/* Value */}
 
                           <div
-                            className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-white/[0.06] dark:bg-white/[0.025]"
+                            className="rounded-md border border-line bg-subtle p-4"
                           >
                             <div
-                              className="flex items-center gap-2 text-xs font-semibold tracking-normal text-slate-400 dark:text-white/28"
+                              className="flex items-center gap-2 text-xs font-semibold tracking-normal text-muted"
                             >
                               <BadgeDollarSign size={12} />
                               Agreed Value
                             </div>
 
                             <p
-                              className="mt-3 font-mono text-lg font-semibold text-[#937119] dark:text-[#D4AF37]"
+                              className="mt-3 font-mono text-lg font-semibold text-action"
                             >
                               {formatCurrency(booking?.agreed_price, currency)}
                             </p>
@@ -1898,10 +1731,10 @@ export default function CreatorBookings() {
                           {/* Deadline */}
 
                           <div
-                            className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-white/[0.06] dark:bg-white/[0.025]"
+                            className="rounded-md border border-line bg-subtle p-4"
                           >
                             <div
-                              className="flex items-center gap-2 text-xs font-semibold tracking-normal text-slate-400 dark:text-white/28"
+                              className="flex items-center gap-2 text-xs font-semibold tracking-normal text-muted"
                             >
                               <CalendarDays size={12} />
                               Deadline
@@ -1915,13 +1748,12 @@ export default function CreatorBookings() {
 
                             <p
                               className={`
-                                  mt-1
-                                  text-xs
+                                  mt-1 text-xs
 
                                   ${
                                     deadline.urgent
-                                      ? "font-semibold text-rose-600 dark:text-rose-300"
-                                      : "text-slate-500 dark:text-white/35"
+                                      ? "font-semibold text-action"
+                                      : "text-muted"
                                   }
                                 `}
                             >
@@ -1932,10 +1764,10 @@ export default function CreatorBookings() {
                           {/* Payment */}
 
                           <div
-                            className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-white/[0.06] dark:bg-white/[0.025]"
+                            className="rounded-md border border-line bg-subtle p-4"
                           >
                             <div
-                              className="flex items-center gap-2 text-xs font-semibold tracking-normal text-slate-400 dark:text-white/28"
+                              className="flex items-center gap-2 text-xs font-semibold tracking-normal text-muted"
                             >
                               <LockKeyhole size={12} />
                               Payment
@@ -1943,9 +1775,7 @@ export default function CreatorBookings() {
 
                             <p
                               className={`
-                                  mt-3
-                                  text-sm
-                                  font-semibold
+                                  mt-3 text-sm font-semibold
 
                                   ${escrow.className}
                                 `}
@@ -1955,7 +1785,7 @@ export default function CreatorBookings() {
 
                             {booking?.refund_status && (
                               <p
-                                className="mt-1 truncate text-xs text-slate-500 dark:text-white/30"
+                                className="mt-1 truncate text-xs text-muted"
                               >
                                 Refund: {booking.refund_status}
                               </p>
@@ -1970,13 +1800,13 @@ export default function CreatorBookings() {
                             className="mb-2.5 flex items-center justify-between gap-4"
                           >
                             <p
-                              className="text-xs font-semibold tracking-normal text-slate-400 dark:text-white/28"
+                              className="text-xs font-semibold tracking-normal text-muted"
                             >
                               Workflow Progress
                             </p>
 
                             <p
-                              className="text-xs font-semibold text-slate-500 dark:text-white/35"
+                              className="text-xs font-semibold text-muted"
                             >
                               {progress === undefined
                                 ? "Review"
@@ -1985,21 +1815,18 @@ export default function CreatorBookings() {
                           </div>
 
                           <div
-                            className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/[0.05]"
+                            className="h-1.5 overflow-hidden rounded-full bg-subtle"
                           >
                             <div
                               className={`
-                                  h-full
-                                  rounded-full
-                                  transition-all
-                                  duration-700
+                                  h-full rounded-full transition-all duration-700
 
                                   ${
                                     status === BOOKING_STATUS.REFUND_FAILED
-                                      ? "bg-gradient-to-r from-rose-500 to-orange-400"
+                                      ? "bg-surface"
                                       : ATTENTION_STATUSES.has(status)
-                                        ? "bg-gradient-to-r from-orange-400 to-rose-400"
-                                        : "bg-gradient-to-r from-[#A98520] via-[#D4AF37] to-[#E6CC70]"
+                                        ? "bg-surface"
+                                        : "bg-surface"
                                   }
                                 `}
                               style={{
@@ -2016,16 +1843,7 @@ export default function CreatorBookings() {
 
                       <aside
                         className={`
-                            flex
-                            flex-col
-                            justify-between
-                            border-t
-                            p-5
-
-                            sm:p-6
-
-                            xl:border-l
-                            xl:border-t-0
+                            flex flex-col justify-between border-t p-4 xl:border-l xl:border-t-0
 
                             ${actionDetails.panelClass}
                           `}
@@ -2033,17 +1851,7 @@ export default function CreatorBookings() {
                         <div>
                           <div
                             className={`
-                                grid
-                                h-12
-                                w-12
-                                place-items-center
-                                rounded-2xl
-                                border
-                                border-current/15
-                                bg-white/60
-                                shadow-sm
-
-                                dark:bg-black/20
+                                grid h-12 w-12 place-items-center rounded-md border border-current/15 bg-subtle
 
                                 ${actionDetails.accentClass}
                               `}
@@ -2058,11 +1866,7 @@ export default function CreatorBookings() {
 
                           <p
                             className={`
-                                mt-5
-                                text-xs
-                                font-semibold
-                                
-                                tracking-normal
+                                mt-5 text-xs font-semibold tracking-normal
 
                                 ${actionDetails.accentClass}
                               `}
@@ -2077,7 +1881,7 @@ export default function CreatorBookings() {
                           </h3>
 
                           <p
-                            className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-white/40"
+                            className="mt-1.5 text-xs leading-5 text-muted"
                           >
                             {actionDetails.detail}
                           </p>
@@ -2087,13 +1891,13 @@ export default function CreatorBookings() {
                           className="mt-7 border-t border-current/10 pt-5"
                         >
                           <p
-                            className="text-xs leading-5 text-slate-500 dark:text-white/40"
+                            className="text-xs leading-5 text-muted"
                           >
                             {statusDetails.description}
                           </p>
 
                           <div
-                            className="mt-5 inline-flex items-center gap-2 text-xs font-semibold tracking-normal text-slate-700 transition group-hover:text-[#967319] dark:text-white/60 dark:group-hover:text-[#D4AF37]"
+                            className="mt-5 inline-flex items-center gap-2 text-xs font-semibold tracking-normal text-ink transition group-hover:text-action dark:text-muted"
                           >
                             View booking
                             <ArrowRight size={13} />

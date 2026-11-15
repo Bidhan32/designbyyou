@@ -2,17 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import API from '../../api/axios';
 import { useAuth } from "../../context/AuthContext.helpers.js";
-import { 
-  Briefcase, 
-  CheckSquare, 
-  Star, 
-  TrendingUp, 
-  ArrowRight, 
+import {
+  Briefcase,
+  ArrowRight,
   Wallet,
   ShieldCheck,
-  AlertTriangle,
-  Compass,
-  Award,
   Zap,
   CheckCircle2,
   FolderOpen
@@ -24,12 +18,14 @@ const safeFloat = (value) => {
 };
 
 // 🚀 THE DYNAMIC RANKING ALGORITHM (Updated for Light/Dark Mode)
-const getDesignerRank = (completedCount) => {
-    if (completedCount >= 50) return { name: 'GRAND VISIONARY', color: 'text-cyan-600 dark:text-cyan-300', border: 'border-cyan-400 dark:border-cyan-300', bg: 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-200 dark:border-cyan-500/30 shadow-sm dark:shadow-[0_0_15px_rgba(34,211,238,0.2)]' };
-    if (completedCount >= 20) return { name: 'MASTER CRAFTSMAN', color: 'text-[#b59220] dark:text-[#D4AF37]', border: 'border-[#b59220] dark:border-[#D4AF37]', bg: 'bg-[#D4AF37]/5 dark:bg-[#D4AF37]/10 border-[#D4AF37]/30 shadow-sm dark:shadow-[0_0_15px_rgba(212,175,55,0.2)]' };
-    if (completedCount >= 5) return { name: 'ATELIER ASSOCIATE', color: 'text-slate-600 dark:text-slate-300', border: 'border-slate-300 dark:border-slate-300', bg: 'bg-slate-100 dark:bg-slate-500/10 border-slate-200 dark:border-slate-500/30 shadow-sm dark:shadow-[0_0_15px_rgba(203,213,225,0.1)]' };
-    return { name: 'VISIONARY APPRENTICE', color: 'text-amber-600 dark:text-amber-600', border: 'border-amber-400 dark:border-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/30 shadow-sm dark:shadow-[0_0_15px_rgba(217,119,6,0.1)]' };
+const getDesignerRank = completed => {
+    if (completed >= 50) return "Grand Visionary";
+    if (completed >= 20) return "Master Craftsman";
+    if (completed >= 5) return "Atelier Associate";
+    return "Visionary Apprentice";
 };
+
+const currency = value => value.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
 export default function DesignerDashboard() {
     const { user } = useAuth();
@@ -47,12 +43,12 @@ export default function DesignerDashboard() {
 
     useEffect(() => {
         let isMounted = true;
-        
+
         const fetchDynamicDashboard = async () => {
             try {
                 setLoading(true);
                 setError('');
-                
+
                 // 🚀 HIGH-PERFORMANCE DATA SYNC: Fetch all 3 backend pillars simultaneously
                 const [walletRes, ledgerRes, bookingsRes] = await Promise.allSettled([
                     API.get('/designer-finance/wallet'),
@@ -85,7 +81,7 @@ export default function DesignerDashboard() {
                     clearedCapital: safeFloat(wallet.available_balance),
                     totalEarnings: totalRevenue,
                     activeCommissions: activeCount,
-                    settledClearances: completedCount, 
+                    settledClearances: completedCount,
                     recentSignals: formattedSignals
                 });
 
@@ -106,228 +102,88 @@ export default function DesignerDashboard() {
 
     return (
         <div className="space-y-8 max-w-[1600px] mx-auto relative z-10 animate-fade-in-up pb-20 transition-colors duration-300">
-            
-            {/* AMBIENT BACKGROUND GLOW */}
-            <div className="fixed inset-0 pointer-events-none overflow-hidden z-[-1]">
-                <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] bg-[#D4AF37]/5 blur-[150px] rounded-full"></div>
-            </div>
 
-            {/* TOP IDENTITY & WALLET INTERFACE */}
-            <div className="bg-white dark:bg-[#0a0a0a] p-8 md:p-10 rounded-3xl border border-slate-200 dark:border-white/5 shadow-lg dark:shadow-2xl flex flex-col md:flex-row md:items-center md:justify-between gap-8 relative overflow-hidden transition-colors duration-300">
-                
-                <div className="absolute top-[-50%] right-[10%] opacity-[0.03] dark:opacity-5 text-[#D4AF37] pointer-events-none rotate-12">
-                    <Compass size={300} strokeWidth={0.5} />
-                </div>
-
-                <div className="space-y-4 relative z-10">
-                    <div className="flex items-center gap-2 text-xs font-bold text-[#D4AF37] tracking-normal mb-2">
-                        <Star size={12} className="fill-[#D4AF37]" /> Overview
-                    </div>
-                    <h1 className="font-semibold font-semibold text-slate-900 dark:text-white tracking-tighter drop-shadow-sm dark:drop-shadow-lg leading-tight transition-colors text-3xl sm:text-4xl">
-                        Welcome, <span className="italic text-[#D4AF37] font-normal">{user?.full_name || 'Visionary'}</span>
-                    </h1>
-                    
-                    {/* 🚀 UPGRADED: Dynamic Gamification Badge */}
-                    <div className="flex flex-wrap items-center gap-4 pt-2">
-                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-[#111] border border-slate-200 dark:border-white/10 px-3 py-1.5 rounded-full shadow-sm dark:shadow-inner transition-colors">
-                            <span className="text-xs tracking-normal text-slate-500 dark:text-white/40 font-bold">Class</span>
-                            <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-white/40"></div>
-                            <span className="text-xs tracking-normal text-slate-800 dark:text-white font-bold">{user?.role || 'Designer'}</span> 
-                        </div>
-                        
-                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-colors ${currentRank.bg}`}>
-                            <span className={`text-xs  tracking-normal font-bold ${currentRank.color} opacity-70`}>Rank</span>
-                            <div className={`w-1 h-1 rounded-full ${currentRank.color}`}></div>
-                            <span className={`text-xs  tracking-normal font-semibold flex items-center gap-1.5 ${currentRank.color}`}>
-                                <Award size={12} /> {currentRank.name}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-                
-                {/* WALLET EXTRACTION NODE */}
-                <div className="flex items-center gap-5 bg-slate-50 dark:bg-[#111] px-8 py-6 border border-slate-200 dark:border-white/5 rounded-3xl shrink-0 self-start md:self-auto shadow-sm dark:shadow-inner relative z-10 group overflow-hidden transition-colors">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-[#D4AF37]/5 blur-[20px] rounded-full group-hover:bg-[#D4AF37]/10 transition-colors"></div>
-                    <div className="p-4 bg-[#D4AF37]/5 dark:bg-[#D4AF37]/10 border border-[#D4AF37]/20 dark:border-[#D4AF37]/30 rounded-2xl text-[#b59220] dark:text-[#D4AF37] group-hover:scale-110 transition-transform duration-500 shadow-sm shadow-sm">
-                        <Wallet size={24} />
-                    </div>
-                    <div>
-                        <p className="text-xs text-slate-500 dark:text-white/40 font-bold tracking-normal mb-1 transition-colors">Available earnings</p>
-                        <p className="text-4xl md:text-5xl font-serif text-slate-900 dark:text-white group-hover:text-[#D4AF37] dark:group-hover:text-[#D4AF37] transition-colors drop-shadow-sm dark:drop-shadow-md tracking-tight">
-                            {loading ? (
-                                <span className="animate-pulse opacity-40">$0.00</span>
-                            ) : (
-                                `$${stats.clearedCapital.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                            )}
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {error && (
-                <div className="bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 p-5 rounded-2xl text-xs font-bold tracking-normal border border-rose-200 dark:border-rose-500/20 flex items-center gap-3 backdrop-blur-md shadow-sm dark:shadow-inner transition-colors duration-300">
-                    <AlertTriangle size={16} className="text-rose-500 shrink-0" />
-                    <span>{error}</span>
-                </div>
-            )}
-
-            {/* QUICK SUMMARY KPI MATRIX */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                
-                {/* Metric Card 1: Earnings */}
-                <div className="bg-white dark:bg-[#0a0a0a] p-8 rounded-3xl border border-slate-200 dark:border-white/5 relative overflow-hidden shadow-lg dark:shadow-2xl group hover:border-[#D4AF37]/50 dark:hover:border-[#D4AF37]/30 transition-all duration-500">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/5 rounded-full blur-[40px] group-hover:bg-[#D4AF37]/10 transition-colors"></div>
-                    <div className="flex justify-between items-start text-slate-400 dark:text-white/40 relative z-10 transition-colors">
-                        <p className="text-xs font-bold tracking-normal">Earnings</p>
-                        <TrendingUp size={16} className="text-[#D4AF37]/50 group-hover:text-[#D4AF37] transition-colors" />
-                    </div>
-                    {loading ? (
-                        <div className="h-10 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 w-1/2 rounded-lg animate-pulse mt-5"></div>
-                    ) : (
-                        <p className="text-4xl font-serif text-slate-900 dark:text-white group-hover:text-[#D4AF37] dark:group-hover:text-[#D4AF37] transition-colors mt-5 tracking-tight relative z-10">
-                            ${stats.totalEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </p>
-                    )}
-                    <div className="mt-6 border-t border-slate-100 dark:border-white/5 pt-4 transition-colors">
-                        <span className="text-xs text-slate-500 dark:text-white/30 font-bold tracking-normal inline-flex items-center gap-1.5 relative z-10 transition-colors"> Total accumulated </span>
-                    </div>
-                </div>
-
-                {/* Metric Card 2: Active */}
-                <div className="bg-white dark:bg-[#0a0a0a] p-8 rounded-3xl border border-slate-200 dark:border-white/5 relative overflow-hidden shadow-lg dark:shadow-2xl group hover:border-indigo-400/50 dark:hover:border-indigo-500/30 transition-all duration-500">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-[40px] group-hover:bg-indigo-500/10 transition-colors"></div>
-                    <div className="flex justify-between items-start text-slate-400 dark:text-white/40 relative z-10 transition-colors">
-                        <p className="text-xs font-bold tracking-normal">Active Bookings</p>
-                        <Briefcase size={16} className="text-indigo-400/50 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors" />
-                    </div>
-                    {loading ? (
-                        <div className="h-10 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 w-1/3 rounded-lg animate-pulse mt-5"></div>
-                    ) : (
-                        <p className="text-4xl font-serif text-slate-900 dark:text-white group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors mt-5 tracking-tight relative z-10">
-                            {stats.activeCommissions}
-                        </p>
-                    )}
-                    <div className="mt-6 border-t border-slate-100 dark:border-white/5 pt-4 transition-colors">
-                        <span className="text-xs text-slate-500 dark:text-white/30 font-bold tracking-normal inline-flex items-center gap-1.5 relative z-10 transition-colors"> In progress </span>
-                    </div>
-                </div>
-
-                {/* Metric Card 3: Settled */}
-                <div className="bg-white dark:bg-[#0a0a0a] p-8 rounded-3xl border border-slate-200 dark:border-white/5 relative overflow-hidden shadow-lg dark:shadow-2xl group hover:border-emerald-400/50 dark:hover:border-emerald-500/30 transition-all duration-500">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-[40px] group-hover:bg-emerald-500/10 transition-colors"></div>
-                    <div className="flex justify-between items-start text-slate-400 dark:text-white/40 relative z-10 transition-colors">
-                        <p className="text-xs font-bold tracking-normal">Completed bookings</p>
-                        <CheckSquare size={16} className="text-emerald-400/50 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors" />
-                    </div>
-                    {loading ? (
-                        <div className="h-10 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 w-1/3 rounded-lg animate-pulse mt-5"></div>
-                    ) : (
-                        <p className="text-4xl font-serif text-slate-900 dark:text-white group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors mt-5 tracking-tight relative z-10">
-                            {stats.settledClearances}
-                        </p>
-                    )}
-                    <div className="mt-6 border-t border-slate-100 dark:border-white/5 pt-4 flex items-center justify-between transition-colors">
-                         <span className="text-xs text-slate-500 dark:text-white/30 font-bold tracking-normal inline-flex items-center gap-1.5 relative z-10 transition-colors"> Finished work </span>
-                         {/* Display next rank goal if they aren't diamond yet */}
-                         {stats.settledClearances < 50 && (
-                             <span className="text-xs text-[#b59220]/70 dark:text-[#D4AF37]/50 font-mono tracking-widest">{stats.settledClearances}/{(stats.settledClearances < 5 ? 5 : stats.settledClearances < 20 ? 20 : 50)} to Next Rank</span>
-                         )}
-                    </div>
-                </div>
-
-                {/* Metric Card 4: Reputation */}
-                <div className="bg-white dark:bg-[#0a0a0a] p-8 rounded-3xl border border-slate-200 dark:border-white/5 relative overflow-hidden shadow-lg dark:shadow-2xl group hover:border-[#D4AF37]/50 dark:hover:border-[#D4AF37]/30 transition-all duration-500">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-[40px] group-hover:bg-amber-500/10 transition-colors"></div>
-                    <div className="flex justify-between items-start text-slate-400 dark:text-white/40 relative z-10 transition-colors">
-                        <p className="text-xs font-bold tracking-normal">Your rating</p>
-                        <Star size={16} className="text-amber-400/50 group-hover:text-amber-500 dark:group-hover:text-amber-400 transition-colors" />
-                    </div>
-                    {loading ? (
-                        <div className="h-10 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 w-2/3 rounded-lg animate-pulse mt-5"></div>
-                    ) : (
-                        <p className="text-4xl font-serif text-[#D4AF37] mt-5 tracking-tight relative z-10 flex items-baseline gap-2">
-                            {safeFloat(user?.avg_rating || 5).toFixed(1)} 
-                            <span className="text-sm text-slate-400 dark:text-white/30 font-sans font-bold tracking-widest transition-colors">/ 5.0</span>
-                        </p>
-                    )}
-                    <div className="mt-6 border-t border-slate-100 dark:border-white/5 pt-4 transition-colors">
-                        <span className="text-xs text-slate-500 dark:text-white/30 font-bold tracking-normal inline-flex items-center gap-1.5 relative z-10 transition-colors"> Client reviews </span>
-                    </div>
-                </div>
-            </div>
-
+            <header className="border-b border-line pb-4">
+                <h1 className="text-2xl font-semibold">Designer workspace</h1>
+                <p className="mt-1 text-sm text-muted">{user?.full_name} · {currentRank}</p>
+            </header>
+            {error && <p role="alert" className="rounded-md border border-line p-3">{error}</p>}
+            <dl className="divide-y divide-line rounded-md border border-line bg-surface px-4">
+                {[
+                    ["Available earnings", currency(stats.clearedCapital)],
+                    ["Total earnings", currency(stats.totalEarnings)],
+                    ["Active bookings", stats.activeCommissions],
+                    ["Completed bookings", stats.settledClearances],
+                    ["Next rank", stats.settledClearances < 50 ? [5, 20, 50].find(goal => goal > stats.settledClearances) + " completed bookings" : "Highest rank"],
+                    ["Rating", user?.avg_rating == null ? "No ratings yet" : safeFloat(user.avg_rating).toFixed(1) + " / 5"],
+                ].map(([label, value]) => <div key={label} className="flex justify-between gap-3 py-2 text-sm"><dt>{label}</dt><dd className="font-mono tabular-nums">{loading ? "…" : value}</dd></div>)}
+            </dl>
             {/* OPERATIONAL SPLITS */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                
+
                 {/* Control Directive Hub */}
-                <div className="bg-white dark:bg-[#0a0a0a] p-8 md:p-10 rounded-3xl border border-slate-200 dark:border-white/5 shadow-lg dark:shadow-2xl space-y-8 relative overflow-hidden transition-colors duration-300">
-                    <div className="absolute -bottom-10 -right-10 opacity-[0.03] text-slate-900 dark:text-white pointer-events-none rotate-45 transition-colors">
-                        <Zap size={200} strokeWidth={1} />
+                <div className="bg-surface p-4 rounded-md border border-line space-y-8 relative overflow-hidden transition-colors duration-300">
+
+                    <div className="border-b border-line pb-5 relative z-10 transition-colors">
+                        <h3 className="font-sans text-3xl text-ink tracking-wide mb-2 transition-colors">Quick actions</h3>
                     </div>
-                    
-                    <div className="border-b border-slate-100 dark:border-white/5 pb-5 relative z-10 transition-colors">
-                        <h3 className="font-serif text-3xl text-slate-900 dark:text-white tracking-wide mb-2 transition-colors">Quick actions</h3>
-                        <p className="text-xs tracking-normal text-[#D4AF37] font-bold">Manage your work</p>
-                    </div>
-                    
+
                     <div className="flex flex-col gap-4 relative z-10">
-                        <Link to="/designer/inventory" className="flex items-center justify-between p-6 rounded-2xl bg-slate-50 dark:bg-[#111] hover:bg-[#D4AF37] dark:hover:bg-[#D4AF37] border border-slate-200 dark:border-white/5 hover:border-[#D4AF37] dark:hover:border-[#D4AF37] transition-all duration-300 group cursor-pointer shadow-sm dark:shadow-inner hover:shadow-lg dark:hover:shadow-sm">
-                            <span className="text-xs font-bold tracking-normal text-slate-600 dark:text-white/70 group-hover:text-white dark:group-hover:text-black transition-colors flex items-center gap-3">
-                                <FolderOpen size={16} className="text-[#D4AF37] group-hover:text-white dark:group-hover:text-black" /> Your portfolio
+                        <Link to="/designer/inventory" className="flex items-center justify-between p-4 rounded-md bg-canvas dark:bg-surface hover:bg-action dark:hover:bg-action border border-line hover:border-line dark:hover:border-line transition-all duration-300 group cursor-pointer">
+                            <span className="text-xs font-bold tracking-normal text-muted group-hover:text-zinc-100 dark:group-hover:text-zinc-950 transition-colors flex items-center gap-3">
+                                <FolderOpen size={16} className="text-action group-hover:text-zinc-100 dark:group-hover:text-zinc-950" /> Your portfolio
                             </span>
-                            <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-white/5 group-hover:bg-white/20 dark:group-hover:bg-black/10 flex items-center justify-center transition-colors">
-                                <ArrowRight size={14} className="text-slate-500 dark:text-white/40 group-hover:text-white dark:group-hover:text-black transition-transform group-hover:translate-x-1" />
+                            <div className="w-8 h-8 rounded-full bg-canvas dark:bg-subtle group-hover:bg-subtle dark:group-hover:bg-black/10 flex items-center justify-center transition-colors">
+                                <ArrowRight size={14} className="text-muted group-hover:text-zinc-100 dark:group-hover:text-zinc-950 transition-transform group-hover:translate-x-1" />
                             </div>
                         </Link>
-                        
-                        <Link to="/designer/bookings" className="flex items-center justify-between p-6 rounded-2xl bg-slate-50 dark:bg-[#111] hover:bg-[#D4AF37] dark:hover:bg-[#D4AF37] border border-slate-200 dark:border-white/5 hover:border-[#D4AF37] dark:hover:border-[#D4AF37] transition-all duration-300 group cursor-pointer shadow-sm dark:shadow-inner hover:shadow-lg dark:hover:shadow-sm">
-                            <span className="text-xs font-bold tracking-normal text-slate-600 dark:text-white/70 group-hover:text-white dark:group-hover:text-black transition-colors flex items-center gap-3">
-                                <Briefcase size={16} className="text-[#D4AF37] group-hover:text-white dark:group-hover:text-black" /> Your bookings
+
+                        <Link to="/designer/bookings" className="flex items-center justify-between p-4 rounded-md bg-canvas dark:bg-surface hover:bg-action dark:hover:bg-action border border-line hover:border-line dark:hover:border-line transition-all duration-300 group cursor-pointer">
+                            <span className="text-xs font-bold tracking-normal text-muted group-hover:text-zinc-100 dark:group-hover:text-zinc-950 transition-colors flex items-center gap-3">
+                                <Briefcase size={16} className="text-action group-hover:text-zinc-100 dark:group-hover:text-zinc-950" /> Your bookings
                             </span>
-                            <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-white/5 group-hover:bg-white/20 dark:group-hover:bg-black/10 flex items-center justify-center transition-colors">
-                                <ArrowRight size={14} className="text-slate-500 dark:text-white/40 group-hover:text-white dark:group-hover:text-black transition-transform group-hover:translate-x-1" />
+                            <div className="w-8 h-8 rounded-full bg-canvas dark:bg-subtle group-hover:bg-subtle dark:group-hover:bg-black/10 flex items-center justify-center transition-colors">
+                                <ArrowRight size={14} className="text-muted group-hover:text-zinc-100 dark:group-hover:text-zinc-950 transition-transform group-hover:translate-x-1" />
                             </div>
                         </Link>
-                        
-                        <Link to="/designer/wallet" className="flex items-center justify-between p-6 rounded-2xl bg-slate-50 dark:bg-[#111] hover:bg-[#D4AF37] dark:hover:bg-[#D4AF37] border border-slate-200 dark:border-white/5 hover:border-[#D4AF37] dark:hover:border-[#D4AF37] transition-all duration-300 group cursor-pointer shadow-sm dark:shadow-inner hover:shadow-lg dark:hover:shadow-sm">
-                            <span className="text-xs font-bold tracking-normal text-slate-600 dark:text-white/70 group-hover:text-white dark:group-hover:text-black transition-colors flex items-center gap-3">
-                                <Wallet size={16} className="text-[#D4AF37] group-hover:text-white dark:group-hover:text-black" /> Withdraw earnings
+
+                        <Link to="/designer/wallet" className="flex items-center justify-between p-4 rounded-md bg-canvas dark:bg-surface hover:bg-action dark:hover:bg-action border border-line hover:border-line dark:hover:border-line transition-all duration-300 group cursor-pointer">
+                            <span className="text-xs font-bold tracking-normal text-muted group-hover:text-zinc-100 dark:group-hover:text-zinc-950 transition-colors flex items-center gap-3">
+                                <Wallet size={16} className="text-action group-hover:text-zinc-100 dark:group-hover:text-zinc-950" /> Withdraw earnings
                             </span>
-                            <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-white/5 group-hover:bg-white/20 dark:group-hover:bg-black/10 flex items-center justify-center transition-colors">
-                                <ArrowRight size={14} className="text-slate-500 dark:text-white/40 group-hover:text-white dark:group-hover:text-black transition-transform group-hover:translate-x-1" />
+                            <div className="w-8 h-8 rounded-full bg-canvas dark:bg-subtle group-hover:bg-subtle dark:group-hover:bg-black/10 flex items-center justify-center transition-colors">
+                                <ArrowRight size={14} className="text-muted group-hover:text-zinc-100 dark:group-hover:text-zinc-950 transition-transform group-hover:translate-x-1" />
                             </div>
                         </Link>
                     </div>
                 </div>
 
                 {/* Audit Trail Signals */}
-                <div className="lg:col-span-2 bg-white dark:bg-[#0a0a0a] p-8 md:p-10 rounded-3xl border border-slate-200 dark:border-white/5 shadow-lg dark:shadow-2xl space-y-8 h-full flex flex-col transition-colors duration-300">
-                    <div className="border-b border-slate-100 dark:border-white/5 pb-5 transition-colors">
-                        <h3 className="font-serif text-3xl text-slate-900 dark:text-white tracking-wide mb-2 transition-colors">Recent activity</h3>
-                        <p className="text-xs tracking-normal text-[#D4AF37] font-bold">Latest account activity</p>
+                <div className="lg:col-span-2 bg-surface p-4 rounded-md border border-line space-y-8 h-full flex flex-col transition-colors duration-300">
+                    <div className="border-b border-line pb-5 transition-colors">
+                        <h3 className="font-sans text-3xl text-ink tracking-wide mb-2 transition-colors">Recent activity</h3>
                     </div>
-                    
+
                     <div className="flex-1">
                         {loading ? (
                             <div className="space-y-4">
                                 {[1, 2, 3].map(n => (
-                                    <div key={n} className="flex justify-between items-center p-6 bg-slate-50 dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl shadow-sm dark:shadow-inner animate-pulse transition-colors">
+                                    <div key={n} className="flex justify-between items-center p-4 bg-canvas dark:bg-surface border border-line rounded-md animate-pulse transition-colors">
                                         <div className="space-y-3 w-1/2">
-                                            <div className="h-3 bg-slate-200 dark:bg-white/10 rounded w-full"></div>
-                                            <div className="h-2 bg-slate-200 dark:bg-white/10 rounded w-1/3"></div>
+                                            <div className="h-3 bg-canvas dark:bg-subtle rounded w-full"></div>
+                                            <div className="h-2 bg-canvas dark:bg-subtle rounded w-1/3"></div>
                                         </div>
-                                        <div className="h-8 bg-slate-200 dark:bg-white/10 w-24 rounded-full"></div>
+                                        <div className="h-8 bg-canvas dark:bg-subtle w-24 rounded-full"></div>
                                     </div>
                                 ))}
                             </div>
                         ) : stats.recentSignals.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-full min-h-[250px] border border-slate-200 dark:border-white/5 rounded-3xl bg-slate-50 dark:bg-[#111] space-y-5 shadow-sm dark:shadow-inner p-8 transition-colors duration-300">
-                                <div className="w-16 h-16 rounded-full bg-white dark:bg-[#0a0a0a] flex items-center justify-center border border-slate-200 dark:border-white/10 shadow-sm shadow-sm transition-colors">
-                                    <ShieldCheck size={28} className="text-slate-300 dark:text-white/20" />
+                            <div className="flex flex-col items-center justify-center h-full min-h-[250px] border border-line rounded-md bg-canvas dark:bg-surface space-y-5 p-4 transition-colors duration-300">
+                                <div className="w-16 h-16 rounded-full bg-surface flex items-center justify-center border border-line transition-colors">
+                                    <ShieldCheck size={28} className="text-muted" />
                                 </div>
                                 <div className="text-center">
-                                    <p className="text-xs tracking-normal text-slate-500 dark:text-white/50 font-bold mb-2 transition-colors">No recent activity</p>
-                                    <p className="text-xs tracking-widest text-[#D4AF37] font-bold">Your activity will appear here.</p>
+                                    <p className="text-xs tracking-normal text-muted font-bold mb-2 transition-colors">No recent activity</p>
                                 </div>
                             </div>
                         ) : (
@@ -336,15 +192,15 @@ export default function DesignerDashboard() {
                                     const formattedDate = new Date(activity.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 
                                     return (
-                                        <div key={activity.id || idx} className="p-6 flex justify-between items-center text-xs hover:bg-slate-100 dark:hover:bg-[#111] bg-slate-50 dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl transition-all duration-300 group shadow-sm dark:shadow-inner hover:shadow-md dark:hover:shadow-sm">
+                                        <div key={activity.id || idx} className="p-4 flex justify-between items-center text-xs hover:bg-canvas dark:hover:bg-surface bg-canvas dark:bg-surface border border-line rounded-md transition-all duration-300 group">
                                             <div className="space-y-2 pr-4 min-w-0 flex-1">
-                                                <p className="font-bold text-slate-800 dark:text-white/80 line-clamp-1 group-hover:text-slate-900 dark:group-hover:text-white transition-colors tracking-wide text-sm">{activity.description}</p>
+                                                <p className="font-bold text-ink dark:text-muted line-clamp-1 group-hover:text-ink dark:group-hover:text-ink transition-colors tracking-wide text-sm">{activity.description}</p>
                                                 <div className="flex items-center gap-2">
-                                                    <CheckCircle2 size={12} className="text-emerald-500/50" />
-                                                    <p className="text-xs font-mono text-slate-500 dark:text-white/40 tracking-widest transition-colors">{formattedDate}</p>
+                                                    <CheckCircle2 size={12} className="text-muted" />
+                                                    <p className="text-xs font-mono text-muted tracking-widest transition-colors">{formattedDate}</p>
                                                 </div>
                                             </div>
-                                            <span className="px-5 py-2.5 rounded-full text-xs font-mono font-bold tracking-normal border shrink-0 shadow-sm shadow-sm bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400 transition-colors">
+                                            <span className="px-5 py-2.5 rounded-full text-xs font-mono font-bold tracking-normal border shrink-0 bg-canvas dark:bg-subtle border-line text-action transition-colors">
                                                 +${safeFloat(activity.amount).toFixed(2)}
                                             </span>
                                         </div>

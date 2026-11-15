@@ -30,12 +30,12 @@ function Attachment({ bookingId }) {
     link.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
-  return <section className="mt-5 rounded-xl border border-slate-200 p-4 dark:border-white/10" aria-label="Attached design">
+  return <section className="mt-5 rounded-md border border-line p-4" aria-label="Attached design">
     <h3 className="font-semibold">Attached design</h3>
     <p className="mt-1 text-sm">{snapshot.design_title}</p>
-    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Version {snapshot.source_project_version}, saved when this booking was created. Visible only to you and the other participant.</p>
-    {safePreview && <img src={safePreview} alt={snapshot.design_title || "Attached Fashion Editor design"} className="mt-4 max-h-96 w-full rounded-lg bg-white object-contain" />}
-    <button type="button" onClick={download} className="mt-4 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold dark:border-white/20">Download design file</button>
-    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">The file includes the saved layers and objects.</p>
+    <p className="mt-1 text-xs text-muted">Version {snapshot.source_project_version}, saved when this booking was created. Visible only to you and the other participant.</p>
+    {safePreview && <img src={safePreview} alt={snapshot.design_title || "Attached Fashion Editor design"} className="mt-4 max-h-96 w-full rounded-md bg-surface object-contain" />}
+    <button type="button" onClick={download} className="mt-4 rounded-md border border-line px-4 py-2 text-sm font-semibold">Download design file</button>
+    <p className="mt-2 text-xs text-muted">The file includes the saved layers and objects.</p>
   </section>;
 }

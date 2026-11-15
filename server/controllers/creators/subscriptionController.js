@@ -1278,6 +1278,12 @@ protect
 =========================================================*/
 
 exports.createCheckoutSession = async (req, res) => {
+  if (process.env.CREATOR_SUBSCRIPTION_SIGNUPS_ENABLED !== "true") {
+    return sendError(res, 409, "New subscriptions are currently paused.", {
+      code: "SUBSCRIPTION_SIGNUPS_PAUSED",
+    });
+  }
+
   const creatorId = getAuthenticatedUserId(req);
 
   const plan = normalizePlan(req.body?.plan);

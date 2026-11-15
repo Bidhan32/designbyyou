@@ -188,9 +188,9 @@ const SuperAdminDashboard = () => {
   if (loading) {
     return (
       <div className="min-h-[400px] flex flex-col items-center justify-center gap-4">
-        <RefreshCw size={28} className="animate-spin text-[#D4AF37]" />
+        <RefreshCw size={28} className="animate-spin text-action" />
 
-        <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.25em]">
+        <p className="text-[10px] text-muted font-semibold uppercase tracking-normal">
           Loading Platform Intelligence...
         </p>
       </div>
@@ -202,7 +202,7 @@ const SuperAdminDashboard = () => {
        ======================================================== */
 
   return (
-    <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-10">
+    <div className="p-4 max-w-[1600px] mx-auto space-y-10">
       {/* =================================================
                 HEADER
                 ================================================= */}
@@ -210,18 +210,18 @@ const SuperAdminDashboard = () => {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-5">
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <ShieldCheck size={15} className="text-[#D4AF37]" />
+            <ShieldCheck size={15} className="text-action" />
 
-            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-[#D4AF37]">
+            <span className="text-[10px] font-semibold uppercase tracking-normal text-action">
               Super Admin Control
             </span>
           </div>
 
-          <h1 className="text-3xl md:text-4xl font-serif italic text-gray-900">
+          <h1 className="text-3xl md:text-4xl font-serif italic text-ink">
             Platform Overview
           </h1>
 
-          <p className="text-gray-400 text-sm mt-1">
+          <p className="text-muted text-sm mt-1">
             Users, bookings, revenue, escrow and payout monitoring.
           </p>
         </div>
@@ -230,7 +230,7 @@ const SuperAdminDashboard = () => {
           type="button"
           onClick={() => fetchData(true)}
           disabled={refreshing}
-          className="px-5 py-3 bg-white border border-gray-200 rounded-2xl flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-600 hover:border-black hover:text-black transition-all disabled:opacity-50"
+          className="px-5 py-3 bg-surface border border-line rounded-md flex items-center justify-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-muted hover:border-line hover:text-ink transition-all disabled:opacity-50"
         >
           <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
 
@@ -243,18 +243,18 @@ const SuperAdminDashboard = () => {
                 ================================================= */}
 
       {error && (
-        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-100 flex items-start gap-3">
+        <div className="p-4 rounded-md bg-canvas border border-line flex items-start gap-3">
           <AlertTriangle
             size={18}
-            className="text-amber-600 mt-0.5 flex-shrink-0"
+            className="text-action mt-0.5 flex-shrink-0"
           />
 
           <div>
-            <p className="text-xs font-bold text-amber-800">
+            <p className="text-xs font-bold text-action">
               Monitoring Warning
             </p>
 
-            <p className="text-xs text-amber-700 mt-1">{error}</p>
+            <p className="text-xs text-action mt-1">{error}</p>
           </div>
         </div>
       )}
@@ -269,27 +269,23 @@ const SuperAdminDashboard = () => {
           subtitle="Account and booking overview"
         />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+        <div className="divide-y divide-line rounded-md border border-line bg-surface px-4">
           <StatCard
-            icon={<Users size={20} className="text-blue-500" />}
             label="Total Creators"
             value={totalCreators}
           />
 
           <StatCard
-            icon={<HardDrive size={20} className="text-purple-500" />}
             label="Total Designers"
             value={totalDesigners}
           />
 
           <StatCard
-            icon={<UserCheck size={20} className="text-[#D4AF37]" />}
             label="Pending Designers"
             value={numberValue(stats?.pending_designers)}
           />
 
           <StatCard
-            icon={<Activity size={20} className="text-green-500" />}
             label="Active Projects"
             value={numberValue(stats?.bookings?.active)}
           />
@@ -306,33 +302,29 @@ const SuperAdminDashboard = () => {
           subtitle="Calculated from the existing transaction ledger"
         />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+        <div className="divide-y divide-line rounded-md border border-line bg-surface px-4">
           <MoneyCard
             label="Total Platform Retained"
             value={formatMoney(finance?.revenue?.total_platform_fees)}
             note="Creator fees plus booking amount retained by platform"
-            icon={<DollarSign size={20} className="text-green-600" />}
           />
 
           <MoneyCard
             label="Platform Retained from Bookings"
             value={formatMoney(bookingPlatformRetained)}
             note="Booking base amount retained after Designer commission"
-            icon={<DollarSign size={20} className="text-[#D4AF37]" />}
           />
 
           <MoneyCard
             label="Designer Earnings Released"
             value={formatMoney(finance?.revenue?.designer_earnings_released)}
             note="Net earnings credited to Designers"
-            icon={<Wallet size={20} className="text-blue-600" />}
           />
 
           <MoneyCard
             label="Pending Escrow"
             value={formatMoney(finance?.wallets?.pending_escrow_balance)}
             note="Designer funds currently locked"
-            icon={<Clock size={20} className="text-orange-500" />}
           />
         </div>
       </section>
@@ -344,16 +336,16 @@ const SuperAdminDashboard = () => {
       <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Revenue / Ledger */}
 
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-gray-100">
-            <h3 className="font-bold text-gray-900">Revenue & Ledger</h3>
+        <div className="bg-surface rounded-md border border-line overflow-hidden">
+          <div className="p-4 border-b border-line">
+            <h3 className="font-bold text-ink">Revenue & Ledger</h3>
 
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-muted mt-1">
               Financial totals from recorded transactions.
             </p>
           </div>
 
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-line">
             <DataRow
               label="Creator / Platform Fees"
               value={formatMoney(finance?.revenue?.creator_platform_fees)}
@@ -390,18 +382,18 @@ const SuperAdminDashboard = () => {
 
         {/* Wallet / Payout */}
 
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-gray-100">
-            <h3 className="font-bold text-gray-900">
+        <div className="bg-surface rounded-md border border-line overflow-hidden">
+          <div className="p-4 border-b border-line">
+            <h3 className="font-bold text-ink">
               Wallet & Payout Position
             </h3>
 
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-muted mt-1">
               Designer balances and payout activity.
             </p>
           </div>
 
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-line">
             <DataRow
               label="Designer Available Balance"
               value={formatMoney(finance?.wallets?.designer_available_balance)}
@@ -446,8 +438,8 @@ const SuperAdminDashboard = () => {
           subtitle="Current operational booking state"
         />
 
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 divide-x divide-y xl:divide-y-0 divide-gray-100">
+        <div className="bg-surface rounded-md border border-line overflow-hidden">
+          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 divide-x divide-y xl:divide-y-0 divide-line">
             <MiniMetric
               label="Total"
               value={numberValue(finance?.bookings?.total_bookings)}
@@ -504,18 +496,18 @@ const SuperAdminDashboard = () => {
           subtitle="Read-only payout share based on completed bookings"
         />
 
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="bg-surface rounded-md border border-line overflow-hidden">
+          <div className="p-4 border-b border-line flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <ShieldCheck size={17} className="text-[#D4AF37]" />
+                <ShieldCheck size={17} className="text-action" />
 
-                <h3 className="font-bold text-gray-900">
+                <h3 className="font-bold text-ink">
                   Automatic Designer Commission
                 </h3>
               </div>
 
-              <p className="text-xs text-gray-400 mt-2 max-w-3xl leading-relaxed">
+              <p className="text-xs text-muted mt-2 max-w-3xl leading-relaxed">
                 The percentage shown below is the share of the booking base
                 amount credited to the Designer when a completed booking is
                 released. Rates are controlled by tier and are not globally
@@ -524,10 +516,10 @@ const SuperAdminDashboard = () => {
             </div>
 
             <div
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl border ${
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-md border ${
                 policyConsistent
-                  ? "bg-green-50 border-green-100 text-green-700"
-                  : "bg-amber-50 border-amber-100 text-amber-700"
+                  ? "bg-canvas border-line text-action"
+                  : "bg-canvas border-line text-action"
               }`}
             >
               {policyConsistent ? (
@@ -536,7 +528,7 @@ const SuperAdminDashboard = () => {
                 <AlertTriangle size={15} />
               )}
 
-              <span className="text-[10px] font-black uppercase tracking-widest">
+              <span className="text-[10px] font-semibold uppercase tracking-widest">
                 {policyConsistent
                   ? "Policy Synchronized"
                   : `${policyMismatches} Mismatch${
@@ -546,7 +538,7 @@ const SuperAdminDashboard = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 divide-x divide-y xl:divide-y-0 divide-gray-100">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 divide-x divide-y xl:divide-y-0 divide-line">
             {tierPolicy.length > 0 ? (
               tierPolicy.map((tier) => (
                 <TierPolicyCard
@@ -559,25 +551,25 @@ const SuperAdminDashboard = () => {
                 />
               ))
             ) : (
-              <div className="xl:col-span-5 p-8 text-center text-sm text-gray-400">
+              <div className="xl:col-span-5 p-4 text-center text-sm text-muted">
                 Designer tier policy data is unavailable.
               </div>
             )}
           </div>
 
           {!policyConsistent && policyMismatches > 0 && (
-            <div className="m-6 mt-0 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-3">
+            <div className="m-6 mt-0 p-4 bg-canvas border border-line rounded-md flex items-start gap-3">
               <AlertTriangle
                 size={17}
-                className="text-amber-600 mt-0.5 flex-shrink-0"
+                className="text-action mt-0.5 flex-shrink-0"
               />
 
               <div>
-                <p className="text-xs font-bold text-amber-800">
+                <p className="text-xs font-bold text-action">
                   Stored Tier / Rate Mismatch
                 </p>
 
-                <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                <p className="text-xs text-action mt-1 leading-relaxed">
                   {policyMismatches} Designer profile
                   {policyMismatches === 1 ? "" : "s"} do not currently match the
                   expected commission rate for their stored tier. Review those
@@ -594,44 +586,44 @@ const SuperAdminDashboard = () => {
                 ================================================= */}
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
-          <p className="text-[10px] uppercase tracking-widest font-black text-gray-400">
+        <div className="bg-surface rounded-md border border-line p-4">
+          <p className="text-[10px] uppercase tracking-widest font-semibold text-muted">
             Designer Profiles
           </p>
 
-          <p className="text-3xl font-serif mt-2 text-gray-900">
+          <p className="text-3xl font-serif mt-2 text-ink">
             {numberValue(commissionPolicy?.designer_profiles)}
           </p>
 
-          <p className="text-xs text-gray-400 mt-4">
+          <p className="text-xs text-muted mt-4">
             Designer profiles currently covered by the tier commission policy.
           </p>
         </div>
 
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
-          <p className="text-[10px] uppercase tracking-widest font-black text-gray-400">
+        <div className="bg-surface rounded-md border border-line p-4">
+          <p className="text-[10px] uppercase tracking-widest font-semibold text-muted">
             Completed Booking Value
           </p>
 
-          <p className="text-3xl font-serif mt-2 text-gray-900">
+          <p className="text-3xl font-serif mt-2 text-ink">
             {formatMoney(finance?.bookings?.completed_booking_value)}
           </p>
 
-          <p className="text-xs text-gray-400 mt-4">
+          <p className="text-xs text-muted mt-4">
             Agreed value of bookings currently marked completed.
           </p>
         </div>
 
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
-          <p className="text-[10px] uppercase tracking-widest font-black text-gray-400">
+        <div className="bg-surface rounded-md border border-line p-4">
+          <p className="text-[10px] uppercase tracking-widest font-semibold text-muted">
             Pending Payout Value
           </p>
 
-          <p className="text-3xl font-serif mt-2 text-gray-900">
+          <p className="text-3xl font-serif mt-2 text-ink">
             {formatMoney(finance?.payouts?.pending_payout_request_value)}
           </p>
 
-          <p className="text-xs text-gray-400 mt-4">
+          <p className="text-xs text-muted mt-4">
             Value of manual payout requests currently waiting for processing.
           </p>
         </div>
@@ -641,17 +633,17 @@ const SuperAdminDashboard = () => {
                 USER ROLE DISTRIBUTION
                 ================================================= */}
 
-      <section className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <section className="bg-surface rounded-md border border-line overflow-hidden">
+        <div className="p-4 border-b border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="font-bold text-gray-900">User Role Distribution</h3>
+            <h3 className="font-bold text-ink">User Role Distribution</h3>
 
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-muted mt-1">
               {totalUsers} total registered platform accounts
             </p>
           </div>
 
-          <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-muted">
             Admins: {totalAdmins} • Superadmins: {totalSuperadmins}
           </div>
         </div>
@@ -659,7 +651,7 @@ const SuperAdminDashboard = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-gray-50 text-[10px] uppercase tracking-[0.2em] text-gray-400">
+              <tr className="bg-canvas text-[10px] uppercase tracking-normal text-muted">
                 <th className="px-8 py-4">Role</th>
 
                 <th className="px-8 py-4">Population</th>
@@ -668,7 +660,7 @@ const SuperAdminDashboard = () => {
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-line">
               {Array.isArray(stats?.user_distribution) &&
                 stats.user_distribution.map((item) => {
                   const count = numberValue(item.count);
@@ -681,28 +673,28 @@ const SuperAdminDashboard = () => {
                   return (
                     <tr
                       key={item.role}
-                      className="hover:bg-gray-50/50 transition-colors"
+                      className="hover:bg-subtle transition-colors"
                     >
-                      <td className="px-8 py-5 text-sm font-bold text-gray-700 capitalize">
+                      <td className="px-8 py-5 text-sm font-bold text-ink capitalize">
                         {item.role}
                       </td>
 
-                      <td className="px-8 py-5 text-sm text-gray-500">
+                      <td className="px-8 py-5 text-sm text-muted">
                         {count} members
                       </td>
 
                       <td className="px-8 py-5">
                         <div className="flex items-center gap-3">
-                          <div className="w-32 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="w-32 h-1.5 bg-subtle rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-[#D4AF37] rounded-full"
+                              className="h-full bg-action rounded-full text-on-action"
                               style={{
                                 width: `${percentage}%`,
                               }}
                             />
                           </div>
 
-                          <span className="text-[10px] font-bold text-gray-400">
+                          <span className="text-[10px] font-bold text-muted">
                             {percentage.toFixed(1)}%
                           </span>
                         </div>
@@ -712,29 +704,6 @@ const SuperAdminDashboard = () => {
                 })}
             </tbody>
           </table>
-        </div>
-      </section>
-
-      {/* =================================================
-                MONITORING STATUS
-                ================================================= */}
-
-      <section className="bg-green-50 border border-green-100 rounded-3xl p-5 flex items-start gap-3">
-        <CheckCircle2
-          size={20}
-          className="text-green-600 flex-shrink-0 mt-0.5"
-        />
-
-        <div>
-          <p className="text-sm font-bold text-green-800">
-            Dashboard uses database-backed monitoring
-          </p>
-
-          <p className="text-xs text-green-700 mt-1 leading-relaxed">
-            Revenue, tier policy, booking, escrow, wallet and payout values
-            shown here are loaded from the Super Admin backend rather than
-            hard-coded interface values.
-          </p>
         </div>
       </section>
     </div>
@@ -747,53 +716,29 @@ const SuperAdminDashboard = () => {
 
 const SectionHeading = ({ title, subtitle }) => (
   <div>
-    <h2 className="text-sm font-black uppercase tracking-[0.18em] text-gray-900">
+    <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-ink">
       {title}
     </h2>
 
-    <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
+    <p className="text-xs text-muted mt-1">{subtitle}</p>
   </div>
 );
 
-const StatCard = ({ icon, label, value }) => (
-  <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-    <div className="flex items-start justify-between mb-5">
-      <div className="p-3 bg-gray-50 rounded-2xl">{icon}</div>
-    </div>
-
-    <p className="text-[10px] uppercase tracking-widest font-black text-gray-400">
-      {label}
-    </p>
-
-    <h4 className="text-3xl font-serif text-gray-900 mt-1">{value ?? 0}</h4>
-  </div>
-);
-
-const MoneyCard = ({ icon, label, value, note }) => (
-  <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-    <div className="flex items-start justify-between mb-5">
-      <div className="p-3 bg-gray-50 rounded-2xl">{icon}</div>
-    </div>
-
-    <p className="text-[10px] uppercase tracking-widest font-black text-gray-400">
-      {label}
-    </p>
-
-    <h4 className="text-2xl md:text-3xl font-serif text-gray-900 mt-1">
-      {value}
-    </h4>
-
-    <p className="text-[10px] text-gray-400 mt-2">{note}</p>
+const StatCard = ({ label, value }) => <DataRow label={label} value={value ?? 0} />;
+const MoneyCard = ({ label, value, note }) => (
+  <div className="py-2">
+    <DataRow label={label} value={value} />
+    <p className="text-xs text-muted">{note}</p>
   </div>
 );
 
 const DataRow = ({ label, value, alert = false }) => (
   <div className="px-6 py-4 flex items-center justify-between gap-4">
-    <span className="text-xs text-gray-500">{label}</span>
+    <span className="text-xs text-muted">{label}</span>
 
     <span
       className={`text-sm font-bold font-mono ${
-        alert ? "text-red-600" : "text-gray-900"
+        alert ? "text-action" : "text-ink"
       }`}
     >
       {value}
@@ -802,14 +747,14 @@ const DataRow = ({ label, value, alert = false }) => (
 );
 
 const MiniMetric = ({ label, value, warning = false, danger = false }) => (
-  <div className="p-5 min-h-[110px] flex flex-col justify-center">
-    <p className="text-[9px] uppercase tracking-widest font-black text-gray-400">
+  <div className="p-4 min-h-[110px] flex flex-col justify-center">
+    <p className="text-[11px] uppercase tracking-widest font-semibold text-muted">
       {label}
     </p>
 
     <p
       className={`text-2xl font-serif mt-2 ${
-        danger ? "text-red-600" : warning ? "text-orange-600" : "text-gray-900"
+        danger ? "text-action" : warning ? "text-action" : "text-ink"
       }`}
     >
       {value}
@@ -831,28 +776,28 @@ const TierPolicyCard = ({ tier, minimum, maximum, rate, designerCount }) => {
       : `${minimumValue}–${numberOrZero(maximum)}`;
 
   return (
-    <div className="p-5 min-h-[160px]">
+    <div className="p-4 min-h-[160px]">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[9px] uppercase tracking-widest font-black text-gray-400">
+          <p className="text-[11px] uppercase tracking-widest font-semibold text-muted">
             {tierLabel}
           </p>
 
-          <p className="text-3xl font-serif text-gray-900 mt-2">
+          <p className="text-3xl font-serif text-ink mt-2">
             {numberOrZero(rate)}%
           </p>
         </div>
 
-        <div className="p-2.5 rounded-xl bg-[#D4AF37]/10">
-          <DollarSign size={16} className="text-[#D4AF37]" />
+        <div className="p-2.5 rounded-md bg-subtle">
+          <DollarSign size={16} className="text-action" />
         </div>
       </div>
 
-      <p className="text-[11px] text-gray-500 mt-4">
+      <p className="text-[11px] text-muted mt-4">
         {bookingRange} completed bookings
       </p>
 
-      <p className="text-[10px] text-gray-400 mt-1">
+      <p className="text-[10px] text-muted mt-1">
         {numberOrZero(designerCount)} Designer
         {numberOrZero(designerCount) === 1 ? "" : "s"}
       </p>

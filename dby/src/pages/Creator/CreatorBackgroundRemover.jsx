@@ -245,38 +245,38 @@ export default function CreatorBackgroundRemover() {
     value ? `${value.width} × ${value.height}px` : "";
 
   return (
-    <main className="min-h-screen bg-[#faf9f6] pb-24 text-slate-900 dark:bg-[#080808] dark:text-white">
-      <section className="relative overflow-hidden border-b border-[#d7bb78]/20 bg-[#12100e] px-5 py-12 text-white sm:px-8 sm:py-16">
+    <main className="min-h-screen bg-canvas pb-24 text-ink">
+      <section className="relative overflow-hidden border-b border-line bg-surface px-5 py-12 text-ink sm:px-8 sm:py-16">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -right-20 -top-48 h-96 w-96 rounded-full bg-[#d3aa52]/15 blur-3xl"
+          className="pointer-events-none absolute -right-20 -top-48 h-96 w-96 rounded-full bg-subtle blur-3xl"
         />
         <div className="relative mx-auto max-w-7xl">
           <Link
             to="/creator/tools"
-            className="inline-flex items-center gap-2 text-xs text-white/65 transition hover:text-[#e5c67d]"
+            className="inline-flex items-center gap-2 text-xs text-muted transition hover:text-action"
           >
-            <ArrowLeft size={16} /> Back to Creative Hub
+            <ArrowLeft size={16} /> Back to tools
           </Link>
-          <div className="mt-10 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[.25em] text-[#e5c67d]">
+          <div className="mt-10 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.25em] text-action">
             <Sparkles size={16} /> DesignByYou AI Studio
           </div>
-          <h1 className="mt-4 max-w-3xl font-serif text-4xl leading-tight sm:text-5xl lg:text-6xl">
-            Background <span className="italic text-[#e5c67d]">Remover</span>
+          <h1 className="mt-4 max-w-3xl font-sans text-4xl leading-tight sm:text-5xl lg:text-6xl">
+            Background <span className="italic text-action">Remover</span>
           </h1>
-          <p className="mt-4 max-w-xl text-sm leading-7 text-white/65 sm:text-base">
+          <p className="mt-4 max-w-xl text-sm leading-7 text-muted sm:text-base">
             Turn fashion photographs, accessories and creative assets into
             clean, transparent PNGs in a few clicks.
           </p>
-          <div className="mt-6 flex flex-wrap gap-3 text-[11px] text-white/65">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-2">
-              <ShieldCheck size={14} className="text-[#e5c67d]" /> Creator-only
+          <div className="mt-6 flex flex-wrap gap-3 text-[11px] text-muted">
+            <span className="inline-flex items-center gap-2 rounded-md border border-line px-3 py-2">
+              <ShieldCheck size={14} className="text-action" /> Creator-only
             </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-2">
-              <FileImage size={14} className="text-[#e5c67d]" /> Transparent PNG
+            <span className="inline-flex items-center gap-2 rounded-md border border-line px-3 py-2">
+              <FileImage size={14} className="text-action" /> Transparent PNG
             </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-2">
-              <Scissors size={14} className="text-[#e5c67d]" /> Powered by AI
+            <span className="inline-flex items-center gap-2 rounded-md border border-line px-3 py-2">
+              <Scissors size={14} className="text-action" /> Powered by AI
             </span>
           </div>
         </div>
@@ -284,20 +284,20 @@ export default function CreatorBackgroundRemover() {
 
       <div className="mx-auto grid max-w-7xl gap-7 px-5 pt-9 sm:px-8 lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start lg:gap-9">
         <section
-          className="rounded-[1.6rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#141414] sm:p-6"
+          className="rounded-md border border-line bg-surface p-4"
           aria-labelledby="upload-title"
         >
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[.19em] text-[#ad8128] dark:text-[#e5c67d]">
+              <p className="text-[10px] font-semibold uppercase tracking-[.19em] text-action">
                 Step 01
               </p>
-              <h2 id="upload-title" className="mt-2 font-serif text-2xl">
+              <h2 id="upload-title" className="mt-2 font-sans text-2xl">
                 Choose your image
               </h2>
             </div>
             <ImagePlus
-              className="text-[#b38d43]"
+              className="text-action"
               size={22}
               aria-hidden="true"
             />
@@ -328,35 +328,35 @@ export default function CreatorBackgroundRemover() {
                 setDragging(false);
             }}
             onDrop={onDrop}
-            className={`mt-6 rounded-2xl border-2 border-dashed p-5 text-center transition ${dragging ? "border-[#c9a250] bg-[#fff8e6] dark:bg-[#e5c67d]/10" : "border-slate-200 bg-slate-50 dark:border-white/15 dark:bg-white/[.035]"}`}
+            className={`mt-6 rounded-md border-2 border-dashed p-4 text-center transition ${dragging ? "border-line bg-canvas dark:bg-subtle" : "border-line bg-canvas dark:bg-subtle"}`}
           >
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#e5c67d]/15 text-[#ad8128] dark:text-[#e5c67d]">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-md bg-subtle text-action">
               <UploadCloud size={26} aria-hidden="true" />
             </div>
             <p className="mt-4 text-sm font-bold">Drag an image here</p>
-            <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-white/50">
+            <p className="mt-2 text-xs leading-5 text-muted">
               Or browse from your device
             </p>
             <button
               type="button"
               disabled={processing}
               onClick={() => inputRef.current?.click()}
-              className="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl border border-[#c9a250] px-5 text-xs font-bold text-[#8e671c] transition hover:bg-[#e5c67d] hover:text-black disabled:cursor-not-allowed disabled:opacity-50 dark:text-[#e5c67d]"
+              className="mt-5 inline-flex min-h-9 items-center justify-center rounded-md border border-line px-5 text-xs font-bold text-action transition hover:bg-subtle hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
             >
               Browse images
             </button>
-            <p className="mt-4 text-[11px] text-slate-400 dark:text-white/40">
+            <p className="mt-4 text-[11px] text-muted">
               JPG, PNG, WebP · Up to 12 MB
             </p>
           </div>
 
           {file && (
-            <div className="mt-4 flex items-start justify-between gap-3 rounded-xl border border-slate-200 p-3 dark:border-white/10">
+            <div className="mt-4 flex items-start justify-between gap-3 rounded-md border border-line p-3">
               <div className="min-w-0">
                 <p className="truncate text-xs font-semibold" title={file.name}>
                   {file.name}
                 </p>
-                <p className="mt-1 text-[11px] text-slate-500 dark:text-white/50">
+                <p className="mt-1 text-[11px] text-muted">
                   {formattedBytes(file.size)}{" "}
                   {originalDimensions
                     ? `· ${dimensionLabel(originalDimensions)}`
@@ -368,7 +368,7 @@ export default function CreatorBackgroundRemover() {
                 onClick={resetAll}
                 disabled={processing}
                 aria-label="Remove selected image"
-                className="rounded-lg p-1 text-slate-400 hover:text-red-600 disabled:opacity-40"
+                className="rounded-md p-1 text-muted hover:text-action disabled:opacity-40"
               >
                 <X size={17} />
               </button>
@@ -379,7 +379,7 @@ export default function CreatorBackgroundRemover() {
             type="button"
             onClick={generate}
             disabled={!file || processing}
-            className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#e5c67d] px-4 text-sm font-bold text-black transition hover:bg-[#f3d790] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 dark:disabled:bg-white/10 dark:disabled:text-white/30"
+            className="mt-5 inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-md bg-subtle px-4 text-sm font-bold text-ink transition hover:bg-subtle disabled:cursor-not-allowed disabled:bg-subtle disabled:text-muted"
           >
             {processing ? (
               <>
@@ -397,17 +397,17 @@ export default function CreatorBackgroundRemover() {
           {error && (
             <div
               role="alert"
-              className="mt-4 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs leading-5 text-rose-700 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-200"
+              className="mt-4 flex items-start gap-2 rounded-md border border-line bg-canvas p-3 text-xs leading-5 text-action dark:bg-subtle"
             >
               <AlertCircle size={17} className="mt-0.5 shrink-0" /> {error}
             </div>
           )}
-          <p className="mt-4 text-[11px] leading-5 text-slate-500 dark:text-white/40">
+          <p className="mt-4 text-[11px] leading-5 text-muted">
             Your image is sent to FASHN AI for processing. It is not
             automatically saved to your DesignByYou profile.
           </p>
           {usage && (
-            <p className="mt-3 text-[11px] text-slate-500 dark:text-white/50">
+            <p className="mt-3 text-[11px] text-muted">
               Usage this hour: {usage.used} of {usage.limit} successful
               generations
             </p>
@@ -415,15 +415,15 @@ export default function CreatorBackgroundRemover() {
         </section>
 
         <section
-          className="min-w-0 overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#141414]"
+          className="min-w-0 overflow-hidden rounded-md border border-line bg-surface"
           aria-labelledby="preview-title"
         >
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-5 dark:border-white/10 sm:px-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-5 sm:px-6">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[.19em] text-[#ad8128] dark:text-[#e5c67d]">
+              <p className="text-[10px] font-semibold uppercase tracking-[.19em] text-action">
                 Step 02
               </p>
-              <h2 id="preview-title" className="mt-1 font-serif text-2xl">
+              <h2 id="preview-title" className="mt-1 font-sans text-2xl">
                 Your workspace
               </h2>
             </div>
@@ -431,7 +431,7 @@ export default function CreatorBackgroundRemover() {
               <div
                 role="group"
                 aria-label="Image viewing mode"
-                className="flex rounded-xl bg-slate-100 p-1 text-xs dark:bg-white/10"
+                className="flex rounded-md bg-subtle p-1 text-xs"
               >
                 {[
                   { id: "compare", title: "Compare" },
@@ -442,7 +442,7 @@ export default function CreatorBackgroundRemover() {
                     type="button"
                     onClick={() => setView(item.id)}
                     aria-pressed={view === item.id}
-                    className={`rounded-lg px-3 py-2 font-semibold transition ${view === item.id ? "bg-white text-black shadow-sm dark:bg-[#e5c67d]" : "text-slate-500 dark:text-white/60"}`}
+                    className={`rounded-md px-3 py-2 font-semibold transition ${view === item.id ? "bg-surface text-ink dark:bg-subtle" : "text-muted"}`}
                   >
                     {item.title}
                   </button>
@@ -451,9 +451,9 @@ export default function CreatorBackgroundRemover() {
             )}
           </div>
 
-          <div className="p-4 sm:p-6">
+          <div className="p-4">
             <div
-              className="relative flex min-h-[320px] items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-[#f0efed] dark:border-white/10 sm:min-h-[430px]"
+              className="relative flex min-h-[320px] items-center justify-center overflow-hidden rounded-md border border-line bg-canvas sm:min-h-[430px]"
               style={
                 !file || (hasResult && view === "result")
                   ? CHECKERBOARD
@@ -464,13 +464,13 @@ export default function CreatorBackgroundRemover() {
                 <div className="px-5 text-center">
                   <FileImage
                     size={37}
-                    className="mx-auto text-slate-400"
+                    className="mx-auto text-muted"
                     aria-hidden="true"
                   />
-                  <p className="mt-4 font-serif text-xl text-slate-700">
+                  <p className="mt-4 font-serif text-xl text-ink">
                     Your image will appear here
                   </p>
-                  <p className="mt-2 text-xs text-slate-500">
+                  <p className="mt-2 text-xs text-muted">
                     Choose a photo to get started.
                   </p>
                 </div>
@@ -522,38 +522,38 @@ export default function CreatorBackgroundRemover() {
                     <>
                       <div
                         aria-hidden="true"
-                        className="pointer-events-none absolute inset-y-0 z-10 w-[2px] bg-white shadow-[0_0_0_1px_rgba(0,0,0,.2)]"
+                        className="pointer-events-none absolute inset-y-0 z-10 w-[2px] bg-surface"
                         style={{ left: `${slider}%` }}
                       />
                       <div
                         aria-hidden="true"
-                        className="pointer-events-none absolute top-1/2 z-20 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-[#171717] text-xs font-bold text-white shadow-lg"
+                        className="pointer-events-none absolute top-1/2 z-20 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-line bg-surface text-xs font-bold text-ink"
                         style={{ left: `${slider}%` }}
                       >
                         ↔
                       </div>
-                      <span className="pointer-events-none absolute left-3 top-3 z-20 rounded-md bg-black/65 px-2 py-1 text-[10px] font-bold text-white">
+                      <span className="pointer-events-none absolute left-3 top-3 z-20 rounded-md bg-black/65 px-2 py-1 text-[10px] font-bold text-ink">
                         AFTER
                       </span>
-                      <span className="pointer-events-none absolute right-3 top-3 z-20 rounded-md bg-black/65 px-2 py-1 text-[10px] font-bold text-white">
+                      <span className="pointer-events-none absolute right-3 top-3 z-20 rounded-md bg-black/65 px-2 py-1 text-[10px] font-bold text-ink">
                         BEFORE
                       </span>
                     </>
                   )}
                   {processing && (
                     <div
-                      className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-[#141414]/75 px-5 text-center text-white backdrop-blur-sm"
+                      className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-subtle px-5 text-center text-ink"
                       role="status"
                       aria-live="polite"
                     >
                       <Loader2
                         size={35}
-                        className="animate-spin text-[#e5c67d]"
+                        className="animate-spin text-action"
                       />
                       <p className="mt-5 font-serif text-xl">
                         Removing background
                       </p>
-                      <p className="mt-2 text-xs text-white/65">
+                      <p className="mt-2 text-xs text-muted">
                         AI is separating your subject from the background.
                         Please keep this page open.
                       </p>
@@ -565,7 +565,7 @@ export default function CreatorBackgroundRemover() {
 
             {hasResult && view === "compare" && (
               <div className="mt-5">
-                <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-[.13em] text-slate-500 dark:text-white/60">
+                <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-[.13em] text-muted">
                   <span>Background removed</span>
                   <span>Original</span>
                 </div>
@@ -577,23 +577,23 @@ export default function CreatorBackgroundRemover() {
                   value={slider}
                   onChange={(event) => setSlider(Number(event.target.value))}
                   aria-label="Reveal percentage of the background-removed image"
-                  className="mt-3 w-full cursor-ew-resize accent-[#b68b36]"
+                  className="mt-3 w-full cursor-ew-resize accent-action"
                 />
               </div>
             )}
 
             {hasResult && (
-              <div className="mt-6 flex flex-col justify-between gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10 sm:flex-row sm:items-center">
+              <div className="mt-6 flex flex-col justify-between gap-4 rounded-md border border-line bg-canvas p-4 dark:bg-subtle sm:flex-row sm:items-center">
                 <div className="flex items-center gap-3">
                   <CheckCircle2
                     size={23}
-                    className="shrink-0 text-emerald-600 dark:text-emerald-300"
+                    className="shrink-0 text-action"
                   />
                   <div>
-                    <p className="text-sm font-bold text-emerald-900 dark:text-emerald-100">
+                    <p className="text-sm font-bold text-action">
                       Background removed
                     </p>
-                    <p className="mt-1 text-[11px] text-emerald-700 dark:text-emerald-200/70">
+                    <p className="mt-1 text-[11px] text-action dark:text-muted">
                       Transparent PNG · {formattedBytes(outputBytes)}{" "}
                       {outputDimensions
                         ? `· ${dimensionLabel(outputDimensions)}`
@@ -604,7 +604,7 @@ export default function CreatorBackgroundRemover() {
                 <button
                   type="button"
                   onClick={download}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#171717] px-5 text-xs font-bold text-white hover:bg-black dark:bg-[#e5c67d] dark:text-black"
+                  className="inline-flex min-h-9 items-center justify-center gap-2 rounded-md bg-surface px-5 text-xs font-bold text-ink hover:bg-canvas dark:bg-subtle"
                 >
                   <Download size={17} /> Download PNG
                 </button>
@@ -613,7 +613,7 @@ export default function CreatorBackgroundRemover() {
 
             {file && !processing && (
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs text-slate-500 dark:text-white/50">
+                <p className="text-xs text-muted">
                   {hasResult
                     ? "Want to try another photo?"
                     : "Ready when you are."}
@@ -621,7 +621,7 @@ export default function CreatorBackgroundRemover() {
                 <button
                   type="button"
                   onClick={resetAll}
-                  className="inline-flex items-center gap-2 text-xs font-semibold text-[#987126] transition hover:text-black dark:text-[#e5c67d] dark:hover:text-white"
+                  className="inline-flex items-center gap-2 text-xs font-semibold text-action transition hover:text-ink"
                 >
                   <RefreshCcw size={15} /> Start over
                 </button>
@@ -632,14 +632,14 @@ export default function CreatorBackgroundRemover() {
       </div>
 
       <section className="mx-auto mt-8 max-w-7xl px-5 sm:px-8">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#d7bb78]/30 bg-[#e5c67d]/10 px-5 py-4 dark:bg-[#e5c67d]/[.06]">
-          <p className="text-xs leading-6 text-slate-600 dark:text-white/65">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-line bg-subtle px-5 py-4">
+          <p className="text-xs leading-6 text-muted">
             Your generated image is temporary. Download the PNG before leaving
             this page.
           </p>
           <Link
             to="/creator/tools"
-            className="inline-flex items-center gap-2 text-xs font-bold text-[#906819] dark:text-[#e5c67d]"
+            className="inline-flex items-center gap-2 text-xs font-bold text-action"
           >
             Explore more tools <ArrowRight size={15} />
           </Link>

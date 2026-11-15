@@ -84,12 +84,12 @@ export default function ShowcaseThumbnail({ item }) {
 
   const source = image || ((!isGarment || fallback) ? item.watermarked_preview_url : null);
   return (
-    <div ref={host} className="relative h-full w-full bg-slate-100 dark:bg-slate-800">
+    <div ref={host} className="relative h-full w-full bg-subtle">
       {source ? <img src={source} alt={item.title || "Showcase design"}
         loading="lazy" decoding="async"
         className={`h-full w-full ${image ? "object-contain" : "object-cover"}`} /> :
-        <div className="flex h-full items-center justify-center text-sm text-slate-500" role="status">
-          {isGarment && !fallback ? <><span aria-hidden="true" className="absolute inset-0 animate-pulse bg-slate-200 motion-reduce:animate-none dark:bg-slate-700" /><span className="relative">Loading preview…</span></> : "Preview unavailable"}
+        <div className="flex h-full items-center justify-center text-sm text-muted" role="status">
+          {isGarment && !fallback ? <><span aria-hidden="true" className="absolute inset-0 animate-pulse bg-subtle motion-reduce:animate-none" /><span className="relative">Loading preview…</span></> : "Preview unavailable"}
         </div>}
       {preview && <div aria-hidden="true" className="pointer-events-none absolute left-0 top-0 h-[400px] w-[320px] opacity-0">
         <Suspense fallback={null}>

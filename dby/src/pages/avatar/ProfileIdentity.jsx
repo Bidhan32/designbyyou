@@ -623,7 +623,7 @@ function extractAvatarObject(response) {
 const SIZE_MAP = {
   xs: {
     wrapper: "h-7 w-7",
-    initials: "text-[8px]",
+    initials: "text-[11px]",
     icon: 12,
   },
 
@@ -1034,9 +1034,9 @@ export default function ProfileIdentity({
 
   const shapeClass =
     shape === "square"
-      ? "rounded-xl"
+      ? "rounded-md"
       : shape === "rounded"
-        ? "rounded-2xl"
+        ? "rounded-md"
         : "rounded-full";
 
   /* =======================================================
@@ -1053,16 +1053,7 @@ export default function ProfileIdentity({
      ======================================================= */
 
   const wrapperClass = `
-    relative
-    shrink-0
-    overflow-hidden
-    border
-    border-slate-200
-    bg-slate-100
-    shadow-sm
-
-    dark:border-white/10
-    dark:bg-[#111]
+    relative shrink-0 overflow-hidden border border-line bg-subtle dark:bg-surface
 
     ${sizeConfig.wrapper}
     ${shapeClass}
@@ -1083,23 +1074,13 @@ export default function ProfileIdentity({
       >
         <div
           className="
-            flex
-            h-full
-            w-full
-            items-center
-            justify-center
-            bg-slate-100
-
-            dark:bg-white/[0.035]
+            flex h-full w-full items-center justify-center bg-subtle
           "
         >
           <Loader2
             size={sizeConfig.icon}
             className="
-              animate-spin
-              text-[#B18A24]
-
-              dark:text-[#D4AF37]
+              animate-spin text-action
             "
           />
         </div>
@@ -1115,9 +1096,7 @@ export default function ProfileIdentity({
     const content = (
       <div
         className={`
-          relative
-          h-full
-          w-full
+          relative h-full w-full
           ${personaClassName}
         `}
       >
@@ -1130,8 +1109,7 @@ export default function ProfileIdentity({
           size={personaSize}
           ariaLabel={`${displayName} Fashion Persona`}
           className="
-            h-full
-            w-full
+            h-full w-full
           "
         />
 
@@ -1142,23 +1120,7 @@ export default function ProfileIdentity({
         {size !== "xs" && size !== "sm" && (
           <span
             className="
-                pointer-events-none
-                absolute
-                bottom-0.5
-                right-0.5
-                flex
-                h-4
-                w-4
-                items-center
-                justify-center
-                rounded-full
-                border
-                border-white/60
-                bg-violet-600
-                text-white
-                shadow
-
-                dark:border-[#111]
+                pointer-events-none absolute bottom-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-line bg-action text-on-action
               "
             title="Fashion Persona profile picture"
           >
@@ -1206,9 +1168,7 @@ export default function ProfileIdentity({
         decoding="async"
         onError={() => setImageFailed(true)}
         className={`
-          h-full
-          w-full
-          object-cover
+          h-full w-full object-cover
           ${imageClassName}
         `}
       />
@@ -1246,24 +1206,7 @@ export default function ProfileIdentity({
   const initialsContent = (
     <div
       className={`
-        flex
-        h-full
-        w-full
-        items-center
-        justify-center
-        bg-gradient-to-br
-        from-[#D4AF37]/15
-        via-slate-50
-        to-violet-100
-        font-black
-        uppercase
-        tracking-wide
-        text-[#98761A]
-
-        dark:from-[#D4AF37]/15
-        dark:via-[#111]
-        dark:to-violet-950/30
-        dark:text-[#D4AF37]
+        flex h-full w-full items-center justify-center bg-surface font-semibold uppercase tracking-wide text-action
 
         ${sizeConfig.initials}
       `}

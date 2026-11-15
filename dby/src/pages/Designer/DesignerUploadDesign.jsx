@@ -402,8 +402,8 @@ function SectionHeader({
   description,
 }) {
   return (
-    <div className="flex items-start gap-3 border-b border-slate-200 pb-4 dark:border-white/5">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/10 text-[#98761A] dark:text-[#D4AF37]">
+    <div className="flex items-start gap-3 border-b border-line pb-4">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-line bg-subtle text-action">
         <Icon
           size={16}
           aria-hidden="true"
@@ -411,12 +411,12 @@ function SectionHeader({
       </div>
 
       <div>
-        <h2 className="text-[10px] font-black uppercase tracking-[0.26em] text-slate-700 dark:text-white/70">
+        <h2 className="text-[10px] font-semibold uppercase tracking-normal text-ink dark:text-muted">
           {title}
         </h2>
 
         {description && (
-          <p className="mt-1 text-xs leading-5 text-slate-400 dark:text-white/30">
+          <p className="mt-1 text-xs leading-5 text-muted">
             {description}
           </p>
         )}
@@ -442,7 +442,7 @@ function SelectField({
     <div className="space-y-2">
       <label
         htmlFor={id}
-        className="block pl-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/40"
+        className="block pl-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted"
       >
         {label}
       </label>
@@ -451,7 +451,7 @@ function SelectField({
         <Icon
           size={16}
           aria-hidden="true"
-          className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+          className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted"
         />
 
         <select
@@ -464,7 +464,7 @@ function SelectField({
             disabled
           }
           required
-          className="h-[52px] w-full appearance-none rounded-xl border border-slate-300 bg-slate-50 py-2 pl-11 pr-11 text-sm text-slate-800 shadow-sm outline-none transition focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-[#030303] dark:text-white"
+          className="h-[52px] w-full appearance-none rounded-md border border-line bg-canvas py-2 pl-11 pr-11 text-sm text-ink outline-none transition focus:border-line focus:ring-4 focus:ring-action disabled:cursor-not-allowed disabled:opacity-60"
         >
           {options.map(
             option => (
@@ -481,7 +481,7 @@ function SelectField({
         <ChevronDown
           size={16}
           aria-hidden="true"
-          className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+          className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted"
         />
       </div>
     </div>
@@ -1466,23 +1466,23 @@ export default function DesignerUploadDesign() {
   =======================================================*/
 
   return (
-    <section className="relative w-full overflow-hidden pb-8 text-slate-950 dark:text-white">
+    <section className="relative w-full overflow-hidden pb-8 text-ink">
       {/* Decorative background */}
 
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 overflow-hidden"
       >
-        <div className="absolute -right-40 -top-40 h-[34rem] w-[34rem] rounded-full bg-[#D4AF37]/10 blur-[170px]" />
 
-        <div className="absolute -bottom-48 -left-40 h-[38rem] w-[38rem] rounded-full bg-indigo-500/5 blur-[180px] dark:bg-indigo-500/10" />
+
+
       </div>
 
       <div className="relative z-10 mx-auto max-w-[1300px]">
         {/* Page heading */}
 
         <header className="mb-10 text-center">
-          <div className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-[9px] font-black uppercase tracking-[0.32em] text-[#98761A] shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/5 dark:text-[#D4AF37]">
+          <div className="inline-flex items-center justify-center gap-2 rounded-md border border-line bg-subtle px-4 py-2 text-[11px] font-semibold uppercase tracking-normal text-action">
             <Compass
               size={13}
               aria-hidden="true"
@@ -1491,21 +1491,21 @@ export default function DesignerUploadDesign() {
             Manual Showcase Upload
           </div>
 
-          <h1 className="mt-5 font-serif text-4xl font-light tracking-tight sm:text-5xl lg:text-6xl">
+          <h1 className="mt-5 font-sans text-4xl font-light tracking-tight sm:text-5xl lg:text-6xl">
             Publish a finished{" "}
 
-            <span className="italic text-[#98761A] dark:text-[#D4AF37]">
+            <span className="italic text-action">
               image
             </span>
           </h1>
 
-          <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-500 dark:text-white/40">
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-muted">
             Add a completed fashion presentation to your
             public showcase with its classification,
             materials and discovery tags.
           </p>
 
-          <div className="mx-auto mt-5 flex w-fit max-w-3xl items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-left text-xs leading-6 text-amber-800 dark:border-[#D4AF37]/20 dark:bg-[#D4AF37]/10 dark:text-[#EAD58F]">
+          <div className="mx-auto mt-5 flex w-fit max-w-3xl items-start gap-3 rounded-md border border-line bg-canvas px-5 py-4 text-left text-xs leading-6 text-action dark:bg-subtle">
             <LockKeyhole
               size={17}
               aria-hidden="true"
@@ -1533,7 +1533,7 @@ export default function DesignerUploadDesign() {
           <div
             role="status"
             aria-live="polite"
-            className="mb-8 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-700 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200"
+            className="mb-8 flex items-start gap-3 rounded-md border border-line bg-canvas p-4 text-action dark:bg-subtle"
           >
             <CheckCircle2
               size={19}
@@ -1559,7 +1559,7 @@ export default function DesignerUploadDesign() {
           <div
             role="alert"
             aria-live="assertive"
-            className="mb-8 flex items-start justify-between gap-4 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-rose-700 shadow-sm dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200"
+            className="mb-8 flex items-start justify-between gap-4 rounded-md border border-line bg-canvas p-4 text-action dark:bg-subtle"
           >
             <div className="flex items-start gap-3">
               <AlertTriangle
@@ -1585,7 +1585,7 @@ export default function DesignerUploadDesign() {
                 setErrorMsg("")
               }
               aria-label="Dismiss error"
-              className="shrink-0 opacity-60 transition hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
+              className="shrink-0 opacity-60 transition hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-action"
             >
               <X size={17} />
             </button>
@@ -1597,12 +1597,12 @@ export default function DesignerUploadDesign() {
             handleUploadSubmit
           }
           noValidate
-          className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl dark:border-white/5 dark:bg-[#0A0A0A] dark:shadow-2xl"
+          className="overflow-hidden rounded-md border border-line bg-surface"
         >
           <div className="grid lg:grid-cols-[0.9fr_1.1fr]">
             {/* Image panel */}
 
-            <section className="border-b border-slate-200 bg-slate-50/70 p-6 dark:border-white/5 dark:bg-white/[0.015] sm:p-8 lg:border-b-0 lg:border-r">
+            <section className="border-b border-line bg-subtle p-4 lg:border-b-0 lg:border-r">
               <SectionHeader
                 icon={FileImage}
                 title="Showcase Visual"
@@ -1622,18 +1622,18 @@ export default function DesignerUploadDesign() {
                 onDrop={
                   handleDrop
                 }
-                className={`group relative mt-6 overflow-hidden rounded-3xl border-2 border-dashed transition ${
+                className={`group relative mt-6 overflow-hidden rounded-md border-2 border-dashed transition ${
                   dragActive
-                    ? "border-[#D4AF37] bg-[#D4AF37]/10"
+                    ? "border-line bg-subtle"
                     : displayImage
-                      ? "border-[#D4AF37]/40 bg-white dark:bg-[#030303]"
-                      : "border-slate-300 bg-white hover:border-[#D4AF37]/50 dark:border-white/10 dark:bg-[#030303]"
+                      ? "border-line bg-surface dark:bg-canvas"
+                      : "border-line bg-surface hover:border-line dark:bg-canvas"
                 }`}
               >
                 {displayImage &&
                 previewUrl ? (
                   <div>
-                    <div className="relative aspect-[4/5] overflow-hidden bg-slate-100 dark:bg-black">
+                    <div className="relative aspect-[4/5] overflow-hidden bg-subtle dark:bg-canvas">
                       <img
                         src={previewUrl}
                         alt={`Preview of ${
@@ -1643,11 +1643,11 @@ export default function DesignerUploadDesign() {
                         className="h-full w-full object-contain"
                       />
 
-                      <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full border border-white/15 bg-black/60 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.15em] text-white backdrop-blur-md">
+                      <div className="absolute left-4 top-4 flex items-center gap-2 rounded-md border border-line bg-black/60 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-ink">
                         <CheckCircle2
                           size={12}
                           aria-hidden="true"
-                          className="text-emerald-400"
+                          className="text-action"
                         />
 
                         Manual Upload
@@ -1663,7 +1663,7 @@ export default function DesignerUploadDesign() {
                           success
                         }
                         aria-label="Remove selected image"
-                        className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-black/60 text-white backdrop-blur-md transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-md border border-line bg-black/60 text-ink transition hover:bg-action disabled:cursor-not-allowed disabled:opacity-50 hover:text-on-action"
                       >
                         <X
                           size={15}
@@ -1671,7 +1671,7 @@ export default function DesignerUploadDesign() {
                       </button>
                     </div>
 
-                    <div className="border-t border-slate-200 p-4 dark:border-white/5">
+                    <div className="border-t border-line p-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
                           <p
@@ -1685,7 +1685,7 @@ export default function DesignerUploadDesign() {
                             }
                           </p>
 
-                          <p className="mt-1 text-xs text-slate-400 dark:text-white/30">
+                          <p className="mt-1 text-xs text-muted">
                             {formatFileSize(
                               displayImage.size,
                             )}
@@ -1704,7 +1704,7 @@ export default function DesignerUploadDesign() {
                             loading ||
                             success
                           }
-                          className="shrink-0 text-[9px] font-black uppercase tracking-[0.15em] text-[#98761A] transition hover:underline disabled:opacity-50 dark:text-[#D4AF37]"
+                          className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.15em] text-action transition hover:underline disabled:opacity-50"
                         >
                           Replace
                         </button>
@@ -1721,9 +1721,9 @@ export default function DesignerUploadDesign() {
                       loading ||
                       success
                     }
-                    className="flex min-h-[500px] w-full flex-col items-center justify-center p-8 text-center disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex min-h-[500px] w-full flex-col items-center justify-center p-4 text-center disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <div className="flex h-20 w-20 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-slate-400 transition duration-300 group-hover:scale-105 group-hover:border-[#D4AF37]/30 group-hover:text-[#D4AF37] dark:border-white/5 dark:bg-white/5 dark:text-white/25">
+                    <div className="flex h-20 w-20 items-center justify-center rounded-full border border-line bg-subtle text-muted transition duration-300 group-hover:scale-105 group-hover:border-line group-hover:text-action">
                       <UploadCloud
                         size={32}
                         aria-hidden="true"
@@ -1734,12 +1734,12 @@ export default function DesignerUploadDesign() {
                       Upload showcase image
                     </p>
 
-                    <p className="mt-3 max-w-xs text-xs leading-6 text-slate-400 dark:text-white/30">
+                    <p className="mt-3 max-w-xs text-xs leading-6 text-muted">
                       Drag and drop one image here or click to
                       browse.
                     </p>
 
-                    <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 dark:text-white/25">
+                    <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.15em] text-muted">
                       JPG, PNG or WEBP • Maximum 15 MB
                     </p>
                   </button>
@@ -1765,12 +1765,12 @@ export default function DesignerUploadDesign() {
 
               {/* Source classification */}
 
-              <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/5 dark:bg-white/[0.025]">
+              <div className="mt-5 rounded-md border border-line bg-surface p-4 dark:bg-subtle">
                 <div className="flex items-start gap-3">
                   <ShieldCheck
                     size={18}
                     aria-hidden="true"
-                    className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-300"
+                    className="mt-0.5 shrink-0 text-action"
                   />
 
                   <div className="w-full">
@@ -1779,8 +1779,8 @@ export default function DesignerUploadDesign() {
                     </p>
 
                     <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                      <div className="rounded-xl bg-slate-50 px-2 py-3 dark:bg-white/[0.035]">
-                        <p className="text-[8px] font-black uppercase tracking-[0.13em] text-slate-400">
+                      <div className="rounded-md bg-canvas px-2 py-3 dark:bg-subtle">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-muted">
                           Source
                         </p>
 
@@ -1789,8 +1789,8 @@ export default function DesignerUploadDesign() {
                         </p>
                       </div>
 
-                      <div className="rounded-xl bg-slate-50 px-2 py-3 dark:bg-white/[0.035]">
-                        <p className="text-[8px] font-black uppercase tracking-[0.13em] text-slate-400">
+                      <div className="rounded-md bg-canvas px-2 py-3 dark:bg-subtle">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-muted">
                           Editable
                         </p>
 
@@ -1799,8 +1799,8 @@ export default function DesignerUploadDesign() {
                         </p>
                       </div>
 
-                      <div className="rounded-xl bg-slate-50 px-2 py-3 dark:bg-white/[0.035]">
-                        <p className="text-[8px] font-black uppercase tracking-[0.13em] text-slate-400">
+                      <div className="rounded-md bg-canvas px-2 py-3 dark:bg-subtle">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-muted">
                           Remix
                         </p>
 
@@ -1816,7 +1816,7 @@ export default function DesignerUploadDesign() {
 
             {/* Information panel */}
 
-            <section className="space-y-10 p-6 sm:p-8 lg:p-10">
+            <section className="space-y-10 p-4 lg:p-4">
               {/* Basic information */}
 
               <div className="space-y-6">
@@ -1829,7 +1829,7 @@ export default function DesignerUploadDesign() {
                 <div className="space-y-2">
                   <label
                     htmlFor="design-title"
-                    className="block pl-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/40"
+                    className="block pl-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted"
                   >
                     Design title
                   </label>
@@ -1861,10 +1861,10 @@ export default function DesignerUploadDesign() {
                       loading ||
                       success
                     }
-                    className="h-[54px] w-full rounded-xl border border-slate-300 bg-slate-50 px-4 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 disabled:opacity-60 dark:border-white/10 dark:bg-[#030303] dark:text-white dark:placeholder:text-white/20"
+                    className="h-[54px] w-full rounded-md border border-line bg-canvas px-4 text-sm text-ink outline-none transition placeholder:text-muted focus:border-line focus:ring-4 focus:ring-action disabled:opacity-60"
                   />
 
-                  <p className="text-right text-[10px] text-slate-400 dark:text-white/25">
+                  <p className="text-right text-[10px] text-muted">
                     {
                       form.title
                         .length
@@ -1879,7 +1879,7 @@ export default function DesignerUploadDesign() {
                 <div className="space-y-2">
                   <label
                     htmlFor="design-description"
-                    className="block pl-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/40"
+                    className="block pl-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted"
                   >
                     Inspiration and description
                   </label>
@@ -1910,10 +1910,10 @@ export default function DesignerUploadDesign() {
                       loading ||
                       success
                     }
-                    className="w-full resize-y rounded-xl border border-slate-300 bg-slate-50 px-4 py-4 text-sm leading-7 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 disabled:opacity-60 dark:border-white/10 dark:bg-[#030303] dark:text-white dark:placeholder:text-white/20"
+                    className="w-full resize-y rounded-md border border-line bg-canvas px-4 py-4 text-sm leading-7 text-ink outline-none transition placeholder:text-muted focus:border-line focus:ring-4 focus:ring-action disabled:opacity-60"
                   />
 
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 dark:text-white/25">
+                  <div className="flex items-center justify-between text-[10px] text-muted">
                     <span>
                       Minimum{" "}
                       {
@@ -2144,7 +2144,7 @@ export default function DesignerUploadDesign() {
                   description={`Select up to ${MAX_MATERIALS} materials.`}
                 />
 
-                <div className="flex items-center justify-between text-xs text-slate-400 dark:text-white/30">
+                <div className="flex items-center justify-between text-xs text-muted">
                   <span>
                     Multiple selections allowed
                   </span>
@@ -2195,10 +2195,10 @@ export default function DesignerUploadDesign() {
                           aria-pressed={
                             selected
                           }
-                          className={`rounded-full border px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.12em] transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                          className={`rounded-md border px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.12em] transition disabled:cursor-not-allowed disabled:opacity-40 ${
                             selected
-                              ? "border-[#D4AF37] bg-[#D4AF37]/10 text-[#8A6C18] dark:text-[#D4AF37]"
-                              : "border-slate-200 bg-slate-50 text-slate-500 hover:border-[#D4AF37]/40 hover:text-[#8A6C18] dark:border-white/10 dark:bg-white/[0.025] dark:text-white/35 dark:hover:text-[#D4AF37]"
+                              ? "border-line bg-subtle text-action"
+                              : "border-line bg-canvas text-muted hover:border-line hover:text-action dark:bg-subtle"
                           }`}
                         >
                           {selected && (
@@ -2233,7 +2233,7 @@ export default function DesignerUploadDesign() {
                 <div className="space-y-2">
                   <label
                     htmlFor="design-tags"
-                    className="block pl-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/40"
+                    className="block pl-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted"
                   >
                     Custom search tags
                   </label>
@@ -2242,7 +2242,7 @@ export default function DesignerUploadDesign() {
                     <Tag
                       size={16}
                       aria-hidden="true"
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-muted"
                     />
 
                     <input
@@ -2268,11 +2268,11 @@ export default function DesignerUploadDesign() {
                         loading ||
                         success
                       }
-                      className="h-[54px] w-full rounded-xl border border-slate-300 bg-slate-50 pl-11 pr-4 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#D4AF37]/60 focus:ring-4 focus:ring-[#D4AF37]/10 disabled:opacity-60 dark:border-white/10 dark:bg-[#030303] dark:text-white dark:placeholder:text-white/20"
+                      className="h-[54px] w-full rounded-md border border-line bg-canvas pl-11 pr-4 text-sm text-ink outline-none transition placeholder:text-muted focus:border-line focus:ring-4 focus:ring-action disabled:opacity-60"
                     />
                   </div>
 
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 dark:text-white/25">
+                  <div className="flex items-center justify-between text-[10px] text-muted">
                     <span>
                       Separate tags using commas
                     </span>
@@ -2281,7 +2281,7 @@ export default function DesignerUploadDesign() {
                       className={
                         customTags.length >
                         MAX_CUSTOM_TAGS
-                          ? "font-semibold text-rose-500"
+                          ? "font-semibold text-action"
                           : ""
                       }
                     >
@@ -2310,7 +2310,7 @@ export default function DesignerUploadDesign() {
                           key={
                             tag.toLowerCase()
                           }
-                          className="max-w-full truncate rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] text-slate-500 dark:border-white/10 dark:bg-white/[0.025] dark:text-white/40"
+                          className="max-w-full truncate rounded-md border border-line bg-canvas px-3 py-1.5 text-[10px] text-muted dark:bg-subtle"
                         >
                           #{tag}
                         </span>
@@ -2323,14 +2323,14 @@ export default function DesignerUploadDesign() {
 
           {/* Publish action area */}
 
-          <div className="border-t border-slate-200 bg-slate-50/70 p-6 dark:border-white/5 dark:bg-white/[0.015] sm:p-8">
+          <div className="border-t border-line bg-subtle p-4">
             {loading && (
               <div
                 className="mb-5"
                 role="status"
                 aria-live="polite"
               >
-                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-white/40">
+                <div className="flex items-center justify-between text-xs text-muted">
                   <span>
                     Publishing showcase design
                   </span>
@@ -2343,9 +2343,9 @@ export default function DesignerUploadDesign() {
                   </span>
                 </div>
 
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10">
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-subtle">
                   <div
-                    className={`h-full rounded-full bg-[#D4AF37] transition-all duration-300 ${
+                    className={`h-full rounded-full bg-action transition-all duration-300 text-on-action ${
                       uploadProgress ===
                       0
                         ? "animate-pulse"
@@ -2368,7 +2368,7 @@ export default function DesignerUploadDesign() {
                 <Sparkles
                   size={17}
                   aria-hidden="true"
-                  className="mt-0.5 shrink-0 text-[#98761A] dark:text-[#D4AF37]"
+                  className="mt-0.5 shrink-0 text-action"
                 />
 
                 <div>
@@ -2376,7 +2376,7 @@ export default function DesignerUploadDesign() {
                     Ready for the showcase
                   </p>
 
-                  <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-white/35">
+                  <p className="mt-1 text-xs leading-5 text-muted">
                     This publication will be stored as a
                     non-editable, non-remixable uploaded image.
                   </p>
@@ -2388,7 +2388,7 @@ export default function DesignerUploadDesign() {
                 disabled={
                   !canSubmit
                 }
-                className="flex h-[54px] min-w-[240px] items-center justify-center gap-3 rounded-xl bg-[#D4AF37] px-6 text-[10px] font-black uppercase tracking-[0.22em] text-black shadow-[0_12px_35px_rgba(212,175,55,0.2)] transition hover:-translate-y-0.5 hover:bg-[#E2C45D] focus:outline-none focus:ring-4 focus:ring-[#D4AF37]/30 disabled:cursor-not-allowed disabled:translate-y-0 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none dark:disabled:bg-white/5 dark:disabled:text-white/20"
+                className="flex h-[54px] min-w-[240px] items-center justify-center gap-3 rounded-md bg-action px-6 text-[10px] font-semibold uppercase tracking-normal text-on-action transition hover:-translate-y-0.5 hover:bg-action focus:outline-none focus:ring-4 focus:ring-action disabled:cursor-not-allowed disabled:translate-y-0 disabled:bg-subtle disabled:text-muted hover:text-on-action"
               >
                 {loading ? (
                   <>
