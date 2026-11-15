@@ -450,6 +450,10 @@ exports.protect = async (req, res, next) => {
     return sendAuthError(res, 503, "AUTH_SERVICE_UNAVAILABLE", "Authentication service is temporarily unavailable.");
   }
   if (!session) return sendAuthError(res, 401, "SESSION_ENDED", "Your session ended. Please sign in again.");
+  const adminMfa = require("../services/adminMfa");
+  if (adminMfa.privileged(user.role) && !adminMfa.validSession(user.id, session)) {
+    return sendAuthError(res, 401, "SESSION_REFRESH_REQUIRED", "Sign in again with your authenticator.");
+  }
 
   req.user = {
     id: user.id,

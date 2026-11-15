@@ -95,6 +95,9 @@ API.interceptors.response.use(
 
     const sentToken = error.config?.headers?.Authorization;
     const currentToken = localStorage.getItem("token");
+    if (currentToken && sentToken === `Bearer ${currentToken}` && code === "ADMIN_STEP_UP_REQUIRED") {
+      window.dispatchEvent(new Event("auth:admin-verification"));
+    }
     if (currentToken && sentToken === `Bearer ${currentToken}` &&
         ((status === 401 && INVALID_SESSION_CODES.has(code)) ||
          (status === 403 && code === "ACCOUNT_SUSPENDED"))) {

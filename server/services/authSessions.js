@@ -4,7 +4,7 @@ const jwt = require("jsonwebtoken");
 const db = require("../config/db");
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function issue(id, role, tokenVersion, secret) {
+async function issue(id, role, tokenVersion, secret, factor = null) {
   const sid = crypto.randomUUID();
   // Preserve shorter configured lifetimes, but never exceed 24 hours.
   const candidate = jwt.sign({ id, role, tokenVersion, sid }, secret, {
@@ -13,7 +13,12 @@ async function issue(id, role, tokenVersion, secret) {
   const claims = jwt.decode(candidate);
   const exp = Math.min(claims.exp, claims.iat + 86400);
   const token = jwt.sign({ ...claims, exp }, secret, { algorithm: "HS256" });
-  await db.query(`INSERT INTO auth_sessions (id,user_id,expires_at) VALUES ($1,$2,to_timestamp($3))`, [sid,id,exp]);
+  if (factor) {
+    await db.query(`INSERT INTO auth_sessions (id,user_id,expires_at,admin_factor_tag,admin_verified_at)
+      VALUES ($1,$2,to_timestamp($3),$4,clock_timestamp())`, [sid,id,exp,factor]);
+  } else {
+    await db.query(`INSERT INTO auth_sessions (id,user_id,expires_at) VALUES ($1,$2,to_timestamp($3))`, [sid,id,exp]);
+  }
   return token;
 }
 
@@ -26,7 +31,8 @@ async function check(sid, userId, touch = false) {
   const result = await db.query(touch
     ? `UPDATE auth_sessions SET last_active_at=clock_timestamp() WHERE ${filter}
        RETURNING LEAST(expires_at,last_active_at + interval '5 hours') AS idle_expires_at, expires_at`
-    : `SELECT LEAST(expires_at,last_active_at + interval '5 hours') AS idle_expires_at, expires_at
+    : `SELECT LEAST(expires_at,last_active_at + interval '5 hours') AS idle_expires_at, expires_at,
+       admin_factor_tag, admin_verified_at > clock_timestamp()-interval '5 minutes' AS admin_fresh
        FROM auth_sessions WHERE ${filter}`, [sid,userId]);
   return result.rows[0] || null;
 }
@@ -39,7 +45,8 @@ async function activity(req, res, next) {
   } catch (error) { next(error); }
 }
 async function status(req, res) {
-  res.json({ status: "success", session: req.auth.session });
+  const { idle_expires_at, expires_at } = req.auth.session;
+  res.json({ status: "success", session: { idle_expires_at, expires_at } });
 }
 async function logout(req, res, next) {
   try {

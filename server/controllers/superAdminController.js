@@ -757,7 +757,9 @@ exports.manageUserStatus = async (req, res) => {
     });
   }
 
-  if (!status) {
+  const restoring = req.body.status === "restore";
+  const reviewing = req.body.reviewApplication === true;
+  if ((!restoring && !status) || (reviewing && !["approved", "rejected"].includes(status))) {
     return res.status(400).json({
       message:
         "Invalid status. Allowed statuses are approved, pending, suspended, or rejected.",
@@ -796,9 +798,19 @@ exports.manageUserStatus = async (req, res) => {
       `
           UPDATE users
 
-          SET approval_status = $1
+          SET status_before_suspension = CASE
+                WHEN $1::public.approval_status = 'suspended' THEN
+                  CASE WHEN approval_status = 'suspended' THEN status_before_suspension ELSE approval_status END
+                ELSE NULL END,
+              approval_status = CASE WHEN $3 THEN COALESCE(status_before_suspension,
+                CASE WHEN role='designer' THEN 'pending' ELSE 'approved' END::public.approval_status)
+                ELSE $1::public.approval_status END,
+              token_version = token_version + CASE WHEN $1='suspended' AND approval_status IS DISTINCT FROM 'suspended' THEN 1 ELSE 0 END
 
           WHERE id = $2
+            AND role <> 'superadmin'
+            AND (NOT $3 OR approval_status='suspended')
+            AND (NOT $4 OR (role='designer' AND approval_status='pending'))
 
           RETURNING
               id,
@@ -808,8 +820,9 @@ exports.manageUserStatus = async (req, res) => {
               approval_status,
               approval_status AS status
         `,
-      [status, userId],
+      [status, userId, restoring, reviewing],
     );
+    if (!result.rowCount) return res.status(409).json({ message: "This account changed. Refresh before continuing." });
 
     return res.status(200).json({
       status: "success",
@@ -844,7 +857,7 @@ exports.getPendingDesigners = async (req, res) => {
               u.created_at,
 
               dp.portfolio_url,
-              dp.expertise_tags,
+              dp.bio, dp.city, dp.country,
               dp.commission_rate
 
           FROM users u

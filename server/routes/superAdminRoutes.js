@@ -79,6 +79,11 @@ router.use(protect);
  */
 
 router.use(authorize("superadmin"));
+const adminMfa = require("../services/adminMfa");
+router.post("/verify-authenticator", adminMfa.refresh);
+// All administrative writes and individual bank-detail reads need recent proof.
+router.use((req, res, next) => ["GET", "HEAD"].includes(req.method) ? next() : adminMfa.requireFresh(req,res,next));
+router.use("/finance/manual-payouts/:payoutId", adminMfa.requireFresh);
 
 /* ============================================================
    1. DASHBOARD

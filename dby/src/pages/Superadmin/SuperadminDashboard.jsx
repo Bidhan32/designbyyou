@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import API from "../../api/axios";
+import { Link } from "react-router-dom";
 
 /**
  * ============================================================
@@ -280,10 +281,10 @@ const SuperAdminDashboard = () => {
             value={totalDesigners}
           />
 
-          <StatCard
-            label="Pending Designers"
-            value={numberValue(stats?.pending_designers)}
-          />
+          <Link to="/superadmin/designer-approvals" className="flex items-center justify-between gap-3 py-3 text-sm hover:underline">
+            Review designer applications
+            <span className="font-mono text-muted">{stats?.pending_designers == null ? "Count unavailable" : `${stats.pending_designers} pending`}</span>
+          </Link>
 
           <StatCard
             label="Active Projects"

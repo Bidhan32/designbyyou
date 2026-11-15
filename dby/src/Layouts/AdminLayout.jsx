@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import Sidebar from '../pages/Superadmin/Sidebar';
+import AdminVerification from '../pages/Superadmin/AdminVerification';
 
 const AdminLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -37,6 +38,7 @@ const AdminLayout = () => {
 
     return (
         <div className="flex bg-surface h-screen overflow-hidden relative">
+            <AdminVerification />
             {/* Overlay for mobile */}
             {isSidebarOpen && (
                 <div 

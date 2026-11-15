@@ -13,13 +13,16 @@ const report = { started_at: new Date().toISOString(), result: "running", checks
 const authSecret = crypto.randomBytes(48).toString("hex");
 let isolated, server, origin, admin, creator, failCompletion = false;
 let bankPause;
+let adminToken;
+const adminPassword = crypto.randomUUID();
 async function step(name, action) {
   await action(); report.checks.push(name); console.log(`PASS ${name}`);
 }
 async function user(role = "designer", country = "Nepal") {
   const id = crypto.randomUUID();
   await isolated.pool.query(`INSERT INTO users (id,role,full_name,email,password_hash,is_email_verified,approval_status,token_version)
-    VALUES ($1,$2,$3,$4,'isolated-no-login',true,'approved',0)`, [id, role, `Payout Test ${role}`, `${id}@example.invalid`]);
+    VALUES ($1,$2,$3,$4,$5,true,'approved',0)`, [id, role, `Payout Test ${role}`, `${id}@example.invalid`,
+    role === "superadmin" ? await require("bcryptjs").hash(adminPassword, 4) : "isolated-no-login"]);
   if (role === "designer") {
     await isolated.pool.query("INSERT INTO designer_profiles (user_id,portfolio_url,country,tier,total_completed_bookings,commission_rate) VALUES ($1,$2,$3,'bronze',0,10)", [id, "https://example.invalid/portfolio", country]);
     await isolated.pool.query("INSERT INTO designer_wallets (user_id,available_balance,pending_escrow_balance,pending_payout_balance) VALUES ($1,0,100,0)", [id]);
@@ -27,7 +30,7 @@ async function user(role = "designer", country = "Nepal") {
   return id;
 }
 async function api(actor, route, body = {}, method = "POST") {
-  const token = actor ? await sandboxToken(isolated.pool, actor, authSecret) : null;
+  const token = actor === admin && adminToken ? adminToken : actor ? await sandboxToken(isolated.pool, actor, authSecret) : null;
   const response = await fetch(`${origin}/api/v1${route}`, { method,
     headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     ...(method === "GET" ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(30000) });
@@ -81,6 +84,24 @@ async function main() {
   server = await new Promise((resolve, reject) => { const s = app.listen(0, "127.0.0.1", () => resolve(s)); s.once("error", reject); });
   origin = `http://127.0.0.1:${server.address().port}`;
   admin = await user("superadmin"); creator = await user("creator");
+  await step("Admin login requires an authenticator; stale sessions cannot approve payouts", async () => {
+    const { totp } = require("../services/adminMfa");
+    assert.equal(totp(Buffer.from("12345678901234567890"), 1), "287082");
+    process.env.ADMIN_TOTP_KEYS = JSON.stringify({ [admin]: "A".repeat(32) });
+    const credentials = { email: `${admin}@example.invalid`, password: adminPassword };
+    expect(await api(null, "/auth/login", credentials), 403);
+    expect(await api(admin, adminBase, {}, "GET"), 401);
+    const step = Math.floor(Date.now()/30000);
+    const code = totp(Buffer.alloc(20), step);
+    const login = await api(null, "/auth/login", { ...credentials, authenticatorCode: code });
+    adminToken = expect(login,200).token;
+    assert.ok(adminToken);
+    expect(await api(null, "/auth/login", { ...credentials, authenticatorCode: code }), 403);
+    await pool.query("UPDATE auth_sessions SET admin_verified_at=now()-interval '6 minutes' WHERE user_id=$1", [admin]);
+    const blocked = expect(await api(admin, adminBase + "/" + crypto.randomUUID() + "/processing"), 403);
+    assert.equal(blocked.code, "ADMIN_STEP_UP_REQUIRED");
+    expect(await api(admin, "/superadmin/verify-authenticator", { code: totp(Buffer.alloc(20), step+1) }), 200);
+  });
   await step("Anonymous and creator accounts cannot request designer payouts or administer them", async () => {
     expect(await api(null, `${finance}/payouts`), 401); expect(await api(creator, `${finance}/payouts`), 403);
     expect(await api(creator, `${adminBase}/${crypto.randomUUID()}/processing`), 403);
@@ -195,7 +216,7 @@ async function main() {
   report.result = "passed";
 }
 (async () => {
-  try { await main(); } catch (error) { report.result = "failed"; report.error = error.code ? `Operation failed (${error.code})` : error.message; console.error(`FAIL ${report.error}`); process.exitCode = 1; }
+  try { await main(); } catch (error) { report.result = "failed"; report.error = error.code && error.code !== "ERR_ASSERTION" ? `Operation failed (${error.code})` : error.message; console.error(`FAIL ${report.error}`); process.exitCode = 1; }
   finally {
     if (server) await new Promise((resolve) => { server.close(resolve); server.closeIdleConnections?.(); });
     if (isolated) try { await isolated.dispose(); report.database_cleanup = "completed"; console.log(`Removed isolated database: ${isolated.name}`); }

@@ -144,8 +144,8 @@ function getJwtSecret() {
   }
   return secret;
 }
-async function signToken(id, role, tokenVersion) {
-  return require("../services/authSessions").issue(id, role, tokenVersion, getJwtSecret());
+async function signToken(id, role, tokenVersion, factor) {
+  return require("../services/authSessions").issue(id, role, tokenVersion, getJwtSecret(), factor);
 }
 /*=========================================================
 1. REGISTER
@@ -727,6 +727,15 @@ exports.login = async (req, res) => {
           version: Number(preUser.token_version ?? 0) }, getJwtSecret(), { algorithm: "HS256", expiresIn: "10m" }),
       });
     }
+    let factor;
+    const adminMfa = require("../services/adminMfa");
+    if (adminMfa.privileged(role)) {
+      const result = await adminMfa.verify(preUser.id, req.body?.authenticatorCode);
+      if (result.status) return res.status(result.status).json({
+        status: "error", code: "ADMIN_MFA_REQUIRED", message: result.message,
+      });
+      factor = result.factor;
+    }
     await db.query(
       `
         UPDATE users
@@ -870,6 +879,7 @@ exports.login = async (req, res) => {
       preUser.id,
       role,
       Number(preUser.token_version ?? 0),
+      factor,
     );
     return res.status(200).json({
       status: "success",

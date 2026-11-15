@@ -31,6 +31,8 @@ const Login = () => {
   const location = useLocation();
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [needsCode, setNeedsCode] = useState(false);
+  const [authenticatorCode, setAuthenticatorCode] = useState("");
 
 
   const [error, setError] = useState(() => sessionStorage.getItem("session-ended") || "");
@@ -81,6 +83,7 @@ const Login = () => {
       const { data } = await API.post("/auth/login", {
         email,
         password,
+        ...(needsCode ? { authenticatorCode } : {}),
       });
       /*-------------------------------------------------
       Validate Login Response
@@ -145,6 +148,12 @@ const Login = () => {
         .trim()
         .toUpperCase();
       const backendMessage = responseData?.message;
+      if (code === "ADMIN_MFA_REQUIRED") {
+        setNeedsCode(true);
+        setAuthenticatorCode("");
+        setError(backendMessage);
+        return;
+      }
       /*-------------------------------------------------
       Email Verification Required
       IMPORTANT:
@@ -251,6 +260,9 @@ const Login = () => {
         <AuthField id="login-password" label="Password" name="password" type="password" value={formData.password}
           onChange={handleChange} autoComplete="current-password" required disabled={loading}
           action={<Link className="auth-link" to="/forgot-password" state={{ email: formData.email }}>Forgot password?</Link>} />
+        {needsCode && <AuthField id="admin-code" label="Authenticator code" value={authenticatorCode}
+          onChange={event => setAuthenticatorCode(event.target.value)} autoComplete="one-time-code"
+          inputMode="numeric" maxLength={6} required disabled={loading} />}
         <AuthNotice error>{error}</AuthNotice>
         <AuthSubmit busy={loading} busyLabel="Signing in…">Sign in</AuthSubmit>
         <p className="auth-divider">New to DesignByYou? <Link to="/register" className="auth-link">Create an account</Link></p>
