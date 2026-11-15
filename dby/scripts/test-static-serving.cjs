@@ -15,7 +15,8 @@ const server = http.createServer((req, res) => handler(req, res, {
     const home = await fetch(base);
     const homeHtml = await home.text();
     assert.equal(home.status, 200);
-    assert.match(homeHtml, /<h1[^>]*>Imagine it/);
+    const expectedHomepage = fs.readFileSync(path.resolve(__dirname, '../public/home.html'), 'utf8');
+    assert.equal(homeHtml, expectedHomepage, 'The root URL must serve the current public homepage.');
     assert.match(homeHtml, /rel="canonical" href="https:\/\/dby.studio\/"/);
     assert.doesNotMatch(homeHtml, /noindex/);
     assert.match(homeHtml, /application\/ld\+json/);
