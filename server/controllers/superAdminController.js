@@ -2,6 +2,7 @@
 
 const db = require("../config/db");
 const bcrypt = require("bcryptjs");
+const activity = require("../services/adminActivity");
 
 const { decryptBankDetails } = require("../utils/bankDetailsCrypto");
 
@@ -683,23 +684,26 @@ exports.updateUserRole = async (req, res) => {
     });
   }
 
+  const client = await db.connect();
   try {
-    const targetResult = await db.query(
+    await client.query("BEGIN");
+    const targetResult = await client.query(
       `
           SELECT
               id,
-              role
+              role, approval_status
 
           FROM users
 
           WHERE id = $1
 
-          LIMIT 1
+          LIMIT 1 FOR UPDATE
         `,
       [userId],
     );
 
     if (targetResult.rows.length === 0) {
+      await client.query("ROLLBACK");
       return res.status(404).json({
         message: "User not found.",
       });
@@ -708,12 +712,13 @@ exports.updateUserRole = async (req, res) => {
     const target = targetResult.rows[0];
 
     if (target.role === "superadmin") {
+      await client.query("ROLLBACK");
       return res.status(403).json({
         message: "Superadmin role cannot be changed here.",
       });
     }
 
-    const result = await db.query(
+    const result = await client.query(
       `
           UPDATE users
 
@@ -732,17 +737,23 @@ exports.updateUserRole = async (req, res) => {
       [newRole, userId],
     );
 
+    await activity.record(client, req.user, "account_role", userId,
+      targetResult.rows[0].role, result.rows[0].role);
+    await client.query("COMMIT");
     return res.status(200).json({
       status: "success",
 
       data: result.rows[0],
     });
   } catch (error) {
+    await client.query("ROLLBACK");
     console.error("updateUserRole error:", error);
 
     return res.status(500).json({
       message: "Role update failed.",
     });
+  } finally {
+    client.release();
   }
 };
 
@@ -766,35 +777,39 @@ exports.manageUserStatus = async (req, res) => {
     });
   }
 
+  const client = await db.connect();
   try {
-    const targetResult = await db.query(
+    await client.query("BEGIN");
+    const targetResult = await client.query(
       `
           SELECT
               id,
-              role
+              role, approval_status
 
           FROM users
 
           WHERE id = $1
 
-          LIMIT 1
+          LIMIT 1 FOR UPDATE
         `,
       [userId],
     );
 
     if (targetResult.rows.length === 0) {
+      await client.query("ROLLBACK");
       return res.status(404).json({
         message: "User not found.",
       });
     }
 
     if (targetResult.rows[0].role === "superadmin") {
+      await client.query("ROLLBACK");
       return res.status(403).json({
         message: "Superadmin account status cannot be changed here.",
       });
     }
 
-    const result = await db.query(
+    const result = await client.query(
       `
           UPDATE users
 
@@ -822,19 +837,28 @@ exports.manageUserStatus = async (req, res) => {
         `,
       [status, userId, restoring, reviewing],
     );
-    if (!result.rowCount) return res.status(409).json({ message: "This account changed. Refresh before continuing." });
+    if (!result.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ message: "This account changed. Refresh before continuing." });
+    }
 
+    await activity.record(client, req.user, reviewing ? "designer_review" : "account_status", userId,
+      targetResult.rows[0].approval_status, result.rows[0].approval_status);
+    await client.query("COMMIT");
     return res.status(200).json({
       status: "success",
 
       data: result.rows[0],
     });
   } catch (error) {
+    await client.query("ROLLBACK");
     console.error("manageUserStatus error:", error);
 
     return res.status(500).json({
       message: "Status update failed.",
     });
+  } finally {
+    client.release();
   }
 };
 
@@ -2308,6 +2332,7 @@ exports.updateDesignerBankAccountVerification = async (req, res) => {
       );
     }
 
+    await activity.record(client, req.user, "bank_verification", bankAccountId, bankAccount.verification_status, requestedStatus);
     await client.query("COMMIT");
 
     return res.status(200).json({
@@ -2455,6 +2480,7 @@ exports.markManualPayoutProcessing = async (req, res) => {
       [payoutId],
     );
 
+    await activity.record(client, req.user, "manual_payout", payoutId, payout.status, "processing");
     await client.query("COMMIT");
 
     return res.status(200).json({
@@ -2794,6 +2820,7 @@ exports.completeManualPayout = async (req, res) => {
       [transferReference, payout.id],
     );
 
+    await activity.record(client, req.user, "manual_payout", payoutId, payout.status, "completed");
     await client.query("COMMIT");
 
     return res.status(200).json({
@@ -2997,6 +3024,7 @@ exports.failManualPayout = async (req, res) => {
       [reason, payout.id],
     );
 
+    await activity.record(client, req.user, "manual_payout", payoutId, payout.status, "failed");
     await client.query("COMMIT");
 
     return res.status(200).json({

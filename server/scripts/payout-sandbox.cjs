@@ -197,6 +197,12 @@ async function main() {
     assert.equal((await pool.query("SELECT count(*)::int AS count FROM transactions WHERE reference_id=$1 AND transaction_type='payout'", [payout.request_id])).rows[0].count, 0);
     for (const r of await Promise.all([api(admin, `${adminBase}/${payout.request_id}/complete`, { transfer_reference: "SYNTHETIC-REF-ONE" }), api(admin, `${adminBase}/${payout.request_id}/complete`, { transfer_reference: "SYNTHETIC-REF-ONE" })])) expect(r, 200);
     await balances(f.id, 80, 0);
+    const historyPath = "/superadmin/activity?q=" + payout.request_id;
+    expect(await api(creator, historyPath, {}, "GET"), 403);
+    const history = expect(await api(admin, historyPath, {}, "GET"), 200).data;
+    assert.deepEqual(history.map(entry => entry.new_value), ["completed", "processing"]);
+    assert.ok(history.every(entry => entry.actor_id === admin && entry.target_id === payout.request_id));
+    assert.ok(!JSON.stringify(history).includes("SYNTHETIC-REF-ONE"));
     assert.equal((await pool.query("SELECT count(*)::int AS count FROM transactions WHERE reference_id=$1 AND transaction_type='payout'", [payout.request_id])).rows[0].count, 1);
     expect(await api(f.id, `${finance}/payouts/${payout.request_id}/cancel`), 409);
     expect(await api(admin, `${adminBase}/${payout.request_id}/fail`, { reason: "Cannot reverse completion", funds_sent: false }), 409);

@@ -9,9 +9,10 @@ test("designer queue, concurrent decisions and suspension history", async t => {
   const sandbox = await sandboxDatabase();
   t.after(() => sandbox.dispose());
   const ctrl = isolatedServer({ db: sandbox.pool }).load("controllers/superAdminController.js");
+  const actor = { id: randomUUID(), fullName: "Sandbox admin" };
   async function call(handler, request) {
     const response = { status(code) { this.code = code; return this; }, json(body) { this.body = body; } };
-    await handler(request, response);
+    await handler({ ...request, user: actor }, response);
     return response;
   }
   const id = randomUUID();
@@ -31,4 +32,9 @@ test("designer queue, concurrent decisions and suspension history", async t => {
   assert.equal(list.body.find(row => row.id === id).status, saved);
   await sandbox.pool.query("UPDATE users SET approval_status='suspended',status_before_suspension=NULL WHERE id=$1",[id]);
   assert.equal((await change("restore")).body.data.status, "pending");
+  const history = await sandbox.pool.query("SELECT * FROM admin_activity WHERE target_id=$1 ORDER BY id", [id]);
+  assert.equal(history.rowCount, 4);
+  assert.equal(history.rows[0].action, "designer_review");
+  assert.equal(history.rows[0].actor_id, actor.id);
+  assert.equal(history.rows[0].new_value, saved);
 });
