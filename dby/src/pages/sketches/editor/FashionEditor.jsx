@@ -6,6 +6,7 @@ Version 3.7.0 — Creator Showcase Share
 =========================================================
 */
 
+import TryOnButton from "../../Creator/TryOnButton";
 import React, {
   memo,
   useCallback,
@@ -12754,6 +12755,7 @@ function FashionEditor() {
                   }
                 >
                   <Garment3DViewer
+                    canTryOn={signedInUser?.role === "creator"}
                     onUndo={undo} onRedo={redo} canUndo={canUndo} canRedo={canRedo}
                     onExit={() => setEditorViewMode("2d")}
                     templateId={selectedClothingTemplate?.id || ""}
@@ -13556,6 +13558,8 @@ function FashionEditor() {
                       </dl>
                     </div>
 
+                    {signedInUser?.role === "creator" && aiFashionResult.imageUrl && <TryOnButton imageUrl={aiFashionResult.imageUrl}
+                      className="min-h-9 rounded-md border border-line bg-surface px-4 text-sm font-semibold text-ink hover:bg-subtle" />}
                     <button
                       type="button"
                       onClick={handleOpenAiFashionImage}

@@ -73,9 +73,9 @@ function UploadField({ id, label, help, file, preview, disabled, onChange, input
   );
 }
 
-export default function CreatorVirtualTryOn() {
+export default function CreatorVirtualTryOn({ initialGarment = null, embedded = false }) {
   const [person, setPerson] = useState(null);
-  const [garment, setGarment] = useState(null);
+  const [garment, setGarment] = useState(initialGarment);
   const [personUrl, setPersonUrl] = useState("");
   const [garmentUrl, setGarmentUrl] = useState("");
   const [category, setCategory] = useState("auto");
@@ -121,14 +121,14 @@ export default function CreatorVirtualTryOn() {
       if (!mounted) return;
       const items = Array.isArray(response.data?.data) ? response.data.data : [];
       setHistory(items);
-      setJob(items.find(isActive) || items[0] || null);
+      setJob(items.find(isActive) || (!embedded && items[0]) || null);
     }).catch((err) => {
       if (mounted) setHistoryError(getMessage(err, "Could not load history."));
     }).finally(() => {
       if (mounted) setHistoryLoading(false);
     });
     return () => { mounted = false; };
-  }, []);
+  }, [embedded]);
 
   const activeJob = history.find(isActive) || (isActive(job) ? job : null);
   const activeJobId = activeJob?.id || null;
@@ -263,16 +263,16 @@ export default function CreatorVirtualTryOn() {
   return (
     <main className="min-h-screen bg-canvas px-4 py-8 text-ink dark:bg-surface sm:px-8">
       <div className="mx-auto max-w-6xl">
-        <Link to="/creator/tools" className="inline-flex items-center gap-2 text-xs font-semibold text-muted hover:text-action">
+        {!embedded && <Link to="/creator/tools" className="inline-flex items-center gap-2 text-xs font-semibold text-muted hover:text-action">
           <ArrowLeft size={16} /> Back to tools
-        </Link>
+        </Link>}
         <header className="mt-7 flex items-start gap-4">
           <div className="rounded-md bg-subtle p-3 text-action"><Shirt size={27} /></div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-normal text-action">FASHN AI · Creative tools</p>
             <h1 className="mt-1 font-sans text-3xl sm:text-4xl">AI Virtual Try-On</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-              Upload a person photo and a garment image to preview how the clothing may look when worn.
+              {embedded ? (initialGarment ? "Your garment is ready. Add a person photo to try it on." : "The design image could not be imported. Choose a garment photo below to continue.") : "Upload a person photo and a garment image to preview how the clothing may look when worn."}
               Results are AI visualizations, not an accurate prediction of physical fit.
             </p>
           </div>

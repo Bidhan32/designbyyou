@@ -115,6 +115,8 @@ import { getGarment3DConfig } from "../sketches/templates/GarmentTemplateRegistr
 
 // Load WebGL only when the user opens a 3D preview.
 
+import TryOnButton from "./TryOnButton";
+
 const ShowcaseGarment3D = React.lazy(() => import("./ShowcaseGarment3D"));
 
 /* =========================================================
@@ -1355,6 +1357,8 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
                 </p>
 
+                {isCreator && <TryOnButton key={item.slug} className={OUTLINE_BUTTON} imageUrl={currentImage?.url}
+                  renderSnapshot={(is3D || (!currentImage?.url && has3D)) ? (ready, failed) => <ShowcaseGarment3D preview={item.preview_3d} onSnapshot={ready} onError={failed} /> : undefined} />}
                 {!is3D && currentImage?.url && <a href={currentImage.url} target="_blank" rel="noopener noreferrer" className={OUTLINE_BUTTON}>Open full image</a>}
 
               </div>

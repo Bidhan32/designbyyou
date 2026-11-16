@@ -64,11 +64,28 @@ function Probe() { location = useLocation(); return null; }
   await mount('designer');
   assert.match(document.body.textContent, /Interactive garment preview/);
   assert.ok(!button('Open in Fashion Editor'));
+  assert.ok(!button('Virtual try-on'));
   assert.ok(!document.querySelector('a[href*="bookings/new"]'));
   assert.ok(document.querySelector('a[href="/designer/explore"]'));
   await mount('creator', { owner_role: 'creator', designer_id: null, preview_3d: null });
   assert.ok(!document.querySelector('a[href*="bookings/new"]'));
   assert.ok(button('Open in Fashion Editor'));
+  // Open an uploaded public design directly in the real try-on form.
+  dom.window.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
+  dom.window.HTMLDialogElement.prototype.close = function () { this.open = false; };
+  const fetched = [];
+  globalThis.fetch = async url => {
+    fetched.push(url);
+    return new Response(new Blob(['test garment'], { type: 'image/png' }));
+  };
+  await click(button('Virtual try-on'));
+  assert.deepEqual(fetched, [fixture.watermarked_preview_url]);
+  assert.ok(document.querySelector('dialog[open] img[alt="Garment photo"]'));
+  assert.equal(document.querySelector('dialog button[type="submit"]').disabled, true);
+  assert.ok(!calls.some(([method]) => method === 'post'));
+  await click(button('Close try-on'));
+  assert.equal(document.querySelector('dialog'), null);
+  assert.equal(location.pathname, '/creator/showcase/linen-shirt');
   failOpen = true;
   await click(button('Open in Fashion Editor'));
   assert.match(document.querySelector('[role="alert"]').textContent, /Try opening again/);

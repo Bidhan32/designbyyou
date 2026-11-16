@@ -1,3 +1,4 @@
+import TryOnButton from "../../Creator/TryOnButton";
 import { projectedUvToArtworkOffset } from "./Garment3DViewer.helpers.js";
 import "./Garment3DViewer.css";
 /*
@@ -127,13 +128,13 @@ function replaceArtworkLayer(stack, layerId, kind, updates) {
   return stack;
 }
 
-function Model({ modelUrl, templateId, regions, colours, artwork, wireframe, selectedRegions,
+function Model({ onSnapshot, modelUrl, templateId, regions, colours, artwork, wireframe, selectedRegions,
   onRegionClick, onRegionPointerDown, placementMode, placementRegionId, onPlacementStart, onPlacementMove,
   onPlacementEnd, onPlacementCancel, onError,
   onModelAudit = null, highlightSelection = false, transformMode = false, transformEntry = null, onTransformStart = null,
   onTransformMove = null, onTransformEnd = null, onTransformCancel = null }) {
   const { scene } = useGLTF(modelUrl);
-  const { invalidate } = useThree();
+  const { invalidate, gl, scene: renderScene, camera } = useThree();
   const modelRootRef = useRef(null);
   const [handlePosition, setHandlePosition] = useState(null);
   const onErrorRef = useRef(onError);
@@ -243,9 +244,15 @@ function Model({ modelUrl, templateId, regions, colours, artwork, wireframe, sel
       if (previousMap && previousMap !== nextMap) previousMap.dispose();
       invalidate();
     });
-    void Promise.all(tasks);
+    if (onSnapshot) void Promise.all(tasks).then(() => {
+      if (cancelled) return;
+      try {
+        gl.render(renderScene, camera);
+        onSnapshot(gl.domElement.toDataURL("image/png"));
+      } catch { onSnapshot(null); }
+    });
     return () => { cancelled = true; };
-  }, [prepared, colours, artwork, invalidate, regions, templateId]);
+  }, [prepared, colours, artwork, invalidate, regions, templateId, onSnapshot, gl, renderScene, camera]);
 
   // Read Three.js transforms on its frame lifecycle, after model refs are attached.
   const lastHandleInputs = useRef(null);
@@ -451,7 +458,7 @@ export default function Garment3DViewer({
   onColourChange = null, onMultiRegionColourChange = null,
   onArtworkChange = null, onArtworkUpload = null, onMultiRegionArtworkApply = null,
   onArtworkTransfer = null, onManageArtwork = null, garmentObjectId = "",
-  disabled = false, onUndo, onRedo, canUndo = false, canRedo = false,
+  canTryOn = false, disabled = false, onUndo, onRedo, canUndo = false, canRedo = false,
   modelUrl = null, className = "", onError = null, onExit = null,
 }) {
   const modelConfig = getGarment3DConfig(templateId);
@@ -1072,6 +1079,17 @@ export default function Garment3DViewer({
       {supported && <div className="flex flex-wrap items-center gap-1.5">
         {onUndo && <button type="button" aria-label="Undo" title="Undo" className={BTN} disabled={!canUndo || historyBusy} onClick={onUndo}><Undo2 size={16}/></button>}
         {onRedo && <button type="button" aria-label="Redo" title="Redo" className={BTN} disabled={!canRedo || historyBusy} onClick={onRedo}><Redo2 size={16}/></button>}
+        {canTryOn && supported && <TryOnButton className={BTN} renderSnapshot={(ready, failed) => (
+          <ViewerErrorBoundary onError={failed}>
+            <Canvas dpr={1} frameloop="demand" camera={{ position: CAMERAS.front, fov: 40 }} gl={{ antialias: true }}>
+              <color attach="background" args={["#fafafa"]} />
+              <ambientLight intensity={1.4}/><hemisphereLight args={["#ffffff", "#475569", 1.4]}/>
+              <directionalLight position={[4, 6, 6]} intensity={2.5}/><directionalLight position={[-5, 2, -4]} intensity={1.5}/>
+              <Suspense fallback={null}><Model modelUrl={resolvedModelUrl} templateId={templateId} regions={regions}
+                colours={resolvedColours} artwork={artwork} wireframe={false} selectedRegions={[]} onSnapshot={ready} onError={failed}/></Suspense>
+            </Canvas>
+          </ViewerErrorBoundary>
+        )} />}
         <button type="button" className={BTN} onClick={scrollToArtwork}>Add artwork</button>
         <button type="button" aria-pressed={wireframe} className={BTN} onClick={() => setWireframe((old) => !old)}>Wireframe {wireframe ? "On" : "Off"}</button>
       </div>}
