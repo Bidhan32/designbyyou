@@ -175,6 +175,22 @@ export default function CreatorVirtualTryOn({ initialGarment = null, embedded = 
     setError("");
   };
 
+  const [retryingSave, setRetryingSave] = useState(false);
+  async function retrySave() {
+    if (!job?.can_retry_save || retryingSave) return;
+    setRetryingSave(true);
+    setProgressError("");
+    try {
+      const response = await API.post(`${ENDPOINT}/${encodeURIComponent(job.id)}/retry-save`);
+      const latest = response.data.data;
+      setJob(latest);
+      setHistory(old => old.map(entry => entry.id === latest.id ? latest : entry));
+      if (latest.status === "failed") setProgressError("Saving is still unavailable. Check again later.");
+    } catch (err) {
+      setProgressError(getMessage(err, "Could not retrieve the existing result."));
+    } finally { setRetryingSave(false); }
+  }
+
   const submit = async (event) => {
     event.preventDefault();
     if (busy) return;
@@ -338,6 +354,7 @@ export default function CreatorVirtualTryOn({ initialGarment = null, embedded = 
               <button type="button" onClick={() => openLink(job, true)} className="inline-flex min-h-9 items-center justify-center gap-2 rounded-md bg-subtle px-4 text-sm font-bold text-ink"><Download size={17} /> Download Image</button>
               <button type="button" onClick={() => openLink(job, false)} className="inline-flex min-h-9 items-center justify-center gap-2 rounded-md border border-line px-4 text-sm font-semibold"><ExternalLink size={17} /> View Full Image</button>
             </div>}
+            {job?.can_retry_save && <button type="button" disabled={retryingSave || busy} onClick={retrySave} className="mt-3 min-h-9 rounded-md border border-line px-3 text-sm font-semibold disabled:opacity-50">{retryingSave ? "Saving…" : "Retry saving existing result"}</button>}
             {progressError && <p role="status" className="mt-4 text-xs text-action">{progressError}</p>}
             <p className="mt-4 text-xs leading-5 text-muted">Your original photos are processed temporarily and are not kept in your generation history. Generated results are stored as protected Cloudinary assets and can be deleted below.</p>
           </section>

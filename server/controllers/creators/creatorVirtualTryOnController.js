@@ -23,6 +23,10 @@ function dailyLimit() {
   const configured = Number(process.env.CREATOR_TRYON_DAILY_LIMIT || 5);
   return Number.isInteger(configured) ? Math.max(1, Math.min(30, configured)) : 5;
 }
+const saveFailures = new Set(["Generated image could not be saved.", "Result saving timed out."]);
+function canRetrySave(job) {
+  return job.status === "failed" && saveFailures.has(job.error_message);
+}
 function safeJob(row) {
   return {
     id: row.id,
@@ -31,6 +35,7 @@ function safeJob(row) {
     garment_photo_type: row.garment_photo_type,
     status: row.status,
     credits_used: row.credits_used,
+    can_retry_save: canRetrySave(row),
     error_message: row.status === "failed" ? row.error_message : null,
     ...tryOn.signedResultUrls(row.status === "completed" ? row.output_public_id : null),
     created_at: row.created_at,
@@ -136,7 +141,7 @@ exports.history = async (req, res) => {
   }
 };
 
-exports.status = async (req, res) => {
+async function checkResult(req, res, retrySave) {
   const id = creatorId(req), jobId = req.params.jobId;
   if (!id) return error(res, 403, "CREATOR_REQUIRED", "A Creator account is required.");
   if (!UUID.test(String(jobId || ""))) return error(res, 400, "INVALID_JOB_ID", "Invalid generation ID.");
@@ -155,10 +160,14 @@ exports.status = async (req, res) => {
         WHERE id=$1 AND creator_id=$2 AND status='saving' RETURNING *`, [jobId, id]);
       return res.json({ status: "success", data: safeJob(expired.rows[0] || job) });
     }
-    if (job.status !== "processing") {
+    const retrying = retrySave && canRetrySave(job) && Boolean(job.provider_prediction_id);
+    if (job.status !== "processing" && !retrying) {
       return res.json({ status: "success", data: safeJob(job) });
     }
     const { data, credits } = await tryOn.getPrediction(job.provider_prediction_id);
+    if (retrying && data.status !== "completed") {
+      return error(res, 409, "RESULT_UNAVAILABLE", "The provider no longer has a completed result available to save.");
+    }
     if (data.status === "failed") {
       const failed = await db.query(`UPDATE public.creator_virtual_tryon_jobs SET status='failed',error_message='The FASHN generation failed.',credits_used=$1,updated_at=NOW()
         WHERE id=$2 AND creator_id=$3 AND status='processing' RETURNING *`, [credits, jobId, id]);
@@ -172,24 +181,26 @@ exports.status = async (req, res) => {
     }
 
     const claimed = await db.query(`UPDATE public.creator_virtual_tryon_jobs SET status='saving',updated_at=NOW()
-      WHERE id=$1 AND creator_id=$2 AND status='processing' RETURNING *`, [jobId, id]);
+      WHERE id=$1 AND creator_id=$2 AND status=$3 RETURNING *`, [jobId, id, job.status]);
     if (!claimed.rows.length) {
       const latest = await db.query(`SELECT * FROM public.creator_virtual_tryon_jobs WHERE id=$1 AND creator_id=$2`, [jobId, id]);
       return res.json({ status: "success", data: safeJob(latest.rows[0]) });
     }
     job = claimed.rows[0];
+    let stage = "image upload";
     try {
       const base64Output = Array.isArray(data.output) ? data.output[0] : null;
       const publicId = await tryOn.savePrivateResult(base64Output, id, jobId);
+      stage = "database update";
       const saved = await db.query(`UPDATE public.creator_virtual_tryon_jobs SET output_public_id=$1,status='completed',credits_used=$2,completed_at=NOW(),updated_at=NOW()
         WHERE id=$3 AND creator_id=$4 AND status='saving' RETURNING *`, [publicId, credits, jobId, id]);
       if (!saved.rows.length) {
-        await tryOn.destroyResult(publicId).catch(() => {});
+        // A concurrent recovery may own the same deterministic asset.
         return error(res, 409, "STATE_CHANGED", "Generation status changed while saving. Refresh history.");
       }
       return res.json({ status: "success", data: safeJob(saved.rows[0]) });
     } catch (err) {
-      console.error("[CreatorTryOn] Save result:", err.code || err.message);
+      console.error("[CreatorTryOn] Save result:", { jobId, stage, code: err.code || "UNKNOWN", httpStatus: err.httpStatus });
       const failed = await db.query(`UPDATE public.creator_virtual_tryon_jobs SET status='failed',error_message='Generated image could not be saved.',updated_at=NOW()
         WHERE id=$1 AND creator_id=$2 AND status='saving' RETURNING *`, [jobId, id]);
       return res.json({ status: "success", data: safeJob(failed.rows[0] || job) });
@@ -198,7 +209,10 @@ exports.status = async (req, res) => {
     console.error("[CreatorTryOn] Polling:", err.code || err.message);
     return error(res, err.status === 429 ? 429 : 503, "STATUS_UNAVAILABLE", "Could not check Virtual Try-On status; retry shortly.");
   }
-};
+}
+
+exports.status = (req, res) => checkResult(req, res, false);
+exports.retrySave = (req, res) => checkResult(req, res, true);
 
 exports.remove = async (req, res) => {
   const id = creatorId(req), jobId = req.params.jobId;

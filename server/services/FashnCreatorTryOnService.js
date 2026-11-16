@@ -134,13 +134,15 @@ function decodeOutput(output) {
   if (typeof output !== "string" || output.length > Math.ceil(MAX_OUTPUT * 4 / 3) + 100) {
     throw new TryOnServiceError("FASHN returned an invalid output image.");
   }
-  const match = /^data:image\/(jpeg|png);base64,([A-Za-z0-9+/]+={0,2})$/.exec(output);
+  const match = /^(?:data:image\/(jpeg|jpg|png|webp);base64,)?([A-Za-z0-9+/]+={0,2})$/i.exec(output);
   if (!match) throw new TryOnServiceError("FASHN output is not a supported base64 image.");
   const buffer = Buffer.from(match[2], "base64");
   if (buffer.length < 64 || buffer.length > MAX_OUTPUT) throw new TryOnServiceError("FASHN output size is invalid.");
   const jpeg = buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
   const png = buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
-  if ((match[1] === "jpeg" && !jpeg) || (match[1] === "png" && !png)) {
+  const webp = buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP";
+  const format = jpeg ? "jpeg" : png ? "png" : webp ? "webp" : null;
+  if (!format || (match[1] && match[1].toLowerCase().replace("jpg", "jpeg") !== format)) {
     throw new TryOnServiceError("FASHN output image signature is invalid.");
   }
   return buffer;
@@ -152,6 +154,8 @@ async function savePrivateResult(outputDataUri, creatorId, jobId) {
     .rotate().jpeg({ quality: 90, mozjpeg: true }).toBuffer();
   return new Promise((resolve, reject) => {
     const uploader = cloudinary.uploader.upload_stream({
+      // The callback settles our promise. Disable the SDK's second rejection path.
+      disable_promises: true,
       resource_type: "image",
       type: "authenticated",
       folder: "designbyyou_ai/creator_virtual_tryon",
@@ -160,7 +164,9 @@ async function savePrivateResult(outputDataUri, creatorId, jobId) {
       format: "jpg",
     }, (err, result) => {
       if (err || !result?.public_id) {
-        reject(new TryOnServiceError("Could not save the generated image securely.", 503, "STORAGE_FAILED"));
+        const failure = new TryOnServiceError("Could not save the generated image securely.", 503, "STORAGE_FAILED");
+        failure.httpStatus = Number(err?.http_code) || undefined;
+        reject(failure);
       } else {
         resolve(result.public_id);
       }

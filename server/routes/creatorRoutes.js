@@ -486,6 +486,10 @@ router.get(
   "/ai/virtual-try-on/:jobId",
   requireHandler("creatorVirtualTryOnController.status", creatorVirtualTryOnController.status),
 );
+router.post(
+  "/ai/virtual-try-on/:jobId/retry-save",
+  requireHandler("creatorVirtualTryOnController.retrySave", creatorVirtualTryOnController.retrySave),
+);
 router.delete(
   "/ai/virtual-try-on/:jobId",
   requireHandler("creatorVirtualTryOnController.remove", creatorVirtualTryOnController.remove),
