@@ -12754,6 +12754,7 @@ function FashionEditor() {
                   }
                 >
                   <Garment3DViewer
+                    onUndo={undo} onRedo={redo} canUndo={canUndo} canRedo={canRedo}
                     onExit={() => setEditorViewMode("2d")}
                     templateId={selectedClothingTemplate?.id || ""}
                     colours={selectedClothingColours}
@@ -12790,7 +12791,7 @@ function FashionEditor() {
 
       {/* Mobile bottom toolbar */}
 
-      <nav aria-label="Canvas tools" className="shrink-0 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
+      {editorViewMode !== "3d" && <nav aria-label="Canvas tools" className="shrink-0 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
         <div className="grid grid-cols-5 gap-1 p-1.5 text-xs font-semibold">
           {MOBILE_PRIMARY_TOOLS.map(tool => (
             <button key={tool.id} type="button" aria-pressed={activeTool === tool.id}
@@ -12807,7 +12808,7 @@ function FashionEditor() {
             {MOBILE_EXTRA_TOOLS.map(tool => <option key={tool.id} value={tool.id} disabled={!tool.enabled}>{tool.label}</option>)}
           </select>
         </div>
-      </nav>
+      </nav>}
 
       {/* Status bar */}
 

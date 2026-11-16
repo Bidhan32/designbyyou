@@ -12,7 +12,7 @@ import React, {
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { Html, OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-import { Palette, ImagePlus, Layers3, Wrench, MousePointer2, ChevronDown, Search } from "lucide-react";
+import { Palette, ImagePlus, Layers3, Wrench, MousePointer2, ChevronDown, Search, Undo2, Redo2 } from "lucide-react";
 import { getClothingTemplate, getClothingTemplateArtworkBox, getClothingTemplateColourRegions } from "../templates/ClothingTemplates";
 import { getGarment3DConfig } from "../templates/GarmentTemplateRegistry";
 import { createGarment3DClickGuard } from "./Garment3DClickGuard";
@@ -451,7 +451,7 @@ export default function Garment3DViewer({
   onColourChange = null, onMultiRegionColourChange = null,
   onArtworkChange = null, onArtworkUpload = null, onMultiRegionArtworkApply = null,
   onArtworkTransfer = null, onManageArtwork = null, garmentObjectId = "",
-  disabled = false,
+  disabled = false, onUndo, onRedo, canUndo = false, canRedo = false,
   modelUrl = null, className = "", onError = null, onExit = null,
 }) {
   const modelConfig = getGarment3DConfig(templateId);
@@ -1053,6 +1053,7 @@ export default function Garment3DViewer({
       window.requestAnimationFrame(() => controlsRef.current?.scrollIntoView({ block: "start" }));
     }
   };
+  const historyBusy = busy || cleanupBusy || placementSaving || placementMode || transformMode;
   const scrollToArtwork = () => changeStudioTab("add");
 
   return <section className={`garment-studio flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface text-ink ${className}`} aria-label="DesignByYou 3D garment studio">
@@ -1065,10 +1066,12 @@ export default function Garment3DViewer({
     </div>
     <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-line bg-surface px-3 py-2">
       <div>
-        <strong className="text-sm font-semibold tracking-tight">3D Design Studio <span className="ml-2 rounded-md border border-line bg-subtle px-2 py-0.5 text-[10px] font-semibold text-action">Studio 4.6</span></strong>
+        <strong className="text-sm font-semibold tracking-tight">3D Design Studio</strong>
         <p className="text-[11px] text-muted">{supported ? `${garmentLabel} · ${regions.length} editable regions` : "Select a supported garment in 2D"}</p>
       </div>
-      {supported && <div className="flex items-center gap-2">
+      {supported && <div className="flex flex-wrap items-center gap-1.5">
+        {onUndo && <button type="button" aria-label="Undo" title="Undo" className={BTN} disabled={!canUndo || historyBusy} onClick={onUndo}><Undo2 size={16}/></button>}
+        {onRedo && <button type="button" aria-label="Redo" title="Redo" className={BTN} disabled={!canRedo || historyBusy} onClick={onRedo}><Redo2 size={16}/></button>}
         <button type="button" className={BTN} onClick={scrollToArtwork}>Add artwork</button>
         <button type="button" aria-pressed={wireframe} className={BTN} onClick={() => setWireframe((old) => !old)}>Wireframe {wireframe ? "On" : "Off"}</button>
       </div>}
@@ -1157,7 +1160,6 @@ export default function Garment3DViewer({
             <strong className="text-sm font-semibold text-ink">Fabric color</strong>
             <span className="text-[10px] text-muted">{selectedRegions.length ? `${selectedRegions.length} areas` : "Select a region"}</span>
           </div>
-          {!selectedRegions.length && <p className="rounded-md border border-line bg-subtle px-3 py-2 text-xs text-action">Click a part of the 3D garment or use “Choose parts” above to start.</p>}
           {selectedRegionNames.length > 0 && <p className="text-[10px] leading-relaxed text-muted">Apply one color to {selectedRegionNames.length === 1 ? selectedRegionNames[0].label : `${selectedRegionNames.length} selected areas`}.</p>}
           <div className="grid grid-cols-6 gap-2" role="group" aria-label="Fabric color presets">
             {SWATCHES.map((swatch) => <button type="button" key={swatch} onClick={() => setPaintColour(swatch)} aria-label={`Choose color ${swatch}`} aria-pressed={safeColour(paintColour) === swatch}
@@ -1167,10 +1169,15 @@ export default function Garment3DViewer({
             <input type="color" aria-label="Custom garment color" value={safeColour(paintColour)} onChange={(event) => setPaintColour(event.target.value)} className="h-9 w-11 shrink-0 cursor-pointer rounded border border-line bg-transparent" disabled={disabled}/>
             <input aria-label="Selected color hex" className={FIELD} value={paintColour} maxLength={7} onChange={(event) => setPaintColour(event.target.value)} />
           </div>
-          <button type="button" className={`${BTN} w-full min-h-9 border-line bg-action font-semibold text-on-action hover:bg-action hover:text-on-action`} disabled={!canApplyColour || !HEX_COLOUR.test(paintColour)} onClick={applyColour}>
-            Apply to {selectedRegions.length} region{selectedRegions.length === 1 ? "" : "s"}
+          <button type="button" className="garment-apply w-full min-h-9 rounded-md px-3 text-sm font-semibold" aria-describedby="garment-color-hint" disabled={!canApplyColour || !HEX_COLOUR.test(paintColour)} onClick={applyColour}>
+            {selectedRegions.length ? `Apply color to ${selectedRegions.length} region${selectedRegions.length === 1 ? "" : "s"}` : "Apply color"}
           </button>
-          {!canBatchSave && selectedRegions.length > 1 && <p className="text-[10px] text-action">Multi-region saving requires the updated FashionEditor.jsx bridge.</p>}
+          <p id="garment-color-hint" className="text-xs text-muted" role="status">
+            {disabled ? "Unlock the garment in 2D to change its color." :
+              !selectedRegions.length ? "Tap a garment part or choose parts above." :
+              !HEX_COLOUR.test(paintColour) ? "Enter a six-digit hex color, such as #223344." :
+              !canApplyColour ? "Color editing is unavailable for this selection." : ""}
+          </p>
         </section>
 
         </>}
@@ -1240,14 +1247,14 @@ export default function Garment3DViewer({
             </label>
             <GarmentTextStyleFields value={{ ...newTextStyle, color: textColour }}
               onChange={(value) => { setNewTextStyle(value); setTextColour(value.color); }} disabled={disabled || busy}/>
-            <button type="button" className={`${BTN} w-full border-line bg-action text-on-action`}
+            <button type="button" className="garment-apply w-full min-h-9 rounded-md px-3 text-xs font-semibold"
               disabled={!canBatchArtwork || !textValue.trim()} onClick={() => void addBatchText()}>
               {busy ? "Applying…" : `Add text to ${selectedRegions.length} selected region${selectedRegions.length === 1 ? "" : "s"}`}
             </button>
           </div> : <div>
             <input ref={bulkInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"
               className="hidden" onChange={(event) => void handleBatchUpload(event)} />
-            <button type="button" className={`${BTN} w-full border-line bg-action text-on-action`}
+            <button type="button" className="garment-apply w-full min-h-9 rounded-md px-3 text-xs font-semibold"
               disabled={!canBatchArtwork} onClick={() => bulkInputRef.current?.click()}>
               {busy ? "Applying…" : `Upload ${activeTab === "pattern" ? "pattern" : "logo"} to ${selectedRegions.length} selected region${selectedRegions.length === 1 ? "" : "s"}`}
             </button>
