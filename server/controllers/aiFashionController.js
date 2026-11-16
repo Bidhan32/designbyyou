@@ -128,6 +128,11 @@ exports.generateFashionPreview = async (
         body.style,
       );
 
+    const creatorInstructions = body.creatorInstructions ?? "";
+    if (typeof creatorInstructions !== "string" || creatorInstructions.length > 1000) {
+      return res.status(400).json({ success: false, message: "Use up to 1,000 characters for preview instructions." });
+    }
+
     const designNotes =
       cleanString(
         body.designNotes ||
@@ -166,6 +171,7 @@ exports.generateFashionPreview = async (
         material,
         style,
         designNotes,
+        creatorInstructions,
         view,
         background,
         preserveGraphics,
@@ -185,6 +191,7 @@ exports.generateFashionPreview = async (
     const input = {
       imageSource,
       prompt,
+      ...(creatorInstructions.trim() ? { enhancePrompt: false } : {}),
       aspectRatio: cleanString(body.aspectRatio) || "1:1",
       outputFormat: cleanString(body.outputFormat) || "png",
     };

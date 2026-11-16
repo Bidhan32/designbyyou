@@ -111,6 +111,7 @@ function buildFashionPrompt({
   material = "",
   style = "",
   designNotes = "",
+  creatorInstructions = "",
   view = "front",
   background = "studio",
   preserveGraphics = true,
@@ -136,6 +137,19 @@ function buildFashionPrompt({
 
   const safeBackground =
     normaliseBackground(background);
+
+  const edits = cleanText(creatorInstructions);
+  if (edits) {
+    return [
+      "Edit the supplied reference image of the " + safeGarmentType + " according to the creator's request.",
+      "Creator request: " + edits,
+      "Change only the requested features. Preserve the original silhouette, construction, proportions, colors, text and artwork placement wherever the request leaves them unspecified.",
+      describeView(safeView),
+      safeView === "front-back" ? "Keep front on the left and back on the right. Preserve each side's distinct artwork." : "",
+      "Use realistic fabric and product photography unless the creator requests another rendering style.",
+      "Keep the whole design visible. Use a simple background unless a different setting is requested.",
+    ].filter(Boolean).join("\n");
+  }
 
   const instructions = [
     /*

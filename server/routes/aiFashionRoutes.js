@@ -48,6 +48,7 @@ Accepts:
 - garmentType
 - material
 - style
+- creatorInstructions (optional, up to 1,000 characters)
 - designNotes
 - view
 - background

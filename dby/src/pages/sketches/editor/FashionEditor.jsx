@@ -2173,6 +2173,7 @@ function FashionEditor() {
 
   const [aiFashionPreviewOpen, setAiFashionPreviewOpen] = useState(false);
 
+  const [aiPreviewInstructions, setAiPreviewInstructions] = useState("");
   const [aiFashionResult, setAiFashionResult] = useState(null);
 
   const [aiFashionError, setAiFashionError] = useState("");
@@ -4224,7 +4225,7 @@ function FashionEditor() {
   const handleGenerateAiFashionPreview = useCallback(async () => {
     setMobileMenuOpen(false);
 
-    if (aiFashionGenerating) {
+    if (aiFashionGenerating || aiFashionControllerRef.current) {
       setAiFashionPreviewOpen(true);
       return;
     }
@@ -4238,8 +4239,6 @@ function FashionEditor() {
       showToast(message, "error");
       return;
     }
-
-    aiFashionControllerRef.current?.abort();
 
     const abortController = new AbortController();
 
@@ -4326,6 +4325,7 @@ function FashionEditor() {
           material: "",
           style: AI_FASHION_DEFAULT_STYLE,
           designNotes,
+          creatorInstructions: aiPreviewInstructions.trim(),
           view,
           background: "studio",
           preserveGraphics: true,
@@ -4391,6 +4391,7 @@ function FashionEditor() {
     }
   }, [
     aiFashionGenerating,
+    aiPreviewInstructions,
     objectCount,
     documentData.width,
     documentData.height,
@@ -4478,16 +4479,11 @@ function FashionEditor() {
     }
   }, [aiFashionResult, aiFashionSaving, documentData.name, showToast]);
 
-  const handleOpenOrGenerateAiFashionPreview = useCallback(() => {
+  const handleOpenAiFashionPreview = useCallback(() => {
     setMobileMenuOpen(false);
     setAiFashionPreviewOpen(true);
 
-    if (aiFashionGenerating || aiFashionResult?.imageUrl) {
-      return;
-    }
-
-    void handleGenerateAiFashionPreview();
-  }, [aiFashionGenerating, aiFashionResult, handleGenerateAiFashionPreview]);
+  }, []);
 
   /*=====================================================
     Layer Helpers
@@ -11621,7 +11617,7 @@ function FashionEditor() {
             </HeaderButton>
 
             <HeaderButton
-              onClick={handleOpenOrGenerateAiFashionPreview}
+              onClick={handleOpenAiFashionPreview}
               disabled={projectLoading}
               active={aiFashionPreviewOpen}
               title="Turn the current editor design into a realistic AI fashion image"
@@ -11782,14 +11778,14 @@ function FashionEditor() {
               <button
                 type="button"
                 disabled={projectLoading}
-                onClick={handleOpenOrGenerateAiFashionPreview}
+                onClick={handleOpenAiFashionPreview}
                 className="flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm font-semibold text-action hover:bg-subtle disabled:opacity-40"
               >
                 {aiFashionGenerating
                   ? "View AI generation…"
                   : aiFashionResult?.imageUrl
                     ? "View AI Preview"
-                    : "Generate AI Preview"}
+                    : "AI Preview"}
               </button>
 
               <div className="my-1 h-px bg-subtle sm:hidden" />
@@ -13453,8 +13449,7 @@ function FashionEditor() {
                 </div>
 
                 <p className="mt-1 text-[11px] text-muted">
-                  Uses the selected clothing template as a clean garment
-                  reference when available, otherwise uses the current canvas.
+                  {selectedClothingTemplate ? "Reference: selected garment." : "Reference: current canvas."}
                 </p>
               </div>
 
@@ -13471,6 +13466,26 @@ function FashionEditor() {
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              <div className="mb-4 space-y-2">
+                <label htmlFor="fashion-preview-instructions" className="block text-sm font-semibold text-ink">
+                  Style or changes <span className="font-normal text-muted">(optional)</span>
+                </label>
+                <textarea id="fashion-preview-instructions" rows={3} maxLength={1000}
+                  value={aiPreviewInstructions} disabled={aiFashionGenerating}
+                  onChange={event => setAiPreviewInstructions(event.target.value)}
+                  aria-describedby="fashion-preview-help"
+                  placeholder="Keep the cut and chest logo. Make the sleeves dark green and use matte denim."
+                  className="block w-full resize-y rounded-md border border-line bg-canvas p-3 text-base text-ink sm:text-sm" />
+                <p id="fashion-preview-help" className="text-xs text-muted">
+                  Leave blank for a faithful render. Each generation uses your current design as its reference.
+                </p>
+                <button type="button" disabled={aiFashionGenerating || objectCount <= 0}
+                  onClick={handleGenerateAiFashionPreview}
+                  className="min-h-9 rounded-md bg-action px-4 text-sm font-semibold text-on-action disabled:opacity-50">
+                  {aiFashionGenerating ? "Generating…" : aiFashionResult ? "Generate again" : "Generate preview"}
+                </button>
+                <p className="text-xs text-muted">{objectCount <= 0 ? "Add a sketch or garment to generate a preview." : "New previews count toward your preview limit."}</p>
+              </div>
               {aiFashionGenerating ? (
                 <div className="flex min-h-[420px] flex-col items-center justify-center rounded-md border border-line bg-subtle p-4 text-center">
                   <span className="h-12 w-12 animate-spin rounded-full border-2 border-line border-t-action" />
@@ -13559,57 +13574,15 @@ function FashionEditor() {
                       {aiFashionSaving ? "Saving Image…" : "Save Image"}
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={handleGenerateAiFashionPreview}
-                      className="flex min-h-9 items-center justify-center rounded-md border border-line bg-surface px-4 text-sm font-semibold text-ink hover:border-line hover:text-ink"
-                    >
-                      Generate Again
-                    </button>
-
-                    <p className="rounded-md border border-line bg-subtle p-3 text-[10px] leading-4 text-muted">
-                      Generate Again creates another paid AI generation. The
-                      current editor design is not modified.
-                    </p>
                   </div>
                 </div>
-              ) : (
-                <div className="flex min-h-[360px] flex-col items-center justify-center rounded-md border border-line bg-subtle p-4 text-center">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-md bg-surface text-xl font-semibold text-action">
-                    AI
-                  </div>
+              ) : null}
 
-                  <p className="mt-4 text-base font-bold text-ink">
-                    No AI preview yet
-                  </p>
-
-                  <p className="mt-2 max-w-md text-xs leading-5 text-muted">
-                    Generate a realistic product-style image from the sketch,
-                    drawing, image, graphics or clothing template currently on
-                    the canvas.
-                  </p>
-
-                  {aiFashionError ? (
-                    <p className="mt-4 max-w-lg rounded-md border border-line bg-subtle px-4 py-3 text-xs text-action">
-                      {aiFashionError}
-                    </p>
-                  ) : null}
-
-                  <button
-                    type="button"
-                    onClick={handleGenerateAiFashionPreview}
-                    className="mt-5 min-h-9 rounded-md bg-action px-5 text-sm font-bold text-on-action hover:bg-action hover:text-on-action"
-                  >
-                    Generate AI Preview
-                  </button>
-                </div>
-              )}
-
-              {!aiFashionGenerating && aiFashionError && aiFashionResult ? (
+              {!aiFashionGenerating && aiFashionError && (
                 <p className="mt-4 rounded-md border border-line bg-subtle px-4 py-3 text-xs text-action">
                   {aiFashionError}
                 </p>
-              ) : null}
+              )}
             </div>
           </section>
         </div>
