@@ -6,6 +6,7 @@ const actions = {
   account_status: "Account status",
   account_role: "Account role",
   bank_verification: "Bank verification",
+  showcase_publish: "Showcase publish",
   manual_payout: "Manual payout",
 };
 const control = "min-h-9 rounded-md border border-line bg-surface px-3 text-sm";
@@ -39,9 +40,9 @@ function Results({ query, action }) {
       <ol className="divide-y divide-line rounded-md border border-line bg-surface">{page.data.map(event =>
         <li key={event.id} className="grid gap-2 p-3 text-sm sm:grid-cols-[1fr_auto]">
           <div className="min-w-0">
-            <strong>{actions[event.action]}</strong> · {event.previous_value || "Unset"} → {event.new_value}
+            <strong>{actions[event.action]}</strong> {event.action === "showcase_publish" ? event.new_value : (event.previous_value || "Unset") + " → " + event.new_value}
             <p>By {event.actor_name || "Administrator"} <span className="break-all font-mono text-xs text-muted">{event.actor_id}</span></p>
-            <p className="break-all text-muted">Target ID <span className="font-mono text-xs">{event.target_id}</span></p>
+            {event.target_id && <p className="break-all text-muted">Target ID <span className="font-mono text-xs">{event.target_id}</span></p>}
           </div>
           <time dateTime={event.occurred_at} className="font-mono text-xs text-muted">{new Date(event.occurred_at).toLocaleString()}</time>
         </li>)}</ol>}

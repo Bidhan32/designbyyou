@@ -73,7 +73,6 @@ import {
   Plus,
   Power,
   RefreshCw,
-  Save,
   ShieldCheck,
   Trash2,
   Video,
@@ -102,6 +101,7 @@ const createHeroState = (data = {}) => {
   }
 
   return {
+    revision: data.revision,
     mode: data.mode === "video" ? "video" : "slideshow",
 
     slideshow_images: paddedImages.slice(0, 5),
@@ -121,14 +121,14 @@ const normalizeHeroForComparison = (hero) => ({
   mode: hero.mode === "video" ? "video" : "slideshow",
 
   slideshow_images: Array.isArray(hero.slideshow_images)
-    ? hero.slideshow_images.map((item) => String(item || "").trim())
+    ? [...new Set(hero.slideshow_images.map((item) => String(item || "").trim()).filter(Boolean))]
     : [],
 
   video_url: String(hero.video_url || "").trim(),
 
   video_poster_url: String(hero.video_poster_url || "").trim(),
 
-  rotation_seconds: String(hero.rotation_seconds || ""),
+  rotation_seconds: String(Number(hero.rotation_seconds)),
 
   is_enabled: hero.is_enabled === true,
 });
@@ -190,6 +190,7 @@ const SystemSettings = () => {
 
   const [originalHero, setOriginalHero] = useState(createHeroState());
 
+  const [conflictingHero, setConflictingHero] = useState(null);
   const [heroPreviewIndex, setHeroPreviewIndex] = useState(0);
 
   /*=======================================================
@@ -425,7 +426,7 @@ const SystemSettings = () => {
   const handleSaveHero = async (event) => {
     event.preventDefault();
 
-    if (savingHero) {
+    if (savingHero || conflictingHero || !heroHasChanges) {
       return;
     }
 
@@ -469,6 +470,7 @@ const SystemSettings = () => {
 
     try {
       const response = await API.patch("/superadmin/showcase-hero", {
+        revision: originalHero.revision,
         mode: hero.mode,
 
         slideshow_images: cleanedHeroImages,
@@ -503,6 +505,10 @@ const SystemSettings = () => {
           "Showcase Hero configuration updated successfully.",
       );
     } catch (err) {
+      if (err.response?.status === 409 && err.response.data?.data) {
+        setConflictingHero(createHeroState(err.response.data.data));
+        return;
+      }
       console.error("Failed to update Showcase Hero:", err);
 
       setError(
@@ -571,7 +577,7 @@ const SystemSettings = () => {
         <button
           type="button"
           onClick={fetchSettings}
-          disabled={savingHero}
+          disabled={savingHero || heroHasChanges || Boolean(conflictingHero)}
           className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-surface border border-line rounded-md text-[10px] font-semibold uppercase tracking-widest text-muted hover:border-line hover:text-ink transition-all disabled:opacity-50"
         >
           <RefreshCw size={14} aria-hidden="true" />
@@ -889,7 +895,8 @@ const SystemSettings = () => {
           </div>
         </div>
 
-        <form onSubmit={handleSaveHero} className="p-4 space-y-8">
+        <form onSubmit={handleSaveHero} className="p-4">
+          <fieldset disabled={savingHero} className="min-w-0 space-y-8">
           {/*===========================================
           Enable / Disable
           ===========================================*/}
@@ -1373,47 +1380,43 @@ const SystemSettings = () => {
           Save Hero
           ===========================================*/}
 
-          <div className="pt-6 border-t border-line flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <p className="text-xs text-muted max-w-xl leading-relaxed">
-                Saving changes updates the shared Hero configuration only. It
-                does not modify designs, bookings, payments or historical data.
-              </p>
-
-              <p className="text-[10px] uppercase tracking-widest font-semibold text-muted mt-2">
-                Active Mode:{" "}
-                <span className="text-ink">
-                  {hero.mode === "video" ? "Video" : "Slideshow"}
-                </span>
-              </p>
-            </div>
-
-            <button
-              type="submit"
-              disabled={savingHero || !heroValid || !heroHasChanges}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-md bg-action text-on-action text-[10px] font-semibold uppercase tracking-widest hover:bg-action transition-all disabled:bg-subtle disabled:text-muted disabled:cursor-not-allowed hover:text-on-action"
-            >
-              {savingHero ? (
-                <>
-                  <RefreshCw
-                    size={15}
-                    className="animate-spin"
-                    aria-hidden="true"
-                  />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save
-                    size={15}
-                    className="text-action"
-                    aria-hidden="true"
-                  />
-                  Save Showcase Hero
-                </>
-              )}
+          {conflictingHero && (
+            <section className="space-y-3 rounded-md border border-line p-3" aria-label="Publishing conflict">
+              <p role="alert">The live showcase changed. Your draft is still here.</p>
+              <details open>
+                <summary>Review the current live settings</summary>
+                <dl className="mt-2 space-y-1 break-words text-sm">
+                  <dt>Banner</dt><dd>{conflictingHero.is_enabled ? "Enabled" : "Disabled"} · {conflictingHero.mode}</dd>
+                  <dt>Slides</dt><dd>{conflictingHero.slideshow_images.filter(Boolean).join(" • ") || "None"}</dd>
+                  <dt>Slide duration</dt><dd>{conflictingHero.rotation_seconds} seconds</dd>
+                  <dt>Video</dt><dd>{conflictingHero.video_url || "None"}</dd>
+                  <dt>Poster</dt><dd>{conflictingHero.video_poster_url || "None"}</dd>
+                </dl>
+              </details>
+              <button type="button" className="h-9 rounded-md border border-line px-3" onClick={() => {
+                setOriginalHero(conflictingHero);
+                setConflictingHero(null);
+              }}>Keep editing my draft</button>
+            </section>
+          )}
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line pt-3">
+            <button type="button" disabled={!heroHasChanges && !conflictingHero}
+              className="h-9 rounded-md border border-line px-3 disabled:opacity-50"
+              onClick={() => {
+                const live = conflictingHero || originalHero;
+                setHero(live);
+                setOriginalHero(live);
+                setConflictingHero(null);
+                setHeroPreviewIndex(0);
+                setError("");
+                setSuccess("");
+              }}>Discard changes</button>
+            <button type="submit" disabled={!Number.isInteger(originalHero.revision) || !heroValid || !heroHasChanges || Boolean(conflictingHero)}
+              className="h-9 rounded-md bg-action px-3 text-on-action disabled:bg-subtle disabled:text-muted">
+              {savingHero ? "Publishing…" : "Publish to both showcases"}
             </button>
           </div>
+          </fieldset>
         </form>
       </section>
 

@@ -12,7 +12,7 @@ async function list(req, res) {
   res.set("Cache-Control", "no-store");
   const { q = "", before, action = "" } = req.query;
   if (typeof q !== "string" || q.length > 120 ||
-      !["","designer_review","account_status","account_role","bank_verification","manual_payout"].includes(action) ||
+      !["","designer_review","account_status","account_role","bank_verification","manual_payout","showcase_publish"].includes(action) ||
       (before !== undefined && (typeof before !== "string" || !/^[1-9]\d{0,18}$/.test(before) || BigInt(before)>9223372036854775807n))) {
     return res.status(400).json({ message: "Invalid activity search." });
   }

@@ -38,3 +38,32 @@ test("designer queue, concurrent decisions and suspension history", async t => {
   assert.equal(history.rows[0].actor_id, actor.id);
   assert.equal(history.rows[0].new_value, saved);
 });
+
+test("showcase publishes once, rejects stale drafts and supplies the shared public banner", async t => {
+  const sandbox = await sandboxDatabase();
+  t.after(() => sandbox.dispose());
+  const ctrl = isolatedServer({ db: sandbox.pool }).load("controllers/superAdminController.js");
+  const user = { id: randomUUID(), fullName: "Publisher" };
+  await sandbox.pool.query("INSERT INTO users(id,full_name,email,password_hash,role) VALUES ($1,$2,$3,'unused','superadmin')",
+    [user.id, user.fullName, user.id + "@example.invalid"]);
+  async function call(handler, body) {
+    const response = { status(code) { this.code = code; return this; }, json(value) { this.body = value; } };
+    await handler({ user, body }, response);
+    return response;
+  }
+  const publish = body => call(ctrl.updateShowcaseHeroSettings, body);
+  const { revision } = (await call(ctrl.getShowcaseHeroSettings)).body.data;
+  assert.equal((await publish({ mode: "video" })).code, 428);
+  const draft = { revision, mode: "video", is_enabled: true, video_url: "/first.mp4" };
+  const attempts = await Promise.all([publish(draft), publish({ ...draft, video_url: "/second.mp4" })]);
+  assert.deepEqual(attempts.map(row => row.code).sort(), [200,409]);
+  const live = attempts.find(row => row.code === 200).body.data;
+  assert.equal(attempts.find(row => row.code === 409).body.data.video_url, live.video_url);
+  assert.equal(live.revision, revision + 1);
+  assert.equal((await call(ctrl.getPublicShowcaseHero)).body.data.video_url, live.video_url);
+  assert.equal((await publish({ revision: live.revision, video_url: live.video_url })).body.data.revision, live.revision);
+  const history = await sandbox.pool.query("SELECT * FROM admin_activity WHERE action='showcase_publish'");
+  assert.equal(history.rowCount, 1);
+  assert.equal(history.rows[0].actor_id, user.id);
+  assert.match(history.rows[0].new_value, /Mode changed to video/);
+});

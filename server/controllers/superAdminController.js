@@ -483,6 +483,7 @@ const getShowcaseHeroRow = async () => {
     `
         SELECT
             id,
+            revision,
             mode,
             slideshow_images,
             video_url,
@@ -3485,6 +3486,7 @@ exports.getPublicShowcaseHero = async (req, res) => {
 exports.updateShowcaseHeroSettings = async (req, res) => {
   const body = req.body || {};
 
+  let client;
   try {
     const current = await getShowcaseHeroRow();
 
@@ -3494,6 +3496,15 @@ exports.updateShowcaseHeroSettings = async (req, res) => {
           "Showcase Hero configuration was not found. Run the Hero settings migration first.",
       });
     }
+
+    if (!Number.isSafeInteger(body.revision)) {
+      return res.status(428).json({ message: "Reload the live settings before publishing." });
+    }
+    const conflict = live => res.status(409).json({
+      message: "The live showcase changed while you were editing.",
+      data: live,
+    });
+    if (body.revision !== current.revision) return conflict(current);
 
     let mode = current.mode;
 
@@ -3634,7 +3645,22 @@ exports.updateShowcaseHeroSettings = async (req, res) => {
 
     const updatedBy = req.user?.id || req.user?.user_id || null;
 
-    const result = await db.query(
+    const changes = [];
+    if (current.mode !== mode) changes.push("Mode changed to " + mode);
+    if (current.is_enabled !== isEnabled) changes.push(isEnabled ? "Banner enabled" : "Banner disabled");
+    if (JSON.stringify(current.slideshow_images) !== JSON.stringify(slideshowImages)) {
+      const count = current.slideshow_images.length;
+      changes.push(count === slideshowImages.length ? "Slideshow images or order changed" :
+        "Slideshow changed from " + count + " to " + slideshowImages.length + " images");
+    }
+    if (current.rotation_seconds !== rotationSeconds) changes.push("Slide duration changed to " + rotationSeconds + " seconds");
+    if (current.video_url !== videoUrl) changes.push(videoUrl ? "Video source changed" : "Video removed");
+    if (current.video_poster_url !== videoPosterUrl) changes.push(videoPosterUrl ? "Video poster changed" : "Video poster removed");
+    if (!changes.length) return res.status(200).json({ data: current, message: "Already published." });
+
+    client = await db.connect();
+    await client.query("BEGIN");
+    const result = await client.query(
       `
           UPDATE showcase_hero_settings
 
@@ -3660,12 +3686,14 @@ exports.updateShowcaseHeroSettings = async (req, res) => {
                   $7,
 
               updated_at =
-                  NOW()
+                  NOW(),
+              revision = revision + 1
 
-          WHERE id = 1
+          WHERE id = 1 AND revision = $8
 
           RETURNING
               id,
+              revision,
               mode,
               slideshow_images,
               video_url,
@@ -3690,27 +3718,34 @@ exports.updateShowcaseHeroSettings = async (req, res) => {
         isEnabled,
 
         updatedBy,
+        body.revision,
       ],
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({
-        message: "Showcase Hero configuration was not found.",
-      });
+      await client.query("ROLLBACK");
+      client.release();
+      client = null;
+      return conflict(await getShowcaseHeroRow());
     }
 
+    await activity.record(client, req.user, "showcase_publish", null, null, changes.join(". ") + ".");
+    await client.query("COMMIT");
     return res.status(200).json({
       status: "success",
 
-      message: "Showcase Hero configuration updated successfully.",
+      message: "Published to both showcases.",
 
       data: result.rows[0],
     });
   } catch (error) {
+    if (client) await client.query("ROLLBACK");
     console.error("updateShowcaseHeroSettings error:", error);
 
     return res.status(500).json({
       message: "Failed to update Showcase Hero configuration.",
     });
+  } finally {
+    client?.release();
   }
 };
