@@ -128,6 +128,48 @@ async function main() {
     expect(await api(admin, "/superadmin/finance/transactions?limit=25&offset=0", {}, "GET"), 200);
     expect(await api(admin, adminBase+"?status=pending&limit=25&offset=0", {}, "GET"), 200);
   });
+  await step("Designer approval decisions update the dashboard, finance access and activity once", async () => {
+    for (const status of ["approved", "rejected"]) {
+      const f = await fixture();
+      await pool.query("UPDATE users SET approval_status='pending' WHERE id=$1", [f.id]);
+      const pendingCount = async () => expect(await api(admin, "/superadmin/dashboard-stats", {}, "GET"), 200).pending_designers;
+      const queue = async () => expect(await api(admin, "/superadmin/pending-designers", {}, "GET"), 200).data;
+      const before = await pendingCount();
+      assert.ok((await queue()).some(row => row.id === f.id));
+      expect(await create(f), 403);
+      const review = () => api(admin, "/superadmin/update-status/" + f.id, { status, reviewApplication: true }, "PATCH");
+      expect(await review(), 200);
+      expect(await review(), 409);
+      assert.equal(await pendingCount(), before - 1);
+      assert.ok(!(await queue()).some(row => row.id === f.id));
+      expect(await create(f), status === "approved" ? 201 : 403);
+      const history = expect(await api(admin, "/superadmin/activity?q=" + f.id, {}, "GET"), 200).data;
+      assert.deepEqual(history.map(row => [row.actor_id, row.new_value]), [[admin, status]]);
+    }
+  });
+  await step("Bank reviews update the queue, dashboard, designer wallet and actor history", async () => {
+    for (const status of ["verified", "rejected"]) {
+      const owner = await user();
+      const bank = await saveBank(owner);
+      const queue = async () => expect(await api(admin, bankQueue, {}, "GET"), 200).data;
+      const count = async () => expect(await api(admin, "/superadmin/finance/overview", {}, "GET"), 200).data.payouts.pending_bank_verifications;
+      const before = await count();
+      const entry = (await queue()).find(row => row.id === bank.id);
+      const payload = { status, review_version: entry.review_version };
+      if (status === "rejected") {
+        expect(await api(admin, bankQueue + "/" + bank.id + "/verification", payload, "PATCH"), 400);
+        payload.reason = "Check the account holder name.";
+      }
+      expect(await api(admin, bankQueue + "/" + bank.id + "/verification", payload, "PATCH"), 200);
+      assert.equal(await count(), before - 1);
+      assert.ok(!(await queue()).some(row => row.id === bank.id));
+      const result = expect(await api(owner, finance + "/payout-options", {}, "GET"), 200).data.bank_account;
+      assert.equal(result.verification_status, status);
+      assert.equal(result.rejection_reason, payload.reason || null);
+      const history = expect(await api(admin, "/superadmin/activity?q=" + bank.id, {}, "GET"), 200).data;
+      assert.deepEqual(history.map(row => [row.actor_id, row.new_value]), [[admin, status]]);
+    }
+  });
   await step("UAE and Nepal designers both receive manual payout routing; Connect is disabled", async () => {
     for (const country of ["Nepal", "United Arab Emirates"]) {
       const id = await user("designer", country);
@@ -196,9 +238,12 @@ async function main() {
     await balances(f.id, 80, 20);
   });
   await step("Completion failure rolls back wallet and ledger; concurrent retry records one payout", async () => {
+    const pendingPayouts = async () => expect(await api(admin, "/superadmin/finance/overview", {}, "GET"), 200).data.payouts.pending_manual_payouts;
     const f = await fixture(); const payout = expect(await create(f), 201).data;
+    const pendingBefore = await pendingPayouts();
     expect(await api(admin, `${adminBase}/${payout.request_id}/complete`, { transfer_reference: "SYNTHETIC-REF-ONE" }), 409);
     expect(await api(admin, `${adminBase}/${payout.request_id}/processing`), 200);
+    assert.equal(await pendingPayouts(), pendingBefore - 1);
     failCompletion = true;
     expect(await api(admin, `${adminBase}/${payout.request_id}/complete`, { transfer_reference: "SYNTHETIC-REF-ONE" }), 500);
     await balances(f.id, 80, 20);

@@ -508,6 +508,7 @@ function bankAccountResponseRow(row) {
     destination_summary: bankDestinationSummary(row),
 
     verification_status: row.verification_status,
+    rejection_reason: row.verification_status === "rejected" ? row.rejection_reason || null : null,
 
     is_default: Boolean(row.is_default),
 
@@ -996,11 +997,8 @@ exports.getPayoutOptions = async (req, res) => {
               FROM designer_bank_accounts
 
               WHERE designer_id = $1
-                AND is_default = TRUE
-                AND is_active = TRUE
-
-              ORDER BY
-                created_at DESC
+                AND ((is_default AND is_active) OR verification_status = 'rejected')
+              ORDER BY (is_default AND is_active) DESC, updated_at DESC, id DESC
 
               LIMIT 1
             `,
@@ -1080,11 +1078,8 @@ exports.getBankPayoutAccount = async (req, res) => {
             FROM designer_bank_accounts
 
             WHERE designer_id = $1
-              AND is_default = TRUE
-              AND is_active = TRUE
-
-            ORDER BY
-              created_at DESC
+              AND ((is_default AND is_active) OR verification_status = 'rejected')
+              ORDER BY (is_default AND is_active) DESC, updated_at DESC, id DESC
 
             LIMIT 1
           `,

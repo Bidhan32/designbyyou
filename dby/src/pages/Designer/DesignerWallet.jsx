@@ -1397,6 +1397,7 @@ export default function DesignerWallet() {
                     This bank account is{" "}
                     <strong>{bankStatusText.toLowerCase()}</strong>. Withdrawals
                     are available only after Super Admin verification.
+                    {bankStatus === "rejected" && <p>Review your bank details and resubmit. {bankAccount.rejection_reason}</p>}
                   </div>
                 )}
 

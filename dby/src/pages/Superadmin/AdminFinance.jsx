@@ -63,14 +63,16 @@ function Review({ row, banks, onSaved }) {
     setError("");
     try {
       if (banks) {
-        await API.patch(`${base}/bank-accounts/${row.id}/verification`, { status: action, review_version: row.review_version });
+        await API.patch(`${base}/bank-accounts/${row.id}/verification`, { status: action, review_version: row.review_version, ...(action === "rejected" ? { reason: note.trim() } : {}) });
       } else {
         const payload = action === "complete" ? { transfer_reference: note.trim() }
           : action === "fail" ? { reason: note.trim(), funds_sent: false } : {};
-        await API.post(`${base}/manual-payouts/${row.id}/${action}`, payload);
+        const { data } = await API.post(`${base}/manual-payouts/${row.id}/${action}`, payload);
+        if (data.idempotent) return onSaved(data.message || "This payout was already updated.");
       }
       onSaved(banks ? `Bank account ${action}.` : "Payout updated.");
     } catch (err) {
+      if (err.response?.status === 409) return onSaved(err.response.data?.message || "The record changed. The queue has been refreshed.");
       setError(err.response?.data?.message || "Unable to confirm the update. Refresh to check its status.");
     } finally { setBusy(false); }
   }
@@ -88,6 +90,8 @@ function Review({ row, banks, onSaved }) {
     {reveal && <SensitiveDetails url={url} hide={setReveal} />}
     {action && <form className="max-w-lg space-y-3" onSubmit={submit}>
       <h3 className="font-semibold">{actions[action]}</h3>
+      {action === "rejected" && <label className="block">Reason shown to designer
+        <textarea className={input} required minLength={3} maxLength={500} value={note} onChange={e => setNote(e.target.value)} /></label>}
       {(action === "complete" || action === "fail") && <label className="block">{action === "complete" ? "Bank transfer reference" : "Reason for failure"}
         <input className={input} required minLength={3} maxLength={action === "complete" ? 160 : 1000} value={note} onChange={e => setNote(e.target.value)} /></label>}
       <label className="flex items-start gap-2"><input type="checkbox" required checked={confirmed} onChange={e => setConfirmed(e.target.checked)} />

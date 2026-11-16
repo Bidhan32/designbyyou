@@ -2148,6 +2148,11 @@ exports.updateDesignerBankAccountVerification = async (req, res) => {
     });
   }
 
+  const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+  if (requestedStatus === "rejected" && (reason.length < 3 || reason.length > 500)) {
+    return res.status(400).json({ message: "Give the designer a rejection reason (3–500 characters)." });
+  }
+
   const client = await db.connect();
 
   try {
@@ -2303,6 +2308,7 @@ exports.updateDesignerBankAccountVerification = async (req, res) => {
             SET
                 verification_status =
                     'rejected',
+                rejection_reason = $2,
 
                 is_default =
                     FALSE,
@@ -2334,7 +2340,7 @@ exports.updateDesignerBankAccountVerification = async (req, res) => {
                 created_at,
                 updated_at
           `,
-        [bankAccountId],
+        [bankAccountId, reason],
       );
     }
 
