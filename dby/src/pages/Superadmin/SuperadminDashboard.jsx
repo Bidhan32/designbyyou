@@ -1,16 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import {
-  Users,
-  UserCheck,
-  HardDrive,
-  Activity,
   DollarSign,
-  Wallet,
   RefreshCw,
   AlertTriangle,
   CheckCircle2,
-  Clock,
   ShieldCheck,
 } from "lucide-react";
 
@@ -41,111 +35,60 @@ import { Link } from "react-router-dom";
  * ============================================================
  */
 
+const sources = {
+  stats: { label: "Account statistics", path: "/superadmin/dashboard-stats" },
+  finance: { label: "Finance", path: "/superadmin/finance/overview" },
+  commission: { label: "Commission policy", path: "/superadmin/commission" },
+};
+const unavailable = "Unavailable";
+function numberValue(value) {
+  if ((typeof value !== "number" && typeof value !== "string") || String(value).trim() === "") return null;
+  const result = Number(value);
+  return Number.isFinite(result) ? result : null;
+}
+const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+function formatMoney(value) {
+  const number = numberValue(value);
+  return number === null ? unavailable : currency.format(number);
+}
+
 const SuperAdminDashboard = () => {
-  const [stats, setStats] = useState(null);
-  const [finance, setFinance] = useState(null);
-  const [commissionPolicy, setCommissionPolicy] = useState(null);
-
-  const [loading, setLoading] = useState(true);
+  const [reports, setReports] = useState({});
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState("");
-
-  /* ========================================================
-       HELPERS
-       ======================================================== */
-
-  const numberValue = (value) => {
-    const parsed = Number(value);
-
-    return Number.isFinite(parsed) ? parsed : 0;
-  };
-
-  const formatMoney = (value) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(numberValue(value));
-  };
-
-  const getRoleCount = useCallback(
-    (role) => {
-      if (!Array.isArray(stats?.user_distribution)) {
-        return 0;
-      }
-
-      const match = stats.user_distribution.find((item) => item.role === role);
-
-      return numberValue(match?.count);
-    },
-    [stats],
-  );
-
-  /* ========================================================
-       FETCH DASHBOARD DATA
-       ======================================================== */
-
-  const fetchData = useCallback(async (isRefresh = false) => {
-    if (isRefresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
-
-    setError("");
-
-    try {
-      const results = await Promise.allSettled([
-        API.get("/superadmin/dashboard-stats"),
-        API.get("/superadmin/finance/overview"),
-        API.get("/superadmin/commission"),
-      ]);
-
-      const [statsResult, financeResult, commissionResult] = results;
-
-      if (statsResult.status === "fulfilled") {
-        setStats(statsResult.value.data);
-      } else {
-        console.error("Dashboard stats request failed:", statsResult.reason);
-      }
-
-      if (financeResult.status === "fulfilled") {
-        setFinance(financeResult.value.data?.data || null);
-      } else {
-        console.error("Finance overview request failed:", financeResult.reason);
-      }
-
-      if (commissionResult.status === "fulfilled") {
-        setCommissionPolicy(commissionResult.value.data?.data || null);
-      } else {
-        console.error("Commission request failed:", commissionResult.reason);
-      }
-
-      const failedRequests = results.filter(
-        (result) => result.status === "rejected",
-      );
-
-      if (failedRequests.length === results.length) {
-        setError("Unable to load Super Admin monitoring data.");
-      } else if (failedRequests.length > 0) {
-        setError(
-          "Some monitoring data could not be loaded. The available data is shown below.",
-        );
-      }
-    } catch (err) {
-      console.error("Super Admin dashboard error:", err);
-
-      setError("Unable to load Super Admin monitoring data.");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
+  const [revision, setRevision] = useState(0);
   useEffect(() => {
-    fetchData(false);
-  }, [fetchData]);
+    const controller = new AbortController();
+    async function load(key, source) {
+      try {
+        const response = await API.get(source.path, { signal: controller.signal });
+        const data = key === "stats" ? response.data : response.data?.data;
+        if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("Missing report");
+        const updatedAt = new Date();
+        if (!controller.signal.aborted) setReports(previous => ({ ...previous, [key]: { data, updatedAt } }));
+      } catch {
+        if (!controller.signal.aborted) setReports(previous => ({ ...previous, [key]: { ...previous[key], failed: true } }));
+      }
+    }
+    Promise.all(Object.entries(sources).map(([key, source]) => load(key, source))).then(() => {
+      if (!controller.signal.aborted) setRefreshing(false);
+    });
+    return () => controller.abort();
+  }, [revision]);
+  function refresh() {
+    setRefreshing(true);
+    setRevision(value => value + 1);
+  }
+
+  const stats = reports.stats?.data;
+  const finance = reports.finance?.data;
+  const commissionPolicy = reports.commission?.data;
+  const failed = Object.keys(sources).filter(key => reports[key]?.failed);
+  const loading = Object.keys(reports).length !== Object.keys(sources).length;
+  function getRoleCount(role) {
+    if (!Array.isArray(stats?.user_distribution)) return unavailable;
+    const match = stats.user_distribution.find(item => item.role === role);
+    return match ? numberValue(match.count) ?? unavailable : 0;
+  }
 
   /* ========================================================
        DERIVED USER INFORMATION
@@ -158,9 +101,10 @@ const SuperAdminDashboard = () => {
 
   const totalUsers = useMemo(() => {
     if (!Array.isArray(stats?.user_distribution)) {
-      return 0;
+      return unavailable;
     }
 
+    if (stats.user_distribution.some(item => numberValue(item.count) === null)) return unavailable;
     return stats.user_distribution.reduce(
       (total, item) => total + numberValue(item.count),
       0,
@@ -179,8 +123,7 @@ const SuperAdminDashboard = () => {
 
   const bookingPlatformRetained =
     finance?.revenue?.booking_platform_retained ??
-    finance?.revenue?.booking_commission_revenue ??
-    0;
+    finance?.revenue?.booking_commission_revenue;
 
   /* ========================================================
        LOADING
@@ -192,7 +135,7 @@ const SuperAdminDashboard = () => {
         <RefreshCw size={28} className="animate-spin text-action" />
 
         <p className="text-[10px] text-muted font-semibold uppercase tracking-normal">
-          Loading Platform Intelligence...
+          Loading overview…
         </p>
       </div>
     );
@@ -203,7 +146,7 @@ const SuperAdminDashboard = () => {
        ======================================================== */
 
   return (
-    <div className="p-4 max-w-[1600px] mx-auto space-y-10">
+    <div className="p-4 max-w-[1600px] mx-auto space-y-5">
       {/* =================================================
                 HEADER
                 ================================================= */}
@@ -229,13 +172,13 @@ const SuperAdminDashboard = () => {
 
         <button
           type="button"
-          onClick={() => fetchData(true)}
+          onClick={refresh}
           disabled={refreshing}
           className="px-5 py-3 bg-surface border border-line rounded-md flex items-center justify-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-muted hover:border-line hover:text-ink transition-all disabled:opacity-50"
         >
           <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
 
-          {refreshing ? "Refreshing..." : "Refresh Data"}
+          {refreshing ? "Refreshing..." : failed.length ? "Retry" : "Refresh"}
         </button>
       </div>
 
@@ -243,22 +186,31 @@ const SuperAdminDashboard = () => {
                 PARTIAL LOAD WARNING
                 ================================================= */}
 
-      {error && (
-        <div className="p-4 rounded-md bg-canvas border border-line flex items-start gap-3">
-          <AlertTriangle
-            size={18}
-            className="text-action mt-0.5 flex-shrink-0"
-          />
-
-          <div>
-            <p className="text-xs font-bold text-action">
-              Monitoring Warning
-            </p>
-
-            <p className="text-xs text-action mt-1">{error}</p>
-          </div>
+      {failed.length > 0 && (
+        <div role="status" className="rounded-md border border-line bg-surface p-3 text-sm">
+          {failed.map(key => <p key={key}>
+            {sources[key].label}: {reports[key].updatedAt
+              ? "Refresh failed. Showing figures from " + reports[key].updatedAt.toLocaleString() + "."
+              : unavailable}
+          </p>)}
         </div>
       )}
+
+      <section aria-labelledby="review-heading">
+        <h2 id="review-heading" className="mb-2 font-semibold">Needs review</h2>
+        <div className="divide-y divide-line rounded-md border border-line bg-surface">
+          {[
+            ["Designer approvals", "/superadmin/designer-approvals", stats?.pending_designers],
+            ["Bank verifications", "/superadmin/finance?tab=banks", finance?.payouts?.pending_bank_verifications],
+            ["Manual payouts", "/superadmin/finance?tab=payouts", finance?.payouts?.pending_manual_payouts],
+          ].map(([label, path, count]) => (
+            <Link key={path} to={path} className="flex min-h-11 items-center justify-between gap-2 px-3 py-2 text-sm hover:bg-subtle focus-visible:outline-auto">
+              <span>{label}</span>
+              <span className="font-mono tabular-nums text-muted">{numberValue(count) === null ? unavailable : count + " pending"} ›</span>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       {/* =================================================
                 USER / PROJECT QUICK STATS
@@ -281,10 +233,6 @@ const SuperAdminDashboard = () => {
             value={totalDesigners}
           />
 
-          <Link to="/superadmin/designer-approvals" className="flex items-center justify-between gap-3 py-3 text-sm hover:underline">
-            Review designer applications
-            <span className="font-mono text-muted">{stats?.pending_designers == null ? "Count unavailable" : `${stats.pending_designers} pending`}</span>
-          </Link>
 
           <StatCard
             label="Active Projects"
@@ -410,9 +358,6 @@ const SuperAdminDashboard = () => {
               value={formatMoney(finance?.wallets?.pending_payout_balance)}
             />
 
-            <Link className="flex items-center justify-between gap-2 py-3 text-sm hover:underline" to="/superadmin/finance?tab=payouts">
-              Review pending payouts <span className="font-mono">{finance?.payouts?.pending_payout_requests ?? "Count unavailable"}</span>
-            </Link>
 
             <DataRow
               label="Processing Payout Requests"
@@ -529,7 +474,7 @@ const SuperAdminDashboard = () => {
               )}
 
               <span className="text-[10px] font-semibold uppercase tracking-widest">
-                {policyConsistent
+                {policyMismatches === null ? unavailable : policyConsistent
                   ? "Policy Synchronized"
                   : `${policyMismatches} Mismatch${
                       policyMismatches === 1 ? "" : "es"
@@ -592,7 +537,7 @@ const SuperAdminDashboard = () => {
           </p>
 
           <p className="text-3xl font-serif mt-2 text-ink">
-            {numberValue(commissionPolicy?.designer_profiles)}
+            {numberValue(commissionPolicy?.designer_profiles) ?? unavailable}
           </p>
 
           <p className="text-xs text-muted mt-4">
@@ -724,7 +669,7 @@ const SectionHeading = ({ title, subtitle }) => (
   </div>
 );
 
-const StatCard = ({ label, value }) => <DataRow label={label} value={value ?? 0} />;
+const StatCard = ({ label, value }) => <DataRow label={label} value={value} />;
 const MoneyCard = ({ label, value, note }) => (
   <div className="py-2">
     <DataRow label={label} value={value} />
@@ -741,7 +686,7 @@ const DataRow = ({ label, value, alert = false }) => (
         alert ? "text-action" : "text-ink"
       }`}
     >
-      {value}
+      {value ?? unavailable}
     </span>
   </div>
 );
@@ -753,11 +698,11 @@ const MiniMetric = ({ label, value, warning = false, danger = false }) => (
     </p>
 
     <p
-      className={`text-2xl font-serif mt-2 ${
+      className={`text-base font-mono tabular-nums mt-2 ${
         danger ? "text-action" : warning ? "text-action" : "text-ink"
       }`}
     >
-      {value}
+      {value ?? unavailable}
     </p>
   </div>
 );
@@ -768,12 +713,12 @@ const TierPolicyCard = ({ tier, minimum, maximum, rate, designerCount }) => {
       ? `${tier.charAt(0).toUpperCase()}${tier.slice(1)}`
       : "Unknown";
 
-  const minimumValue = numberOrZero(minimum);
+  const minimumValue = numberValue(minimum);
 
   const bookingRange =
-    maximum === null || maximum === undefined
+    minimumValue === null ? unavailable : maximum === null
       ? `${minimumValue}+`
-      : `${minimumValue}–${numberOrZero(maximum)}`;
+      : `${minimumValue}–${numberValue(maximum) ?? unavailable}`;
 
   return (
     <div className="p-4 min-h-[160px]">
@@ -784,7 +729,7 @@ const TierPolicyCard = ({ tier, minimum, maximum, rate, designerCount }) => {
           </p>
 
           <p className="text-3xl font-serif text-ink mt-2">
-            {numberOrZero(rate)}%
+            {numberValue(rate) === null ? unavailable : numberValue(rate) + "%"}
           </p>
         </div>
 
@@ -798,17 +743,12 @@ const TierPolicyCard = ({ tier, minimum, maximum, rate, designerCount }) => {
       </p>
 
       <p className="text-[10px] text-muted mt-1">
-        {numberOrZero(designerCount)} Designer
-        {numberOrZero(designerCount) === 1 ? "" : "s"}
+        {numberValue(designerCount) ?? unavailable} Designer
+        {numberValue(designerCount) === 1 ? "" : "s"}
       </p>
     </div>
   );
 };
 
-const numberOrZero = (value) => {
-  const parsed = Number(value);
-
-  return Number.isFinite(parsed) ? parsed : 0;
-};
 
 export default SuperAdminDashboard;

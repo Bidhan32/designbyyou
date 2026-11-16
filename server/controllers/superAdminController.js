@@ -1364,6 +1364,9 @@ exports.getFinancialOverview = async (req, res) => {
                 COUNT(*)::int
                     AS total_payout_requests,
 
+                COUNT(*) FILTER (WHERE status = 'pending' AND payout_method = 'manual' AND provider IS NULL)::int AS pending_manual_payouts,
+                (SELECT COUNT(*)::int FROM designer_bank_accounts WHERE is_active AND verification_status = 'pending') AS pending_bank_verifications,
+
                 COUNT(*)
                 FILTER (
                     WHERE
@@ -1505,6 +1508,8 @@ exports.getFinancialOverview = async (req, res) => {
 
         payouts: {
           total_payout_requests: Number(payouts.total_payout_requests || 0),
+          pending_manual_payouts: payouts.pending_manual_payouts,
+          pending_bank_verifications: payouts.pending_bank_verifications,
 
           pending_payout_requests: Number(payouts.pending_payout_requests || 0),
 

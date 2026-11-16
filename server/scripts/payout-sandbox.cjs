@@ -161,6 +161,14 @@ async function main() {
     await balances(f.id, 80, 20); expect(await create(f, 21, key), 409);
     expect(await create(f, 20, key, crypto.randomUUID()), 409);
   });
+  await step("Overview counts match the pending bank and manual payout queues", async () => {
+    const overview = expect(await api(admin, "/superadmin/finance/overview", {}, "GET"), 200).data;
+    const banks = expect(await api(admin, bankQueue, {}, "GET"), 200).data;
+    const payouts = expect(await api(admin, adminBase + "?status=pending", {}, "GET"), 200).data;
+    assert.ok(banks.length > 0 && payouts.length > 0);
+    assert.equal(overview.payouts.pending_bank_verifications, banks.length);
+    assert.equal(overview.payouts.pending_manual_payouts, payouts.length);
+  });
   await step("Concurrent different requests cannot overspend available earnings", async () => {
     const f = await fixture(30); const results = await Promise.all([create(f, 20), create(f, 20)]);
     assert.deepEqual(results.map((r) => r.status).sort(), [201, 400]); await balances(f.id, 10, 20);
