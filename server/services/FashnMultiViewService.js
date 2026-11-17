@@ -1,12 +1,14 @@
 "use strict";
 
 /**
- * DesignByYou Multi-View service, FASHN Edit prototype.
- * Source and reference inputs reach FASHN as data URIs.
+ * DesignByYou Multi-View generation and private image storage.
  * Inputs and outputs are stored as authenticated Cloudinary assets for private history.
  */
 const sharp = require("sharp");
 const cloudinary = require("cloudinary").v2;
+const { submitImage, getImageStatus } = require("./ai/falImageQueue");
+const FAL_MODEL = "fal-ai/qwen-image-edit-2511";
+const STEPS = { fast: 16, balanced: 28, quality: 40 };
 
 const FASHN_BASE = "https://api.fashn.ai/v1";
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
@@ -214,22 +216,31 @@ function viewPrompt({ view, subjectType, keepBackground, instruction }) {
   ].filter(Boolean).join(" ");
 }
 
-async function startView({ sourceBuffer, contextBuffer, view, subjectType, keepBackground, instruction, generationMode, seed }) {
+async function startView({ renderModel, sourceBuffer, contextBuffer, view, subjectType, keepBackground, instruction, generationMode, seed }) {
   if (!["front", "side", "back"].includes(view) ||
     (view === "front" && subjectType !== "garment")) {
     throw new MultiViewError("Invalid view for this generation type.", 400);
   }
+  const image = toDataUri(sourceBuffer);
+  const context = contextBuffer && (subjectType === "model" || view === "front")
+    ? toDataUri(contextBuffer) : null;
+  const prompt = viewPrompt({ view, subjectType, keepBackground, instruction });
+  if (renderModel === FAL_MODEL) {
+    return submitImage(FAL_MODEL, {
+      image_urls: context ? [image, context] : [image],
+      prompt, seed, num_images: 1, output_format: "jpeg", sync_mode: true,
+      num_inference_steps: STEPS[generationMode], enable_safety_checker: true,
+    });
+  }
+  if (renderModel !== "fashn/edit") throw new MultiViewError("Unknown multi-view model.");
   const inputs = {
-    image: toDataUri(sourceBuffer),
-    prompt: viewPrompt({ view, subjectType, keepBackground, instruction }),
+    image, prompt,
     resolution: "1k", generation_mode: generationMode,
     seed, num_images: 1, output_format: "jpeg", return_base64: true,
   };
   // Additional context is only used when creating the normalized front;
   // a model photo fed into subsequent edits could reintroduce the person.
-  if (contextBuffer && (subjectType === "model" || view === "front")) {
-    inputs.image_context = toDataUri(contextBuffer);
-  }
+  if (context) inputs.image_context = context;
   const { data } = await fashnJson("/run", { method: "POST", body: { model_name: "edit", inputs } });
   if (typeof data?.id !== "string" || !/^[a-zA-Z0-9-]{8,150}$/.test(data.id)) {
     throw new MultiViewError("FASHN did not return a prediction ID.");
@@ -287,10 +298,14 @@ async function readStoredImage(publicId, creatorId, jobId, view = "front") {
   }
 }
 
-function predictionStatus(predictionId) {
+async function predictionStatus(predictionId, renderModel) {
   if (typeof predictionId !== "string" || !/^[a-zA-Z0-9-]{8,150}$/.test(predictionId)) {
     throw new MultiViewError("Invalid prediction ID.", 400);
   }
+  if (renderModel === FAL_MODEL) {
+    return { data: await getImageStatus(FAL_MODEL, predictionId), credits: null };
+  }
+  if (renderModel !== "fashn/edit") throw new MultiViewError("Unknown multi-view model.");
   return fashnJson(`/status/${encodeURIComponent(predictionId)}`);
 }
 
@@ -322,6 +337,6 @@ async function destroyImage(publicId) {
 }
 
 module.exports = {
-  MultiViewError, prepareUpload, startView, predictionStatus,
+  FAL_MODEL, MultiViewError, prepareUpload, startView, predictionStatus,
   saveImage, saveOutput, signedUrls, destroyImage, readStoredImage,
 };

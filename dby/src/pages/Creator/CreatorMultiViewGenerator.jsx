@@ -11,9 +11,9 @@ import API from "../../api/axios";
 const ENDPOINT = "/creators/ai/multi-view";
 const ACTIVE = new Set(["submitting", "processing"]);
 const MODES = [
-  ["fast", "Fast · 1 credit per generated view"],
-  ["balanced", "Balanced · 2 credits per generated view"],
-  ["quality", "Quality · 3 credits per generated view"],
+  ["fast", "Fast"],
+  ["balanced", "Balanced"],
+  ["quality", "Quality"],
 ];
 function isActive(job) { return Boolean(job && ACTIVE.has(job.status)); }
 function errorMessage(error, fallback) {
@@ -292,7 +292,7 @@ export default function CreatorMultiViewGenerator() {
         <header className="mt-7 flex items-start gap-4">
           <div className="rounded-md bg-subtle p-3 text-action"><Images size={27} /></div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-normal text-action">FASHN AI · Creative tools</p>
+            <p className="text-[10px] font-bold uppercase tracking-normal text-action">Creative tools</p>
             <h1 className="mt-1 font-sans text-3xl sm:text-4xl">Front, Side &amp; Back Views</h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">Create matching product-only front, right-side and back garment views, or keep the person for on-model views. Garment-only mode first extracts a standalone front product view before rotating it.</p>
           </div>
@@ -317,7 +317,7 @@ export default function CreatorMultiViewGenerator() {
                 </select>
               </div>
               <div>
-                <label htmlFor="mv-mode" className="block text-xs font-bold uppercase tracking-wider">AI quality · 1K</label>
+                <label htmlFor="mv-mode" className="block text-xs font-bold uppercase tracking-wider">Generation quality</label>
                 <select id="mv-mode" value={mode} disabled={busy} onChange={e => { setMode(e.target.value); requestKey.current = null; }} className="mt-2 w-full rounded-md border border-line bg-surface p-3 text-sm">
                   {MODES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
@@ -332,9 +332,9 @@ export default function CreatorMultiViewGenerator() {
             <p className="mt-2 text-xs text-muted">{instruction.length}/500 characters</p>
             <label className="mt-5 flex items-start gap-3 text-xs leading-5 text-muted">
               <input type="checkbox" checked={consent} disabled={busy} onChange={e => setConsent(e.target.checked)} className="mt-1 accent-action" />
-              <span>I own or have permission to use these images. I understand that uploaded references and generated views are stored in protected Creator history and processed by FASHN.</span>
+              <span>I own or have permission to use these images. I understand that uploaded references and generated views are stored in protected Creator history and processed by fal.ai.</span>
             </label>
-            <p className="mt-4 text-xs leading-5 text-muted">{subject === "garment" ? "Garment-only creates three AI views (front extraction, side and back). Fast: 3 credits · Balanced: 6 · Quality: 9 at 1K." : "On-model uses the original front plus two AI views. Fast: 2 credits · Balanced: 4 · Quality: 6 at 1K."} Testing limit: 5 sets per rolling 24 hours unless changed on the server.</p>
+            <p className="mt-4 text-xs leading-5 text-muted">{subject === "garment" ? "Garment-only creates three AI views (front extraction, side and back)." : "On-model uses the original front plus two AI views."}</p>
             {error && <p role="alert" className="mt-4 rounded-md border border-line bg-canvas p-3 text-sm text-action dark:bg-subtle">{error}</p>}
             <button type="submit" disabled={busy || !source || !consent} className="mt-6 flex min-h-9 w-full items-center justify-center gap-2 rounded-md bg-subtle px-5 text-sm font-bold text-ink transition hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-50">
               {busy ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}

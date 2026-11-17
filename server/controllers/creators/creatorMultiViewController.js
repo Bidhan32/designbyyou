@@ -90,11 +90,11 @@ async function getMany(creatorId) {
 exports.start = async (req, res) => {
   const creatorId = authenticatedCreator(req);
   if (!creatorId) return fail(res, 403, "CREATOR_REQUIRED", "A signed-in Creator is required.");
-  if (process.env.FASHN_MULTI_VIEW_ENABLED !== "true") {
+  if ((process.env.MULTI_VIEW_ENABLED ?? process.env.FASHN_MULTI_VIEW_ENABLED) !== "true") {
     return fail(res, 503, "TOOL_NOT_ENABLED", "Multi-View Generator is not enabled on this server yet.");
   }
-  if (!String(process.env.FASHN_API_KEY || "").trim()) {
-    return fail(res, 503, "PROVIDER_NOT_CONFIGURED", "FASHN is not configured.");
+  if (!String(process.env.FAL_KEY || "").trim()) {
+    return fail(res, 503, "PROVIDER_NOT_CONFIGURED", "Multi-View generation is temporarily unavailable.");
   }
   const body = req.body || {};
   if (Object.keys(body).some(key => !ALLOWED_BODY.has(key))) {
@@ -152,9 +152,9 @@ exports.start = async (req, res) => {
         return fail(res, 429, "DAILY_LIMIT_REACHED", `Limit reached: ${limit()} view sets per rolling 24 hours.`);
       }
       const row = await client.query(`INSERT INTO public.creator_multi_view_jobs
-        (creator_id,request_key,subject_type,generation_mode,keep_background,instruction)
-        VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
-        [creatorId, requestKey, subject, mode, keepBackground, instruction]);
+        (creator_id,request_key,subject_type,generation_mode,keep_background,instruction,render_model)
+        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+        [creatorId, requestKey, subject, mode, keepBackground, instruction, multi.FAL_MODEL]);
       jobId = row.rows[0].id;
       if (subject === "garment") {
         // Normalize person-worn source into garment-only front FIRST.
@@ -200,7 +200,7 @@ exports.start = async (req, res) => {
   for (const view of firstViews) {
     try {
       const predictionId = await multi.startView({
-        sourceBuffer, contextBuffer, view, subjectType: subject,
+        renderModel: multi.FAL_MODEL, sourceBuffer, contextBuffer, view, subjectType: subject,
         keepBackground, instruction, generationMode: mode, seed: 42,
       });
       await db.query(`UPDATE public.creator_multi_view_images
@@ -209,7 +209,7 @@ exports.start = async (req, res) => {
     } catch (err) {
       console.error("[MultiView] View submission error:", { view, code: err.code || "ERROR", status: err.status });
       await db.query(`UPDATE public.creator_multi_view_images
-        SET status='failed',error_message='This view could not be submitted; check FASHN usage before retrying.',updated_at=NOW()
+        SET status='failed',error_message='Submission could not be confirmed. Check your history before retrying.',updated_at=NOW()
         WHERE job_id=$1 AND view=$2 AND status='submitting'`, [jobId, view]).catch(() => {});
       if (view === "front") {
         await db.query(`UPDATE public.creator_multi_view_images
@@ -222,7 +222,7 @@ exports.start = async (req, res) => {
   const safe = safeJob(current.row, current.views);
   return res.status(safe.status === "failed" ? 502 : 202).json({
     status: safe.status === "failed" ? "error" : "success", data: safe,
-    ...(safe.status === "failed" ? { code: "PROVIDER_SUBMISSION_FAILED", message: "FASHN could not start either view." } : {}),
+    ...(safe.status === "failed" ? { code: "PROVIDER_SUBMISSION_FAILED", message: "Multi-View generation could not start." } : {}),
   });
 };
 
@@ -236,7 +236,7 @@ exports.history = async (req, res) => {
   }
 };
 
-async function advanceView(creatorId, jobId, row) {
+async function advanceView(creatorId, jobId, row, renderModel) {
   const view = row.view;
   if (row.status === "submitting" && Date.now() - new Date(row.updated_at).getTime() > 180000) {
     await db.query(`UPDATE public.creator_multi_view_images SET status='failed',
@@ -245,17 +245,17 @@ async function advanceView(creatorId, jobId, row) {
     return;
   }
   if (row.status !== "processing" && !(row.status === "saving" && Date.now() - new Date(row.updated_at).getTime() > 180000)) return;
-  const { data, credits } = await multi.predictionStatus(row.prediction_id);
+  const { data, credits } = await multi.predictionStatus(row.prediction_id, renderModel);
   if (data.status === "failed") {
     await db.query(`UPDATE public.creator_multi_view_images SET status='failed',
-      error_message='FASHN could not generate this view.',credits_used=$1,updated_at=NOW()
+      error_message='The renderer could not generate this view.',credits_used=$1,updated_at=NOW()
       WHERE job_id=$2 AND view=$3 AND status IN ('processing','saving')`, [credits, jobId, view]);
     return;
   }
   if (data.status !== "completed") return;
   const output = Array.isArray(data.output) ? data.output[0] : null;
   if (typeof output !== "string") {
-    await db.query(`UPDATE public.creator_multi_view_images SET status='failed',error_message='FASHN returned no output image.',updated_at=NOW()
+    await db.query(`UPDATE public.creator_multi_view_images SET status='failed',error_message='The renderer returned no output image.',updated_at=NOW()
       WHERE job_id=$1 AND view=$2 AND status IN ('processing','saving')`, [jobId, view]);
     return;
   }
@@ -303,6 +303,7 @@ async function continueGarmentSet(creatorId, jobId, current) {
     if (!claim.rows.length) continue;
     try {
       const predictionId = await multi.startView({
+        renderModel: current.row.render_model,
         sourceBuffer: normalizedFront,
         contextBuffer: null,
         view, subjectType: "garment", keepBackground: false,
@@ -332,7 +333,7 @@ exports.status = async (req, res) => {
     const initial = await getJob(creatorId, jobId);
     if (!initial) return fail(res, 404, "NOT_FOUND", "View set not found.");
     // Parallel polls, but DB claim prevents duplicate saves.
-    const results = await Promise.allSettled(initial.views.map(v => advanceView(creatorId, jobId, v)));
+    const results = await Promise.allSettled(initial.views.map(v => advanceView(creatorId, jobId, v, initial.row.render_model)));
     if (results.some(r => r.status === "rejected")) {
       const first = results.find(r => r.status === "rejected");
       console.error("[MultiView] Provider status fetch failed:", first.reason?.code || "PROVIDER_ERROR");
