@@ -56,28 +56,6 @@ async function fashnFetch(path, options = {}) {
   return { data: await readJsonResponse(response), response };
 }
 
-async function startTextToImage({ prompt, aspectRatio, generationMode }) {
-  const { data } = await fashnFetch("/run", {
-    method: "POST",
-    body: JSON.stringify({
-      model_name: "model-create",
-      inputs: {
-        prompt,
-        aspect_ratio: aspectRatio,
-        resolution: "1k",
-        generation_mode: generationMode,
-        num_images: 1,
-        output_format: "png",
-        return_base64: false,
-      },
-    }),
-  });
-  if (typeof data.id !== "string" || !/^[a-zA-Z0-9-]{8,150}$/.test(data.id)) {
-    throw new ProviderError("FASHN did not return a valid prediction ID.");
-  }
-  return data.id;
-}
-
 async function getTextToImageStatus(predictionId) {
   if (typeof predictionId !== "string" || !/^[a-zA-Z0-9-]{8,150}$/.test(predictionId)) {
     throw new ProviderError("Invalid FASHN prediction ID.");
@@ -90,26 +68,29 @@ async function getTextToImageStatus(predictionId) {
   return { ...data, credits };
 }
 
-function validateFashnOutputUrl(value) {
+function validateOutputUrl(value, provider) {
   if (typeof value !== "string") throw new ProviderError("Missing generated image URL.");
   let parsed;
   try { parsed = new URL(value); } catch { throw new ProviderError("Invalid generated image URL."); }
-  if (parsed.protocol !== "https:" || !ALLOWED_DELIVERY_HOSTS.has(parsed.hostname) ||
+  const trusted = provider === "fal"
+    ? parsed.hostname === "fal.media" || parsed.hostname.endsWith(".fal.media")
+    : ALLOWED_DELIVERY_HOSTS.has(parsed.hostname);
+  if (parsed.protocol !== "https:" || !trusted ||
       parsed.username || parsed.password || parsed.port !== "") {
-    throw new ProviderError("Generated image is not served by a trusted FASHN host.");
+    throw new ProviderError("Generated image is not served by a trusted provider host.");
   }
   return parsed.toString();
 }
 
-async function fetchImageBytes(url) {
+async function fetchImageBytes(url, provider) {
   let response;
   try {
-    response = await fetch(validateFashnOutputUrl(url), {
+    response = await fetch(validateOutputUrl(url, provider), {
       redirect: "error",
       signal: AbortSignal.timeout(30000),
     });
   } catch {
-    throw new ProviderError("Could not retrieve the generated image from FASHN.");
+    throw new ProviderError("Could not retrieve the generated image from the provider.");
   }
   if (!response.ok) throw new ProviderError("Generated image download failed.");
   const type = (response.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
@@ -143,8 +124,8 @@ async function fetchImageBytes(url) {
   return buffer;
 }
 
-async function saveFashnOutputToCloudinary({ fashnUrl, creatorId, jobId }) {
-  const buffer = await fetchImageBytes(fashnUrl);
+async function saveOutputToCloudinary({ outputUrl, provider, creatorId, jobId }) {
+  const buffer = await fetchImageBytes(outputUrl, provider);
   const publicId = `t2i_${creatorId}_${jobId}`;
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream({
@@ -167,7 +148,6 @@ async function saveFashnOutputToCloudinary({ fashnUrl, creatorId, jobId }) {
 
 module.exports = {
   ProviderError,
-  startTextToImage,
   getTextToImageStatus,
-  saveFashnOutputToCloudinary,
+  saveOutputToCloudinary,
 };

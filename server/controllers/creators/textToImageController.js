@@ -2,7 +2,8 @@
 
 const crypto = require("crypto");
 const db = require("../../config/db");
-const fashn = require("../../services/FashnTextToImageService");
+const fal = require("../../services/FalTextToImageService");
+const textImages = require("../../services/FashnTextToImageService");
 
 const RATIOS = new Set(["1:1", "3:4", "4:5", "2:3", "9:16", "16:9"]);
 const MODES = new Set(["fast", "balanced", "quality"]);
@@ -45,9 +46,10 @@ const FIELDS = `id, prompt, aspect_ratio, generation_mode, resolution, num_image
 exports.start = async (req, res) => {
   const creatorId = creator(req);
   if (!creatorId) return fail(res, 403, "CREATOR_REQUIRED", "A signed-in Creator account is required.");
-  if (process.env.FASHN_TEXT_TO_IMAGE_ENABLED !== "true") {
+  if ((process.env.TEXT_TO_IMAGE_ENABLED ?? process.env.FASHN_TEXT_TO_IMAGE_ENABLED) !== "true") {
     return fail(res, 503, "TOOL_NOT_ENABLED", "Text to Image is not enabled on this server yet.");
   }
+  if (!process.env.FAL_KEY?.trim()) return fail(res, 503, "TOOL_NOT_CONFIGURED", "Text to Image is temporarily unavailable.");
   const body = req.body || {};
   if (Object.keys(body).some((key) => !["prompt", "aspect_ratio", "generation_mode", "request_key"].includes(key))) {
     return fail(res, 400, "UNKNOWN_INPUT", "Unsupported Text to Image input field.");
@@ -105,8 +107,8 @@ exports.start = async (req, res) => {
         return fail(res, 429, "DAILY_LIMIT_REACHED", `Daily testing limit reached (${DAILY_LIMIT} requests per 24 hours).`);
       }
       const inserted = await client.query(`INSERT INTO public.creator_text_to_image_jobs
-        (creator_id, request_key, prompt, aspect_ratio, generation_mode)
-        VALUES ($1,$2,$3,$4,$5) RETURNING ${FIELDS}`, [creatorId, requestKey, prompt, ratio, mode]);
+        (creator_id, request_key, prompt, aspect_ratio, generation_mode, provider, model_name)
+        VALUES ($1,$2,$3,$4,$5,'fal',$6) RETURNING ${FIELDS}`, [creatorId, requestKey, prompt, ratio, mode, fal.MODEL]);
       job = inserted.rows[0];
     }
     await client.query("COMMIT"); txOpen = false;
@@ -119,7 +121,7 @@ exports.start = async (req, res) => {
   if (reused) return res.status(200).json({ status: "success", data: publicJob(job), reused: true });
 
   try {
-    const predictionId = await fashn.startTextToImage({
+    const predictionId = await fal.startTextToImage({
       prompt, aspectRatio: ratio, generationMode: mode,
     });
     const updated = await db.query(`UPDATE public.creator_text_to_image_jobs
@@ -131,7 +133,7 @@ exports.start = async (req, res) => {
     await db.query(`UPDATE public.creator_text_to_image_jobs SET status='failed',
       error_message='The generation could not be confirmed. If the request timed out, check provider usage before repeating it.',
       updated_at=NOW() WHERE id=$1 AND creator_id=$2`, [job.id, creatorId]).catch(() => {});
-    return fail(res, error.status === 429 ? 429 : 502, "FASHN_SUBMISSION_FAILED", "The FASHN generation request did not start successfully. Check server logs.");
+    return fail(res, error.status === 429 ? 429 : 502, "TEXT_SUBMISSION_FAILED", "Could not confirm submission. Check your generation history.");
   }
 };
 
@@ -169,9 +171,10 @@ exports.status = async (req, res) => {
     if (!job.provider_prediction_id) {
       return fail(res, 503, "PROVIDER_ID_MISSING", "Generation is not ready to check yet.");
     }
-    const state = await fashn.getTextToImageStatus(job.provider_prediction_id);
+    const renderer = job.provider === "fal" ? fal : textImages;
+    const state = await renderer.getTextToImageStatus(job.provider_prediction_id);
     if (state.status === "failed") {
-      const message = String(state.error?.message || "FASHN was unable to generate this image.").slice(0, 250);
+      const message = String(state.error?.message || "The renderer was unable to generate this image.").slice(0, 250);
       const failed = await db.query(`UPDATE public.creator_text_to_image_jobs
         SET status='failed', error_message=$1, updated_at=NOW()
         WHERE id=$2 AND creator_id=$3 AND status <> 'completed' RETURNING ${FIELDS}`,
@@ -184,7 +187,7 @@ exports.status = async (req, res) => {
     const outputUrl = state.output?.[0];
     if (typeof outputUrl !== "string") {
       const failed = await db.query(`UPDATE public.creator_text_to_image_jobs SET status='failed',
-        error_message='FASHN completed but did not return an image.',updated_at=NOW()
+        error_message='Rendering completed but did not return an image.',updated_at=NOW()
         WHERE id=$1 AND creator_id=$2 RETURNING ${FIELDS}`, [jobId, creatorId]);
       return res.status(200).json({ status: "success", data: publicJob(failed.rows[0]) });
     }
@@ -199,8 +202,8 @@ exports.status = async (req, res) => {
       return res.status(200).json({ status: "success", data: publicJob(latest.rows[0]) });
     }
     try {
-      const saved = await fashn.saveFashnOutputToCloudinary({
-        fashnUrl: outputUrl, creatorId, jobId,
+      const saved = await textImages.saveOutputToCloudinary({
+        outputUrl, provider: job.provider, creatorId, jobId,
       });
       const completed = await db.query(`UPDATE public.creator_text_to_image_jobs
         SET status='completed', result_urls=$1::jsonb, cloudinary_public_id=$2,
@@ -210,7 +213,7 @@ exports.status = async (req, res) => {
       return res.status(200).json({ status: "success", data: publicJob(completed.rows[0]) });
     } catch (error) {
       console.error("[TextToImage] Image persistence failed:", error.message);
-      // Preserve the FASHN prediction ID so the next poll can retry storage.
+      // Preserve the provider prediction ID so the next poll can retry storage.
       await db.query(`UPDATE public.creator_text_to_image_jobs SET status='processing',updated_at=NOW()
         WHERE id=$1 AND creator_id=$2 AND status='saving'`, [jobId, creatorId]).catch(() => {});
       return fail(res, 503, "IMAGE_SAVE_RETRY", "Image generation completed, but saving is pending. Please retry shortly.");

@@ -32,15 +32,15 @@ const RATIOS = ["1:1", "3:4", "4:5", "2:3", "9:16", "16:9"];
 const MODES = [
   {
     value: "fast",
-    label: "Fast · 1 credit",
+    label: "Fast",
   },
   {
     value: "balanced",
-    label: "Balanced · 2 credits",
+    label: "Balanced",
   },
   {
     value: "quality",
-    label: "Quality · 3 credits",
+    label: "Quality",
   },
 ];
 
@@ -109,7 +109,7 @@ function formatDate(value) {
 
 function getStatusLabel(status) {
   const labels = {
-    submitting: "Submitting to FASHN",
+    submitting: "Submitting prompt",
     processing: "Generating your image",
     saving: "Saving your image",
     completed: "Ready to download",
@@ -422,7 +422,7 @@ export default function CreatorTextToImage() {
         ),
       );
 
-      if (err?.response?.data?.code === "FASHN_SUBMISSION_FAILED") {
+      if (err?.response?.data?.code === "TEXT_SUBMISSION_FAILED") {
         requestKey.current = null;
       }
     } finally {
@@ -540,7 +540,7 @@ export default function CreatorTextToImage() {
   // ======================================================
 
   const clearAndCreateNew = () => {
-    // Never interrupt an active FASHN generation.
+    // Never interrupt an active generation.
     if (busy) {
       return;
     }
@@ -591,7 +591,7 @@ export default function CreatorTextToImage() {
 
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold uppercase tracking-normal text-action">
-              FASHN AI · Creative tools
+              Creative tools
             </p>
 
             <h1 className="mt-1 font-sans text-3xl tracking-tight sm:text-4xl">
