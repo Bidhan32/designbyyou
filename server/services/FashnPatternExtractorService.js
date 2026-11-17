@@ -10,6 +10,14 @@
 const API_BASE = "https://api.fashn.ai/v1";
 const API_TIMEOUT_MS = 30000;
 const MODEL = "edit";
+const {submitImage, getImageStatus} = require("./ai/falImageQueue");
+const FAL_MODEL = "fal-ai/qwen-image-edit-2511";
+
+function assertProviderConfigured(renderModel) {
+  if (renderModel === "fashn/edit") return getKey();
+  if (renderModel !== FAL_MODEL || !process.env.FAL_KEY?.trim())
+    throw providerError("AI pattern extraction is temporarily unavailable.", "PATTERN_NOT_CONFIGURED", 503);
+}
 
 // Place the requested FINAL IMAGE FIRST: some edit models strongly retain the
 // source composition unless the prompt clearly changes the subject itself.
@@ -135,16 +143,34 @@ async function requestFashn(endpoint, options = {}) {
   return data;
 }
 
-async function startPatternExtraction({imageDataUri, mode, instructions}) {
+async function startPatternExtraction({imageDataUri, mode, instructions, renderModel}) {
+  assertProviderConfigured(renderModel);
   checkDataUri(imageDataUri);
   const config = checkMode(mode);
+  const prompt = buildPatternPrompt(mode, instructions);
+  if (renderModel === FAL_MODEL) {
+    try {
+      const predictionId = await submitImage(FAL_MODEL, {
+        image_urls: [imageDataUri], prompt, seed: config.seed,
+        ...(mode === "seamless" ? {image_size: {width: 1024, height: 1024}} : {}),
+        num_images: 1, output_format: "png", sync_mode: true, enable_safety_checker: true,
+      });
+      return {predictionId};
+    } catch (error) {
+      if ([400, 401, 402, 403, 413, 422, 429].includes(error.status)) {
+        const status = [401, 402, 403].includes(error.status) ? 503 : error.status;
+        throw providerError("The AI provider declined the pattern request.", "PATTERN_REQUEST_REJECTED", status);
+      }
+      throw providerError("Submission could not be confirmed. Check job status.", "PATTERN_SUBMISSION_UNCONFIRMED", 503);
+    }
+  }
   const response = await requestFashn("/run", {
     method: "POST",
     body: JSON.stringify({
       model_name: MODEL,
       inputs: {
         image: imageDataUri,
-        prompt: buildPatternPrompt(mode, instructions),
+        prompt,
         seed: config.seed,
         num_images: 1,
         generation_mode: "fast",
@@ -157,9 +183,12 @@ async function startPatternExtraction({imageDataUri, mode, instructions}) {
   return {predictionId: checkPredictionId(response?.id)};
 }
 
-async function getPatternStatus(predictionId) {
+async function getPatternStatus(predictionId, renderModel) {
+  assertProviderConfigured(renderModel);
   const id = checkPredictionId(predictionId);
-  const response = await requestFashn(`/status/${encodeURIComponent(id)}`, {method: "GET"});
+  const response = renderModel === FAL_MODEL
+    ? await getImageStatus(FAL_MODEL, id)
+    : await requestFashn(`/status/${encodeURIComponent(id)}`, {method: "GET"});
   if (["starting", "in_queue", "processing"].includes(response?.status)) {
     return {status: response.status, imageDataUri: null};
   }
@@ -170,7 +199,7 @@ async function getPatternStatus(predictionId) {
     const output = response?.output?.[0];
     if (typeof output !== "string" || output.length > 36 * 1024 * 1024 ||
         !/^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/.test(output)) {
-      throw providerError("The provider returned an invalid PNG.", "FASHN_INVALID_OUTPUT", 502);
+      return {status: "failed", imageDataUri: null};
     }
     return {status: "completed", imageDataUri: output};
   }
@@ -178,8 +207,9 @@ async function getPatternStatus(predictionId) {
 }
 
 module.exports = {
+  FAL_MODEL,
   startPatternExtraction,
   getPatternStatus,
   buildPatternPrompt,
-  assertProviderConfigured: getKey,
+  assertProviderConfigured,
 };

@@ -2,7 +2,7 @@
 
 const sharp = require("sharp");
 const db = require("../../config/db");
-const {startPatternExtraction, getPatternStatus, assertProviderConfigured} = require("../../services/FashnPatternExtractorService");
+const {FAL_MODEL, startPatternExtraction, getPatternStatus, assertProviderConfigured} = require("../../services/FashnPatternExtractorService");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MODES = new Set(["faithful", "seamless"]);
@@ -57,7 +57,7 @@ function inputs(req) {
 async function ownedJob(id, creator) {
   const result = await db.query(
     `SELECT id, creator_id, request_key, mode, instructions, status,
-            prediction_id, error_code, estimated_credits, created_at, completed_at
+            prediction_id, render_model, error_code, estimated_credits, created_at, completed_at
        FROM public.creator_pattern_extraction_jobs
       WHERE id = $1 AND creator_id = $2`,
     [id, creator]
@@ -69,7 +69,7 @@ function publicJob(row) {
   return {
     id: row.id, mode: row.mode, instructions: row.instructions,
     status: row.status, error_code: row.error_code,
-    estimated_credits: row.estimated_credits,
+    estimated_credits: row.render_model === FAL_MODEL ? null : row.estimated_credits,
     result_available: row.status === "completed",
     created_at: row.created_at, completed_at: row.completed_at,
   };
@@ -98,6 +98,7 @@ async function createPatternJob(req, res) {
       await client.query("COMMIT"); tx = false;
       return res.status(200).json({status: "success", idempotent: true, data: {job: publicJob(prior)}});
     }
+    assertProviderConfigured(FAL_MODEL);
     const quota = await client.query(
       `SELECT count(*)::int AS used,
               GREATEST(1, CEIL(EXTRACT(EPOCH FROM
@@ -117,9 +118,9 @@ async function createPatternJob(req, res) {
     }
     const created = await client.query(
       `INSERT INTO public.creator_pattern_extraction_jobs
-         (creator_id, request_key, mode, instructions)
-       VALUES ($1,$2,$3,$4) RETURNING *`,
-      [owner, requestKey, mode, instructions]
+         (creator_id, request_key, mode, instructions, render_model)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [owner, requestKey, mode, instructions, FAL_MODEL]
     );
     await client.query("COMMIT"); tx = false;
     return res.status(201).json({status: "success", idempotent: false, data: {job: publicJob(created.rows[0])}});
@@ -175,7 +176,7 @@ async function startPatternJob(req, res) {
       throw apiError(409, "ALREADY_SUBMITTED", "Job already submitted. Check its status; do not resubmit.");
     // Image must pass all validations BEFORE reserving the paid prediction.
     const imageDataUri = await prepareImage(req.file);
-    assertProviderConfigured();
+    assertProviderConfigured(current.render_model);
     const claim = await db.query(
       `UPDATE public.creator_pattern_extraction_jobs
           SET status='submitting', error_code=NULL, updated_at=now()
@@ -185,7 +186,7 @@ async function startPatternJob(req, res) {
     if (!claim.rowCount) throw apiError(409, "ALREADY_SUBMITTED", "Job is already reserved or submitted.");
     reserved = true;
     const {mode, instructions} = claim.rows[0];
-    const result = await startPatternExtraction({imageDataUri, mode, instructions});
+    const result = await startPatternExtraction({imageDataUri, mode, instructions, renderModel: current.render_model});
     const persisted = await db.query(
       `UPDATE public.creator_pattern_extraction_jobs
           SET prediction_id=$3, status='starting', updated_at=now()
@@ -199,7 +200,7 @@ async function startPatternJob(req, res) {
     if (reserved && id) {
       // A network error can happen AFTER a paid request was accepted.
       // Never auto-resubmit uncertain predictions.
-      const knownRejected = ["FASHN_RATE_LIMITED", "FASHN_REQUEST_REJECTED", "FASHN_AUTH_ERROR", "FASHN_NOT_CONFIGURED", "INVALID_PATTERN_MODE", "INVALID_PATTERN_INSTRUCTIONS", "INVALID_PATTERN_IMAGE"].includes(error?.code);
+      const knownRejected = ["PATTERN_REQUEST_REJECTED", "PATTERN_NOT_CONFIGURED", "FASHN_RATE_LIMITED", "FASHN_REQUEST_REJECTED", "FASHN_AUTH_ERROR", "FASHN_NOT_CONFIGURED", "INVALID_PATTERN_MODE", "INVALID_PATTERN_INSTRUCTIONS", "INVALID_PATTERN_IMAGE"].includes(error?.code);
       const next = knownRejected ? "failed" : "submission_unknown";
       try {
         await db.query(
@@ -217,7 +218,7 @@ async function startPatternJob(req, res) {
 
 async function refreshPrediction(row) {
   if (!ACTIVE.has(row.status) || !row.prediction_id) return;
-  const status = await getPatternStatus(row.prediction_id);
+  const status = await getPatternStatus(row.prediction_id, row.render_model);
   await db.query(
     `UPDATE public.creator_pattern_extraction_jobs
         SET status=$3::text, updated_at=now(),
@@ -246,7 +247,7 @@ async function getPatternResult(req, res) {
     const row = await ownedJob(jobId(req), creatorId(req));
     if (row.status !== "completed" || !row.prediction_id)
       throw apiError(409, "RESULT_NOT_READY", "Pattern is not ready yet.");
-    const result = await getPatternStatus(row.prediction_id);
+    const result = await getPatternStatus(row.prediction_id, row.render_model);
     if (result.status !== "completed" || !result.imageDataUri)
       throw apiError(410, "RESULT_EXPIRED", "Provider image is no longer available; download results promptly.");
     res.setHeader("Cache-Control", "private, no-store");

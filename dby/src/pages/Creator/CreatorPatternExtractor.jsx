@@ -64,7 +64,7 @@ function pointInElement(event, element) {
     y: Math.max(0, Math.min(1, (event.clientY - box.top) / box.height)),
   };
 }
-async function croppedFile(file, crop) {
+async function croppedFile(file, crop, nativeSize = false) {
   if (!crop || crop.width < 0.04 || crop.height < 0.04) {
     throw new Error("Select a printed fabric area before extracting a pattern.");
   }
@@ -82,10 +82,10 @@ async function croppedFile(file, crop) {
     }
     // Small photographed motifs often need an enlarged input for the AI model.
     // Scaling preserves the aspect ratio but cannot recover missing print detail.
-    const factor = Math.min(2048 / Math.max(sw, sh), Math.max(1, 256 / Math.min(sw, sh)));
+    const factor = nativeSize ? 1 : Math.min(2048 / Math.max(sw, sh), Math.max(1, 256 / Math.min(sw, sh)));
     const width = Math.round(sw * factor);
     const height = Math.round(sh * factor);
-    if (Math.min(width, height) < 128) {
+    if (!nativeSize && Math.min(width, height) < 128) {
       throw new Error("Crop is too narrow. Select a more balanced fabric patch.");
     }
     const canvas = document.createElement("canvas");
@@ -98,7 +98,7 @@ async function croppedFile(file, crop) {
     context.drawImage(bitmap, sx, sy, sw, sh, 0, 0, width, height);
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
     if (!blob) throw new Error("Cannot export the selected area.");
-    if (blob.size > MAX_BYTES) throw new Error("Selected crop exceeds 12 MB; select a smaller area.");
+    if (!nativeSize && blob.size > MAX_BYTES) throw new Error("Selected crop exceeds 12 MB; select a smaller area.");
     return new File([blob], "fabric-pattern-crop.png", {type: "image/png"});
   } finally {
     bitmap.close?.();
@@ -141,7 +141,7 @@ export default function CreatorPatternExtractor() {
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
-  // Show exactly what will be sent to FASHN BEFORE the user creates a paid job.
+  // Show exactly what will be sent to the provider before the user creates a paid job.
   // Never fall back to the full clothing photograph when no crop is selected.
   useEffect(() => {
     let alive = true;
@@ -365,7 +365,7 @@ export default function CreatorPatternExtractor() {
   async function downloadSelectedCrop() {
     if (!file || !crop || cropError) return;
     try {
-      const patch = await croppedFile(file, crop);
+      const patch = await croppedFile(file, crop, true);
       const url = URL.createObjectURL(patch);
       const link = document.createElement("a");
       link.href = url;
@@ -374,7 +374,7 @@ export default function CreatorPatternExtractor() {
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setNotice("Downloaded the exact selected fabric crop. No FASHN credit was used.");
+      setNotice("Downloaded the exact selected fabric crop. Saved at the original crop dimensions.");
     } catch (cropFailure) {
       setError(errorMessage(cropFailure));
     }
@@ -491,7 +491,7 @@ export default function CreatorPatternExtractor() {
             <textarea id="pattern-instructions" rows={3} maxLength={500} value={instructions} onChange={(e) => setInstructions(e.target.value)}
               disabled={Boolean(job || pendingAttempt) || busy || restoring} placeholder="e.g. Extract the blue floral section and preserve the small white petals."
               className="mt-2 w-full resize-y rounded-md border border-line bg-surface px-3 py-2 text-xs leading-5 outline-none focus:border-line disabled:opacity-60"/>
-            <p className="mt-2 text-xs text-muted">AI reconstruction: 1 estimated FASHN credit (Fast / 1K). Up to four new jobs per Creator per hour. The exact-crop download above is free.</p>
+            <p className="mt-2 text-xs text-muted">fal.ai processes the selected fabric crop. You can start up to four extractions per hour.</p>
           </div>
 
           <button type="button" disabled={!canGenerate} onClick={() => void generate()}
@@ -546,7 +546,7 @@ export default function CreatorPatternExtractor() {
                     {job?.status === "completed" && <button type="button" onClick={() => void loadResult(true)} className="rounded-md bg-subtle px-4 py-2 text-xs font-bold text-ink">{loadingImage ? "Loading..." : "Load Result"}</button>}</div>}
             </div>
           </div>
-          {image && mode === "seamless" && <div className="mt-5 overflow-hidden rounded-md border border-line bg-surface p-4">
+          {image && (job?.mode ?? mode) === "seamless" && <div className="mt-5 overflow-hidden rounded-md border border-line bg-surface p-4">
             <h3 className="flex items-center gap-2 font-serif text-lg"><Grid3X3 size={18} className="text-action"/> 3 × 3 Repeat Preview</h3>
             <p className="mt-1 text-xs text-muted">Check for visible joins; AI may not create mathematically seamless edges.</p>
             <div className="mt-3 grid grid-cols-3 overflow-hidden rounded-md border border-line">
