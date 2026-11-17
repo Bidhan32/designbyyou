@@ -1181,8 +1181,9 @@ function DesignerNavbar({ user, logout }) {
               {dropdownOpen && (
                 <div
                   role="menu"
-                  className="absolute right-0 top-[calc(100%+12px)] w-[320px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-md border border-line bg-subtle p-2"
+                  className="account-dropdown absolute right-0 flex flex-col top-[calc(100%+12px)] w-[320px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-md border border-line bg-subtle p-2"
                 >
+                <div className="account-menu-scroll">
                   {/* =======================================
                       Identity Header
                       ======================================= */}
@@ -1365,10 +1366,12 @@ function DesignerNavbar({ user, logout }) {
                     icon={Settings}
                     label="Profile Settings"
                   />
+                </div>
+
 
                   {/* Logout */}
 
-                  <div className="mt-2 border-t border-line pt-2">
+                  <div className="shrink-0 mt-2 border-t border-line pt-2">
                     <button
                       type="button"
                       onClick={handleLogout}
@@ -1473,6 +1476,7 @@ function DesignerNavbar({ user, logout }) {
             className="mobile-navigation absolute bottom-0 right-0 top-[72px] flex w-full max-w-[400px] flex-col border-l border-line bg-surface dark:bg-canvas sm:w-[390px]"
           >
             <button type="button" onClick={() => setMobileMenuOpen(false)} className="min-h-9 shrink-0 self-end px-5 text-sm font-semibold">Close navigation</button>
+            <div className="account-menu-scroll">
             {/* =============================================
                 Identity
                 ============================================= */}
@@ -1622,7 +1626,7 @@ function DesignerNavbar({ user, logout }) {
                 Navigation
                 ============================================= */}
 
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
+            <div className="p-4">
               {/* Create */}
 
               <div className="mb-5">
@@ -1699,11 +1703,13 @@ function DesignerNavbar({ user, logout }) {
               </div>
             </div>
 
+            </div>
+
             {/* =============================================
                 Sign Out
                 ============================================= */}
 
-            <div className="border-t border-line bg-subtle p-4">
+            <div className="shrink-0 border-t border-line bg-subtle p-4">
               <button
                 type="button"
                 onClick={handleLogout}

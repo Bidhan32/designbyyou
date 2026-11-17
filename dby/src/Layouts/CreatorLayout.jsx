@@ -1020,8 +1020,9 @@ export default function CreatorLayout() {
             {profileDropdownOpen && (
               <div
                 role="menu"
-                className="absolute right-0 top-14 mt-2 w-[310px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-md border border-line bg-surface"
+                className="account-dropdown absolute right-0 flex flex-col top-14 mt-2 w-[310px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-md border border-line bg-surface"
               >
+                <div className="account-menu-scroll">
                 {/* Identity */}
 
                 <div
@@ -1225,11 +1226,13 @@ export default function CreatorLayout() {
                     );
                   })}
                 </div>
+                </div>
+
 
                 {/* Logout */}
 
                 <div
-                  className="border-t border-line p-2"
+                  className="shrink-0 border-t border-line p-2"
                 >
                   <button
                     type="button"
@@ -1350,6 +1353,7 @@ export default function CreatorLayout() {
             className="mobile-navigation absolute bottom-0 right-0 top-20 flex w-full max-w-[420px] flex-col border-l border-line bg-surface dark:bg-canvas sm:w-[400px]"
           >
             <button type="button" onClick={() => setMobileMenuOpen(false)} className="min-h-9 shrink-0 self-end px-5 text-sm font-semibold">Close navigation</button>
+            <div className="account-menu-scroll">
             {/*=============================================
             Identity
             =============================================*/}
@@ -1474,7 +1478,7 @@ export default function CreatorLayout() {
             =============================================*/}
 
             <div
-              className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"
+              className="p-4"
             >
               {/* Quick Actions */}
 
@@ -1553,12 +1557,14 @@ export default function CreatorLayout() {
               </Link>
             </div>
 
+            </div>
+
             {/*=============================================
             Logout
             =============================================*/}
 
             <div
-              className="border-t border-line bg-subtle p-4"
+              className="shrink-0 border-t border-line bg-subtle p-4"
             >
               <button
                 type="button"
