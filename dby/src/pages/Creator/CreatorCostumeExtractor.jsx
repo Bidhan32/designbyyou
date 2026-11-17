@@ -16,7 +16,7 @@
  * - Preserve existing job and source when clearing results
  *
  * Clear Generated Images affects browser previews only.
- * It does NOT delete PostgreSQL records, cancel FASHN jobs,
+ * It does NOT delete PostgreSQL records, cancel provider jobs,
  * remove files already downloaded, or refund credits.
  * =========================================================
  */
@@ -1010,7 +1010,7 @@ export default function CreatorCostumeExtractor() {
      - Remember cleared state across page refreshes.
      - Invalidate image requests already in progress.
      - Allow manual loading of individual results.
-     - No API deletion or FASHN generation request.
+     - No API deletion or generation request.
      ------------------------------------------------------- */
 
   const clearGeneratedImages = () => {
@@ -1022,7 +1022,7 @@ export default function CreatorCostumeExtractor() {
       !window.confirm(
         "Clear all generated image previews from this page?\n\n" +
           "Any images you already downloaded will stay on your device. " +
-          "Your job and FASHN results will not be deleted or cancelled. " +
+          "Your job and generated results will not be deleted or cancelled. " +
           "You can load individual results again while they remain available.",
       )
     ) {
@@ -1162,7 +1162,6 @@ export default function CreatorCostumeExtractor() {
     job && totalCount > 0 && completedCount === totalCount,
   );
 
-  const estimatedCredits = job?.estimated_credits ?? totalCount;
 
   const hasLoadedImages = Object.values(results).some(Boolean);
 
@@ -1405,20 +1404,20 @@ export default function CreatorCostumeExtractor() {
             )}
 
             {/* ===================================
-                ESTIMATED CREDITS
+                GENERATION COUNT
                 =================================== */}
 
             <div className="mt-4 flex items-center justify-between rounded-md bg-canvas px-3 py-3 dark:bg-subtle">
               <div>
                 <p className="text-[11px] text-muted">
-                  Estimated FASHN credits
+                  Selected views
                 </p>
 
-                <p className="mt-0.5 text-lg font-bold">{estimatedCredits}</p>
+                <p className="mt-0.5 text-lg font-bold">{totalCount}</p>
               </div>
 
               <p className="max-w-[110px] text-right text-[10px] leading-4 text-muted">
-                Based on 1 estimated credit per view
+                One generation per selected view
               </p>
             </div>
           </div>
@@ -1585,7 +1584,7 @@ export default function CreatorCostumeExtractor() {
               className="mt-0.5 shrink-0 text-action"
               aria-hidden="true"
             />
-            Generated images are temporarily retrieved from FASHN. Download them
+            Generated images are temporarily available from the AI provider. Download them
             promptly; they are not saved to My Creations.
           </p>
         </section>
@@ -1626,7 +1625,7 @@ export default function CreatorCostumeExtractor() {
                   onClick={clearGeneratedImages}
                   disabled={!canClear || restoring || busy}
                   aria-label="Clear all generated image previews"
-                  title="Clear generated previews from this page, not from FASHN or your downloads"
+                  title="Clear generated previews from this page, not from the provider or your downloads"
                   className="inline-flex min-h-9 items-center gap-2 rounded-md border border-line bg-surface px-3 text-[11px] font-semibold text-action transition hover:border-line hover:bg-canvas focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-action disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-subtle"
                 >
                   <Trash2 size={14} aria-hidden="true" />

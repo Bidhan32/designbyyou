@@ -14,7 +14,7 @@
  * - Up to two new jobs per creator per hour.
  * - Once reserved, a paid prediction is never auto-resubmitted.
  * - PostgreSQL status updates use explicit text casts.
- * - Results stay at FASHN temporarily, not in PostgreSQL.
+ * - Results stay at the provider temporarily, not in PostgreSQL.
  *
  * Routes (existing URLs unchanged):
  * POST /jobs
@@ -30,6 +30,7 @@
 const sharp = require("sharp");
 const db = require("../../config/db");
 const {
+  FAL_MODEL,
   startCostumeView,
   getCostumeViewStatus,
   COSTUME_VIEW_KEYS,
@@ -200,7 +201,7 @@ function validatedSelectedViews(value) {
 
 async function getOwnedJob(jobId, creatorId) {
   const result = await db.query(
-    `SELECT id, creator_id, request_key, status,
+    `SELECT id, creator_id, request_key, status, render_model,
             estimated_credits, created_at, updated_at, completed_at
        FROM creator_costume_extraction_jobs
       WHERE id = $1 AND creator_id = $2`,
@@ -582,10 +583,10 @@ async function createCostumeExtractionJob(req, res) {
     // Create job with dynamically calculated estimated credits.
     const created = await client.query(
       `INSERT INTO creator_costume_extraction_jobs
-        (creator_id, request_key, status, estimated_credits)
-       VALUES ($1, $2, 'pending', $3::int)
+        (creator_id, request_key, status, estimated_credits, render_model)
+       VALUES ($1, $2, 'pending', $3::int, $4)
        RETURNING id`,
-      [creatorId, requestKey, selectedViews.length],
+      [creatorId, requestKey, selectedViews.length, FAL_MODEL],
     );
 
     const jobId = created.rows[0].id;
@@ -655,7 +656,7 @@ async function startCostumeViewGeneration(req, res) {
     jobId = validatedJobId(req);
     view = validatedView(req);
 
-    await getOwnedJob(jobId, creatorId);
+    const { render_model: renderModel } = await getOwnedJob(jobId, creatorId);
 
     // Distinguish unselected angles from previously
     // submitted angles.
@@ -683,6 +684,9 @@ async function startCostumeViewGeneration(req, res) {
 
     // Validate before reserving: invalid uploads
     // must not use a view slot.
+    if (renderModel === FAL_MODEL && !process.env.FAL_KEY?.trim()) {
+      throw httpError(503, "PROVIDER_NOT_CONFIGURED", "Costume extraction is temporarily unavailable.");
+    }
     const imageDataUri = await prepareImage(req.file);
 
     // Reserve the selected view atomically.
@@ -709,9 +713,9 @@ async function startCostumeViewGeneration(req, res) {
 
     claimed = true;
 
-    // Submit exactly one selected view to FASHN.
+    // Submit exactly one selected view to the job's provider.
     const result = await startCostumeView({
-      imageDataUri,
+      renderModel, imageDataUri,
       view,
     });
 
@@ -797,7 +801,7 @@ async function startCostumeViewGeneration(req, res) {
  * Refresh Active Costume Views
  * =========================================================
  *
- * - Checks existing FASHN predictions.
+ * - Checks existing provider predictions.
  * - Never starts a new prediction.
  * - Applies PostgreSQL parameter casts.
  * - Updates completed/failed states.
@@ -807,7 +811,7 @@ async function startCostumeViewGeneration(req, res) {
  * =========================================================
  */
 
-async function refreshActiveViews(jobId) {
+async function refreshActiveViews(jobId, renderModel) {
   const active = await db.query(
     `SELECT view_name, prediction_id, status
        FROM creator_costume_extraction_views
@@ -825,12 +829,12 @@ async function refreshActiveViews(jobId) {
 
   const results = await Promise.allSettled(
     active.rows.map(async (row) => {
-      const providerResult = await getCostumeViewStatus(row.prediction_id);
+      const providerResult = await getCostumeViewStatus(row.prediction_id, renderModel);
 
       const nextStatus = providerResult.status;
 
       if (!VALID_PROVIDER_STATUSES.has(nextStatus)) {
-        throw new Error(`Unexpected FASHN status: ${nextStatus}`);
+        throw new Error(`Unexpected provider status: ${nextStatus}`);
       }
 
       const updated = await db.query(
@@ -891,10 +895,10 @@ async function getCostumeExtractionJob(req, res) {
     const creatorId = creatorIdFrom(req);
     const jobId = validatedJobId(req);
 
-    await getOwnedJob(jobId, creatorId);
+    const { render_model: renderModel } = await getOwnedJob(jobId, creatorId);
 
     if (String(req.query?.refresh || "").toLowerCase() === "true") {
-      await refreshActiveViews(jobId);
+      await refreshActiveViews(jobId, renderModel);
     }
 
     const job = await formatJob(jobId, creatorId);
@@ -930,7 +934,7 @@ async function getCostumeViewResult(req, res) {
     const jobId = validatedJobId(req);
     const view = validatedView(req);
 
-    await getOwnedJob(jobId, creatorId);
+    const { render_model: renderModel } = await getOwnedJob(jobId, creatorId);
 
     const results = await db.query(
       `SELECT prediction_id, status
@@ -957,7 +961,7 @@ async function getCostumeViewResult(req, res) {
       );
     }
 
-    const result = await getCostumeViewStatus(row.prediction_id);
+    const result = await getCostumeViewStatus(row.prediction_id, renderModel);
 
     if (!result.completed || !result.imageDataUri) {
       throw httpError(

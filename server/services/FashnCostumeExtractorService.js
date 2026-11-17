@@ -40,6 +40,8 @@
  */
 
 const API_BASE = "https://api.fashn.ai/v1";
+const { submitImage, getImageStatus } = require("./ai/falImageQueue");
+const FAL_MODEL = "fal-ai/qwen-image-edit-2511";
 
 const MODEL_NAME = "edit";
 
@@ -355,12 +357,33 @@ async function requestFashn(
 async function startCostumeView({
   imageDataUri,
   view,
+  renderModel,
 }) {
   const selectedView = validateView(view);
 
   validateImageDataUri(imageDataUri);
 
   const config = VIEW_CONFIG[selectedView];
+  if (renderModel === FAL_MODEL) {
+    try {
+      const predictionId = await submitImage(FAL_MODEL, {
+        image_urls: [imageDataUri],
+        prompt: buildCostumePrompt(selectedView),
+        seed: config.seed,
+        num_images: 1,
+        output_format: OUTPUT_FORMAT,
+        sync_mode: true,
+        enable_safety_checker: true,
+      });
+      return { predictionId };
+    } catch (error) {
+      if (error.status === 429) throw serviceError("Generation service is busy.", "PROVIDER_RATE_LIMITED", 429);
+      if ([401, 402, 403].includes(error.status)) throw serviceError("Generation service is unavailable.", "PROVIDER_ACCESS_FAILED", 503);
+      if ([400, 413, 422].includes(error.status)) throw serviceError("The provider could not process this image.", "PROVIDER_REJECTED_IMAGE", 422);
+      throw serviceError("Submission could not be confirmed. Check the job status.", "SUBMISSION_RECORD_UNCERTAIN", 503);
+    }
+  }
+  if (renderModel !== "fashn/edit") throw serviceError("Unknown costume rendering model.");
 
   const payload = {
     model_name: MODEL_NAME,
@@ -464,13 +487,16 @@ function validateOutputDataUri(output) {
  */
 
 async function getCostumeViewStatus(
-  predictionId
+  predictionId, renderModel
 ) {
   const validId = validatePredictionId(
     predictionId
   );
 
-  const response = await requestFashn(
+  if (renderModel !== FAL_MODEL && renderModel !== "fashn/edit") throw serviceError("Unknown costume rendering model.");
+  const response = renderModel === FAL_MODEL
+    ? await getImageStatus(FAL_MODEL, validId)
+    : await requestFashn(
     `${API_BASE}/status/${encodeURIComponent(
       validId
     )}`,
@@ -510,8 +536,14 @@ async function getCostumeViewStatus(
     const output =
       response?.output?.[0];
 
-    const imageDataUri =
-      validateOutputDataUri(output);
+    let imageDataUri;
+    try {
+      imageDataUri = validateOutputDataUri(output);
+    } catch (error) {
+      if (renderModel !== FAL_MODEL) throw error;
+      return { predictionId: validId, status: "failed", completed: false, failed: true,
+        imageDataUri: null, errorCode: "INVALID_PROVIDER_OUTPUT" };
+    }
 
     return {
       predictionId: validId,
@@ -537,6 +569,7 @@ async function getCostumeViewStatus(
  */
 
 module.exports = {
+  FAL_MODEL,
   startCostumeView,
   getCostumeViewStatus,
   buildCostumePrompt,
