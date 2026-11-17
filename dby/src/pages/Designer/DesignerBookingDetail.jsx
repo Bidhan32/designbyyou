@@ -716,7 +716,7 @@ function ActionModal({ mode, booking, submitting, onClose, onSubmit }) {
 
                 <p className="mt-2 text-[11px] leading-5 text-muted">
                   Optional public HTTP/HTTPS image of the garment for Creator
-                  Virtual Try-On. Use a clean garment-focused image that FASHN
+                  Virtual Try-On. Use a clean garment-focused image that fal.ai
                   can access.
                 </p>
               </label>

@@ -8,8 +8,7 @@
 const sharp = require("sharp");
 const cloudinary = require("cloudinary").v2;
 
-const { submitImage, getImageStatus } = require("./ai/falImageQueue");
-const FAL_MODEL = "fal-ai/fashn/tryon/v1.6";
+const falTryOn = require("./ai/falTryOn");
 const BASE = "https://api.fashn.ai/v1";
 const MAX_SOURCE = 12 * 1024 * 1024;
 const MAX_OUTPUT = 16 * 1024 * 1024;
@@ -103,12 +102,7 @@ async function prepareImage(file, kind) {
 }
 
 async function startPrediction({ personDataUri, garmentDataUri, category, mode, garmentPhotoType }) {
-  return submitImage(FAL_MODEL, {
-    model_image: personDataUri,
-    garment_image: garmentDataUri,
-    category, mode, garment_photo_type: garmentPhotoType,
-    num_samples: 1, output_format: "jpeg", sync_mode: true, enable_safety_checker: true,
-  }, { privateInputs: true });
+  return falTryOn.startPrediction({ personImage: personDataUri, garmentImage: garmentDataUri, category, mode, garmentPhotoType });
 }
 
 async function getPrediction(predictionId, provider) {
@@ -116,7 +110,7 @@ async function getPrediction(predictionId, provider) {
     throw new TryOnServiceError("Invalid prediction ID.", 400);
   }
   if (provider === "fal") {
-    const data = await getImageStatus(FAL_MODEL, predictionId);
+    const data = await falTryOn.getPredictionStatus(predictionId);
     return { data, credits: null };
   }
   if (provider !== "fashn") throw new TryOnServiceError("Unknown try-on provider.");
@@ -194,7 +188,7 @@ async function destroyResult(publicId) {
 }
 
 module.exports = {
-  FAL_MODEL,
+  FAL_MODEL: falTryOn.FAL_MODEL,
   TryOnServiceError,
   prepareImage,
   startPrediction,

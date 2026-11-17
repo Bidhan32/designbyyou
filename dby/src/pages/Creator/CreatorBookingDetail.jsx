@@ -2433,7 +2433,7 @@ export default function CreatorBookingDetail() {
 
                     <p className="mt-2 max-w-sm text-sm leading-6 text-muted">
                       {tryOnLoading
-                        ? "FASHN is generating the Virtual Try-On. Please keep this window open."
+                        ? "Generating your virtual try-on. Please keep this window open."
                         : "Choose a clear, front-facing photo and generate the preview when you are ready."}
                     </p>
                   </div>

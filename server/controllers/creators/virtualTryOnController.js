@@ -52,7 +52,7 @@ Creator photo:
 - is NOT written to local uploads
 - is optimized directly in memory
 - is converted directly from memory to a data URI
-- is sent to FASHN
+- is sent to fal.ai
 - generated output is requested as base64
 
 =========================================================
@@ -70,7 +70,7 @@ This controller DOES NOT modify:
 - designer earnings
 
 It is a read-only booking integration plus an external
-FASHN generation request.
+fal.ai generation request.
 =========================================================
 */
 
@@ -82,9 +82,7 @@ const sharp = require("sharp");
 FASHN Configuration
 =========================================================*/
 
-const FASHN_BASE_URL = "https://api.fashn.ai/v1";
-
-const FASHN_MODEL = "tryon-v1.6";
+const { FAL_MODEL, startPrediction, getPredictionStatus } = require("../../services/ai/falTryOn");
 
 /*
 Balanced is FASHN v1.6's normal middle-ground mode.
@@ -106,25 +104,7 @@ const FASHN_TRYON_MODE = ALLOWED_FASHN_MODES.has(configuredMode)
   ? configuredMode
   : "balanced";
 
-/*
-We deliberately generate one image per request.
 
-FASHN v1.6 charges per output, so keeping this at one
-prevents accidental multi-credit generation.
-*/
-
-const FASHN_NUM_SAMPLES = 1;
-
-const FASHN_OUTPUT_FORMAT = "jpeg";
-
-/*
-Privacy-oriented output.
-
-FASHN returns a data:image/jpeg;base64,... value rather
-than a persistent CDN result URL.
-*/
-
-const FASHN_RETURN_BASE64 = true;
 
 /*=========================================================
 Polling Configuration
@@ -134,14 +114,7 @@ const POLL_INTERVAL_MS = 2000;
 
 const MAX_POLL_TIME_MS = 60000;
 
-/*
-Individual outbound HTTP requests to FASHN may occasionally
-take longer than expected.
 
-This is separate from the prediction polling duration.
-*/
-
-const FASHN_HTTP_TIMEOUT_MS = 60000;
 
 /*=========================================================
 Creator Upload Configuration
@@ -398,308 +371,22 @@ function isPublicGarmentUrl(value) {
   return true;
 }
 
-/*=========================================================
-FASHN Helpers
-=========================================================*/
-
-function getFashnApiKey() {
-  return cleanText(process.env.FASHN_API_KEY, 10000);
-}
-
-function getFashnHeaders() {
-  const apiKey = getFashnApiKey();
-
-  if (!apiKey) {
-    const error = new Error("FASHN_API_KEY is not configured.");
-
-    error.statusCode = 503;
-
-    error.code = "FASHN_NOT_CONFIGURED";
-
-    throw error;
-  }
-
-  return {
-    Authorization: `Bearer ${apiKey}`,
-
-    "Content-Type": "application/json",
-  };
-}
-
-/*=========================================================
-Safe JSON Response Reader
-=========================================================*/
-
-async function readResponseBody(response) {
-  const text = await response.text();
-
-  if (!text) {
-    return {};
-  }
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    return {
-      message: text.slice(0, 1000),
-    };
-  }
-}
-
-/*=========================================================
-Timed Fetch
-=========================================================*/
-
-async function fashnFetch(url, options = {}) {
-  if (typeof fetch !== "function") {
-    const error = new Error(
-      "This Node.js runtime does not provide the Fetch API.",
-    );
-
-    error.statusCode = 500;
-
-    error.code = "FETCH_UNAVAILABLE";
-
-    throw error;
-  }
-
-  const controller = new AbortController();
-
-  const timer = setTimeout(
-    () => {
-      controller.abort();
-    },
-
-    FASHN_HTTP_TIMEOUT_MS,
-  );
-
-  try {
-    return await fetch(url, {
-      ...options,
-
-      signal: controller.signal,
-    });
-  } catch (error) {
-    if (error?.name === "AbortError") {
-      const timeoutError = new Error("The FASHN request timed out.");
-
-      timeoutError.code = "FASHN_HTTP_TIMEOUT";
-
-      throw timeoutError;
-    }
-
-    throw error;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/*=========================================================
-FASHN Error Helpers
-=========================================================*/
-
-function extractFashnErrorMessage(data, fallback) {
-  if (!data) {
-    return fallback;
-  }
-
-  if (typeof data.error === "string") {
-    return cleanText(data.error, 1000);
-  }
-
-  if (data.error && typeof data.error === "object") {
-    return (
-      cleanText(data.error.message, 1000) ||
-      cleanText(data.error.name, 500) ||
-      fallback
-    );
-  }
-
-  return cleanText(data.message, 1000) || fallback;
-}
-
-/*=========================================================
-Start FASHN Prediction
-=========================================================*/
-
-async function startPrediction({ personImage, garmentImage, category }) {
-  const response = await fashnFetch(`${FASHN_BASE_URL}/run`, {
-    method: "POST",
-
-    headers: getFashnHeaders(),
-
-    body: JSON.stringify({
-      model_name: FASHN_MODEL,
-
-      inputs: {
-        model_image: personImage,
-
-        garment_image: garmentImage,
-
-        category,
-
-        garment_photo_type: "auto",
-
-        mode: FASHN_TRYON_MODE,
-
-        num_samples: FASHN_NUM_SAMPLES,
-
-        output_format: FASHN_OUTPUT_FORMAT,
-
-        return_base64: FASHN_RETURN_BASE64,
-      },
-    }),
-  });
-
-  const data = await readResponseBody(response);
-
-  if (!response.ok) {
-    const error = new Error(
-      extractFashnErrorMessage(
-        data,
-        "FASHN rejected the Virtual Try-On request.",
-      ),
-    );
-
-    error.statusCode = response.status;
-
-    error.code = "FASHN_REQUEST_REJECTED";
-
-    error.providerData = data;
-
-    throw error;
-  }
-
-  const predictionId = cleanText(data?.id, 500);
-
-  if (!predictionId) {
-    const error = new Error("FASHN did not return a prediction ID.");
-
-    error.code = "FASHN_PREDICTION_ID_MISSING";
-
-    error.providerData = data;
-
-    throw error;
-  }
-
-  return predictionId;
-}
-
-/*=========================================================
-Read FASHN Prediction Status
-=========================================================*/
-
-async function getPredictionStatus(predictionId) {
-  const response = await fashnFetch(
-    `${FASHN_BASE_URL}/status/${encodeURIComponent(predictionId)}`,
-    {
-      method: "GET",
-
-      headers: getFashnHeaders(),
-    },
-  );
-
-  const data = await readResponseBody(response);
-
-  if (!response.ok) {
-    const error = new Error(
-      extractFashnErrorMessage(
-        data,
-        "Unable to read the FASHN prediction status.",
-      ),
-    );
-
-    error.statusCode = response.status;
-
-    error.code = "FASHN_STATUS_ERROR";
-
-    error.providerData = data;
-
-    throw error;
-  }
-
-  return data;
-}
-
-/*=========================================================
-Poll Until Prediction Completes
-=========================================================*/
-
 async function waitForPrediction(predictionId) {
   const startedAt = Date.now();
-
   while (Date.now() - startedAt < MAX_POLL_TIME_MS) {
     const prediction = await getPredictionStatus(predictionId);
-
-    const status = normalizeValue(prediction?.status);
-
-    if (status === "completed") {
-      const outputs = Array.isArray(prediction.output)
-        ? prediction.output.filter(
-            (value) => typeof value === "string" && value.length > 0,
-          )
-        : [];
-
-      if (outputs.length === 0) {
-        const error = new Error(
-          "FASHN completed the request but returned no generated image.",
-        );
-
-        error.code = "FASHN_OUTPUT_MISSING";
-
-        error.providerData = prediction;
-
-        throw error;
+    if (prediction.status === "completed") {
+      if (!prediction.output?.[0]?.startsWith("data:image/jpeg;base64,")) {
+        throw new Error("Missing try-on image.");
       }
-
-      return {
-        prediction,
-
-        outputs,
-      };
+      return prediction;
     }
-
-    if (status === "failed") {
-      const error = new Error(
-        extractFashnErrorMessage(
-          prediction,
-          "The Virtual Try-On generation failed.",
-        ),
-      );
-
-      error.code = "FASHN_GENERATION_FAILED";
-
-      error.providerData = prediction;
-
-      throw error;
+    if (prediction.status === "failed") {
+      throw Object.assign(new Error("Virtual Try-On generation failed."), { status: 422 });
     }
-
-    if (!["starting", "in_queue", "processing"].includes(status)) {
-      const error = new Error(
-        `FASHN returned an unexpected prediction status: ${
-          status || "unknown"
-        }.`,
-      );
-
-      error.code = "FASHN_UNKNOWN_STATUS";
-
-      error.providerData = prediction;
-
-      throw error;
-    }
-
     await wait(POLL_INTERVAL_MS);
   }
-
-  const error = new Error(
-    "Virtual Try-On is taking longer than expected. Please try again.",
-  );
-
-  error.statusCode = 504;
-
-  error.code = "FASHN_POLL_TIMEOUT";
-
-  throw error;
+  throw Object.assign(new Error("Virtual Try-On timed out."), { name: "TimeoutError" });
 }
 
 /*=========================================================
@@ -852,12 +539,12 @@ exports.generateBookingTryOn = async (req, res) => {
     Provider Configuration
     =====================================================*/
 
-  if (!getFashnApiKey()) {
+  if (!process.env.FAL_KEY?.trim()) {
     return sendError(
       res,
       503,
       "Virtual Try-On is temporarily unavailable.",
-      "FASHN_NOT_CONFIGURED",
+      "TRYON_PROVIDER_UNAVAILABLE",
     );
   }
 
@@ -940,7 +627,8 @@ exports.generateBookingTryOn = async (req, res) => {
       personImage,
 
       garmentImage,
-
+      mode: FASHN_TRYON_MODE,
+      garmentPhotoType: "auto",
       category,
     });
 
@@ -948,9 +636,9 @@ exports.generateBookingTryOn = async (req, res) => {
       Poll FASHN
       ===================================================*/
 
-    const { outputs, prediction } = await waitForPrediction(predictionId);
+    const prediction = await waitForPrediction(predictionId);
 
-    const resultImage = outputs[0];
+    const resultImage = prediction.output[0];
 
     /*===================================================
       Success
@@ -972,9 +660,9 @@ exports.generateBookingTryOn = async (req, res) => {
 
         category,
 
-        provider: "fashn",
+        provider: "fal",
 
-        model: FASHN_MODEL,
+        model: FAL_MODEL,
 
         mode: FASHN_TRYON_MODE,
 
@@ -982,7 +670,7 @@ exports.generateBookingTryOn = async (req, res) => {
 
         image: resultImage,
 
-        output_format: FASHN_OUTPUT_FORMAT,
+        output_format: "jpeg",
 
         temporary: true,
 
@@ -990,110 +678,20 @@ exports.generateBookingTryOn = async (req, res) => {
       },
     });
   } catch (error) {
-    /*
-      Log provider details server-side only.
-
-      Do not expose API key or the Creator's base64 photo.
-    */
-
-   console.error("Virtual Try-On generation failed:", {
-  message: error?.message || null,
-  code: error?.code || null,
-  statusCode: error?.statusCode || null,
-  providerError: error?.providerData?.error || null,
-
-  causeName: error?.cause?.name || null,
-  causeCode: error?.cause?.code || null,
-  causeMessage: error?.cause?.message || null,
-  causeErrno: error?.cause?.errno || null,
-  causeSyscall: error?.cause?.syscall || null,
-});
-
-    if (error?.code === "FASHN_GENERATION_FAILED") {
-      return sendError(
-        res,
-        422,
-        error.message ||
-          "FASHN could not generate a Virtual Try-On from these images.",
-        "TRYON_GENERATION_FAILED",
-      );
+    const status = Number(error?.status);
+    console.error("Booking try-on failed", { status: status || null, code: error?.code });
+    if (status === 401 || status === 403) {
+      return sendError(res, 503, "Virtual Try-On is temporarily unavailable.", "TRYON_PROVIDER_UNAVAILABLE");
     }
-
-    if (error?.code === "FASHN_POLL_TIMEOUT") {
-      return sendError(
-        res,
-        504,
-        "Virtual Try-On is taking longer than expected. Please try again.",
-        "TRYON_TIMEOUT",
-      );
+    if (status === 429) {
+      return sendError(res, 429, "Virtual Try-On is busy. Please try again shortly.", "TRYON_RATE_LIMITED");
     }
-
-    if (
-      ["FASHN_REQUEST_REJECTED", "FASHN_STATUS_ERROR"].includes(error?.code)
-    ) {
-      /*
-        401/403 from FASHN usually means a key/account
-        configuration problem.
-
-        Do not expose provider authentication details
-        to the frontend.
-      */
-
-      if ([401, 403].includes(Number(error.statusCode))) {
-        return sendError(
-          res,
-          503,
-          "Virtual Try-On is temporarily unavailable.",
-          "TRYON_PROVIDER_UNAVAILABLE",
-        );
-      }
-
-      /*
-        Rate limiting.
-      */
-
-      if (Number(error.statusCode) === 429) {
-        return sendError(
-          res,
-          429,
-          "Virtual Try-On is busy right now. Please try again shortly.",
-          "TRYON_RATE_LIMITED",
-        );
-      }
-
-      /*
-        Provider-side validation error.
-      */
-
-      if (Number(error.statusCode) >= 400 && Number(error.statusCode) < 500) {
-        return sendError(
-          res,
-          422,
-          error.message ||
-            "The supplied images could not be processed for Virtual Try-On.",
-          "TRYON_INPUT_REJECTED",
-        );
-      }
+    if (status === 422 || status === 400) {
+      return sendError(res, 422, "Virtual Try-On could not process these images.", "TRYON_GENERATION_FAILED");
     }
-
-    if (error?.code === "FASHN_HTTP_TIMEOUT") {
-      return sendError(
-        res,
-        504,
-        "The Virtual Try-On service did not respond in time.",
-        "TRYON_PROVIDER_TIMEOUT",
-      );
+    if (error?.name === "TimeoutError" || error?.name === "AbortError") {
+      return sendError(res, 504, "Virtual Try-On timed out.", "TRYON_TIMEOUT");
     }
-
-    if (error?.code === "FASHN_NOT_CONFIGURED") {
-      return sendError(
-        res,
-        503,
-        "Virtual Try-On is temporarily unavailable.",
-        "FASHN_NOT_CONFIGURED",
-      );
-    }
-
     return sendError(
       res,
       500,
@@ -1110,9 +708,9 @@ Useful for route tests/debugging without exposing secrets.
 =========================================================*/
 
 exports.VIRTUAL_TRYON_CONFIG = Object.freeze({
-  provider: "fashn",
+  provider: "fal",
 
-  model: FASHN_MODEL,
+  model: FAL_MODEL,
 
   mode: FASHN_TRYON_MODE,
 
