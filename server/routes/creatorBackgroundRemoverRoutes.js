@@ -543,8 +543,8 @@ router.use((req, res, next) => {
  *   data: {
  *     image: "data:image/png;base64,...",
  *     prediction_id: "...",
- *     provider: "fashn",
- *     model: "background-remove",
+ *     provider: "fal",
+ *     model: "fal-ai/birefnet/v2",
  *     output_format: "png",
  *     temporary: true
  *   }

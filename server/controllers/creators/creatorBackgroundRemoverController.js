@@ -11,7 +11,7 @@
  * ---------------------------------------------------------
  * - Validate Creator image upload from Multer memoryStorage
  * - Apply additional server-side image checks with Sharp
- * - Normalize / optimize input before sending to FASHN
+ * - Normalize / optimize input before sending to fal.ai
  * - Enforce temporary in-memory per-Creator usage limits
  * - Return a transparent PNG result as base64 data URI
  *
@@ -38,8 +38,8 @@
  *   data: {
  *     image: "data:image/png;base64,...",
  *     prediction_id: "...",
- *     provider: "fashn",
- *     model: "background-remove",
+ *     provider: "fal",
+ *     model: "fal-ai/birefnet/v2",
  *     output_format: "png",
  *     temporary: true
  *   }
@@ -53,7 +53,7 @@ const sharp = require("sharp");
 const {
   removeBackground,
   BACKGROUND_REMOVE_MODEL,
-} = require("../../services/FashnBackgroundRemoverService");
+} = require("../../services/FalBackgroundRemoverService");
 
 /*
  * =========================================================
@@ -394,7 +394,7 @@ async function removeCreatorImageBackground(req, res, next) {
       data: {
         image: result.dataUri,
         prediction_id: result.predictionId,
-        provider: "fashn",
+        provider: "fal",
         model: BACKGROUND_REMOVE_MODEL,
         output_format: "png",
         temporary: true,

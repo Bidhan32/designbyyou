@@ -110,29 +110,6 @@ async function deleteCloudinaryImage(publicId) {
   catch (err) { console.error("[SketchToImage] Cleanup failed:", err.message); }
 }
 
-async function startSketchEdit({ sketchBuffer, instruction, generationMode }) {
-  const dataUri = `data:image/jpeg;base64,${sketchBuffer.toString("base64")}`;
-  const { data } = await callFashn("/run", {
-    method: "POST",
-    body: JSON.stringify({
-      model_name: "edit",
-      inputs: {
-        image: dataUri,
-        prompt: instruction,
-        resolution: "1k",
-        generation_mode: generationMode,
-        num_images: 1,
-        output_format: "png",
-        return_base64: false,
-      },
-    }),
-  });
-  if (typeof data.id !== "string" || !/^[a-zA-Z0-9-]{8,150}$/.test(data.id)) {
-    throw new SketchProviderError("FASHN did not provide a valid prediction ID.");
-  }
-  return data.id;
-}
-
 async function getSketchStatus(predictionId) {
   if (typeof predictionId !== "string" || !/^[a-zA-Z0-9-]{8,150}$/.test(predictionId)) {
     throw new SketchProviderError("Invalid provider prediction ID.", 400);
@@ -143,22 +120,25 @@ async function getSketchStatus(predictionId) {
   return { ...data, credits };
 }
 
-function trustedOutputUrl(raw) {
+function trustedOutputUrl(raw, provider) {
   if (typeof raw !== "string") throw new SketchProviderError("FASHN did not return an output URL.");
   let url;
   try { url = new URL(raw); }
   catch { throw new SketchProviderError("Invalid FASHN output URL."); }
-  if (url.protocol !== "https:" || !OUTPUT_HOSTS.has(url.hostname) ||
+  const trustedHost = provider === "fal"
+    ? url.hostname === "fal.media" || url.hostname.endsWith(".fal.media")
+    : OUTPUT_HOSTS.has(url.hostname);
+  if (url.protocol !== "https:" || !trustedHost ||
       url.port || url.username || url.password) {
-    throw new SketchProviderError("Untrusted output URL returned by FASHN.");
+    throw new SketchProviderError("Untrusted renderer output URL.");
   }
   return url.toString();
 }
 
-async function fetchOutputBytes(rawUrl) {
+async function fetchOutputBytes(rawUrl, provider) {
   let response;
   try {
-    response = await fetch(trustedOutputUrl(rawUrl), {
+    response = await fetch(trustedOutputUrl(rawUrl, provider), {
       signal: AbortSignal.timeout(30000),
       redirect: "error",
     });
@@ -196,8 +176,8 @@ async function fetchOutputBytes(rawUrl) {
   return buffer;
 }
 
-async function saveSketchOutput(fashnUrl, creatorId, jobId) {
-  const buffer = await fetchOutputBytes(fashnUrl);
+async function saveSketchOutput(outputUrl, creatorId, jobId, provider) {
+  const buffer = await fetchOutputBytes(outputUrl, provider);
   return uploadImage(buffer, {
     folder: "designbyyou_ai/sketch_to_image/outputs",
     public_id: `render_${creatorId}_${jobId}`,
@@ -210,7 +190,6 @@ module.exports = {
   normalizeSketch,
   saveSourceSketch,
   deleteCloudinaryImage,
-  startSketchEdit,
   getSketchStatus,
   saveSketchOutput,
 };

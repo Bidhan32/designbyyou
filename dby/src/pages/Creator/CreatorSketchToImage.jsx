@@ -19,11 +19,6 @@ const FABRICS = [
   ["silk", "Silk"], ["denim", "Denim"], ["linen", "Linen"],
   ["wool", "Wool"], ["leather", "Leather"], ["chiffon", "Chiffon"],
 ];
-const MODES = [
-  ["fast", "Fast · 1 credit"],
-  ["balanced", "Balanced · 2 credits"],
-  ["quality", "Quality · 3 credits"],
-];
 
 function isActive(job) { return Boolean(job && ACTIVE.has(job.status)); }
 function errorText(err, fallback) { return err?.response?.data?.message || err?.message || fallback; }
@@ -41,7 +36,7 @@ function niceDate(value) {
   return Number.isNaN(date.getTime()) ? "" : date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
 function statusLabel(status) {
-  return ({ submitting: "Submitting to FASHN", processing: "Rendering garment",
+  return ({ submitting: "Submitting sketch", processing: "Rendering garment",
     saving: "Saving to your library", completed: "Completed", failed: "Failed" })[status] || "Ready";
 }
 function filename(job, ext = "png") {
@@ -68,7 +63,6 @@ export default function CreatorSketchToImage() {
   const [sketchPreview, setSketchPreview] = useState("");
   const [instruction, setInstruction] = useState("");
   const [fabric, setFabric] = useState("as-drawn");
-  const [generationMode, setGenerationMode] = useState("fast");
   const [generating, setGenerating] = useState(false);
   const [job, setJob] = useState(null);
   const [history, setHistory] = useState([]);
@@ -160,7 +154,6 @@ export default function CreatorSketchToImage() {
     setJob(null);
     setInstruction("");
     setFabric("as-drawn");
-    setGenerationMode("fast");
     setError("");
     setPollError("");
     setDownloadError("");
@@ -181,7 +174,6 @@ export default function CreatorSketchToImage() {
     body.append("sketch", sketch);
     body.append("instruction", instruction.trim());
     body.append("fabric", fabric);
-    body.append("generation_mode", generationMode);
     body.append("request_key", requestKey.current);
     try {
       // Axios sets the multipart boundary for FormData.
@@ -196,7 +188,7 @@ export default function CreatorSketchToImage() {
       await refreshHistory().catch(() => {});
     } catch (err) {
       setError(errorText(err, "Could not start sketch generation."));
-      if (err?.response?.data?.code === "FASHN_SUBMISSION_FAILED") requestKey.current = null;
+      if (err?.response?.data?.code === "SKETCH_SUBMISSION_FAILED") requestKey.current = null;
     } finally { setGenerating(false); }
   }
 
@@ -242,7 +234,7 @@ export default function CreatorSketchToImage() {
         <header className="mt-7 flex items-start gap-4">
           <div className="rounded-md bg-subtle p-3 text-action"><WandSparkles size={27} /></div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-normal text-action">FASHN AI · Creator tools</p>
+            <p className="text-[10px] font-bold uppercase tracking-normal text-action">Creator tools</p>
             <h1 className="mt-1 font-sans text-3xl tracking-tight sm:text-4xl">AI Sketch to Image</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
               Upload a fashion sketch and visualize it as a realistic garment. Download the result or revisit it in your private history.
@@ -259,17 +251,11 @@ export default function CreatorSketchToImage() {
               <span className="mt-1 text-xs text-muted">JPG, PNG, WebP · up to 6 MB · minimum 128 × 128 px</span>
             </label>
             <input id="sketch-upload" ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => chooseFile(event.target.files?.[0])} className="sr-only" />
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <div className="mt-5">
               <div>
                 <label htmlFor="sketch-fabric" className="block text-xs font-bold uppercase tracking-wider">Fabric appearance</label>
                 <select id="sketch-fabric" value={fabric} onChange={(event) => { setFabric(event.target.value); requestKey.current = null; }} className="mt-2 w-full rounded-md border border-line bg-surface p-3 text-sm">
                   {FABRICS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="sketch-mode" className="block text-xs font-bold uppercase tracking-wider">Rendering quality · 1K</label>
-                <select id="sketch-mode" value={generationMode} onChange={(event) => { setGenerationMode(event.target.value); requestKey.current = null; }} className="mt-2 w-full rounded-md border border-line bg-surface p-3 text-sm">
-                  {MODES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
               </div>
             </div>

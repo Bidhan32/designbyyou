@@ -185,5 +185,6 @@ Exports
 =========================================================*/
 
 module.exports = {
+  getFalClient,
   generateFashionImage,
 };

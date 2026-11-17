@@ -1,9 +1,10 @@
 "use strict";
 
-/** DesignByYou – Creator Sketch -> Garment rendering using FASHN edit. */
+/** DesignByYou – Creator Sketch -> Garment rendering. */
 const crypto = require("crypto");
 const db = require("../../config/db");
-const fashn = require("../../services/FashnSketchToImageService");
+const falSketch = require("../../services/FalSketchToImageService");
+const sketch = require("../../services/FashnSketchToImageService");
 
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 const MODES = new Set(["fast", "balanced", "quality"]);
@@ -57,9 +58,11 @@ function buildInstruction(fabric, userInstructions) {
 exports.start = async (req, res) => {
   const creatorId = currentCreator(req);
   if (!creatorId) return fail(res, 403, "CREATOR_REQUIRED", "A signed-in Creator account is required.");
-  if (process.env.FASHN_SKETCH_TO_IMAGE_ENABLED !== "true") {
+  if ((process.env.SKETCH_TO_IMAGE_ENABLED ?? process.env.FASHN_SKETCH_TO_IMAGE_ENABLED) !== "true") {
     return fail(res, 503, "TOOL_NOT_ENABLED", "Sketch to Image is not enabled on this server yet.");
   }
+
+  if (!process.env.FAL_KEY?.trim()) return fail(res, 503, "TOOL_NOT_CONFIGURED", "Sketch to Image is temporarily unavailable.");
 
   const body = req.body || {};
   if (Object.keys(body).some((key) => !["instruction", "fabric", "generation_mode", "request_key"].includes(key))) {
@@ -81,7 +84,7 @@ exports.start = async (req, res) => {
   }
 
   let normalized;
-  try { normalized = await fashn.normalizeSketch(req.file); }
+  try { normalized = await sketch.normalizeSketch(req.file); }
   catch (err) { return fail(res, err.status || 400, "INVALID_SKETCH", err.message); }
 
   let client;
@@ -121,9 +124,9 @@ exports.start = async (req, res) => {
         return fail(res, 429, "DAILY_LIMIT_REACHED", `Daily testing limit reached (${DAILY_LIMIT} per 24 hours).`);
       }
       const added = await client.query(`INSERT INTO public.creator_sketch_to_image_jobs
-        (creator_id, request_key, instruction, fabric, generation_mode)
-        VALUES ($1,$2,$3,$4,$5) RETURNING ${FIELDS}`,
-        [creatorId, requestKey, instruction, fabric, generationMode]);
+        (creator_id, request_key, instruction, fabric, provider, model_name, generation_mode)
+        VALUES ($1,$2,$3,$4,'fal',$5,'standard') RETURNING ${FIELDS}`,
+        [creatorId, requestKey, instruction, fabric, falSketch.MODEL]);
       job = added.rows[0];
     }
     await client.query("COMMIT"); txOpen = false;
@@ -139,15 +142,14 @@ exports.start = async (req, res) => {
 
   try {
     // Source sketch remains in the Creator's unlisted history; never publish automatically.
-    const input = await fashn.saveSourceSketch(normalized, creatorId, job.id);
+    const input = await sketch.saveSourceSketch(normalized, creatorId, job.id);
     await db.query(`UPDATE public.creator_sketch_to_image_jobs SET
       source_url=$1,source_public_id=$2,updated_at=NOW()
       WHERE id=$3 AND creator_id=$4`, [input.url, input.publicId, job.id, creatorId]);
 
-    const predictionId = await fashn.startSketchEdit({
+    const predictionId = await falSketch.startSketchEdit({
       sketchBuffer: normalized,
       instruction: buildInstruction(fabric, instruction),
-      generationMode,
     });
     const updated = await db.query(`UPDATE public.creator_sketch_to_image_jobs
       SET provider_prediction_id=$1,status='processing',updated_at=NOW()
@@ -160,7 +162,7 @@ exports.start = async (req, res) => {
       SET status='failed',error_message='Submission could not be confirmed. Check provider usage before trying again.',updated_at=NOW()
       WHERE id=$1 AND creator_id=$2 AND status='submitting'`, [job.id, creatorId]).catch(() => {});
     return fail(res, err.status === 429 ? 429 : 502,
-      "FASHN_SUBMISSION_FAILED", "Sketch generation could not be started. Check backend logs.");
+      "SKETCH_SUBMISSION_FAILED", "Sketch generation could not be started. Check backend logs.");
   }
 };
 
@@ -205,9 +207,10 @@ exports.status = async (req, res) => {
     if (!job.provider_prediction_id) {
       return fail(res, 503, "PREDICTION_ID_MISSING", "Waiting for provider confirmation.");
     }
-    const provider = await fashn.getSketchStatus(job.provider_prediction_id);
+    const renderer = job.provider === "fal" ? falSketch : sketch;
+    const provider = await renderer.getSketchStatus(job.provider_prediction_id);
     if (provider.status === "failed") {
-      const message = String(provider.error?.message || "FASHN could not render this sketch.").slice(0, 250);
+      const message = String(provider.error?.message || "The renderer could not render this sketch.").slice(0, 250);
       const failed = await db.query(`UPDATE public.creator_sketch_to_image_jobs
         SET status='failed',error_message=$1,updated_at=NOW()
         WHERE id=$2 AND creator_id=$3 AND status <> 'completed' RETURNING ${FIELDS}`,
@@ -237,7 +240,7 @@ exports.status = async (req, res) => {
       return res.status(200).json({ status: "success", data: safeJob(latest.rows[0]) });
     }
     try {
-      const saved = await fashn.saveSketchOutput(outputUrl, creatorId, jobId);
+      const saved = await sketch.saveSketchOutput(outputUrl, creatorId, jobId, job.provider);
       const completed = await db.query(`UPDATE public.creator_sketch_to_image_jobs
         SET status='completed',result_urls=$1::jsonb,output_public_id=$2,
         credits_used=$3,completed_at=NOW(),updated_at=NOW(),error_message=NULL

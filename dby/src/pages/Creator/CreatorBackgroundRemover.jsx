@@ -403,7 +403,7 @@ export default function CreatorBackgroundRemover() {
             </div>
           )}
           <p className="mt-4 text-[11px] leading-5 text-muted">
-            Your image is sent to FASHN AI for processing. It is not
+            Your image is sent to fal.ai for processing. It is not
             automatically saved to your DesignByYou profile.
           </p>
           {usage && (
