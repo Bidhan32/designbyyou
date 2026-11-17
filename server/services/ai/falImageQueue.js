@@ -2,7 +2,7 @@
 
 const { getFalClient } = require("./falFashionService");
 
-async function submitImage(model, input) {
+async function submitImage(model, input, { privateInputs = false } = {}) {
   const response = await fetch(`https://queue.fal.run/${model}`, {
     method: "POST",
     redirect: "error",
@@ -11,6 +11,7 @@ async function submitImage(model, input) {
       Authorization: `Key ${process.env.FAL_KEY.trim()}`,
       "Content-Type": "application/json",
       "X-Fal-No-Retry": "1",
+      ...(privateInputs ? { "X-Fal-Store-IO": "0" } : {}),
     },
     body: JSON.stringify(input),
   });

@@ -2,12 +2,14 @@
 
 /**
  * Standalone Creator Virtual Try-On, separate from booking virtual try-on.
- * Sensitive source photos stay in memory and are sent to FASHN as data URIs.
+ * Sensitive source photos stay in memory and are sent to the provider as data URIs.
  * Only generated JPEG results are saved, as authenticated Cloudinary assets.
  */
 const sharp = require("sharp");
 const cloudinary = require("cloudinary").v2;
 
+const { submitImage, getImageStatus } = require("./ai/falImageQueue");
+const FAL_MODEL = "fal-ai/fashn/tryon/v1.6";
 const BASE = "https://api.fashn.ai/v1";
 const MAX_SOURCE = 12 * 1024 * 1024;
 const MAX_OUTPUT = 16 * 1024 * 1024;
@@ -101,32 +103,23 @@ async function prepareImage(file, kind) {
 }
 
 async function startPrediction({ personDataUri, garmentDataUri, category, mode, garmentPhotoType }) {
-  const { data } = await fetchJson("/run", {
-    method: "POST",
-    body: {
-      model_name: "tryon-v1.6",
-      inputs: {
-        model_image: personDataUri,
-        garment_image: garmentDataUri,
-        category,
-        garment_photo_type: garmentPhotoType,
-        mode,
-        num_samples: 1,
-        output_format: "jpeg",
-        return_base64: true,
-      },
-    },
-  }, 300_000);
-  if (typeof data?.id !== "string" || !/^[a-zA-Z0-9-]{8,150}$/.test(data.id)) {
-    throw new TryOnServiceError("FASHN did not return a valid prediction ID.");
-  }
-  return data.id;
+  return submitImage(FAL_MODEL, {
+    model_image: personDataUri,
+    garment_image: garmentDataUri,
+    category, mode, garment_photo_type: garmentPhotoType,
+    num_samples: 1, output_format: "jpeg", sync_mode: true, enable_safety_checker: true,
+  }, { privateInputs: true });
 }
 
-async function getPrediction(predictionId) {
+async function getPrediction(predictionId, provider) {
   if (typeof predictionId !== "string" || !/^[a-zA-Z0-9-]{8,150}$/.test(predictionId)) {
     throw new TryOnServiceError("Invalid prediction ID.", 400);
   }
+  if (provider === "fal") {
+    const data = await getImageStatus(FAL_MODEL, predictionId);
+    return { data, credits: null };
+  }
+  if (provider !== "fashn") throw new TryOnServiceError("Unknown try-on provider.");
   return fetchJson(`/status/${encodeURIComponent(predictionId)}`);
 }
 
@@ -201,6 +194,7 @@ async function destroyResult(publicId) {
 }
 
 module.exports = {
+  FAL_MODEL,
   TryOnServiceError,
   prepareImage,
   startPrediction,

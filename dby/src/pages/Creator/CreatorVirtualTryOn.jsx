@@ -217,7 +217,7 @@ export default function CreatorVirtualTryOn({ initialGarment = null, embedded = 
       try { await refreshHistory(); } catch { /* Poll from returned job. */ }
     } catch (err) {
       setError(getMessage(err, "Could not start Virtual Try-On."));
-      if (err?.response?.data?.code === "FASHN_SUBMISSION_FAILED") requestKey.current = null;
+      if (err?.response?.data?.code === "TRYON_SUBMISSION_FAILED") requestKey.current = null;
     } finally {
       setGenerating(false);
     }
@@ -285,7 +285,7 @@ export default function CreatorVirtualTryOn({ initialGarment = null, embedded = 
         <header className="mt-7 flex items-start gap-4">
           <div className="rounded-md bg-subtle p-3 text-action"><Shirt size={27} /></div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-normal text-action">FASHN AI · Creative tools</p>
+            <p className="text-[10px] font-bold uppercase tracking-normal text-action">Creative tools</p>
             <h1 className="mt-1 font-sans text-3xl sm:text-4xl">AI Virtual Try-On</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
               {embedded ? (initialGarment ? "Your garment is ready. Add a person photo to try it on." : "The design image could not be imported. Choose a garment photo below to continue.") : "Upload a person photo and a garment image to preview how the clothing may look when worn."}
@@ -320,7 +320,7 @@ export default function CreatorVirtualTryOn({ initialGarment = null, embedded = 
             </div>
             <label className="mt-6 flex items-start gap-3 text-xs leading-5 text-muted">
               <input type="checkbox" className="mt-1 accent-action" checked={consent} disabled={busy} onChange={(e) => setConsent(e.target.checked)} />
-              <span>I own this photo or have the person's permission to use it for AI try-on. I agree to save the generated result in my private Creator history. Original uploaded photos are not saved in DesignByYou history.</span>
+              <span>I own this photo or have the person's permission to send it to fal.ai for virtual try-on. I agree to save the generated result in my private Creator history. Original uploaded photos are not saved in DesignByYou history.</span>
             </label>
             <p className="mt-3 text-xs text-muted">Testing limit: 5 generations per rolling 24 hours, unless configured differently on the backend.</p>
             {error && <p role="alert" className="mt-4 rounded-md bg-canvas p-3 text-sm text-action dark:bg-subtle">{error}</p>}

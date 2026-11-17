@@ -47,7 +47,7 @@ function safeJob(row) {
 exports.start = async (req, res) => {
   const id = creatorId(req);
   if (!id) return error(res, 403, "CREATOR_REQUIRED", "A signed-in Creator account is required.");
-  if (process.env.FASHN_CREATOR_TRYON_ENABLED !== "true") {
+  if ((process.env.CREATOR_TRYON_ENABLED ?? process.env.FASHN_CREATOR_TRYON_ENABLED) !== "true") {
     return error(res, 503, "TOOL_NOT_ENABLED", "Creator Virtual Try-On is not enabled on this server yet.");
   }
   const body = req.body || {};
@@ -67,6 +67,7 @@ exports.start = async (req, res) => {
   if (typeof requestKey !== "string" || !UUID.test(requestKey)) {
     return error(res, 400, "INVALID_REQUEST_KEY", "request_key must be a valid UUID.");
   }
+  if (!process.env.FAL_KEY?.trim()) return error(res, 503, "PROVIDER_NOT_CONFIGURED", "Creator Try-On is temporarily unavailable.");
   const personFile = req.files?.person_image?.[0];
   const garmentFile = req.files?.garment_image?.[0];
   if (!personFile || !garmentFile) {
@@ -104,8 +105,8 @@ exports.start = async (req, res) => {
         await client.query("ROLLBACK"); txOpen = false;
         return error(res, 429, "DAILY_LIMIT_REACHED", `Your test limit is ${dailyLimit()} generations per rolling 24 hours.`);
       }
-      const inserted = await client.query(`INSERT INTO public.creator_virtual_tryon_jobs (creator_id,request_key,category,mode,garment_photo_type)
-        VALUES ($1,$2,$3,$4,$5) RETURNING ${FIELDS}`, [id, requestKey, category, mode, garmentPhotoType]);
+      const inserted = await client.query(`INSERT INTO public.creator_virtual_tryon_jobs (creator_id,request_key,category,mode,garment_photo_type,provider,model_name)
+        VALUES ($1,$2,$3,$4,$5,'fal',$6) RETURNING ${FIELDS}`, [id, requestKey, category, mode, garmentPhotoType, tryOn.FAL_MODEL]);
       job = inserted.rows[0];
     }
     await client.query("COMMIT"); txOpen = false;
@@ -125,7 +126,7 @@ exports.start = async (req, res) => {
     console.error("[CreatorTryOn] Submission failed:", { code: err.code, status: err.status });
     await db.query(`UPDATE public.creator_virtual_tryon_jobs SET status='failed',error_message='Submission could not be confirmed. Check provider usage before retrying.',updated_at=NOW()
       WHERE id=$1 AND creator_id=$2 AND status='submitting'`, [job.id, id]).catch(() => {});
-    return error(res, err.status === 429 ? 429 : 502, "FASHN_SUBMISSION_FAILED", "Virtual Try-On could not be started. Check server logs.");
+    return error(res, err.status === 429 ? 429 : 502, "TRYON_SUBMISSION_FAILED", "Virtual Try-On could not be started. Check server logs.");
   }
 };
 
@@ -164,12 +165,12 @@ async function checkResult(req, res, retrySave) {
     if (job.status !== "processing" && !retrying) {
       return res.json({ status: "success", data: safeJob(job) });
     }
-    const { data, credits } = await tryOn.getPrediction(job.provider_prediction_id);
+    const { data, credits } = await tryOn.getPrediction(job.provider_prediction_id, job.provider);
     if (retrying && data.status !== "completed") {
       return error(res, 409, "RESULT_UNAVAILABLE", "The provider no longer has a completed result available to save.");
     }
     if (data.status === "failed") {
-      const failed = await db.query(`UPDATE public.creator_virtual_tryon_jobs SET status='failed',error_message='The FASHN generation failed.',credits_used=$1,updated_at=NOW()
+      const failed = await db.query(`UPDATE public.creator_virtual_tryon_jobs SET status='failed',error_message='The try-on generation failed.',credits_used=$1,updated_at=NOW()
         WHERE id=$2 AND creator_id=$3 AND status='processing' RETURNING *`, [credits, jobId, id]);
       return res.json({ status: "success", data: safeJob(failed.rows[0] || job) });
     }
