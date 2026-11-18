@@ -134,10 +134,14 @@ async function saveOutputToCloudinary({ outputUrl, provider, creatorId, jobId })
       folder: "designbyyou_ai/text_to_image",
       public_id: publicId,
       resource_type: "image",
-      overwrite: true,
+      overwrite: false,
       secure: true,
     }, (error, result) => {
-      if (error) return reject(new ProviderError("Cloudinary could not save the generated image."));
+      if (error) {
+        const failure = new ProviderError("Cloudinary could not save the generated image.");
+        failure.cloudinaryStatus = Number(error.http_code) || undefined;
+        return reject(failure);
+      }
       if (!result || typeof result.secure_url !== "string" || !result.secure_url.startsWith("https://")) {
         return reject(new ProviderError("Cloudinary did not return a secure image URL."));
       }

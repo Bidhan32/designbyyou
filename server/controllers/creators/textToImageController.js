@@ -161,7 +161,14 @@ exports.status = async (req, res) => {
     const result = await db.query(`SELECT * FROM public.creator_text_to_image_jobs
       WHERE id=$1 AND creator_id=$2 LIMIT 1`, [jobId, creatorId]);
     if (!result.rows.length) return fail(res, 404, "JOB_NOT_FOUND", "Generation not found.");
-    const job = result.rows[0];
+    let job = result.rows[0];
+    if (job.status === "submitting" && Date.now() - new Date(job.updated_at).getTime() > 180000) {
+      const expired = await db.query(`UPDATE public.creator_text_to_image_jobs
+        SET status='failed',error_message='Submission could not be confirmed. Check your history before trying again.',updated_at=NOW()
+        WHERE id=$1 AND creator_id=$2 AND status='submitting' AND provider_prediction_id IS NULL
+          AND updated_at < NOW() - INTERVAL '3 minutes' RETURNING ${FIELDS}`, [jobId, creatorId]);
+      job = expired.rows[0] || job;
+    }
     if (["completed", "failed", "submitting"].includes(job.status)) {
       return res.status(200).json({ status: "success", data: publicJob(job) });
     }
@@ -182,7 +189,7 @@ exports.status = async (req, res) => {
       return res.status(200).json({ status: "success", data: publicJob(failed.rows[0] || job) });
     }
     if (state.status !== "completed") {
-      return res.status(200).json({ status: "success", data: publicJob(job) });
+      return res.status(200).json({ status: "success", data: { ...publicJob(job), queued: state.queued === true } });
     }
     const outputUrl = state.output?.[0];
     if (typeof outputUrl !== "string") {
@@ -212,10 +219,10 @@ exports.status = async (req, res) => {
         [JSON.stringify([saved.url]), saved.publicId, state.credits, jobId, creatorId]);
       return res.status(200).json({ status: "success", data: publicJob(completed.rows[0]) });
     } catch (error) {
-      console.error("[TextToImage] Image persistence failed:", error.message);
-      // Preserve the provider prediction ID so the next poll can retry storage.
-      await db.query(`UPDATE public.creator_text_to_image_jobs SET status='processing',updated_at=NOW()
-        WHERE id=$1 AND creator_id=$2 AND status='saving'`, [jobId, creatorId]).catch(() => {});
+      console.error("[TextToImage] Image persistence failed:", {
+        jobId, cloudinaryStatus: error.cloudinaryStatus, message: error.message,
+      });
+      // Keep the saving lease so polling tabs retry the same result after its cooldown.
       return fail(res, 503, "IMAGE_SAVE_RETRY", "Image generation completed, but saving is pending. Please retry shortly.");
     }
   } catch (error) {

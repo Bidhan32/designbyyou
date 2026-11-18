@@ -32,7 +32,9 @@ async function getImageStatus(model, requestId) {
   try {
     const status = await fal.queue.status(model, options);
     if (status.error) return { status: "failed" };
-    if (status.status !== "COMPLETED") return { status: "processing" };
+    if (status.status !== "COMPLETED") {
+      return { status: "processing", queued: status.status === "IN_QUEUE" };
+    }
     const { data } = await fal.queue.result(model, options);
     return { status: "completed", output: [data?.images?.[0]?.url], credits: null };
   } catch (error) {

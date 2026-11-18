@@ -111,6 +111,7 @@ function getStatusLabel(status) {
   const labels = {
     submitting: "Submitting prompt",
     processing: "Generating your image",
+    queued: "Waiting in the generation queue",
     saving: "Saving your image",
     completed: "Ready to download",
     failed: "Generation failed",
@@ -286,11 +287,13 @@ export default function CreatorTextToImage() {
 
     let alive = true;
     let timer;
+    let delay = 3500;
 
     const check = async () => {
       try {
         const response = await API.get(
           `${ENDPOINT}/${encodeURIComponent(activeJobId)}`,
+          { timeout: 120000 },
         );
 
         const current = response.data?.data;
@@ -314,6 +317,7 @@ export default function CreatorTextToImage() {
         );
 
         setProgressError("");
+        delay = 3500;
 
         if (current.status === "completed" || current.status === "failed") {
           try {
@@ -326,6 +330,14 @@ export default function CreatorTextToImage() {
         }
       } catch (err) {
         if (alive) {
+          delay = Math.min(delay * 2, 30000);
+          if (err.response?.data?.code === "IMAGE_SAVE_RETRY") {
+            const markSaving = (item) => item?.id === activeJobId
+              ? { ...item, status: "saving", queued: false }
+              : item;
+            setJob(markSaving);
+            setHistory((list) => list.map(markSaving));
+          }
           setProgressError(
             getErrorMessage(err, "Could not check progress. Retrying..."),
           );
@@ -333,7 +345,7 @@ export default function CreatorTextToImage() {
       }
 
       if (alive) {
-        timer = setTimeout(check, 3500);
+        timer = setTimeout(check, delay);
       }
     };
 
@@ -531,7 +543,7 @@ export default function CreatorTextToImage() {
 
   const resultUrl = getResultUrl(job);
 
-  const selectedStatus = job?.status;
+  const selectedStatus = job?.queued ? "queued" : job?.status;
 
   const busy = Boolean(activeJobId || generating);
 
