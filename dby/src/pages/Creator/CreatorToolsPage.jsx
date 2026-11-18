@@ -852,7 +852,7 @@ export default function CreatorToolsPage() {
           <FolderOpen size={24} className="shrink-0 text-muted" aria-hidden="true" />
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold">My projects</h2>
-            <p className="mt-1 text-sm text-muted">Continue working on a saved design.</p>
+            <p className="mt-1 text-sm text-muted">Browse your saved editor projects and uploaded designs.</p>
           </div>
           <ArrowUpRight size={20} className="shrink-0" aria-hidden="true" />
         </Link>

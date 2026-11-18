@@ -614,6 +614,11 @@ original_design_id = NULL
 
 exports.uploadShowcaseDesign = async (req, res) => {
   const ownerId = getAuthenticatedUserId(req);
+  const visibility = req.body?.visibility ?? "public";
+  if (!["public", "private"].includes(visibility)) {
+    return sendError(res, 400, "Visibility must be public or private.");
+  }
+  const publish = visibility === "public";
 
   if (!ownerId) {
     return sendError(res, 401, "Authentication is required.");
@@ -686,8 +691,8 @@ exports.uploadShowcaseDesign = async (req, res) => {
               'commercial',
               $9,
               NULL,
-              TRUE,
-              TRUE,
+              $10,
+              $10,
               'upload',
               NULL,
               FALSE,
@@ -728,13 +733,14 @@ exports.uploadShowcaseDesign = async (req, res) => {
         showcaseInput.styleAesthetic,
         processedTags,
         previewUrl,
+        publish,
       ],
     );
 
     return res.status(201).json({
       status: "success",
 
-      message: "Design published to the showcase successfully.",
+      message: publish ? "Design published to the showcase successfully." : "Private design saved.",
 
       data: {
         ...result.rows[0],

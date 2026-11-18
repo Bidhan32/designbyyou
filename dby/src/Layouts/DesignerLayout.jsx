@@ -9,6 +9,7 @@ import {
   CalendarDays,
   ChevronDown,
   Compass,
+  FolderOpen,
   Loader2,
   LogOut,
   Menu,
@@ -154,6 +155,7 @@ const SECONDARY_NAVIGATION = [
     label: "Public Profile",
     icon: User,
   },
+  { path: "/designer/projects", label: "My Projects", icon: FolderOpen },
 
   {
     path: "/designer/profile-settings",
@@ -1350,6 +1352,7 @@ function DesignerNavbar({ user, logout }) {
                     icon={User}
                     label="Public Profile"
                   />
+                  <DropdownLink to="/designer/projects" icon={FolderOpen} label="My Projects" />
 
                   {/* Upload */}
 
@@ -1690,6 +1693,10 @@ function DesignerNavbar({ user, logout }) {
                     item={SECONDARY_NAVIGATION.find(
                       (item) => item.path === "/designer/profile-view",
                     )}
+                    pathname={pathname}
+                  />
+                  <MobileNavigationItem
+                    item={SECONDARY_NAVIGATION.find((item) => item.path === "/designer/projects")}
                     pathname={pathname}
                   />
 

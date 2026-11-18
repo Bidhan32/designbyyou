@@ -3332,7 +3332,7 @@ function FashionEditor() {
         return;
       }
     }
-    navigate("/creator/projects");
+    navigate("/creator/projects/editor");
   };
 
   const handleCloseDesignerBooking = useCallback(() => {

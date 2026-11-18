@@ -174,6 +174,7 @@ import {
   Menu,
   Palette,
   PencilRuler,
+  FolderOpen,
   Plus,
   RefreshCw,
   Settings,
@@ -283,6 +284,12 @@ const ACCOUNT_NAVIGATION = [
     icon: User,
 
     description: "View your Creator identity.",
+  },
+  {
+    name: "My Projects",
+    path: "/creator/projects",
+    icon: FolderOpen,
+    description: "Saved editor projects and uploaded designs.",
   },
 
   {

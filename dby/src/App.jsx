@@ -194,6 +194,8 @@ Creator Showcase publishing remains separate.
 =========================================================*/
 
 const CreatorProjects = lazy(() => import("./pages/Creator/CreatorProjects"));
+const ProjectFolders = lazy(() => import("./pages/Creator/ProjectFolders"));
+const UploadedDesigns = lazy(() => import("./pages/Creator/UploadedDesigns"));
 const FashionEditor = lazy(() => import("./pages/sketches/editor/FashionEditor"));
 const CreatorToolsPage = lazy(() => import("./pages/Creator/CreatorToolsPage"));
 const CreatorBackgroundRemover = lazy(() => import("./pages/Creator/CreatorBackgroundRemover"));
@@ -528,6 +530,8 @@ Normal admins, creators and designers cannot enter.
                   <Route path="avatar-studio" element={<AvatarStudio />} />
 
                   <Route path="inventory" element={<InventoryGrid />} />
+                  <Route path="projects" element={<ProjectFolders role="designer" />} />
+                  <Route path="projects/uploads" element={<UploadedDesigns role="designer" />} />
 
                   <Route path="bookings" element={<DesignerBookings />} />
 
@@ -640,7 +644,9 @@ Normal admins, creators and designers cannot enter.
 
                   <Route path="avatar-studio" element={<AvatarStudio />} />
 
-                  <Route path="projects" element={<CreatorProjects />} />
+                  <Route path="projects" element={<ProjectFolders />} />
+                  <Route path="projects/editor" element={<CreatorProjects />} />
+                  <Route path="projects/uploads" element={<UploadedDesigns />} />
                   <Route path="bookings" element={<CreatorBookings />} />
 
                   <Route

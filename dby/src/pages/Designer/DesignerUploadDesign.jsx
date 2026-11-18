@@ -493,6 +493,8 @@ Designer Upload Design
 =========================================================*/
 
 export default function DesignerUploadDesign() {
+  const [visibility, setVisibility] = useState("public");
+  const isPrivate = visibility === "private";
   const navigate =
     useNavigate();
 
@@ -1202,6 +1204,7 @@ export default function DesignerUploadDesign() {
 
       const multipartData =
         new FormData();
+      multipartData.append("visibility", visibility);
 
       const fallbackExtension =
         getExtensionFromMimeType(
@@ -1403,7 +1406,7 @@ export default function DesignerUploadDesign() {
               }
 
               if (
-                publishedSlug
+                !isPrivate && publishedSlug
               ) {
                 navigate(
                   `/designer/showcase/${encodeURIComponent(
@@ -1415,7 +1418,7 @@ export default function DesignerUploadDesign() {
               }
 
               navigate(
-                "/designer/inventory",
+                isPrivate ? "/designer/projects/uploads" : "/designer/inventory",
               );
             },
             1200,
@@ -1492,7 +1495,7 @@ export default function DesignerUploadDesign() {
           </div>
 
           <h1 className="mt-5 font-sans text-4xl font-light tracking-tight sm:text-5xl lg:text-6xl">
-            Publish a finished{" "}
+            Upload a finished{" "}
 
             <span className="italic text-action">
               image
@@ -1500,9 +1503,7 @@ export default function DesignerUploadDesign() {
           </h1>
 
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-muted">
-            Add a completed fashion presentation to your
-            public showcase with its classification,
-            materials and discovery tags.
+            Save a finished design privately or publish it to the Showcase.
           </p>
 
           <div className="mx-auto mt-5 flex w-fit max-w-3xl items-start gap-3 rounded-md border border-line bg-canvas px-5 py-4 text-left text-xs leading-6 text-action dark:bg-subtle">
@@ -1513,16 +1514,7 @@ export default function DesignerUploadDesign() {
             />
 
             <span>
-              A manually uploaded image is presentation-only.
-              It cannot be opened in Fashion Editor, edited as
-              canvas data or remixed. To publish an editable
-              project, use{" "}
-
-              <strong>
-                Share to Showcase
-              </strong>{" "}
-
-              from inside Fashion Editor.
+              Find your public and private uploads in My Projects under Uploaded designs.
             </span>
           </div>
         </header>
@@ -1543,11 +1535,11 @@ export default function DesignerUploadDesign() {
 
             <div>
               <p className="text-sm font-semibold">
-                Design published successfully
+                {isPrivate ? "Private design saved" : "Design published successfully"}
               </p>
 
               <p className="mt-1 text-xs leading-5 opacity-75">
-                Opening your published showcase design…
+                {isPrivate ? "Opening your uploaded designs…" : "Opening your published showcase design…"}
               </p>
             </div>
           </div>
@@ -2332,7 +2324,7 @@ export default function DesignerUploadDesign() {
               >
                 <div className="flex items-center justify-between text-xs text-muted">
                   <span>
-                    Publishing showcase design
+                    Saving design
                   </span>
 
                   <span className="font-mono">
@@ -2373,13 +2365,15 @@ export default function DesignerUploadDesign() {
 
                 <div>
                   <p className="text-sm font-semibold">
-                    Ready for the showcase
+                    <label htmlFor="designer-upload-visibility">Design visibility</label>
                   </p>
 
-                  <p className="mt-1 text-xs leading-5 text-muted">
-                    This publication will be stored as a
-                    non-editable, non-remixable uploaded image.
-                  </p>
+                  <select id="designer-upload-visibility" value={visibility}
+                    disabled={loading || success} onChange={event => setVisibility(event.target.value)}
+                    className="mt-2 rounded-md border border-line bg-surface p-2 text-sm text-ink">
+                    <option value="public">Public — show in Showcase</option>
+                    <option value="private">Private — save to My Projects</option>
+                  </select>
                 </div>
               </div>
 
@@ -2400,8 +2394,8 @@ export default function DesignerUploadDesign() {
 
                     {uploadProgress >
                     0
-                      ? `Publishing ${uploadProgress}%`
-                      : "Publishing..."}
+                      ? `Saving ${uploadProgress}%`
+                      : "Saving..."}
                   </>
                 ) : success ? (
                   <>
@@ -2410,7 +2404,7 @@ export default function DesignerUploadDesign() {
                       aria-hidden="true"
                     />
 
-                    Published
+                    {isPrivate ? "Saved privately" : "Published"}
                   </>
                 ) : (
                   <>
@@ -2419,7 +2413,7 @@ export default function DesignerUploadDesign() {
                       aria-hidden="true"
                     />
 
-                    Publish to Showcase
+                    {isPrivate ? "Save privately" : "Publish to Showcase"}
                   </>
                 )}
               </button>

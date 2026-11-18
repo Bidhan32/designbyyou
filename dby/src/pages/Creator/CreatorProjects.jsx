@@ -22,9 +22,9 @@ export default function CreatorProjects() {
   }, [attempt]);
   const filtered = projects.filter(project => String(project.title || "Untitled design").toLowerCase().includes(query.trim().toLowerCase()));
   return <main className="mx-auto max-w-6xl p-4 text-ink sm:p-4">
-    <Link to="/creator/tools" className="mb-5 inline-block text-sm text-muted underline underline-offset-4">Back to Create</Link>
+    <Link to="/creator/projects" className="mb-5 inline-block text-sm text-muted underline underline-offset-4">Back to My Projects</Link>
     <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
-      <div><h1 className="text-2xl font-semibold">My projects</h1><p className="mt-2 text-sm text-muted">Your private designs, saved automatically from Fashion Editor.</p></div>
+      <div><h1 className="text-2xl font-semibold">Fashion Editor projects</h1><p className="mt-2 text-sm text-muted">Designs saved to your account from Fashion Editor.</p></div>
       <Link to="/creator/fashion-editor" className="inline-flex items-center gap-2 rounded-md bg-action px-4 py-2.5 text-sm font-semibold text-on-action dark:bg-surface dark:text-ink"><Plus size={18} />New design</Link>
     </header>
     <label className="mb-6 flex max-w-md items-center gap-3 rounded-md border border-line bg-surface px-3 dark:bg-subtle"><Search size={18} aria-hidden="true" /><input type="search" aria-label="Search projects" placeholder="Search your projects" value={query} onChange={event => setQuery(event.target.value)} className="min-w-0 flex-1 bg-transparent py-3 text-sm outline-none" /></label>
