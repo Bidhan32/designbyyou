@@ -112,6 +112,8 @@ const toDataUri = (buffer) => `data:image/jpeg;base64,${buffer.toString("base64"
 function cloudinaryUpload(buffer, publicId, overwrite = false) {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream({
+      // The callback handles upload failures, including Cloudinary permission errors.
+      disable_promises: true,
       resource_type: "image", type: "authenticated", public_id: publicId,
       format: "jpg", overwrite,
     }, (error, result) => {

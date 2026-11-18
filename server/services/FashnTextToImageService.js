@@ -129,6 +129,8 @@ async function saveOutputToCloudinary({ outputUrl, provider, creatorId, jobId })
   const publicId = `t2i_${creatorId}_${jobId}`;
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream({
+      // The callback handles upload failures, including Cloudinary permission errors.
+      disable_promises: true,
       folder: "designbyyou_ai/text_to_image",
       public_id: publicId,
       resource_type: "image",

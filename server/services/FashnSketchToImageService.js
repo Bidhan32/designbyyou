@@ -81,6 +81,8 @@ async function normalizeSketch(file) {
 function uploadImage(buffer, options) {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream({
+      // The callback handles upload failures, including Cloudinary permission errors.
+      disable_promises: true,
       ...options,
       resource_type: "image",
       secure: true,

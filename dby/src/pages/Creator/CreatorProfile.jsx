@@ -90,7 +90,7 @@ import {
   WalletCards,
 } from "lucide-react";
 
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import API from "../../api/axios";
 
@@ -636,6 +636,7 @@ Creator Profile
 
 export default function CreatorProfile() {
   const navigate = useNavigate();
+  const { hash } = useLocation();
 
   const { user: currentUser, setUser } = useAuth();
 
@@ -705,6 +706,12 @@ export default function CreatorProfile() {
   });
 
   const [creationsLoading, setCreationsLoading] = useState(true);
+
+  useEffect(() => {
+    if (hash === "#my-creations" && !creationsLoading) {
+      document.getElementById("my-creations")?.scrollIntoView();
+    }
+  }, [hash, creationsLoading]);
 
   const [creationsRefreshing, setCreationsRefreshing] = useState(false);
 
@@ -2044,7 +2051,7 @@ export default function CreatorProfile() {
         My Creations
         =================================================*/}
 
-        <section
+        <section id="my-creations"
           className="
             mt-7 overflow-hidden rounded-md border border-line bg-subtle dark:bg-surface
           "

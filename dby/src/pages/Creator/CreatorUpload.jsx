@@ -1478,7 +1478,7 @@ export default function CreatorUpload() {
          API Request
          ----------------------------------------------- */
 
-      await API.post(
+      const response = await API.post(
         UPLOAD_ENDPOINT,
         formData,
         {
@@ -1515,13 +1515,17 @@ export default function CreatorUpload() {
       setTags(finalTags);
       setTagInput("");
       setUploadProgress(100);
-      setSuccess(true);
+      const saved = response.data.data;
+      const destination = saved.is_public
+        ? `/creator/showcase/${encodeURIComponent(saved.slug)}`
+        : "/creator/profile#my-creations";
+      setSuccess(saved.is_public ? "public" : "private");
 
       navigationTimerRef.current =
         window.setTimeout(
           () =>
             navigate(
-              CREATOR_HUB_ROUTE,
+              destination,
               {
                 replace: true,
               }
@@ -1656,14 +1660,12 @@ export default function CreatorUpload() {
 
             <div>
               <p className="font-semibold">
-                {form.visibility === "public"
+                {success === "public"
                   ? "Creation published successfully."
                   : "Private creation saved successfully."}
               </p>
 
-              <p className="mt-1 text-xs opacity-70">
-                Returning to tools…
-              </p>
+              <p className="mt-1 text-xs opacity-70">{success === "public" ? "Opening your published design." : "Opening My Creations."}</p>
             </div>
           </div>
         )}
