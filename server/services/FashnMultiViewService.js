@@ -114,7 +114,9 @@ function cloudinaryUpload(buffer, publicId, overwrite = false) {
     const stream = cloudinary.uploader.upload_stream({
       // The callback handles upload failures, including Cloudinary permission errors.
       disable_promises: true,
-      resource_type: "image", type: "authenticated", public_id: publicId,
+      folder: STORE_FOLDER,
+      resource_type: "image", type: "authenticated",
+      public_id: publicId.slice(STORE_FOLDER.length + 1),
       format: "jpg", overwrite,
     }, (error, result) => {
       if (error || !result?.public_id) {
