@@ -69,6 +69,16 @@ function sendUploadError(error, res, kind) {
   const gallery = kind === "gallery";
   const noun = gallery ? "gallery image" : "preview image";
 
+  const storageStatus = Number(error?.http_code);
+  if ([401, 403, 429].includes(storageStatus) || storageStatus >= 500) {
+    console.error(`[Creator Routes] ${kind} storage rejected upload`, { storageStatus });
+    return res.status(503).json({
+      status: "error",
+      code: "IMAGE_STORAGE_UNAVAILABLE",
+      message: "Image storage is unavailable. Please try uploading again later.",
+    });
+  }
+
   switch (error?.code) {
     case "LIMIT_FILE_SIZE":
       return res.status(413).json({

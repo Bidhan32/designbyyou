@@ -45,6 +45,20 @@ const { CloudinaryStorage } = require("multer-storage-cloudinary");
 
 const multer = require("multer");
 
+// Multer's Cloudinary adapter uses callbacks for uploads and rollback deletes.
+// Suppress the SDK's additional, unobserved promise on both paths.
+class UploadStorage extends CloudinaryStorage {
+  constructor(options) {
+    super({ ...options, params: { ...options.params, disable_promises: true } });
+  }
+
+  _removeFile(req, file, callback) {
+    this.cloudinary.uploader.destroy(file.filename, {
+      invalidate: true, disable_promises: true,
+    }, callback);
+  }
+}
+
 /* =========================================================
    Cloudinary Configuration
    ========================================================= */
@@ -195,7 +209,7 @@ const imageTransformations = [
    1. Standard Profile Image Storage
    ========================================================= */
 
-const profileStorage = new CloudinaryStorage({
+const profileStorage = new UploadStorage({
   cloudinary,
 
   params: {
@@ -226,7 +240,7 @@ const profileStorage = new CloudinaryStorage({
  * =========================================================
  */
 
-const previewStorage = new CloudinaryStorage({
+const previewStorage = new UploadStorage({
   cloudinary,
 
   params: {
@@ -254,7 +268,7 @@ const previewStorage = new CloudinaryStorage({
  * =========================================================
  */
 
-const highResStorage = new CloudinaryStorage({
+const highResStorage = new UploadStorage({
   cloudinary,
 
   params: {
