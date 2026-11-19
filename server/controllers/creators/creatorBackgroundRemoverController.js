@@ -1,5 +1,7 @@
 "use strict";
 
+const { generateTemporaryImage } = require("../../services/temporaryImageCredits");
+
 /*
  * =========================================================
  * DesignByYou / FashionVision
@@ -384,7 +386,8 @@ async function removeCreatorImageBackground(req, res, next) {
 
     const preparedImage = await preprocessImage(req.file);
 
-    const result = await removeBackground(preparedImage.dataUri);
+    const result = await generateTemporaryImage(creatorId, "background_remover", req.body?.request_key,
+      () => removeBackground(preparedImage.dataUri));
 
     const usage = incrementUsage(creatorId);
 

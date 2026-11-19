@@ -113,6 +113,7 @@ exports.start = async (req, res) => {
   } catch (err) {
     if (txOpen && client) await client.query("ROLLBACK").catch(() => {});
     console.error("[CreatorTryOn] Database submission:", err.code || err.message);
+    if (err.code === "DB402") return error(res, 402, "INSUFFICIENT_AI_CREDITS", err.message);
     return error(res, 500, "DATABASE_ERROR", "Could not prepare the Virtual Try-On request.");
   } finally { client?.release(); }
   if (reused) return res.status(200).json({ status: "success", reused: true, data: safeJob(job) });
@@ -207,6 +208,7 @@ async function checkResult(req, res, retrySave) {
       return res.json({ status: "success", data: safeJob(failed.rows[0] || job) });
     }
   } catch (err) {
+    if (err.code === "DB402") return error(res, 402, "INSUFFICIENT_AI_CREDITS", err.message);
     console.error("[CreatorTryOn] Polling:", err.code || err.message);
     return error(res, err.status === 429 ? 429 : 503, "STATUS_UNAVAILABLE", "Could not check Virtual Try-On status; retry shortly.");
   }

@@ -1,5 +1,7 @@
 "use strict";
 
+const { generateTemporaryImage } = require("../../services/temporaryImageCredits");
+
 /*
 =========================================================
 DesignByYou
@@ -623,20 +625,15 @@ exports.generateBookingTryOn = async (req, res) => {
       Start FASHN Generation
       ===================================================*/
 
-    const predictionId = await startPrediction({
-      personImage,
-
-      garmentImage,
-      mode: FASHN_TRYON_MODE,
-      garmentPhotoType: "auto",
-      category,
-    });
-
-    /*===================================================
-      Poll FASHN
-      ===================================================*/
-
-    const prediction = await waitForPrediction(predictionId);
+    const { predictionId, prediction } = await generateTemporaryImage(
+      creatorId, "booking_tryon", req.body?.request_key, async () => {
+        const predictionId = await startPrediction({
+          personImage, garmentImage, mode: FASHN_TRYON_MODE, garmentPhotoType: "auto", category,
+        });
+        const prediction = await waitForPrediction(predictionId);
+        if (!prediction.output?.[0]) throw new Error("No try-on image was returned.");
+        return { predictionId, prediction };
+      });
 
     const resultImage = prediction.output[0];
 
@@ -678,6 +675,9 @@ exports.generateBookingTryOn = async (req, res) => {
       },
     });
   } catch (error) {
+    if (["INSUFFICIENT_AI_CREDITS", "DUPLICATE_IMAGE_REQUEST", "INVALID_REQUEST_KEY"].includes(error.code)) {
+      return sendError(res, error.httpStatus, error.message, error.code);
+    }
     const status = Number(error?.status);
     console.error("Booking try-on failed", { status: status || null, code: error?.code });
     if (status === 401 || status === 403) {

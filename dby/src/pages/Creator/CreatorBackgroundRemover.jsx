@@ -1,3 +1,4 @@
+import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 "use strict";
 
 /*
@@ -195,6 +196,7 @@ export default function CreatorBackgroundRemover() {
       form.append("image", file, file.name);
 
       // Let Axios/browser set the multipart boundary automatically.
+      form.append("request_key", crypto.randomUUID());
       const response = await API.post(ENDPOINT, form, {
         signal: controller.signal,
         timeout: REQUEST_TIMEOUT_MS,
@@ -264,6 +266,7 @@ export default function CreatorBackgroundRemover() {
           <h1 className="mt-4 max-w-3xl font-sans text-4xl leading-tight sm:text-5xl lg:text-6xl">
             Background <span className="italic text-action">Remover</span>
           </h1>
+            <CreatorCreditBalance refreshKey={processing} costLabel="10 credits per image" />
           <p className="mt-4 max-w-xl text-sm leading-7 text-muted sm:text-base">
             Turn fashion photographs, accessories and creative assets into
             clean, transparent PNGs in a few clicks.

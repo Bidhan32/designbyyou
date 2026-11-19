@@ -133,6 +133,7 @@ exports.start = async (req, res) => {
   } catch (err) {
     if (txOpen && client) await client.query("ROLLBACK").catch(() => {});
     console.error("[SketchToImage] DB submission failed:", err.code || err.message);
+    if (err.code === "DB402") return fail(res, 402, "INSUFFICIENT_AI_CREDITS", err.message);
     return fail(res, 500, "GENERATION_START_FAILED", "Could not prepare Sketch to Image job.");
   } finally { client?.release(); }
 

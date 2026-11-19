@@ -1,3 +1,4 @@
+import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 "use strict";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -287,6 +288,7 @@ export default function CreatorVirtualTryOn({ initialGarment = null, embedded = 
           <div>
             <p className="text-[10px] font-bold uppercase tracking-normal text-action">Creative tools</p>
             <h1 className="mt-1 font-sans text-3xl sm:text-4xl">AI Virtual Try-On</h1>
+            <CreatorCreditBalance refreshKey={[generating,retryingSave,job?.status].join()} costLabel="10 credits per image" />
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
               {embedded ? (initialGarment ? "Your garment is ready. Add a person photo to try it on." : "The design image could not be imported. Choose a garment photo below to continue.") : "Upload a person photo and a garment image to preview how the clothing may look when worn."}
               Results are AI visualizations, not an accurate prediction of physical fit.

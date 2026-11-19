@@ -1,3 +1,4 @@
+import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 import BookingNextStep from "../../components/BookingNextStep";
 import { deadlineMessage as getDeadlineMessage, canResumePayment, canCancelBooking, paymentLabel } from "../../components/bookingProgress";
 import BookingDesignAttachment from "../../components/BookingDesignAttachment";
@@ -998,6 +999,7 @@ export default function CreatorBookingDetail() {
       formData.append("person_image", tryOnFile);
 
       formData.append("phase", tryOnPhase);
+      formData.append("request_key", crypto.randomUUID());
 
       formData.append("category", "auto");
 
@@ -2351,6 +2353,7 @@ export default function CreatorBookingDetail() {
                     </div>
                   )}
 
+                  <CreatorCreditBalance refreshKey={tryOnLoading} costLabel="10 credits per image" />
                   <button
                     type="button"
                     onClick={handleGenerateTryOn}

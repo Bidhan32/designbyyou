@@ -170,6 +170,7 @@ exports.start = async (req, res) => {
   } catch (err) {
     if (txOpen && client) await client.query("ROLLBACK").catch(() => {});
     console.error("[MultiView] DB create failed:", err.code || err.message);
+    if (err.code === "DB402") return fail(res, 402, "INSUFFICIENT_AI_CREDITS", err.message);
     return fail(res, 500, "DATABASE_ERROR", "Could not prepare the multi-view set.");
   } finally { client?.release(); }
 

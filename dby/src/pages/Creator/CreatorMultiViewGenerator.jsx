@@ -1,3 +1,4 @@
+import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 "use strict";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -294,6 +295,7 @@ export default function CreatorMultiViewGenerator() {
           <div>
             <p className="text-[10px] font-bold uppercase tracking-normal text-action">Creative tools</p>
             <h1 className="mt-1 font-sans text-3xl sm:text-4xl">Front, Side &amp; Back Views</h1>
+            <CreatorCreditBalance refreshKey={[generating, job?.status, job?.front_status, job?.views?.side?.status, job?.views?.back?.status].join()} costLabel={subject === "garment" ? "30 credits for three generated views" : "20 credits for two generated views"} />
             <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">Create matching product-only front, right-side and back garment views, or keep the person for on-model views. Garment-only mode first extracts a standalone front product view before rotating it.</p>
           </div>
         </header>
@@ -357,7 +359,7 @@ export default function CreatorMultiViewGenerator() {
                   <ViewCard title="Right Side" url={job.views?.side?.image_url} state={job.views?.side?.status} error={job.views?.side?.error_message} onOpen={() => openAsset(job, "side")} onDownload={() => openAsset(job, "side", true)} />
                   <ViewCard title="Back" url={job.views?.back?.image_url} state={job.views?.back?.status} error={job.views?.back?.error_message} onOpen={() => openAsset(job, "back")} onDownload={() => openAsset(job, "back", true)} />
                 </div>
-                <p className="mt-3 text-xs text-muted">{dateLabel(job.created_at)} · {job.subject_type} · {job.generation_mode}{job.credits_used != null ? ` · ${job.credits_used} FASHN credits reported` : ""}</p>
+                <p className="mt-3 text-xs text-muted">{dateLabel(job.created_at)} · {job.subject_type} · {job.generation_mode}</p>
                 {job.front_generated && job.source?.image_url && <p className="mt-3 text-xs text-muted">Front is an AI-generated garment-only packshot. <button type="button" onClick={() => openOriginal(job)} className="font-semibold underline decoration-action underline-offset-2">View original upload</button> for comparison.</p>}
                 {job.status === "partial" && <p className="mt-3 text-xs text-action">Only some views completed. Existing results have been preserved. Review the failed view before starting a new set.</p>}
                 {progressError && <p role="status" className="mt-3 text-xs text-action">{progressError}</p>}

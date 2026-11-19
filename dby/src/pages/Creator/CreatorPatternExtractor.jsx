@@ -1,3 +1,4 @@
+import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 "use strict";
 
 import React, {useCallback, useEffect, useRef, useState} from "react";
@@ -419,6 +420,7 @@ export default function CreatorPatternExtractor() {
             <WandSparkles size={16}/> DesignByYou AI Creative Tools
           </p>
           <h1 className="mt-3 font-sans text-3xl tracking-tight sm:text-5xl">AI Pattern Extractor</h1>
+            <CreatorCreditBalance refreshKey={[busy,job?.status].join()} costLabel="10 credits per AI extraction" />
           <p className="mt-3 max-w-3xl text-sm leading-7 text-muted">
             Select an area containing printed fabric, then reconstruct its motifs as 2D textile artwork. Do not select the entire garment. AI output may differ from the original print.
           </p>

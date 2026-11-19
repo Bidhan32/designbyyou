@@ -1,3 +1,4 @@
+import CreatorCreditBalance from "../../../components/CreatorCreditBalance";
 /*
 =========================================================
 FashionVision Professional Editor
@@ -13482,6 +13483,7 @@ function FashionEditor() {
                 <p id="fashion-preview-help" className="text-xs text-muted">
                   Leave blank for a faithful render. Each generation uses your current design as its reference.
                 </p>
+                {signedInUser?.role === "creator" && <CreatorCreditBalance refreshKey={aiFashionGenerating} costLabel="10 credits per new preview" />}
                 <button type="button" disabled={aiFashionGenerating || objectCount <= 0}
                   onClick={handleGenerateAiFashionPreview}
                   className="min-h-9 rounded-md bg-action px-4 text-sm font-semibold text-on-action disabled:opacity-50">

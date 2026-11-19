@@ -1,3 +1,4 @@
+import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 "use strict";
 
 /**
@@ -1201,6 +1202,7 @@ export default function CreatorCostumeExtractor() {
           <h1 className="mt-3 font-sans text-3xl tracking-tight sm:text-5xl">
             AI Costume Extractor
           </h1>
+            <CreatorCreditBalance refreshKey={[busy, job?.status, ...(job?.views ?? []).map(view => view.status)].join()} costLabel={`10 credits per generated view · ${selectedViews.length * 10} credits for selected views`} />
 
           <p className="mt-3 max-w-3xl text-sm leading-7 text-muted">
             Upload a costume photo and choose exactly which garment-only angles

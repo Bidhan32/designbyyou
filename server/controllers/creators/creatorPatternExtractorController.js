@@ -20,6 +20,7 @@ function apiError(status, code, message) {
 }
 function respondError(res, error, context) {
   if (res.headersSent) return;
+  if (error.code === "DB402") return res.status(402).json({ status: "fail", code: "INSUFFICIENT_AI_CREDITS", message: error.message });
   const status = Number(error?.httpStatus);
   const safeStatus = status >= 400 && status <= 599 ? status : 500;
   if (safeStatus >= 500) console.error(`[Pattern Extractor] ${context}:`, error?.message);

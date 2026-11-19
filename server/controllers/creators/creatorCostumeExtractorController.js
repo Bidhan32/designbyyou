@@ -74,6 +74,7 @@ function httpError(status, code, message) {
 
 function respondError(res, error, context) {
   if (res.headersSent) return;
+  if (error.code === "DB402") return res.status(402).json({ status: "fail", code: "INSUFFICIENT_AI_CREDITS", message: error.message });
 
   const rawStatus = Number(error?.httpStatus || error?.statusCode || 500);
   const status = rawStatus >= 400 && rawStatus < 600 ? rawStatus : 500;

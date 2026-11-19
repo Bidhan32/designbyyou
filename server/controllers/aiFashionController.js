@@ -242,6 +242,7 @@ exports.generateFashionPreview = async (
       },
     });
   } catch (error) {
+    if (error.code === "DB402") return res.status(402).json({ success: false, code: "INSUFFICIENT_AI_CREDITS", message: error.message });
     console.error(
       "[AI Fashion] Generation failed:",
       error,

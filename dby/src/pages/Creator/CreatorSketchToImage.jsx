@@ -1,3 +1,4 @@
+import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 "use strict";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -236,6 +237,7 @@ export default function CreatorSketchToImage() {
           <div>
             <p className="text-[10px] font-bold uppercase tracking-normal text-action">Creator tools</p>
             <h1 className="mt-1 font-sans text-3xl tracking-tight sm:text-4xl">AI Sketch to Image</h1>
+            <CreatorCreditBalance refreshKey={[generating,job?.status].join()} costLabel="10 credits per image" />
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
               Upload a fashion sketch and visualize it as a realistic garment. Download the result or revisit it in your private history.
             </p>
@@ -303,7 +305,7 @@ export default function CreatorSketchToImage() {
                 </div>
               </div>
             </div>
-            {job?.created_at && <p className="mt-3 text-xs text-muted">{niceDate(job.created_at)} · {job.fabric} · {job.generation_mode}{job.credits_used != null ? ` · ${job.credits_used} credit(s)` : ""}</p>}
+            {job?.created_at && <p className="mt-3 text-xs text-muted">{niceDate(job.created_at)} · {job.fabric} · {job.generation_mode}</p>}
             {output && <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <button type="button" onClick={() => downloadImage(job)} disabled={downloadingId === job.id}
                 className="inline-flex min-h-9 items-center justify-center gap-2 rounded-md bg-subtle px-4 text-sm font-bold text-ink hover:bg-subtle disabled:opacity-60">
