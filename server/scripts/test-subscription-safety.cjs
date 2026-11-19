@@ -26,7 +26,7 @@ function setup() {
     throw new Error("Unexpected checkout transaction");
   }, release(discard) { calls.push({ release: true, discard }); } }; } };
   const stripe = { prices: { async retrieve(id) {
-    return { id, active: true, billing_scheme: "per_unit", unit_amount: 3500, currency: "usd",
+    return { id, active: true, billing_scheme: "per_unit", unit_amount: { price_monthly: 4000, price_quarterly: 10500, price_yearly: 29900 }[id], currency: "usd",
       recurring: { interval: "month", interval_count: { price_monthly: 1, price_quarterly: 3, price_yearly: 12 }[id], usage_type: "licensed" } };
   } }, customers: {
     async retrieve() { return { id: "cus_owned", email: owner.email, name: owner.full_name, metadata }; },
@@ -50,11 +50,44 @@ test("eligible creators see the configured recurring prices and can checkout by 
     const result = response();
     await s.controller.getSubscriptionStatus({ user: { id: s.owner.id }, query: { offers: "1" } }, result);
     assert.deepEqual(result.body.data.offers.map(offer => [offer.plan, offer.amount, offer.currency]), [
-      ["monthly", 35, "USD"], ["quarterly", 35, "USD"], ["yearly", 35, "USD"],
+      ["monthly", 40, "USD"], ["quarterly", 105, "USD"], ["yearly", 299, "USD"],
     ]);
     assert.equal((await checkout(s)).statusCode, 201);
   } finally {
     process.env.CREATOR_SUBSCRIPTION_SIGNUPS_ENABLED = "true";
+  }
+});
+test("a previous price renews existing access and cannot be sold as a new offer", async () => {
+  process.env.CREATOR_SUBSCRIPTION_MONTHLY_LEGACY_PRICE_IDS = "price_previous";
+  try {
+    const s = setup();
+    const result = await s.controller.applySubscriptionObjectInternal({ object: "subscription", id: "sub_owned", customer: "cus_owned", status: "active", metadata: { user_id: s.owner.id }, items: { data: [{ price: { id: "price_previous" } }] } }, s.db);
+    assert.equal(result.plan, "monthly");
+    const price = await s.stripe.prices.retrieve("price_monthly");
+    s.stripe.prices.retrieve = async () => ({ ...price, unit_amount: 3500 });
+    assert.equal((await checkout(s)).statusCode, 503);
+    assert.equal(s.stats().creates, 0);
+  } finally { delete process.env.CREATOR_SUBSCRIPTION_MONTHLY_LEGACY_PRICE_IDS; }
+});
+test("sandbox checkout offers Basic and Pro and rejects live or mispriced offers", async () => {
+  const names = ["CREATOR_SUBSCRIPTION_BASIC_TEST_PRICE_ID", "CREATOR_SUBSCRIPTION_PRO_TEST_PRICE_ID"];
+  const previous = names.map(name => process.env[name]);
+  try {
+    process.env[names[0]] = "price_basic";
+    process.env[names[1]] = "price_pro";
+    const s = setup();
+    const template = await s.stripe.prices.retrieve("price_monthly");
+    s.stripe.prices.retrieve = async id => ({ ...template, id, livemode: false, unit_amount: id === "price_basic" ? 3000 : 6000 });
+    const res = response();
+    await s.controller.getSubscriptionStatus({ user: { id: s.owner.id }, query: { offers: "1" } }, res);
+    assert.deepEqual(res.body.data.offers.map(o => [o.plan, o.amount]), [["basic", 30], ["pro", 60]]);
+    for (const plan of ["basic", "pro"]) assert.equal((await checkout(s, plan)).statusCode, 201);
+    s.stripe.prices.retrieve = async () => ({ ...template, id: "price_basic", livemode: true, unit_amount: 3000 });
+    assert.equal((await checkout(s, "basic")).statusCode, 503);
+    s.stripe.prices.retrieve = async () => ({ ...template, id: "price_basic", livemode: false, unit_amount: 4000 });
+    assert.equal((await checkout(s, "basic")).statusCode, 503);
+  } finally {
+    names.forEach((name, i) => { if (previous[i] === undefined) delete process.env[name]; else process.env[name] = previous[i]; });
   }
 });
 test("a mismatched billing interval cannot be purchased", async () => {

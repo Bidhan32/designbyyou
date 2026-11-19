@@ -450,6 +450,8 @@ router.post(
   requireHandler("textToImageController.start", textToImageController.start)
 );
 
+router.get("/ai/credits", requireHandler("textToImageController.creditBalance", textToImageController.creditBalance));
+
 router.get(
   "/ai/text-to-image/history",
   requireHandler("textToImageController.history", textToImageController.history)

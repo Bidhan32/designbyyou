@@ -66,6 +66,7 @@
  */
 
 import React, { useMemo, useState } from "react";
+import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 
 import { Link } from "react-router-dom";
 
@@ -847,6 +848,7 @@ export default function CreatorToolsPage() {
 
       <header className="mx-auto max-w-7xl px-5 pt-8 sm:px-8 lg:px-10">
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Create</h1>
+        <CreatorCreditBalance />
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Start with a garment, upload a design, or choose an image tool below.</p>
         <Link to="/creator/projects" className="mt-6 flex items-center gap-4 rounded-md border border-line bg-surface p-4 transition hover:border-line focus-visible:outline-2 focus-visible:outline-offset-4 dark:bg-subtle sm:p-4">
           <FolderOpen size={24} className="shrink-0 text-muted" aria-hidden="true" />

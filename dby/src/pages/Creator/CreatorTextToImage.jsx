@@ -190,6 +190,7 @@ export default function CreatorTextToImage() {
   // ------------------------------------------------------
 
   const [history, setHistory] = useState([]);
+  const [credits, setCredits] = useState(null);
 
   const [historyLoading, setHistoryLoading] = useState(true);
 
@@ -225,6 +226,7 @@ export default function CreatorTextToImage() {
     const list = Array.isArray(response.data?.data) ? response.data.data : [];
 
     setHistory(list);
+    setCredits(response.data.credits);
     setHistoryError("");
 
     return list;
@@ -246,6 +248,7 @@ export default function CreatorTextToImage() {
           : [];
 
         setHistory(list);
+        setCredits(response.data.credits);
 
         // Resume unfinished work, or show the newest job.
         setJob(list.find(isActive) || list[0] || null);
@@ -437,6 +440,7 @@ export default function CreatorTextToImage() {
       if (err?.response?.data?.code === "TEXT_SUBMISSION_FAILED") {
         requestKey.current = null;
       }
+      if (err?.response?.status === 402) await refreshHistory().catch(() => {});
     } finally {
       setGenerating(false);
     }
@@ -614,6 +618,10 @@ export default function CreatorTextToImage() {
               Describe your fashion idea, generate an image, and download it to
               your device. Your results stay in your private generation history.
             </p>
+            <p role="status" className="mt-3 text-sm font-semibold text-ink">
+              Available AI credits: {credits?.available ?? (historyLoading ? "Loading…" : "Unavailable")}
+              {credits && <span className="ml-2 font-normal text-muted">· {credits.cost} credits per image</span>}
+            </p>
           </div>
         </header>
 
@@ -766,7 +774,7 @@ export default function CreatorTextToImage() {
 
             <button
               type="submit"
-              disabled={busy || prompt.trim().length < 12}
+              disabled={busy || prompt.trim().length < 12 || (!!credits && credits.available < credits.cost)}
               className="mt-6 flex min-h-9 w-full items-center justify-center gap-2 rounded-md bg-subtle px-5 text-sm font-bold text-ink transition hover:bg-subtle focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-action disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy ? (
@@ -783,7 +791,7 @@ export default function CreatorTextToImage() {
                 ? "Submitting..."
                 : activeJobId
                   ? "Generation in progress"
-                  : "Generate Fashion Image"}
+                  : `Generate · ${credits?.cost ?? 10} credits`}
             </button>
 
             {activeJobId && (

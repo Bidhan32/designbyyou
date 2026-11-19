@@ -1,4 +1,5 @@
 import MetricList from "../../components/MetricList";
+import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 "use strict";
 
 /*
@@ -492,6 +493,10 @@ Subscription Helpers
 
 function getSubscriptionPlanLabel(plan) {
   switch (plan) {
+    case "basic":
+      return "Basic";
+    case "pro":
+      return "Pro";
     case "monthly":
       return "Monthly";
 
@@ -1612,6 +1617,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   & Billing
                 </span>
               </h1>
+              <CreatorCreditBalance />
 
               <p
                 className="mt-3 max-w-2xl text-xs leading-6 text-muted sm:text-sm"
@@ -1881,7 +1887,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                         <p
                           className="mt-2 font-sans text-2xl"
                         >
-                          {getSubscriptionPlanLabel(currentSubscription.plan)}
+                          {getSubscriptionPlanLabel(currentSubscription.membership_tier || currentSubscription.plan)}
                         </p>
                       </div>
 
@@ -1967,7 +1973,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                     <div key={offer.plan} className="flex flex-wrap items-center justify-between gap-3 p-3">
                       <div>
                         <h3 className="text-sm font-semibold">{getSubscriptionPlanLabel(offer.plan)}</h3>
-                        <p className="text-sm text-muted">{new Intl.NumberFormat(undefined, { style: "currency", currency: offer.currency, currencyDisplay: "code" }).format(offer.amount)} every {{ monthly: "month", quarterly: "3 months", yearly: "year" }[offer.plan]}</p>
+                        <p className="text-sm text-muted">{new Intl.NumberFormat(undefined, { style: "currency", currency: offer.currency, currencyDisplay: "code" }).format(offer.amount)} every {{ basic: "month", pro: "month", monthly: "month", quarterly: "3 months", yearly: "year" }[offer.plan]}</p>
                       </div>
                       <button type="button" disabled={Boolean(checkoutPlanLoading)} onClick={() => handleSubscribe(offer)}
                         aria-label={`Subscribe to the ${offer.plan} plan`}

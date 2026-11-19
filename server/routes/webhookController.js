@@ -431,6 +431,8 @@ function getWorkflowType(event) {
 Provider Preparation
 =========================================================*/
 
+const { grantInvoiceCredits } = require("../services/membershipInvoiceCredits");
+
 async function prepareSupportedEvent(event, workflowType) {
   if (!requiresOrderedCreatorSubscriptionProcessing(workflowType)) {
     return {};
@@ -457,11 +459,19 @@ async function prepareSupportedEvent(event, workflowType) {
   }
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  let invoiceLines = eventObject?.lines?.data || [];
+  if (event.type === "invoice.paid" && eventObject.livemode === false && eventObject.lines?.has_more) {
+    invoiceLines = [];
+    for await (const line of stripe.invoices.listLineItems(eventObject.id, { limit: 100 })) {
+      invoiceLines.push(line);
+    }
+  }
 
   return {
     subscription,
 
     subscriptionId,
+    invoiceLines,
   };
 }
 
@@ -2134,6 +2144,9 @@ async function processSupportedEvent(
       return result;
     }
 
+    if (event.type === "invoice.paid" && subscription.livemode === false) {
+      await grantInvoiceCredits(client, eventObject, result, preparedContext.invoiceLines);
+    }
     return {
       ...result,
 

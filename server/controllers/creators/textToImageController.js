@@ -2,6 +2,7 @@
 
 const crypto = require("crypto");
 const db = require("../../config/db");
+const credits = require("../../services/textImageCredits");
 const fal = require("../../services/FalTextToImageService");
 const textImages = require("../../services/FashnTextToImageService");
 
@@ -33,7 +34,7 @@ function publicJob(row) {
     status: row.status,
     result_urls: Array.isArray(row.result_urls) ? row.result_urls : [],
     error_message: row.status === "failed" ? row.error_message : null,
-    credits_used: row.credits_used,
+    credits_used: row.paid_credit_period || row.free_credit_month ? row.credits_used : null,
     created_at: row.created_at,
     updated_at: row.updated_at,
     completed_at: row.completed_at,
@@ -41,7 +42,7 @@ function publicJob(row) {
 }
 
 const FIELDS = `id, prompt, aspect_ratio, generation_mode, resolution, num_images,
-  status, result_urls, credits_used, error_message, created_at, updated_at, completed_at`;
+  status, result_urls, credits_used, paid_credit_period, free_credit_month, error_message, created_at, updated_at, completed_at`;
 
 exports.start = async (req, res) => {
   const creatorId = creator(req);
@@ -106,9 +107,14 @@ exports.start = async (req, res) => {
         await client.query("ROLLBACK"); txOpen = false;
         return fail(res, 429, "DAILY_LIMIT_REACHED", `Daily testing limit reached (${DAILY_LIMIT} requests per 24 hours).`);
       }
+      const funds = await credits.balance(client, creatorId, true);
+      if (funds.available < credits.COST) {
+        await client.query("COMMIT"); txOpen = false;
+        return fail(res, 402, "INSUFFICIENT_AI_CREDITS", `This image requires ${credits.COST} AI credits. You have ${funds.available} available.`);
+      }
       const inserted = await client.query(`INSERT INTO public.creator_text_to_image_jobs
-        (creator_id, request_key, prompt, aspect_ratio, generation_mode, provider, model_name)
-        VALUES ($1,$2,$3,$4,$5,'fal',$6) RETURNING ${FIELDS}`, [creatorId, requestKey, prompt, ratio, mode, fal.MODEL]);
+        (creator_id, request_key, prompt, aspect_ratio, generation_mode, provider, model_name, paid_credit_period, free_credit_month)
+        VALUES ($1,$2,$3,$4,$5,'fal',$6,$7,$8) RETURNING ${FIELDS}`, [creatorId, requestKey, prompt, ratio, mode, fal.MODEL, funds.paidPeriod, funds.freeMonth]);
       job = inserted.rows[0];
     }
     await client.query("COMMIT"); txOpen = false;
@@ -126,13 +132,13 @@ exports.start = async (req, res) => {
     });
     const updated = await db.query(`UPDATE public.creator_text_to_image_jobs
       SET provider_prediction_id=$1,status='processing',updated_at=NOW()
-      WHERE id=$2 AND creator_id=$3 RETURNING ${FIELDS}`, [predictionId, job.id, creatorId]);
+      WHERE id=$2 AND creator_id=$3 AND status='submitting' RETURNING ${FIELDS}`, [predictionId, job.id, creatorId]);
     return res.status(202).json({ status: "success", data: publicJob(updated.rows[0]), reused: false });
   } catch (error) {
     console.error("[TextToImage] Provider submit failed:", error.status || "error", error.message);
     await db.query(`UPDATE public.creator_text_to_image_jobs SET status='failed',
       error_message='The generation could not be confirmed. If the request timed out, check provider usage before repeating it.',
-      updated_at=NOW() WHERE id=$1 AND creator_id=$2`, [job.id, creatorId]).catch(() => {});
+      updated_at=NOW() WHERE id=$1 AND creator_id=$2 AND status='submitting'`, [job.id, creatorId]).catch(() => {});
     return fail(res, error.status === 429 ? 429 : 502, "TEXT_SUBMISSION_FAILED", "Could not confirm submission. Check your generation history.");
   }
 };
@@ -140,14 +146,37 @@ exports.start = async (req, res) => {
 exports.history = async (req, res) => {
   const creatorId = creator(req);
   if (!creatorId) return fail(res, 403, "CREATOR_REQUIRED", "A signed-in Creator account is required.");
+  let client;
   try {
-    const result = await db.query(`SELECT ${FIELDS} FROM public.creator_text_to_image_jobs
+    client = await db.connect();
+    await client.query("BEGIN");
+    const funds = await credits.balance(client, creatorId);
+    const result = await client.query(`SELECT ${FIELDS} FROM public.creator_text_to_image_jobs
       WHERE creator_id=$1 ORDER BY created_at DESC LIMIT 30`, [creatorId]);
-    return res.status(200).json({ status: "success", data: result.rows.map(publicJob) });
+    await client.query("COMMIT");
+    return res.status(200).json({ status: "success", data: result.rows.map(publicJob), credits: { available: funds.available, cost: credits.COST } });
   } catch (error) {
+    if (client) await client.query("ROLLBACK").catch(() => {});
     console.error("[TextToImage] History query failed:", error.code || error.message);
     return fail(res, 500, "HISTORY_FAILED", "Could not load generation history.");
-  }
+  } finally { client?.release(); }
+};
+
+exports.creditBalance = async (req, res) => {
+  const creatorId = creator(req);
+  if (!creatorId) return fail(res, 403, "CREATOR_REQUIRED", "A signed-in Creator account is required.");
+  let client;
+  try {
+    client = await db.connect();
+    await client.query("BEGIN");
+    const { available } = await credits.balance(client, creatorId);
+    await client.query("COMMIT");
+    return res.set("Cache-Control", "no-store").json({ available });
+  } catch (error) {
+    if (client) await client.query("ROLLBACK").catch(() => {});
+    console.error("[AI credits] Balance lookup failed:", error.code || error.message);
+    return fail(res, 503, "BALANCE_UNAVAILABLE", "Your AI credit balance could not be loaded.");
+  } finally { client?.release(); }
 };
 
 exports.status = async (req, res) => {
@@ -184,7 +213,7 @@ exports.status = async (req, res) => {
       const message = String(state.error?.message || "The renderer was unable to generate this image.").slice(0, 250);
       const failed = await db.query(`UPDATE public.creator_text_to_image_jobs
         SET status='failed', error_message=$1, updated_at=NOW()
-        WHERE id=$2 AND creator_id=$3 AND status <> 'completed' RETURNING ${FIELDS}`,
+        WHERE id=$2 AND creator_id=$3 AND status='processing' RETURNING ${FIELDS}`,
         [message, jobId, creatorId]);
       return res.status(200).json({ status: "success", data: publicJob(failed.rows[0] || job) });
     }
@@ -195,8 +224,8 @@ exports.status = async (req, res) => {
     if (typeof outputUrl !== "string") {
       const failed = await db.query(`UPDATE public.creator_text_to_image_jobs SET status='failed',
         error_message='Rendering completed but did not return an image.',updated_at=NOW()
-        WHERE id=$1 AND creator_id=$2 RETURNING ${FIELDS}`, [jobId, creatorId]);
-      return res.status(200).json({ status: "success", data: publicJob(failed.rows[0]) });
+        WHERE id=$1 AND creator_id=$2 AND status IN ('processing','saving') RETURNING ${FIELDS}`, [jobId, creatorId]);
+      return res.status(200).json({ status: "success", data: publicJob(failed.rows[0] || job) });
     }
     // Exactly one request may perform the Cloudinary copy.
     const lease = await db.query(`UPDATE public.creator_text_to_image_jobs
@@ -215,7 +244,7 @@ exports.status = async (req, res) => {
       const completed = await db.query(`UPDATE public.creator_text_to_image_jobs
         SET status='completed', result_urls=$1::jsonb, cloudinary_public_id=$2,
         credits_used=$3, completed_at=NOW(),updated_at=NOW(),error_message=NULL
-        WHERE id=$4 AND creator_id=$5 RETURNING ${FIELDS}`,
+        WHERE id=$4 AND creator_id=$5 AND status='saving' RETURNING ${FIELDS}`,
         [JSON.stringify([saved.url]), saved.publicId, state.credits, jobId, creatorId]);
       return res.status(200).json({ status: "success", data: publicJob(completed.rows[0]) });
     } catch (error) {

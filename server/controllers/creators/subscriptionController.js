@@ -70,6 +70,7 @@ routes.
 
 const Stripe = require("stripe");
 const db = require("../../config/db");
+const { sandboxMembershipTier } = require("../../services/membershipInvoiceCredits");
 
 /*=========================================================
 Configuration
@@ -236,6 +237,8 @@ function normalizePlan(value) {
 
 function getPlanPriceId(plan) {
   const envMap = {
+    basic: "CREATOR_SUBSCRIPTION_BASIC_TEST_PRICE_ID",
+    pro: "CREATOR_SUBSCRIPTION_PRO_TEST_PRICE_ID",
     monthly: "CREATOR_SUBSCRIPTION_MONTHLY_PRICE_ID",
 
     quarterly: "CREATOR_SUBSCRIPTION_QUARTERLY_PRICE_ID",
@@ -262,21 +265,28 @@ function signupsEnabled() {
   return (process.env.CREATOR_SUBSCRIPTION_SIGNUPS_ENABLED ?? "true") === "true";
 }
 
+const signupAmountsInCents = Object.freeze({ monthly: 4000, quarterly: 10500, yearly: 29900, basic: 3000, pro: 6000 });
+
+function sandboxCheckoutPlans() {
+  if (!/^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY || "")) return [];
+  return ["basic", "pro"].filter(plan => getPlanPriceId(plan));
+}
+
 async function subscriptionOffer(plan, priceId) {
   if (!priceId) return null;
   const price = await getStripeClient().prices.retrieve(priceId);
+  if (plan === "basic" || plan === "pro") {
+    if (!sandboxCheckoutPlans().includes(plan) || sandboxMembershipTier(price.id, price.livemode) !== plan ||
+        price.recurring?.interval !== "month" || price.recurring.interval_count !== 1) return null;
+  }
   const recurring = price.recurring;
   const months = recurring?.interval === "year" ? 12 * recurring.interval_count
     : recurring?.interval === "month" ? recurring.interval_count : 0;
-  if (!price.active || months !== { monthly: 1, quarterly: 3, yearly: 12 }[plan] ||
+  if (!price.active || months !== { monthly: 1, quarterly: 3, yearly: 12, basic: 1, pro: 1 }[plan] ||
       price.billing_scheme !== "per_unit" || recurring?.usage_type !== "licensed" ||
-      price.transform_quantity || !Number.isSafeInteger(price.unit_amount) || price.unit_amount <= 0) return null;
+      price.transform_quantity || price.currency !== "usd" || price.unit_amount !== signupAmountsInCents[plan]) return null;
 
-  const currency = price.currency.toUpperCase();
-  const zeroDecimal = ["BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG", "RWF", "VND", "VUV", "XAF", "XOF", "XPF"];
-  const threeDecimal = ["BHD", "JOD", "KWD", "OMR", "TND"];
-  const divisor = zeroDecimal.includes(currency) ? 1 : threeDecimal.includes(currency) ? 1000 : 100;
-  return { plan, price_id: price.id, amount: price.unit_amount / divisor, currency };
+  return { plan, price_id: price.id, amount: price.unit_amount / 100, currency: "USD" };
 }
 
 function getPlanFromPriceId(priceId) {
@@ -292,6 +302,11 @@ function getPlanFromPriceId(priceId) {
     }
   }
 
+  // Previous prices remain valid for webhook renewals, but never appear in signup offers.
+  for (const plan of CREATOR_SUBSCRIPTION_PLANS) {
+    const previous = process.env[`CREATOR_SUBSCRIPTION_${plan.toUpperCase()}_LEGACY_PRICE_IDS`] || "";
+    if (previous.split(",").some(id => id.trim() === normalizedPriceId)) return plan;
+  }
   return null;
 }
 
@@ -386,6 +401,8 @@ function serializeSubscriptionRow(
 
   return {
     plan: tier,
+    membership_tier: tier === "monthly" && sandboxCheckoutPlans().length
+      ? sandboxMembershipTier(row.stripe_subscription_price_id, false) : null,
 
     status,
 
@@ -818,7 +835,9 @@ async function applySubscriptionObjectInternal(subscription, queryable = db) {
 
   const priceId = getSubscriptionPriceId(subscription);
 
-  const mappedPlan = getPlanFromPriceId(priceId);
+  // users.subscription_tier currently stores the billing interval for paid access.
+  const mappedPlan = getPlanFromPriceId(priceId) ||
+    (sandboxMembershipTier(priceId, subscription.livemode) ? "monthly" : null);
 
   const { start, end } = getSubscriptionPeriod(subscription);
 
@@ -1233,7 +1252,9 @@ exports.getSubscriptionStatus = async (req, res) => {
     if (req.query?.offers === "1" && !BLOCKING_SUBSCRIPTION_STATUSES.has(data.status)) {
       data.signups_enabled = signupsEnabled();
       if (data.signups_enabled) {
-        const offers = await Promise.allSettled(Array.from(CREATOR_SUBSCRIPTION_PLANS, plan => subscriptionOffer(plan, getPlanPriceId(plan))));
+        const sandboxPlans = sandboxCheckoutPlans();
+        const plans = sandboxPlans.length ? sandboxPlans : CREATOR_SUBSCRIPTION_PLANS;
+        const offers = await Promise.allSettled(Array.from(plans, plan => subscriptionOffer(plan, getPlanPriceId(plan))));
         data.offers = offers.filter(result => result.status === "fulfilled" && result.value).map(result => result.value);
       }
     }
@@ -1311,7 +1332,10 @@ exports.createCheckoutSession = async (req, res) => {
 
   const creatorId = getAuthenticatedUserId(req);
 
-  const plan = normalizePlan(req.body?.plan);
+  const sandboxPlans = sandboxCheckoutPlans();
+  const plan = sandboxPlans.length
+    ? (sandboxPlans.includes(req.body?.plan) ? req.body.plan : null)
+    : normalizePlan(req.body?.plan);
 
   const clientRequestId = cleanText(
     req.body?.client_request_id || req.body?.clientRequestId,
@@ -1766,3 +1790,18 @@ Useful for trusted webhook validation/logging.
 =========================================================*/
 
 exports.CREATOR_SUBSCRIPTION_PURPOSE = "creator_subscription";
+
+exports.listMembershipPlans = async (_req, res, next) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT tier, version, monthly_price_usd_cents, monthly_ai_credits, booking_fee_usd_cents,
+             rewards_per_100_usd, alteration_limit, purchase_discount_percent
+      FROM public.membership_plan_versions
+      WHERE version = 1
+      ORDER BY monthly_price_usd_cents NULLS LAST
+    `);
+    return res.json({ plans: rows, ai_credits_per_usd: 10 });
+  } catch (error) {
+    return next(error);
+  }
+};

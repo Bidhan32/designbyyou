@@ -81,7 +81,7 @@ async function main() {
   }
   isolated = await sandboxDatabase();
   product = await stripe.products.create({ name: `DBY isolated subscription ${run}`, metadata: { dby_test_run: run } });
-  for (const [plan, count, amount] of [["monthly", 1, 100], ["quarterly", 3, 250], ["yearly", 12, 900]]) {
+  for (const [plan, count, amount] of [["monthly", 1, 4000], ["quarterly", 3, 10500], ["yearly", 12, 29900]]) {
     const price = await stripe.prices.create({ product: product.id, currency: "usd", unit_amount: amount, recurring: { interval: "month", interval_count: count }, metadata: { dby_test_run: run } });
     prices.push(price); process.env[`CREATOR_SUBSCRIPTION_${plan.toUpperCase()}_PRICE_ID`] = price.id;
   }
@@ -100,6 +100,23 @@ async function main() {
   const { app } = isolatedServer({ db, stripe, secretKey: process.env.STRIPE_SECRET_KEY }).load("index.js");
   server = await new Promise((resolve, reject) => { const s = app.listen(0, "127.0.0.1", () => resolve(s)); s.once("error", reject); });
   origin = `http://127.0.0.1:${server.address().port}`; creator = await user(); designer = await user("designer");
+  const basicPrice = process.env.CREATOR_SUBSCRIPTION_BASIC_TEST_PRICE_ID;
+  const proPrice = process.env.CREATOR_SUBSCRIPTION_PRO_TEST_PRICE_ID;
+  if (basicPrice || proPrice) {
+    await step("Configured Basic and Pro test prices can open hosted Checkout", async () => {
+      const actor = await user();
+      for (const [tier, expected] of [["basic", basicPrice], ["pro", proPrice]]) {
+        assert.ok(expected, `Missing ${tier} test price`);
+        const session = expect(await checkout(actor, tier), 201);
+        const lines = await stripe.checkout.sessions.listLineItems(session.checkout_session_id);
+        assert.equal(lines.data[0].price.id, expected);
+        await stripe.checkout.sessions.expire(session.checkout_session_id);
+      }
+    });
+    // Exercise the legacy signup paths in isolation before testing membership renewals.
+    delete process.env.CREATOR_SUBSCRIPTION_BASIC_TEST_PRICE_ID;
+    delete process.env.CREATOR_SUBSCRIPTION_PRO_TEST_PRICE_ID;
+  }
   await step("Checkout enforces authentication, creator role, verified email, and trusted plan names", async () => {
     expect(await checkout(null), 401); expect(await checkout(designer), 403);
     await pool.query("UPDATE users SET is_email_verified=false WHERE id=$1", [creator]); expect(await checkout(creator), 403);
@@ -149,26 +166,65 @@ async function main() {
     expect(await deliver("customer.subscription.updated", { ...old, status: "active" }), 200);
     assert.equal((await row(creator)).subscription_tier, "free"); assert.equal((await row(creator)).subscription_status, "canceled");
   });
-  let renewOwner, renewSub;
-  await step("Test clock converts a trial to a paid subscription using a real test invoice", async () => {
-    renewOwner = await user(); clock = await stripe.testHelpers.testClocks.create({ frozen_time: Math.floor(Date.now() / 1000), name: `DBY ${run}` });
-    const customer = await stripe.customers.create({ test_clock: clock.id, metadata: { user_id: renewOwner, customer_purpose: "creator_subscription" } });
-    await pool.query("UPDATE users SET stripe_customer_id=$1 WHERE id=$2", [customer.id, renewOwner]);
+  let renewOwner, renewSub, proOwner, proSub;
+  if (basicPrice) {
+    process.env.CREATOR_SUBSCRIPTION_BASIC_TEST_PRICE_ID = basicPrice;
+    process.env.CREATOR_SUBSCRIPTION_PRO_TEST_PRICE_ID = proPrice;
+  }
+  clock = await stripe.testHelpers.testClocks.create({ frozen_time: Math.floor(Date.now() / 1000), name: `DBY ${run}` });
+  async function createClockSubscription(owner, price) {
+    const customer = await stripe.customers.create({ test_clock: clock.id, metadata: { user_id: owner, customer_purpose: "creator_subscription" } });
+    await pool.query("UPDATE users SET stripe_customer_id=$1 WHERE id=$2", [customer.id, owner]);
     const method = await stripe.paymentMethods.attach("pm_card_visa", { customer: customer.id });
     await stripe.customers.update(customer.id, { invoice_settings: { default_payment_method: method.id } });
-    renewSub = await stripe.subscriptions.create({ customer: customer.id, items: [{ price: prices[0].id }], trial_end: clock.frozen_time + 7 * 86400,
-      metadata: { transaction_purpose: "creator_subscription", user_id: renewOwner } });
+    return stripe.subscriptions.create({ customer: customer.id, items: [{ price }], trial_end: clock.frozen_time + 7 * 86400,
+      metadata: { transaction_purpose: "creator_subscription", user_id: owner } });
+  }
+  await step("Test clock converts a trial to a paid subscription using a real test invoice", async () => {
+    renewOwner = await user();
+    renewSub = await createClockSubscription(renewOwner, basicPrice || prices[0].id);
+    if (proPrice) {
+      proOwner = await user();
+      proSub = await createClockSubscription(proOwner, proPrice);
+    }
     await advance(periodEnd(renewSub) + 7200); renewSub = await stripe.subscriptions.retrieve(renewSub.id);
     const invoice = await ensureInvoiceAttempt(renewSub, true);
     expect(await deliver("invoice.paid", invoice), 200);
     assert.equal((await row(renewOwner)).subscription_status, "active");
+    if (basicPrice) {
+      const grants = await pool.query("SELECT granted, carried FROM membership_ai_credit_periods WHERE user_id=$1", [renewOwner]);
+      assert.deepEqual(grants.rows, [{ granted: 1500, carried: 0 }]);
+    }
   });
+  async function checkProPeriod(renewal) {
+    proSub = await stripe.subscriptions.retrieve(proSub.id);
+    const invoice = await ensureInvoiceAttempt(proSub, true);
+    assert.equal(invoice.amount_paid, 6000);
+    assert.equal(invoice.currency, "usd");
+    expect(await deliver("invoice.paid", invoice), 200);
+    if (renewal) expect(await deliver("invoice.paid", invoice), 200);
+    const grants = await pool.query("SELECT tier, granted, carried, spent FROM membership_ai_credit_periods WHERE user_id=$1 ORDER BY period_start", [proOwner]);
+    const first = { tier: "pro", granted: 4500, carried: 0, spent: 0 };
+    assert.deepEqual(grants.rows, renewal ? [first, { ...first, carried: 450 }] : [first]);
+  }
+  if (proPrice) await step("First paid Pro invoice grants 4500 AI credits", () => checkProPeriod(false));
   await step("A successful clock-driven renewal extends the stored billing period", async () => {
     renewSub = await stripe.subscriptions.retrieve(renewSub.id); const previous = periodEnd(renewSub);
     await advance(previous + 7200); renewSub = await stripe.subscriptions.retrieve(renewSub.id);
-    expect(await deliver("invoice.payment_succeeded", await ensureInvoiceAttempt(renewSub, true)), 200);
+    const invoice = await ensureInvoiceAttempt(renewSub, true);
+    expect(await deliver("invoice.payment_succeeded", invoice), 200);
+    if (basicPrice) {
+      expect(await deliver("invoice.paid", invoice), 200);
+      expect(await deliver("invoice.paid", invoice), 200);
+      const grants = await pool.query("SELECT granted, carried FROM membership_ai_credit_periods WHERE user_id=$1 ORDER BY period_start", [renewOwner]);
+      assert.deepEqual(grants.rows, [{ granted: 1500, carried: 0 }, { granted: 1500, carried: 150 }]);
+    }
     assert.ok(periodEnd(renewSub) > previous);
     assert.equal(new Date((await row(renewOwner)).subscription_active_until).getTime(), periodEnd(renewSub) * 1000);
+  });
+  if (proPrice) await step("Pro renewal carries 450 credits for a 4950 balance after duplicate delivery", async () => {
+    await checkProPeriod(true);
+    await stripe.subscriptions.cancel(proSub.id);
   });
   await step("Failed clock-driven renewal retains past-due grace access and synchronizes collection state", async () => {
     const method = await stripe.paymentMethods.attach("pm_card_chargeCustomerFail", { customer: renewSub.customer });

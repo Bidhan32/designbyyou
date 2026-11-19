@@ -298,6 +298,7 @@ because this is a read/reconciliation operation.
 =========================================================*/
 
 router.get("/status", subscriptionController.getSubscriptionStatus);
+router.get("/plans", subscriptionController.listMembershipPlans);
 
 /*=========================================================
 2. Start New Creator Subscription
