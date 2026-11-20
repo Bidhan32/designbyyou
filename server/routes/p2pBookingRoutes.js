@@ -116,6 +116,7 @@ const p2pController = require("../controllers/P2PBookingController");
 
 const {
   p2pBookingCreateLimiter,
+  bookingReferenceLimiter,
 } = require("../middlewares/financialRateLimitMiddleware");
 
 const {
@@ -530,6 +531,7 @@ router.post("/verify-escrow", protect, p2pController.verifyEscrowPayment);
    ========================================================= */
 
 // Phase 5.1A: private Editor snapshot; controller enforces exact booking participants.
+router.put("/:id/try-on-reference", ...newCreatorBookingAccess, bookingReferenceLimiter, p2pController.saveBookingTryOnReference);
 router.get("/:id/design-snapshot", protect, p2pController.getBookingDesignSnapshot);
 
 router.get("/:id/whatsapp-contact", protect, p2pController.getWhatsAppContact);

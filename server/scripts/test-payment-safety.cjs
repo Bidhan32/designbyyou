@@ -112,6 +112,19 @@ function webhookHandler() {
   const router = isolatedServer({ db, stripe }).load("routes/webhookController.js");
   return { stripe, handle: router.stack.find((layer) => layer.route?.path === "/stripe").route.stack[0].handle };
 }
+test("subscription webhooks require the platform account and matching event and object modes", async () => {
+  const { stripe, handle } = webhookHandler();
+  for (const [live, objectLive, account] of [[true,true,null], [false,true,null], [false,false,"acct_fixture"]]) {
+    const payload = JSON.stringify({ id: "evt_fixture", type: "customer.subscription.created", account, livemode: live,
+      data: { object: { id: "sub_fixture", object: "subscription", livemode: objectLive, metadata: { transaction_purpose: "creator_subscription" } } } });
+    const signature = stripe.webhooks.generateTestHeaderString({ payload, secret: process.env.STRIPE_WEBHOOK_SECRET });
+    const res = { status(code) { this.statusCode = code; return this; }, json(value) { this.body = value; } };
+    await handle({ body: Buffer.from(payload), get: () => signature }, res);
+    assert.equal(res.statusCode, 400);
+    assert.match(res.body.message, /account or mode/);
+  }
+});
+
 for (const scenario of ["valid unsupported", "missing signature", "bad signature", "tampered bytes", "stale signature", "parsed JSON"]) {
   test(`webhook signature boundary: ${scenario}`, async (t) => {
     t.mock.method(console, "error", () => {});

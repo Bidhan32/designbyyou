@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import ToolBookingAction from "../../components/ToolBookingAction";
 import API from "../../api/axios";
 
 function imageUrl(path) {
@@ -16,6 +17,7 @@ function UploadCard({ design, role }) {
       <div className="p-4">
         <p className="text-xs text-muted">{design.is_public ? "Public" : "Private"}</p>
         <h2 className="mt-1 break-words font-semibold">{design.title || "Untitled design"}</h2>
+        {role === "creator" && cover && <ToolBookingAction tool="Uploaded design" src={imageUrl(cover)} />}
         {design.description && <p className="mt-2 break-words text-sm">{design.description}</p>}
         {images.length > 1 && <details className="mt-3">
           <summary className="cursor-pointer text-sm">Gallery ({images.length})</summary>

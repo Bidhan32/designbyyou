@@ -1518,7 +1518,7 @@ export default function CreatorUpload() {
       const saved = response.data.data;
       const destination = saved.is_public
         ? `/creator/showcase/${encodeURIComponent(saved.slug)}`
-        : "/creator/profile#my-creations";
+        : "/creator/projects/uploads";
       setSuccess(saved.is_public ? "public" : "private");
 
       navigationTimerRef.current =
@@ -1665,7 +1665,7 @@ export default function CreatorUpload() {
                   : "Private creation saved successfully."}
               </p>
 
-              <p className="mt-1 text-xs opacity-70">{success === "public" ? "Opening your published design." : "Opening My Creations."}</p>
+              <p className="mt-1 text-xs opacity-70">{success === "public" ? "Opening your published design." : "Opening your uploaded designs."}</p>
             </div>
           </div>
         )}

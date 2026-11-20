@@ -1831,7 +1831,7 @@ exports.getCreatorWalletSummary = async (req, res) => {
         `
           SELECT
             COALESCE(
-              SUM(agreed_price),
+              SUM(agreed_price - COALESCE((membership_terms->>'discount_cents')::numeric,0)/100),
               0
             ) AS locked_escrow_balance,
 

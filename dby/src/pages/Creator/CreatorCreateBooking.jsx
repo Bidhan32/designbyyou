@@ -585,6 +585,7 @@ function CheckoutForm({
         </div>
 
         <div className="px-5 py-5 text-sm">
+          <p className="mb-3 text-xs text-muted">Designer price {formatMoney(payment?.baseAmount, paymentCurrency)} · Membership discount {formatMoney(payment?.discount || 0, paymentCurrency)} · Booking fee {formatMoney(payment?.connectionFee, paymentCurrency)}</p>
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-xs font-bold tracking-normal text-muted">
@@ -647,6 +648,15 @@ export default function CreatorCreateBooking() {
   /*=======================================================
   URL Context
   =======================================================*/
+
+  const draftId = cleanParam(searchParams, "tool_draft");
+  const toolReference = useMemo(() => {
+    if (!draftId || !user?.id) return null;
+    try {
+      const draft = JSON.parse(sessionStorage.getItem("booking-tool:" + user.id));
+      return draft?.id === draftId ? draft.reference : null;
+    } catch { return null; }
+  }, [draftId, user?.id]);
 
   const designerIdFromUrl = cleanParam(searchParams, "designer_id");
 
@@ -974,41 +984,12 @@ export default function CreatorCreateBooking() {
   const baseAmount = parseMoney(agreedPrice) || 0;
   const rewardEstimate = bookingRewardEstimate(baseAmount);
 
-  /*
-  Do NOT hard-code the platform connection fee here.
-
-  P2P_CONNECTION_FEE_RATE belongs to backend configuration.
-
-  Before booking creation:
-
-  - active subscriber
-      → fee can safely display as waived
-
-  - free creator
-      → backend calculates final fee
-
-  After booking creation:
-
-  payment is the authoritative backend response.
-  */
-
-  const displayedPayment = payment || {
-    currency: "usd",
-
-    baseAmount,
-
-    connectionFee: subscribed ? 0 : null,
-
-    totalCharged: subscribed ? baseAmount : null,
-
-    connectionFeeWaived: subscribed,
-  };
-
   /*=======================================================
   Validation
   =======================================================*/
 
   const validate = () => {
+    if (draftId && !toolReference) return "Return to the tool result and attach the reference again.";
     if (!selectedDesigner || !designerId(selectedDesigner)) {
       return "Select a valid designer.";
     }
@@ -1094,6 +1075,7 @@ export default function CreatorCreateBooking() {
 
         design_id: designIdFromUrl || null,
 
+        tool_reference: toolReference,
         brief_text: brief.trim(),
 
         agreed_price: baseAmount,
@@ -1128,14 +1110,16 @@ export default function CreatorCreateBooking() {
       }
 
       setCreatedBooking(booking);
+      if (toolReference) sessionStorage.removeItem("booking-tool:" + user.id);
       setPaymentNeedsVerification(["succeeded", "processing"].includes(response.data.paymentIntentStatus));
-      setSearchParams(previous => { const next = new URLSearchParams(previous); next.set("booking_id", booking.id); return next; }, { replace: true });
+      setSearchParams(previous => { const next = new URLSearchParams(previous); next.set("booking_id", booking.id); next.delete("tool_draft"); return next; }, { replace: true });
 
       setClientSecret(secret);
 
       setPayment({
         currency: authoritativePayment?.currency || "usd",
 
+        discount: Number(authoritativePayment.discount || 0),
         baseAmount: Number(authoritativePayment?.baseAmount ?? baseAmount),
 
         connectionFee: Number(authoritativePayment?.connectionFee ?? 0),
@@ -1407,6 +1391,11 @@ export default function CreatorCreateBooking() {
             </p>}
             {designIdFromUrl && designerError && !selectedDesigner && <button type="button" className="mt-2 h-8 rounded-md border border-line px-3 text-sm" onClick={() => setDesignerRefreshKey(value => value + 1)}>Retry designer lookup</button>}
             {!directMode && <p className="mt-1 text-sm text-muted">Choose a designer, then enter your project details.</p>}
+            {toolReference && <section className="mt-4"><h2 className="text-sm font-semibold">{toolReference.tool} reference for your designer</h2>
+              <div className="mt-2 flex flex-wrap gap-2">{toolReference.images.map(image => <figure key={image.label}>
+                <img src={image.src} alt={image.label} className="h-24 max-w-36 rounded object-contain" /><figcaption className="text-xs">{image.label}</figcaption>
+              </figure>)}</div></section>}
+            {draftId && !toolReference && <p role="alert">This reference is unavailable. Return to the tool result and attach it again.</p>}
           </header>
 
           {/*=============================================
@@ -2133,12 +2122,11 @@ export default function CreatorCreateBooking() {
                           </p>
                         </div>
 
-                        {createdBooking ||
-                        (subscribed && !subscriptionLoading) ? (
+                        {createdBooking && payment ? (
                           <strong className="shrink-0 font-mono text-2xl text-action">
                             {formatMoney(
-                              displayedPayment.totalCharged,
-                              displayedPayment.currency,
+                              payment.totalCharged,
+                              payment.currency,
                             )}
                           </strong>
                         ) : (

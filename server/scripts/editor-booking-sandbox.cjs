@@ -20,7 +20,7 @@ stripe.refunds = {
 };
 async function api(route, token, body, method = body === undefined ? "GET" : "POST") {
   const response = await fetch(origin + "/api/v1" + route, { method, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
-  return { status: response.status, body: await response.json() };
+  return { status: response.status, body: response.status === 204 ? null : await response.json() };
 }
 function expect(response, status) { assert.equal(response.status, status, JSON.stringify(response.body)); return response.body; }
 async function fixture(role) {
@@ -35,6 +35,9 @@ async function fixture(role) {
     server = await new Promise(resolve => { const s = app.listen(0, "127.0.0.1", () => resolve(s)); });
     origin = `http://127.0.0.1:${server.address().port}`;
     const creator = await fixture("creator"), designer = await fixture("designer"), outsider = await fixture("creator");
+    process.env.STRIPE_SECRET_KEY = "sk_test_booking_fixture";
+    process.env.CREATOR_SUBSCRIPTION_BASIC_TEST_PRICE_ID = "price_basic_fixture";
+    await isolated.pool.query("UPDATE users SET subscription_tier='monthly', subscription_status='active', stripe_subscription_price_id='price_basic_fixture', booking_reward_remainder=2000 WHERE id=$1",[creator.id]);
     const otherDesigner = await fixture("designer");
     const unverified = await fixture("designer");
     await isolated.pool.query("UPDATE users SET is_email_verified = false WHERE id = $1", [unverified.id]);
@@ -48,7 +51,19 @@ async function fixture(role) {
     const savedResponse = expect(await api("/creators/editor-projects", creator.token, { title: project.document.name, project_data: project }), 201);
     const saved = savedResponse.data?.project || savedResponse.data || savedResponse.project;
     assert.ok(saved.id, JSON.stringify(savedResponse));
-    const body = { client_request_id: crypto.randomUUID(), receiver_id: designer.id, booking_type: "commission", editor_project_id: String(saved.id), editor_project_version: saved.version, brief_text: "Please create a prototype from this private design.", agreed_price: 100, deadline: new Date(Date.now() + 30 * 86400000).toISOString() };
+    const webp = await require("sharp")({ create: { width: 8, height: 8, channels: 3, background: "#abc" } }).webp().toBuffer();
+    const reference = { tool: "Sketch to Image", images: [{ label: "Result", src: "data:image/webp;base64," + webp.toString("base64") }] };
+    const { sanitizeReference } = require("../services/bookingToolReference");
+    const annotated = await require("sharp")(webp).withMetadata().webp().toBuffer();
+    const cleaned = await sanitizeReference({ ...reference, images: [
+      { label: "Result", src: "data:image/webp;base64," + annotated.toString("base64") }
+    ] });
+    const cleanedBytes = Buffer.from(cleaned.images[0].src.split(",")[1], "base64");
+    const cleanInfo = await require("sharp")(cleanedBytes).metadata();
+    assert.ok(!cleanInfo.exif && !cleanInfo.icc && !cleanInfo.xmp);
+    assert.equal(await sanitizeReference({ ...reference, images: [{ label: "Result", src: "https://example.invalid/image" }] }), false);
+    assert.equal(await sanitizeReference({ ...reference, images: [...reference.images, ...reference.images] }), false);
+    const body = { tool_reference: reference, client_request_id: crypto.randomUUID(), receiver_id: designer.id, booking_type: "commission", editor_project_id: String(saved.id), editor_project_version: saved.version, brief_text: "Please create a prototype from this private design.", agreed_price: 100, deadline: new Date(Date.now() + 30 * 86400000).toISOString() };
     expect(await api("/p2p-bookings/create", outsider.token, body), 404);
     expect(await api("/p2p-bookings/create", creator.token, { ...body, editor_project_version: saved.version + 1 }), 409);
     assert.equal(created, 0);
@@ -58,6 +73,7 @@ async function fixture(role) {
     assert.equal(booking.design_id, null);
     assert.equal(created, 1);
     const retry = expect(await api("/p2p-bookings/create", creator.token, body), 200);
+    expect(await api("/p2p-bookings/create", creator.token, { ...body, tool_reference: null }), 409);
     assert.equal(retry.booking.id, booking.id); assert.equal(created, 1);
     expect(await api("/p2p-bookings/create", creator.token, { ...body, editor_project_version: saved.version + 1 }), 409);
     console.log("PASS Booking creation attaches design atomically and retries do not duplicate payment");
@@ -66,6 +82,12 @@ async function fixture(role) {
     for (const user of [creator, designer]) {
       const snapshot = expect(await api(endpoint, user.token), 200).data;
       assert.deepEqual(snapshot.snapshot_data, project);
+      const [savedReference] = snapshot.tool_references;
+      assert.equal(savedReference.tool, reference.tool);
+      assert.equal(savedReference.images[0].label, "Result");
+      const preview = await require("sharp")(Buffer.from(savedReference.images[0].src.split(",")[1], "base64")).metadata();
+      assert.equal(preview.width, 8);
+      assert.equal(preview.format, "webp");
     }
     await isolated.pool.query("UPDATE editor_projects SET project_data = jsonb_set(project_data,'{document,name}','\"Changed\"'), version=version+1 WHERE id=$1", [saved.id]);
     assert.equal(expect(await api(endpoint, designer.token), 200).data.design_title, project.document.name);
@@ -87,6 +109,7 @@ async function fixture(role) {
     console.log("PASS Concurrent autosave creation, version-safe updates, private project listing and reopening");
     expect(await api("/p2p-bookings/verify-escrow", creator.token, { bookingId: booking.id }), 400);
     const pi = intents.get(booking.stripe_payment_intent_id); pi.status = "succeeded"; pi.amount_received = pi.amount;
+    assert.equal(pi.amount, 9500);
     expect(await api("/p2p-bookings/verify-escrow", outsider.token, { bookingId: booking.id }), 403);
     expect(await api("/p2p-bookings/verify-escrow", creator.token, { bookingId: booking.id }), 200);
     expect(await api("/p2p-bookings/verify-escrow", creator.token, { bookingId: booking.id }), 200);
@@ -97,6 +120,15 @@ async function fixture(role) {
     const state = async () => (await isolated.pool.query("SELECT * FROM bookings WHERE id=$1", [booking.id])).rows[0];
     await isolated.pool.query("INSERT INTO designer_profiles(user_id,portfolio_url,tier,total_completed_bookings,commission_rate) VALUES($1,'https://example.invalid/portfolio','bronze',0,10) ON CONFLICT(user_id) DO NOTHING", [designer.id]);
     expect(await api(`/p2p-bookings/${booking.id}/release`, creator.token, {}), 400);
+    const tryOnRoute = `/p2p-bookings/${booking.id}/try-on-reference`;
+    const update = { reference: { ...reference, tool: "Virtual Try-On" } };
+    expect(await api(tryOnRoute, outsider.token, update, "PUT"), 404);
+    expect(await api(tryOnRoute, designer.token, update, "PUT"), 403);
+    expect(await api(tryOnRoute, creator.token, update, "PUT"), 204);
+    expect(await api(tryOnRoute, creator.token, update, "PUT"), 204);
+    assert.equal(expect(await api(endpoint, designer.token), 200).data.tool_references.length, 2);
+    assert.equal(created, 1);
+    console.log("PASS Private tool references, retry consistency and same-booking try-on updates");
     await transition('accept', designer);
     assert.equal((await state()).status, 'progress');
     expect(await api(`/p2p-bookings/${booking.id}/submit-final`, designer.token, { file_url: 'https://example.invalid/final.png' }), 400);
@@ -113,6 +145,7 @@ async function fixture(role) {
     await transition('request-revision', creator, { notes: 'Please adjust the final hem.' });
     assert.equal((await state()).status, 'final_production');
     await transition('submit-final', designer, { file_url: 'https://example.invalid/final-v2.png' });
+    expect(await api(`/p2p-bookings/${booking.id}/request-revision`, creator.token, { notes: "Third request." }),409);
     const releases = await Promise.all([transition('release', creator), transition('release', creator)]);
     assert.equal(releases.filter(row => row.idempotent === false).length, 1);
     assert.equal((await state()).status, 'completed');
@@ -134,7 +167,8 @@ async function fixture(role) {
     console.log('PASS Unpaid cancellation cancels the original payment intent');
 
     expect(await api(`/p2p-bookings/${unpaid.id}/payment`, creator.token), 409);
-    assert.equal(Number((await state()).creator_reward_points), 20);
+    assert.equal(Number((await state()).creator_reward_points), 3);
+    assert.equal((await isolated.pool.query("SELECT booking_reward_remainder FROM users WHERE id=$1",[creator.id])).rows[0].booking_reward_remainder,500);
     const paid = expect(await api('/p2p-bookings/create', creator.token, { ...body, client_request_id: crypto.randomUUID(), editor_project_id: undefined, editor_project_version: undefined }), 201).booking;
     const paidIntent = intents.get(paid.stripe_payment_intent_id); paidIntent.status = 'succeeded'; paidIntent.amount_received = paidIntent.amount;
     expect(await api('/p2p-bookings/verify-escrow', creator.token, { bookingId: paid.id }), 200);
@@ -153,8 +187,18 @@ async function fixture(role) {
       [designId, otherDesigner.id],
     );
     const designBooking = { client_request_id: crypto.randomUUID(), booking_type: "marketplace", design_id: designId, brief_text: body.brief_text, agreed_price: 100, deadline: body.deadline };
+    // An upgrade affects the next quote, never a previously issued one.
+    await isolated.pool.query("UPDATE users SET subscription_tier='free', subscription_status='free' WHERE id=$1",[creator.id]);
+    const freeQuote = expect(await api("/p2p-bookings/create", creator.token, { ...designBooking, client_request_id: crypto.randomUUID(), receiver_id: otherDesigner.id }),201);
+    assert.equal(freeQuote.payment.totalCharged,105);
+    assert.equal(freeQuote.booking.membership_terms.alterations,1);
+    expect(await api(`/p2p-bookings/${freeQuote.booking.id}/cancel`,creator.token,{reason:"Changed requirements"}),200);
+    process.env.CREATOR_SUBSCRIPTION_PRO_TEST_PRICE_ID="price_pro_fixture";
+    await isolated.pool.query("UPDATE users SET subscription_tier='monthly', subscription_status='active',stripe_subscription_price_id='price_pro_fixture' WHERE id=$1",[creator.id]);
     const booked = expect(await api("/p2p-bookings/create", creator.token, { ...designBooking, receiver_id: otherDesigner.id }), 201).booking;
     const checkout = expect(await api(`/p2p-bookings/${booked.id}/payment`, creator.token), 200);
+    assert.equal(checkout.payment.totalCharged,85);
+    assert.equal(booked.membership_terms.alterations,3);
     assert.equal(checkout.booking.designer_id, otherDesigner.id);
     assert.equal(booked.design_id, designId);
     assert.equal(expect(await api("/p2p-bookings/create", creator.token, { ...designBooking, client_request_id: crypto.randomUUID(), receiver_id: designer.id }), 409).code, "DESIGN_UNAVAILABLE");

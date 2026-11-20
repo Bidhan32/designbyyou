@@ -357,7 +357,8 @@ export default function FashionEditorBookingModal({
                 <p className="text-xs font-semibold text-action">Private design booking created</p>
                 <p className="mt-1 break-all font-mono text-xs text-muted">Booking #{booking?.id}</p>
                 <div className="mt-3 flex justify-between text-sm"><span className="text-muted">Designer price</span><span>{formatDollars(paymentSummary?.baseAmount)}</span></div>
-                <div className="mt-1 flex justify-between text-sm"><span className="text-muted">Connection fee</span><span>{formatDollars(paymentSummary?.connectionFee)}</span></div>
+                {paymentSummary?.discount > 0 && <div className="mt-1 flex justify-between text-sm"><span>Membership discount</span><span>−{formatDollars(paymentSummary.discount)}</span></div>}
+                <div className="mt-1 flex justify-between text-sm"><span className="text-muted">Booking fee</span><span>{formatDollars(paymentSummary?.connectionFee)}</span></div>
                 <p className="mt-2 text-sm text-muted">{bookingRewardEstimate(paymentSummary?.baseAmount)}</p>
                 <div className="mt-2 flex justify-between border-t border-line pt-2 text-base font-bold"><span>Total charge</span><span>{formatDollars(paymentSummary?.totalCharged)}</span></div>
               </div>

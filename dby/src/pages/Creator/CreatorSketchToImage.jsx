@@ -1,3 +1,4 @@
+import ToolBookingAction from "../../components/ToolBookingAction";
 import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 "use strict";
 
@@ -306,6 +307,7 @@ export default function CreatorSketchToImage() {
               </div>
             </div>
             {job?.created_at && <p className="mt-3 text-xs text-muted">{niceDate(job.created_at)} · {job.fabric} · {job.generation_mode}</p>}
+            <ToolBookingAction tool="Sketch to Image" src={output} />
             {output && <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <button type="button" onClick={() => downloadImage(job)} disabled={downloadingId === job.id}
                 className="inline-flex min-h-9 items-center justify-center gap-2 rounded-md bg-subtle px-4 text-sm font-bold text-ink hover:bg-subtle disabled:opacity-60">

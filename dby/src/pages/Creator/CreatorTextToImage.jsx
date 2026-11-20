@@ -1,5 +1,6 @@
 "use strict";
 
+import ToolBookingAction from "../../components/ToolBookingAction";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { Link } from "react-router-dom";
@@ -907,6 +908,7 @@ export default function CreatorTextToImage() {
               </p>
             )}
 
+            <ToolBookingAction tool="Text to Image" src={resultUrl} />
             {/* Download and View Buttons */}
 
             {resultUrl && (

@@ -1,3 +1,4 @@
+import ToolBookingAction from "../../components/ToolBookingAction";
 import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 "use strict";
 
@@ -1668,6 +1669,7 @@ export default function CreatorCostumeExtractor() {
               RESULT CARDS
               =================================== */}
 
+          <ToolBookingAction key={job?.id} tool="Costume Extractor" views={displayViews.map(view => ({ label: view.label, src: results[view.key] }))} />
           {displayViews.length ? (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {displayViews.map((view) => (

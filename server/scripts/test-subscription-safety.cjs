@@ -188,3 +188,21 @@ test("cleanup refuses a foreign or live portal configuration without updating it
     await assert.rejects(cleanupRecordedPortalConfiguration(stripe, { resource: "bpc_test" }, { run: "run-test" }));
   }
 });
+
+test("live monthly offers require matching live prices and key", async () => {
+  const env = {STRIPE_SECRET_KEY:"sk_live_offline", CREATOR_SUBSCRIPTION_BASIC_LIVE_PRICE_ID:"price_live_basic", CREATOR_SUBSCRIPTION_PRO_LIVE_PRICE_ID:"price_live_pro"};
+  const previous = Object.fromEntries(Object.keys(env).map(name => [name,process.env[name]]));
+  Object.assign(process.env,env);
+  try {
+    const s = setup();
+    const template = await s.stripe.prices.retrieve("price_monthly");
+    s.stripe.prices.retrieve = async id => ({ ...template, id, livemode:true, unit_amount:id === "price_live_basic" ? 3000 : 6000 });
+    for (const plan of ["basic","pro"]) assert.equal((await checkout(s,plan)).statusCode,201);
+    s.stripe.prices.retrieve = async id => ({ ...template,id,livemode:false,unit_amount:3000 });
+    assert.equal((await checkout(s,"basic")).statusCode,503);
+  } finally {
+    for (const [name,value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[name]; else process.env[name] = value;
+    }
+  }
+});

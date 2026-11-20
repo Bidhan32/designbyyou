@@ -56,6 +56,10 @@ desktop.ini
 # Local development tools / generated test output
 server/stripe.exe
 server/tryon-response.json
+server/costume-*-from-api.png
+server/costume-*-response.json
+server/costume-extractor-output/
+server/test-costume.jpg
 
 # Local backup copies
 server/controllers/p2pBookingController.backup..js

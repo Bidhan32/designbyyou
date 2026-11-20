@@ -1,8 +1,30 @@
-// The first rollout uses Stripe sandbox prices exclusively.
-function sandboxMembershipTier(priceId, liveMode) {
-  if (liveMode !== false || !priceId?.startsWith("price_")) return null;
-  const basic = process.env.CREATOR_SUBSCRIPTION_BASIC_TEST_PRICE_ID;
-  const pro = process.env.CREATOR_SUBSCRIPTION_PRO_TEST_PRICE_ID;
+function stripeMode() {
+  const key = process.env.STRIPE_SECRET_KEY || "";
+  if (/^(sk|rk)_live_/.test(key)) return true;
+  if (/^(sk|rk)_test_/.test(key)) return false;
+  return null;
+}
+
+function membershipPriceId(plan, liveMode = stripeMode()) {
+  if (typeof liveMode !== "boolean" || !["basic","pro"].includes(plan)) return null;
+  return process.env[`CREATOR_SUBSCRIPTION_${plan.toUpperCase()}_${liveMode ? "LIVE" : "TEST"}_PRICE_ID`]?.trim() || null;
+}
+
+function getPlanFromPriceId(priceId) {
+  if (typeof priceId !== "string" || !priceId.startsWith("price_")) return null;
+  for (const plan of ["monthly", "quarterly", "yearly"]) {
+    const prefix = "CREATOR_SUBSCRIPTION_" + plan.toUpperCase();
+    const current = process.env[prefix + "_PRICE_ID"]?.trim();
+    const previous = (process.env[prefix + "_LEGACY_PRICE_IDS"] || "").split(",");
+    if (current === priceId || previous.some(id => id.trim() === priceId)) return plan;
+  }
+  return null;
+}
+
+function membershipTier(priceId, liveMode) {
+  if (typeof liveMode !== "boolean" || liveMode !== stripeMode() || !priceId?.startsWith("price_")) return null;
+  const basic = membershipPriceId("basic", liveMode);
+  const pro = membershipPriceId("pro", liveMode);
   if (basic === pro && priceId === basic) throw new Error("Membership tiers need distinct Stripe prices.");
   if (priceId === basic) return "basic";
   if (priceId === pro) return "pro";
@@ -10,14 +32,14 @@ function sandboxMembershipTier(priceId, liveMode) {
 }
 
 async function grantInvoiceCredits(client, invoice, owner, lines) {
-  if (invoice.livemode !== false || invoice.status !== "paid" || !(invoice.amount_paid > 0) ||
+  if (typeof invoice.livemode !== "boolean" || invoice.livemode !== stripeMode() || invoice.status !== "paid" || !(invoice.amount_paid > 0) ||
       !["subscription_create", "subscription_cycle"].includes(invoice.billing_reason)) return;
   const customerId = invoice.customer?.id || invoice.customer;
   if (customerId !== owner.customerId) throw new Error("Invoice customer differs from subscription customer.");
   const grants = [];
   for (const line of lines) {
     const price = line.pricing?.price_details?.price || line.price;
-    const tier = sandboxMembershipTier(price?.id || price, invoice.livemode);
+    const tier = membershipTier(price?.id || price, invoice.livemode);
     if (!tier) continue;
     const parent = line.parent?.subscription_item_details;
     if (!(parent || line.type === "subscription") || (parent?.proration ?? line.proration) !== false) continue;
@@ -36,4 +58,4 @@ async function grantInvoiceCredits(client, invoice, owner, lines) {
   );
 }
 
-module.exports = { sandboxMembershipTier, grantInvoiceCredits };
+module.exports = { getPlanFromPriceId, stripeMode, membershipPriceId, membershipTier, grantInvoiceCredits };

@@ -1,3 +1,4 @@
+import ToolBookingAction from "../../components/ToolBookingAction";
 import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 import BookingNextStep from "../../components/BookingNextStep";
 import { deadlineMessage as getDeadlineMessage, canResumePayment, canCancelBooking, paymentLabel } from "../../components/bookingProgress";
@@ -485,6 +486,7 @@ export default function CreatorBookingDetail() {
 
   const [tryOnPreviewUrl, setTryOnPreviewUrl] = useState("");
 
+  const [referenceVersion, setReferenceVersion] = useState(0);
   const [tryOnResultImage, setTryOnResultImage] = useState("");
 
   const [tryOnLoading, setTryOnLoading] = useState(false);
@@ -1476,6 +1478,7 @@ export default function CreatorBookingDetail() {
                     </div>
                   </div>
 
+                  {booking.alterations_remaining != null && <p className="text-sm text-muted">Alterations remaining: {booking.alterations_remaining} of {booking.membership_terms.alterations}</p>}
                   {revisionOpen ? (
                     <form
                       onSubmit={handleRevisionSubmit}
@@ -1553,7 +1556,7 @@ export default function CreatorBookingDetail() {
                       <button
                         type="button"
                         onClick={() => setRevisionOpen(true)}
-                        disabled={Boolean(actionName)}
+                        disabled={Boolean(actionName) || booking.alterations_remaining === 0}
                         className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-canvas px-5 text-xs font-semibold tracking-normal text-action transition hover:bg-subtle disabled:opacity-50 dark:bg-subtle"
                       >
                         <RotateCcw size={15} />
@@ -1609,7 +1612,7 @@ export default function CreatorBookingDetail() {
                 {booking.brief_text || "No project brief was supplied."}
               </p>
 
-              <BookingDesignAttachment bookingId={bookingId} />
+              <BookingDesignAttachment key={referenceVersion} bookingId={bookingId} />
 
               {booking.revision_notes && (
                 <div className="mt-5 rounded-md border border-line bg-canvas p-4 dark:bg-subtle">
@@ -2383,6 +2386,7 @@ export default function CreatorBookingDetail() {
 
                 {tryOnResultImage ? (
                   <>
+                    <ToolBookingAction key={tryOnResultImage.slice(-64)} tool="Virtual Try-On" src={tryOnResultImage} bookingId={bookingId} onSaved={() => setReferenceVersion(v => v + 1)} />
                     <div className="mt-4 overflow-hidden rounded-md border border-line bg-subtle">
                       <img
                         src={tryOnResultImage}

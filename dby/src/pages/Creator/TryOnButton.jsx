@@ -33,7 +33,7 @@ async function garmentFile(url, signal) {
   }
 }
 
-function TryOnDialog({ imageUrl, renderSnapshot, onClose }) {
+function TryOnDialog({ imageUrl, renderSnapshot, bookingUrl, onClose }) {
   const dialog = useRef(null);
   const [snapshot, setSnapshot] = useState(undefined);
   const [garment, setGarment] = useState(undefined);
@@ -81,15 +81,15 @@ function TryOnDialog({ imageUrl, renderSnapshot, onClose }) {
       </div>}
       <Suspense fallback={<p role="status" className="p-4">Opening virtual try-on…</p>}>
         {garment === undefined ? <p role="status" className="p-4">Preparing garment image…</p> :
-          <CreatorVirtualTryOn embedded initialGarment={garment} />}
+          <CreatorVirtualTryOn embedded initialGarment={garment} bookingUrl={bookingUrl} />}
       </Suspense>
     </dialog>, document.body);
 }
 
-export default function TryOnButton({ imageUrl, renderSnapshot, className, disabled }) {
+export default function TryOnButton({ imageUrl, renderSnapshot, bookingUrl, className, disabled }) {
   const [open, setOpen] = useState(false);
   return <>
     <button type="button" aria-haspopup="dialog" disabled={disabled} className={className} onClick={() => setOpen(true)}>Virtual try-on</button>
-    {open && <TryOnDialog imageUrl={imageUrl} renderSnapshot={renderSnapshot} onClose={() => setOpen(false)} />}
+    {open && <TryOnDialog bookingUrl={bookingUrl} imageUrl={imageUrl} renderSnapshot={renderSnapshot} onClose={() => setOpen(false)} />}
   </>;
 }

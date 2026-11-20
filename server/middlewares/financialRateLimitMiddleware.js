@@ -395,6 +395,7 @@ Exports
 =========================================================*/
 
 module.exports = {
+  bookingReferenceLimiter: createFinancialLimiter({ windowMs: 15 * 60 * 1000, limit: 20 }),
   creatorWalletDepositLimiter,
 
   creatorWalletWithdrawalLimiter,

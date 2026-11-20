@@ -30,12 +30,19 @@ function Attachment({ bookingId }) {
     link.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
-  return <section className="mt-5 rounded-md border border-line p-4" aria-label="Attached design">
+  return <>{snapshot.tool_references?.map((reference, index) => <section key={index} className="mt-5 rounded-md border border-line p-4">
+    <h3 className="font-semibold">{reference.tool} reference</h3>
+    <div className="mt-2 flex flex-wrap gap-3">{reference.images.map(image => <figure key={image.label}>
+      <img src={image.src} alt={reference.tool + " " + image.label} className="max-h-96 max-w-full rounded object-contain" />
+      <figcaption className="text-xs text-muted">{image.label}</figcaption>
+    </figure>)}</div>
+  </section>)}
+  {snapshot.snapshot_data && <section className="mt-5 rounded-md border border-line p-4" aria-label="Attached design">
     <h3 className="font-semibold">Attached design</h3>
     <p className="mt-1 text-sm">{snapshot.design_title}</p>
     <p className="mt-1 text-xs text-muted">Version {snapshot.source_project_version}, saved when this booking was created. Visible only to you and the other participant.</p>
     {safePreview && <img src={safePreview} alt={snapshot.design_title || "Attached Fashion Editor design"} className="mt-4 max-h-96 w-full rounded-md bg-surface object-contain" />}
     <button type="button" onClick={download} className="mt-4 rounded-md border border-line px-4 py-2 text-sm font-semibold">Download design file</button>
     <p className="mt-2 text-xs text-muted">The file includes the saved layers and objects.</p>
-  </section>;
+  </section>}</>;
 }

@@ -1,3 +1,4 @@
+import ToolBookingAction from "../../components/ToolBookingAction";
 import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 "use strict";
 
@@ -614,6 +615,7 @@ export default function CreatorBackgroundRemover() {
               </div>
             )}
 
+            <ToolBookingAction tool="Background Remover" src={outputUrl} />
             {file && !processing && (
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
                 <p className="text-xs text-muted">

@@ -27,7 +27,15 @@ Context
 Helpers
 =========================================================*/
 
+function clearBookingDrafts() {
+  for (let i = sessionStorage.length - 1; i >= 0; i--) {
+    const key = sessionStorage.key(i);
+    if (key?.startsWith("booking-tool:")) sessionStorage.removeItem(key);
+  }
+}
+
 function clearStoredAuth() {
+  clearBookingDrafts();
   localStorage.removeItem("token");
 
   localStorage.removeItem("user");
@@ -52,7 +60,10 @@ export const AuthProvider = ({ children }) => {
   }, [user]);
   useEffect(() => {
     const sync = event => {
-      if (event.key === "token" || event.key === null) window.location.reload();
+      if (event.key === "token" || event.key === null) {
+        clearBookingDrafts();
+        window.location.reload();
+      }
     };
     window.addEventListener("storage", sync);
     return () => window.removeEventListener("storage", sync);
@@ -66,6 +77,7 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem("token");
 
     if (!token) {
+      clearBookingDrafts();
       setUser(null);
       setSessionError(null);
       setLoading(false);
@@ -76,6 +88,7 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     try {
       const currentUser = await requestSession(API, localStorage);
+      if (currentUser === null) clearBookingDrafts();
       if (currentUser !== undefined) setUser(currentUser);
       setSessionError(null);
     } catch (error) {
@@ -144,6 +157,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     setSessionError(null);
+    clearBookingDrafts();
     sessionStorage.removeItem("session-ended");
     setDeadline(null);
     localStorage.setItem("token", token);

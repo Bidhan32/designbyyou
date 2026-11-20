@@ -1,3 +1,4 @@
+import ToolBookingAction from "../../components/ToolBookingAction";
 import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 "use strict";
 
@@ -360,6 +361,11 @@ export default function CreatorMultiViewGenerator() {
                   <ViewCard title="Back" url={job.views?.back?.image_url} state={job.views?.back?.status} error={job.views?.back?.error_message} onOpen={() => openAsset(job, "back")} onDownload={() => openAsset(job, "back", true)} />
                 </div>
                 <p className="mt-3 text-xs text-muted">{dateLabel(job.created_at)} · {job.subject_type} · {job.generation_mode}</p>
+                {["completed", "partial"].includes(job.status) && <ToolBookingAction key={job.id} tool="Multi-View Generator" views={[
+                  { label: job.front_generated ? "Front" : "Front (original)", src: job.front?.image_url },
+                  { label: "Right Side", src: job.views?.side?.image_url },
+                  { label: "Back", src: job.views?.back?.image_url },
+                ]} />}
                 {job.front_generated && job.source?.image_url && <p className="mt-3 text-xs text-muted">Front is an AI-generated garment-only packshot. <button type="button" onClick={() => openOriginal(job)} className="font-semibold underline decoration-action underline-offset-2">View original upload</button> for comparison.</p>}
                 {job.status === "partial" && <p className="mt-3 text-xs text-action">Only some views completed. Existing results have been preserved. Review the failed view before starting a new set.</p>}
                 {progressError && <p role="status" className="mt-3 text-xs text-action">{progressError}</p>}

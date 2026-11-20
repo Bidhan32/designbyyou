@@ -1,3 +1,4 @@
+import ToolBookingAction from "../../components/ToolBookingAction";
 import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 "use strict";
 
@@ -74,7 +75,7 @@ function UploadField({ id, label, help, file, preview, disabled, onChange, input
   );
 }
 
-export default function CreatorVirtualTryOn({ initialGarment = null, embedded = false }) {
+export default function CreatorVirtualTryOn({ initialGarment = null, embedded = false, bookingUrl }) {
   const [person, setPerson] = useState(null);
   const [garment, setGarment] = useState(initialGarment);
   const [personUrl, setPersonUrl] = useState("");
@@ -352,6 +353,7 @@ export default function CreatorVirtualTryOn({ initialGarment = null, embedded = 
               )}
             </div>
             {job?.created_at && <p className="mt-3 text-xs text-muted">{dateLabel(job.created_at)} · {job.category} · {job.mode}</p>}
+            {job?.status === "completed" && <ToolBookingAction key={job.id} tool="Virtual Try-On" src={job.image_url} bookingUrl={bookingUrl} />}
             {job?.status === "completed" && <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <button type="button" onClick={() => openLink(job, true)} className="inline-flex min-h-9 items-center justify-center gap-2 rounded-md bg-subtle px-4 text-sm font-bold text-ink"><Download size={17} /> Download Image</button>
               <button type="button" onClick={() => openLink(job, false)} className="inline-flex min-h-9 items-center justify-center gap-2 rounded-md border border-line px-4 text-sm font-semibold"><ExternalLink size={17} /> View Full Image</button>

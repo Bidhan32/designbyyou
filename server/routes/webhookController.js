@@ -431,7 +431,7 @@ function getWorkflowType(event) {
 Provider Preparation
 =========================================================*/
 
-const { grantInvoiceCredits } = require("../services/membershipInvoiceCredits");
+const { grantInvoiceCredits, stripeMode } = require("../services/membershipInvoiceCredits");
 
 async function prepareSupportedEvent(event, workflowType) {
   if (!requiresOrderedCreatorSubscriptionProcessing(workflowType)) {
@@ -460,7 +460,7 @@ async function prepareSupportedEvent(event, workflowType) {
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
   let invoiceLines = eventObject?.lines?.data || [];
-  if (event.type === "invoice.paid" && eventObject.livemode === false && eventObject.lines?.has_more) {
+  if (event.type === "invoice.paid" && eventObject.lines?.has_more) {
     invoiceLines = [];
     for await (const line of stripe.invoices.listLineItems(eventObject.id, { limit: 100 })) {
       invoiceLines.push(line);
@@ -2144,7 +2144,7 @@ async function processSupportedEvent(
       return result;
     }
 
-    if (event.type === "invoice.paid" && subscription.livemode === false) {
+    if (event.type === "invoice.paid" && subscription.livemode === eventObject.livemode) {
       await grantInvoiceCredits(client, eventObject, result, preparedContext.invoiceLines);
     }
     return {
@@ -2398,6 +2398,11 @@ async function handleStripeWebhook(
   }
 
   const workflowType = getWorkflowType(event);
+  if (ORDERED_CREATOR_SUBSCRIPTION_WORKFLOWS.has(workflowType) &&
+      (event.account || typeof event.livemode !== "boolean" || event.livemode !== stripeMode() ||
+       event.data?.object?.livemode !== event.livemode)) {
+    return res.status(400).json({ message: "Subscription event account or mode is incorrect." });
+  }
 
   /*
   This branch now also safely handles obsolete designer

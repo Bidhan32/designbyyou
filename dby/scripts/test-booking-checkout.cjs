@@ -4,6 +4,7 @@ const { JSDOM } = require('jsdom');
 const esbuild = require('esbuild');
 const dom = new JSDOM('<div id="root"></div>', { url: 'https://dby.test/' });
 for (const name of ['window', 'document', 'HTMLElement', 'Event', 'MouseEvent']) globalThis[name] = dom.window[name];
+globalThis.sessionStorage = window.sessionStorage;
 window.scrollTo = () => {};
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const React = require('react');
@@ -19,7 +20,7 @@ globalThis.__checkout = {
     get: async url => ({ data: url.endsWith('/payment') ? {
       booking: { id, designer_id: 'designer', agreed_price: 100, brief_text: 'Test brief', status: 'pending' },
       designerName: 'Designer', clientSecret: 'pi_test_secret', paymentIntentStatus: status,
-      payment: { baseAmount: 100, connectionFee: 5, totalAmount: 105, currency: 'usd' },
+      payment: { baseAmount: 100, connectionFee: 5, totalCharged: 105, currency: 'usd' },
     } : { data: url.endsWith('/designers') ? [{ id: 'designer', full_name: 'Linen Studio' }] : [] } }),
     post: async url => {
       assert.equal(url, '/p2p-bookings/verify-escrow');
@@ -54,13 +55,20 @@ globalThis.__checkout = {
     root = createRoot(document.getElementById('root'));
     await act(async () => root.render(React.createElement(MemoryRouter, { initialEntries: [entry] }, React.createElement(Page))));
   }
+  sessionStorage.setItem("booking-tool:creator", JSON.stringify({ id: "draft", reference: {
+    tool: "Sketch to Image", images: [{ label: "Result", src: "data:image/webp;base64,AAAA" }]
+  } }));
+  await mount("/creator/bookings/new?tool_draft=draft");
+  assert.match(document.body.textContent, /Sketch to Image reference for your designer/);
+  await mount("/creator/bookings/new?tool_draft=expired");
+  assert.match(document.body.textContent, /This reference is unavailable/);
   const submit = () => act(async () => document.querySelector('[role="dialog"] form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
   await mount(`/creator/bookings/new?designer_id=designer&design_id=${id}&design_title=Linen%20shirt`);
   assert.equal(document.querySelector('h1').textContent, 'Linen shirt');
   assert.match(document.querySelector('h1').parentElement.textContent, /Booking with Linen Studio/);
   assert.equal(document.querySelector('aside input'), null);
   await mount();
-  assert.match(document.querySelector('[role="dialog"]').textContent, /Earn 20 points when this \$100(?:\.00)? booking is completed/);
+  assert.match(document.querySelector('[role="dialog"]').textContent, /Total to pay[\s\S]*\$105\.00/);
   await submit();
   assert.equal(confirms, 1);
   assert.equal(document.querySelector('[aria-label="Close checkout"]').disabled, true);

@@ -1,5 +1,6 @@
 "use strict";
 
+const { sanitizeReference } = require("../services/bookingToolReference");
 const Stripe = require("stripe");
 const db = require("../config/db");
 
@@ -7,19 +8,8 @@ const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null;
 
-const DEFAULT_CREATOR_CONNECTION_FEE_RATE = 0.1;
+const { bookingTerms } = require("../services/bookingMembership");
 const DEFAULT_BOOKING_TIMEZONE = "Asia/Kathmandu";
-
-function readEnvironmentRate(name, fallback) {
-  const value = Number(process.env[name]);
-
-  return Number.isFinite(value) && value >= 0 && value <= 1 ? value : fallback;
-}
-
-const CREATOR_CONNECTION_FEE_RATE = readEnvironmentRate(
-  "P2P_CONNECTION_FEE_RATE",
-  DEFAULT_CREATOR_CONNECTION_FEE_RATE,
-);
 
 const BOOKING_TIMEZONE = String(
   process.env.BOOKING_TIMEZONE || DEFAULT_BOOKING_TIMEZONE,
@@ -257,7 +247,17 @@ async function awardCreatorRewardForCompletedBooking(client, booking) {
     );
   }
 
-  const rewardPoints = calculateCreatorRewardPoints(booking.agreed_price);
+  let rewardPoints;
+  let remainder;
+  if (booking.membership_terms) {
+    const { rows: [creator] } = await client.query(
+      "SELECT booking_reward_remainder FROM users WHERE id=$1 FOR UPDATE", [booking.creator_id]);
+    const units = creator.booking_reward_remainder + serviceCents(booking) * booking.membership_terms.reward_rate;
+    rewardPoints = Math.floor(units / 10000);
+    remainder = units % 10000;
+  } else {
+    rewardPoints = calculateCreatorRewardPoints(booking.agreed_price);
+  }
 
   if (!Number.isInteger(rewardPoints) || rewardPoints < 0) {
     throw new Error(
@@ -312,9 +312,9 @@ async function awardCreatorRewardForCompletedBooking(client, booking) {
   }
 
   /*
-  A booking below $10 earns zero points, but it is still marked
-  as processed so it cannot be reconsidered or awarded later.
+  Persist fractional earnings even when no whole point is due yet.
   */
+  if (remainder !== undefined) await client.query("UPDATE users SET booking_reward_remainder=$2 WHERE id=$1", [booking.creator_id, remainder]);
   if (rewardPoints === 0) {
     return {
       awarded: true,
@@ -693,6 +693,10 @@ function refundStatusMessage(status) {
   }
 }
 
+function serviceCents(booking) {
+  return moneyToCents(booking.agreed_price) - (booking.membership_terms?.discount_cents ?? 0);
+}
+
 function buildPaymentSummary(booking, paymentIntent) {
   const metadata = paymentIntent?.metadata || {};
 
@@ -704,16 +708,17 @@ function buildPaymentSummary(booking, paymentIntent) {
     Number(metadata.connection_fee_cents),
   )
     ? Number(metadata.connection_fee_cents)
-    : 0;
+    : (booking.membership_terms?.fee_cents ?? 0);
 
   const totalCents = Number.isInteger(Number(metadata.total_charge_cents))
     ? Number(metadata.total_charge_cents)
-    : baseCents + connectionFeeCents;
+    : serviceCents(booking) + connectionFeeCents;
 
   return {
     currency: paymentIntent?.currency || "usd",
 
     baseAmount: centsToMoney(baseCents),
+    discount: centsToMoney(booking.membership_terms?.discount_cents ?? 0),
 
     connectionFee: centsToMoney(connectionFeeCents),
 
@@ -762,6 +767,15 @@ async function returnExistingBookingResponse(res, booking, context) {
         Number(savedSnapshot.source_project_version) === context.editorProjectVersion
       )
     : !savedSnapshot;
+  const referenceMatch = await db.query(
+    `SELECT (stored IS NOT DISTINCT FROM $2::jsonb OR stored = $3::jsonb) AS matches
+       FROM (SELECT (SELECT reference FROM public.booking_tool_references
+                      WHERE booking_id = $1 AND kind = 'initial') AS stored) AS existing`,
+    [booking.id, context.toolReference ? JSON.stringify(context.toolReference) : null,
+     context.originalReference ? JSON.stringify(context.originalReference) : null]);
+  if (!referenceMatch.rows[0].matches) {
+    return sendError(res, 409, "The booking request already has a different tool reference.", "CLIENT_REQUEST_ID_REUSED");
+  }
   if (!sameEditorAttachment) {
     return sendError(res, 409,
       "This client_request_id already belongs to a booking with a different Editor design snapshot.",
@@ -883,7 +897,7 @@ async function reversePendingEscrowIfNecessary(client, booking) {
     return false;
   }
 
-  const amount = centsToMoney(moneyToCents(booking.agreed_price));
+  const amount = centsToMoney(serviceCents(booking));
 
   const result = await client.query(
     `
@@ -919,7 +933,7 @@ async function reversePendingEscrowIfNecessary(client, booking) {
 async function insertRefundTransaction(client, booking, refundObject) {
   const refundedCents = Number(refundObject.amount || 0);
 
-  const baseCents = moneyToCents(booking.agreed_price);
+  const baseCents = serviceCents(booking);
 
   const connectionFeeCents = Math.max(0, refundedCents - baseCents);
 
@@ -1176,7 +1190,7 @@ async function processRefundStateInternal(refundObject, client) {
     };
   }
 
-  if (refundCents < moneyToCents(booking.agreed_price)) {
+  if (booking.membership_terms ? refundCents !== serviceCents(booking) + booking.membership_terms.fee_cents : refundCents < moneyToCents(booking.agreed_price)) {
     return {
       success: false,
       reason: "The refund is lower than the booking's base amount.",
@@ -2058,7 +2072,15 @@ exports.createP2PBooking = async (req, res) => {
 
   const bookingId = clientRequestId;
 
+  const toolReference = body.tool_reference == null ? null : await sanitizeReference(body.tool_reference);
+  if (toolReference === false) {
+    return sendError(res, 400, "The tool reference is invalid. Return to the result and attach it again.");
+  }
+
   const requestContext = {
+    toolReference,
+    // Older bookings stored the validated preview before server-side re-encoding.
+    originalReference: body.tool_reference,
     creatorId,
     receiverId,
     designId,
@@ -2142,6 +2164,7 @@ exports.createP2PBooking = async (req, res) => {
               approval_status,
               is_email_verified,
 
+              stripe_subscription_price_id,
               subscription_tier,
               subscription_status,
               subscription_active_until,
@@ -2277,11 +2300,9 @@ exports.createP2PBooking = async (req, res) => {
 
     const creatorSubscribed = isActiveSubscription(creator);
 
-    const connectionFeeCents = creatorSubscribed
-      ? 0
-      : Math.round(price.cents * CREATOR_CONNECTION_FEE_RATE);
-
-    const totalChargeCents = price.cents + connectionFeeCents;
+    const terms = await bookingTerms(db, creator, creatorSubscribed, price.cents);
+    const connectionFeeCents = terms.fee_cents;
+    const totalChargeCents = price.cents - terms.discount_cents + connectionFeeCents;
 
     /*
       Create Stripe PaymentIntent only AFTER initial
@@ -2312,6 +2333,7 @@ exports.createP2PBooking = async (req, res) => {
           booking_type: bookingType,
 
           base_price_cents: String(price.cents),
+          discount_cents: String(terms.discount_cents),
 
           connection_fee_cents: String(connectionFeeCents),
 
@@ -2583,6 +2605,7 @@ exports.createP2PBooking = async (req, res) => {
                   scheduled_at,
                   stripe_payment_intent_id,
                   client_request_id,
+                  membership_terms,
                   created_at,
                   updated_at
                 )
@@ -2601,6 +2624,7 @@ exports.createP2PBooking = async (req, res) => {
                   $10,
                   $11,
                   $12,
+                  $13,
                   NOW(),
                   NOW()
                 )
@@ -2620,11 +2644,17 @@ exports.createP2PBooking = async (req, res) => {
             scheduledAt?.toISOString() || null,
             paymentIntent.id,
             clientRequestId,
+            terms,
           ],
         );
 
         // Create the immutable booking-specific design copy atomically with the booking.
         // No Showcase publication and no public preview are created here.
+        if (toolReference) {
+          await client.query(
+            "INSERT INTO public.booking_tool_references (booking_id, kind, reference) VALUES ($1, 'initial', $2::jsonb)",
+            [bookingId, JSON.stringify(toolReference)]);
+        }
         if (editorSnapshotSource) {
           await client.query(
             `INSERT INTO public.booking_design_snapshots
@@ -2677,12 +2707,13 @@ exports.createP2PBooking = async (req, res) => {
             currency: "usd",
 
             baseAmount: price.amount,
+            discount: centsToMoney(terms.discount_cents),
 
             connectionFee: centsToMoney(connectionFeeCents),
 
             totalCharged: centsToMoney(totalChargeCents),
 
-            connectionFeeWaived: creatorSubscribed,
+            connectionFeeWaived: connectionFeeCents === 0,
           },
         });
       }
@@ -2848,7 +2879,11 @@ exports.processEscrowLockInternal = async (paymentIntentObject, client) => {
     };
   }
 
-  const expectedTotalCents = baseCents + connectionFeeCents;
+  if (booking.membership_terms && (connectionFeeCents !== booking.membership_terms.fee_cents ||
+      Number(metadata.discount_cents) !== booking.membership_terms.discount_cents)) {
+    return { success: false, reason: "Payment terms differ from the booking quote." };
+  }
+  const expectedTotalCents = serviceCents(booking) + connectionFeeCents;
 
   if (metadataBaseCents !== baseCents) {
     return {
@@ -2922,7 +2957,7 @@ exports.processEscrowLockInternal = async (paymentIntentObject, client) => {
             EXCLUDED
               .pending_escrow_balance
       `,
-    [booking.designer_id, centsToMoney(baseCents)],
+    [booking.designer_id, centsToMoney(serviceCents(booking))],
   );
 
   await client.query(
@@ -2970,7 +3005,7 @@ exports.processEscrowLockInternal = async (paymentIntentObject, client) => {
       bookingId,
       centsToMoney(receivedCents),
       centsToMoney(connectionFeeCents),
-      centsToMoney(baseCents),
+      centsToMoney(serviceCents(booking)),
       paymentIntentId,
       String(paymentIntentObject.currency || "usd").toLowerCase(),
     ],
@@ -3112,6 +3147,26 @@ exports.verifyEscrowPayment = async (req, res) => {
  * Private: booking Creator or assigned Designer only; never public Showcase.
  * Source project changes/deletion do not change this booking's snapshot.
  */
+exports.saveBookingTryOnReference = async (req, res) => {
+  const bookingId = req.params.id;
+  const creatorId = getAuthenticatedUserId(req);
+  if (!isUuid(bookingId) || req.body?.reference?.tool !== "Virtual Try-On") {
+    return sendError(res, 400, "A valid booking and try-on reference are required.");
+  }
+  const reference = await sanitizeReference(req.body.reference);
+  if (!reference) {
+    return sendError(res, 400, "A valid booking and try-on reference are required.");
+  }
+  const result = await db.query(
+    `INSERT INTO public.booking_tool_references (booking_id, kind, reference)
+     SELECT id, 'booking_try_on', $3::jsonb FROM public.bookings
+     WHERE id = $1 AND creator_id = $2 AND status IN ('funded','progress','review_prototype','final_production','review_final') FOR UPDATE
+     ON CONFLICT (booking_id, kind) DO UPDATE SET reference = EXCLUDED.reference
+     RETURNING booking_id`, [bookingId, creatorId, JSON.stringify(reference)]);
+  if (!result.rowCount) return sendError(res, 404, "This booking is unavailable for updates.");
+  return res.sendStatus(204);
+};
+
 exports.getBookingDesignSnapshot = async (req, res) => {
   const userId = getAuthenticatedUserId(req);
   const bookingId = String(req.params?.id || "").trim();
@@ -3127,14 +3182,15 @@ exports.getBookingDesignSnapshot = async (req, res) => {
     const result = await db.query(
       `SELECT s.id, s.booking_id, s.design_title, s.snapshot_data,
               s.source_project_version, s.source_schema_version, s.created_at
-         FROM public.booking_design_snapshots s
-         JOIN public.bookings b ON b.id = s.booking_id
+              , (SELECT jsonb_agg(r.reference ORDER BY r.kind DESC)
+                   FROM public.booking_tool_references r WHERE r.booking_id = b.id) AS tool_references
+         FROM public.bookings b LEFT JOIN public.booking_design_snapshots s ON b.id = s.booking_id
          WHERE b.id = $1::uuid
            AND (b.creator_id = $2::uuid OR b.designer_id = $2::uuid)
          LIMIT 1`,
       [bookingId, userId],
     );
-    if (result.rows.length === 0) {
+    if (!result.rows[0]?.id && !result.rows[0]?.tool_references) {
       // Do not disclose whether an unrelated booking or private snapshot exists.
       return sendError(res, 404, "The booking design snapshot was not found.",
         "BOOKING_DESIGN_NOT_FOUND");
@@ -3158,6 +3214,10 @@ exports.getUnifiedPeerPipeline = async (req, res) => {
       `
             SELECT
               b.*,
+              CASE WHEN b.membership_terms IS NOT NULL THEN greatest(0,
+                (b.membership_terms->>'alterations')::int -
+                (SELECT count(*)::int FROM project_revisions r WHERE r.booking_id=b.id))
+              END AS alterations_remaining,
 
               creator.full_name
                 AS sender_name,
@@ -4068,6 +4128,14 @@ exports.requestRevision = async (req, res) => {
       );
     }
 
+    if (booking.membership_terms) {
+      const { rows: [usage] } = await client.query("SELECT count(*)::int AS used FROM project_revisions WHERE booking_id=$1", [booking.id]);
+      if (usage.used >= booking.membership_terms.alterations) {
+        await rollbackQuietly(client);
+        return sendError(res, 409, "You have used all alterations included with this booking.", "ALTERATION_LIMIT_REACHED");
+      }
+    }
+
     const updated = await client.query(
       `
             UPDATE bookings
@@ -4272,7 +4340,7 @@ exports.releaseP2PPayout = async (req, res) => {
     }
 
     /*
-    The Designer receives the tier commission.
+    The Designer receives the tier commission on the original agreed price.
 
     Example:
     $100 Silver booking
@@ -4281,9 +4349,9 @@ exports.releaseP2PPayout = async (req, res) => {
     */
     const designerCommissionCents = Math.round(grossCents * commissionRate);
 
-    const platformRetainedCents = grossCents - designerCommissionCents;
+    const platformRetainedCents = serviceCents(booking) - designerCommissionCents;
 
-    const grossAmount = centsToMoney(grossCents);
+    const grossAmount = centsToMoney(serviceCents(booking));
 
     const designerCommissionAmount = centsToMoney(designerCommissionCents);
 
@@ -4294,7 +4362,7 @@ exports.releaseP2PPayout = async (req, res) => {
 
     gross_amount
     =
-    booking base price
+    discounted service price
 
     platform_fee_deducted
     =
@@ -4304,7 +4372,8 @@ exports.releaseP2PPayout = async (req, res) => {
     =
     Designer commission credited to the internal wallet
     */
-    const platformFee = platformRetainedAmount;
+    const platformFee = Math.max(0, platformRetainedAmount);
+    const platformContribution = Math.max(0, -platformRetainedAmount);
 
     const netAmount = designerCommissionAmount;
 
@@ -4413,6 +4482,7 @@ exports.releaseP2PPayout = async (req, res) => {
             reference_id,
             gross_amount,
             platform_fee_deducted,
+            platform_contribution,
             net_amount,
             transaction_type,
             stripe_payment_intent_id,
@@ -4427,6 +4497,7 @@ exports.releaseP2PPayout = async (req, res) => {
             $3,
             $4,
             $5,
+            $7,
             $6,
             'escrow_release',
             NULL,
@@ -4454,6 +4525,7 @@ exports.releaseP2PPayout = async (req, res) => {
         grossAmount,
         platformFee,
         netAmount,
+        platformContribution,
       ],
     );
 
@@ -4477,7 +4549,8 @@ exports.releaseP2PPayout = async (req, res) => {
         /*
         Backward-compatible accounting fields.
         */
-        platformFee: platformRetainedAmount,
+        platformFee,
+        platformContribution,
 
         netAmount: designerCommissionAmount,
 

@@ -1,3 +1,4 @@
+import ToolBookingAction from "../../components/ToolBookingAction";
 import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 "use strict";
 
@@ -535,6 +536,7 @@ export default function CreatorPatternExtractor() {
               <button type="button" onClick={clearImage} className="inline-flex min-h-9 items-center gap-2 rounded-md border border-line px-3 text-xs font-semibold text-action"><Trash2 size={14}/> Clear</button>
             </div>}
           </div>
+          <ToolBookingAction tool="Pattern Extractor" src={image} />
           {notice && <div role="status" className="mb-4 flex items-center gap-2 rounded-md border border-line bg-subtle p-3 text-xs"><CheckCircle2 size={16}/><span>{notice}</span></div>}
           <div className="overflow-hidden rounded-md border border-line bg-surface">
             <div className="flex items-center justify-between border-b border-line px-4 py-3">

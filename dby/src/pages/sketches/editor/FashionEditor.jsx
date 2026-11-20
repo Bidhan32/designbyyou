@@ -1,3 +1,4 @@
+import ToolBookingAction from "../../../components/ToolBookingAction";
 import CreatorCreditBalance from "../../../components/CreatorCreditBalance";
 /*
 =========================================================
@@ -13560,6 +13561,7 @@ function FashionEditor() {
                       </dl>
                     </div>
 
+                    {signedInUser?.role === "creator" && <ToolBookingAction tool="Fashion Editor" src={aiFashionResult.imageUrl} />}
                     {signedInUser?.role === "creator" && aiFashionResult.imageUrl && <TryOnButton imageUrl={aiFashionResult.imageUrl}
                       className="min-h-9 rounded-md border border-line bg-surface px-4 text-sm font-semibold text-ink hover:bg-subtle" />}
                     <button
