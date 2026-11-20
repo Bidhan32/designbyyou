@@ -491,6 +491,31 @@ function getDirectionAmountClasses(direction) {
 Subscription Helpers
 =========================================================*/
 
+const membershipCardDetails = {
+  basic: {
+    description: "For creators exploring ideas and booking custom design work.",
+    benefits: [
+      "1,500 AI credits each month",
+      "10% of unused credits roll into the next month for AI tools",
+      "Booking connection fee waived",
+      "5% off eligible booking design charges",
+      "3 reward points per $100 spent on eligible bookings",
+      "2 alterations per booking",
+    ],
+  },
+  pro: {
+    description: "For frequent design work with more generations and revisions.",
+    benefits: [
+      "4,500 AI credits each month",
+      "10% of unused credits roll into the next month for AI tools",
+      "Booking connection fee waived",
+      "15% off eligible booking design charges",
+      "5 reward points per $100 spent on eligible bookings",
+      "3 alterations per booking",
+    ],
+  },
+};
+
 function getSubscriptionPlanLabel(plan) {
   switch (plan) {
     case "basic":
@@ -1831,10 +1856,10 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
 
           <section
             id="subscription" aria-label="Subscription"
-            className="mb-12 scroll-mt-20 overflow-hidden rounded-md border border-line bg-surface"
+            className="mb-12 scroll-mt-24 overflow-hidden rounded-2xl border border-line bg-surface"
           >
             <div
-              className="relative border-b border-line bg-surface p-4"
+              className="relative border-b border-line bg-subtle p-6 sm:p-8"
             >
               <Crown
                 size={130}
@@ -1853,7 +1878,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   </p>
 
                   <h2
-                    className="mt-2 font-sans text-3xl"
+                    className="mt-2 font-serif text-4xl tracking-tight"
                   >
                     Subscription
                   </h2>
@@ -1861,7 +1886,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                   <p
                     className="mt-3 max-w-xl text-xs leading-6 text-muted"
                   >
-                    View your plan and billing details. Active memberships waive the connection fee on bookings.
+                    View your plan, compare creator benefits and manage billing.
                   </p>
                 </div>
 
@@ -1925,7 +1950,7 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
             </div>
 
             <div
-              className="p-4"
+              className="p-4 sm:p-6"
             >
               {subscriptionError && (
                 <div
@@ -1968,20 +1993,30 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
               )}
 
               {subscription?.signups_enabled && (
-                <div className="mb-3 divide-y divide-line rounded-md border border-line">
-                  {subscription.offers?.length ? subscription.offers.map(offer => (
-                    <div key={offer.plan} className="flex flex-wrap items-center justify-between gap-3 p-3">
+                <div className="mb-3 grid gap-5 md:grid-cols-2">
+                  {subscription.offers?.length ? subscription.offers.map(offer => {
+                    const details = membershipCardDetails[offer.plan];
+                    return (
+                    <article key={offer.plan} className={`flex flex-col rounded-xl border border-line border-t-4 bg-surface p-6 sm:p-8 ${offer.plan === "pro" ? "border-t-[#547566]" : "border-t-[#b0966e]"}`}>
                       <div>
-                        <h3 className="text-sm font-semibold">{getSubscriptionPlanLabel(offer.plan)}</h3>
-                        <p className="text-sm text-muted">{new Intl.NumberFormat(undefined, { style: "currency", currency: offer.currency, currencyDisplay: "code" }).format(offer.amount)} every {{ basic: "month", pro: "month", monthly: "month", quarterly: "3 months", yearly: "year" }[offer.plan]}</p>
+                        <h3 className="font-serif text-3xl">{getSubscriptionPlanLabel(offer.plan)}</h3>
+                        {details && <p className="mt-2 text-sm leading-6 text-muted">{details.description}</p>}
+                        <p className="my-5 flex flex-wrap items-baseline gap-2">
+                          <strong className="text-3xl font-semibold tracking-tight">{new Intl.NumberFormat(undefined, { style: "currency", currency: offer.currency, maximumFractionDigits: 2, minimumFractionDigits: 0 }).format(offer.amount)}</strong>
+                          <span className="text-sm text-muted">{offer.currency} / {{ basic: "month", pro: "month", monthly: "month", quarterly: "3 months", yearly: "year" }[offer.plan]}</span>
+                        </p>
+                        {details && <ul className="mb-6 space-y-3 border-t border-line pt-5">
+                          {details.benefits.map(benefit => <li key={benefit} className="flex items-start gap-3 text-sm"><CheckCircle2 size={16} aria-hidden="true" className="mt-0.5 shrink-0" />{benefit}</li>)}
+                        </ul>}
                       </div>
                       <button type="button" disabled={Boolean(checkoutPlanLoading)} onClick={() => handleSubscribe(offer)}
                         aria-label={`Subscribe to the ${offer.plan} plan`}
-                        className="h-9 rounded-md bg-action px-3 text-sm font-semibold text-on-action disabled:opacity-50">
+                        className="mt-auto min-h-11 rounded-lg bg-action px-4 text-sm font-semibold text-on-action disabled:opacity-50">
                         {checkoutPlanLoading === offer.plan ? "Opening checkout..." : "Subscribe"}
                       </button>
-                    </div>
-                  )) : <p className="p-3 text-sm">Subscription prices are unavailable. <button type="button" className="underline" onClick={() => fetchSubscription({ refresh: true })}>Retry</button></p>}
+                    </article>
+                    );
+                  }) : <p className="p-3 text-sm">Subscription prices are unavailable. <button type="button" className="underline" onClick={() => fetchSubscription({ refresh: true })}>Retry</button></p>}
                 </div>
               )}
               {subscription && (

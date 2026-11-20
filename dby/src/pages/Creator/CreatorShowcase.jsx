@@ -1241,12 +1241,12 @@ export default function CreatorShowcase({ audience = "creator" }) {
 
       <div
         className="
-          relative z-10 w-full max-w-none pt-6
+          relative z-10 mx-auto max-w-[1440px] px-4 pt-6 sm:px-6 md:px-10 lg:px-12
         "
       >
         <section
           className="
-            grid w-full items-center overflow-hidden border-y border-line bg-surface sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]
+            grid overflow-hidden rounded-2xl bg-[#21352f] text-white md:grid-cols-[1.1fr_1fr]
           "
         >
           {/*===============================================
@@ -1262,6 +1262,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
               existing design/fallback Hero
           ===============================================*/}
 
+          <div className="relative h-52 overflow-hidden sm:h-64 md:col-start-2 md:row-start-1 md:h-auto md:min-h-80">
           {heroVideoActive ? (
             <video
               key={heroSettings.videoUrl}
@@ -1275,7 +1276,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
               aria-hidden="true"
               onError={() => setHeroVideoFailed(true)}
               className="
-                h-32 w-full object-cover sm:h-40
+                absolute inset-0 h-full w-full object-cover
               "
             />
           ) : (
@@ -1285,15 +1286,16 @@ export default function CreatorShowcase({ audience = "creator" }) {
               alt=""
               onError={() => setHeroImageFailed(true)}
               className="
-                h-32 w-full object-cover sm:h-40
+                absolute inset-0 h-full w-full object-cover
               "
             />
           )}
 
-          <div className="relative p-4">
-            <h1 className="text-2xl font-semibold tracking-tight">Design showcase</h1>
-            <p className="mt-1 text-sm text-muted">{isCreator ? "Browse designs and book their designers for custom work." : "Browse published designs and share your work."}</p>
-            <div className="mt-4 flex flex-wrap gap-2">
+          </div>
+          <div className="flex flex-col justify-center p-6 sm:p-9 md:col-start-1 md:row-start-1 lg:p-12">
+            <h1 className="font-serif text-4xl leading-tight tracking-tight sm:text-5xl lg:text-6xl">Design showcase</h1>
+            <p className="mt-3 max-w-sm text-base leading-relaxed text-[#dae6dc]">{isCreator ? "Browse designs and book their designers for custom work." : "Browse published designs and share your work."}</p>
+            <div className="mt-6 flex flex-wrap gap-3">
               <button
                 type="button"
                 onClick={() =>
@@ -1302,7 +1304,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
                   })
                 }
                 className="
-                  inline-flex h-9 items-center gap-2 rounded-md bg-action px-3 text-sm font-semibold text-on-action"
+                  inline-flex min-h-11 items-center gap-2 rounded-full bg-[#f6f2e8] px-5 text-sm font-semibold text-[#21352f] hover:bg-white"
               >
                 Explore Designs
                 <ArrowRight size={14} />
@@ -1312,7 +1314,7 @@ export default function CreatorShowcase({ audience = "creator" }) {
                 type="button"
                 onClick={() => navigate(createRoute)}
                 className="
-                  inline-flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm font-semibold hover:bg-subtle"
+                  inline-flex min-h-11 items-center gap-2 rounded-full border border-white/50 px-5 text-sm font-semibold hover:bg-white/10"
               >
                 <PencilRuler size={14} />
                 {isCreator ? "Create Your Own" : "Share Your Design"}
@@ -1320,11 +1322,11 @@ export default function CreatorShowcase({ audience = "creator" }) {
             </div>
 
             {isCreator && (
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-line pt-3">
-                <p className="text-sm text-muted">Active members pay no booking connection fee.</p>
+              <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-white/25 pt-3">
+                <p className="text-sm text-[#dae6dc]">Paid plans waive the booking connection fee.</p>
                 <Link
                   to="/creator/wallet#subscription"
-                  className="inline-flex min-h-8 items-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-medium text-ink hover:bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2"
+                  className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold underline decoration-white/50 underline-offset-4 hover:decoration-white"
                 >
                   View subscription
                   <ChevronRight size={16} aria-hidden="true" />
