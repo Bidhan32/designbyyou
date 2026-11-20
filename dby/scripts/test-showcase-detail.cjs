@@ -29,6 +29,10 @@ function Probe() { location = useLocation(); return null; }
     bundle: true, write: false, platform: 'node', format: 'cjs', packages: 'external', jsx: 'automatic', loader: { '.css': 'empty' },
     define: { 'import.meta.env.DEV': 'false' }, plugins: [{ name: 'detail-services', setup(build) {
       build.onResolve({ filter: /api\/axios$/ }, () => ({ path: 'api', namespace: 'mock' }));
+      build.onResolve({ filter: /AuthContext\.helpers\.js$/ }, () => ({ path: 'auth', namespace: 'auth-fixture' }));
+      build.onLoad({ filter: /.*/, namespace: 'auth-fixture' }, () => ({
+        contents: 'export const useAuth = () => ({ user: globalThis.__detail.user });',
+      }));
       build.onResolve({ filter: /ShowcaseGarment3D$/ }, () => ({ path: 'preview', namespace: 'mock' }));
       build.onLoad({ filter: /.*/, namespace: 'mock' }, ({ path: name }) => ({ contents: name === 'api'
         ? 'export default globalThis.__detail' : 'export default function Preview(){return "Interactive garment preview"}' }));
@@ -37,6 +41,7 @@ function Probe() { location = useLocation(); return null; }
   new Function('require', 'module', 'exports', built.outputFiles[0].text)(require, module, module.exports);
   const Detail = module.exports.default;
   async function mount(audience, overrides = {}) {
+    globalThis.__detail.user = { id: 'viewer', role: audience };
     if (root) await act(() => root.unmount());
     calls = []; record = { ...fixture, ...overrides };
     root = createRoot(document.getElementById('root'));
