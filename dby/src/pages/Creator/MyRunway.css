@@ -39,6 +39,46 @@
   text-transform: uppercase;
   letter-spacing: .17em;
 }
+.runway-tools {
+  margin-top: clamp(20px, 3vw, 44px);
+  padding-top: clamp(16px, 2vw, 28px);
+  border-top: 1px solid var(--rule);
+}
+.runway-tools h2 {
+  margin: 0 0 18px;
+  font: 400 clamp(1.8rem, 3vw, 3rem)/1.1 Georgia, serif;
+  letter-spacing: -.045em;
+}
+.runway-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(12px, 2vw, 28px);
+}
+.runway-tool {
+  display: grid;
+  grid-template-columns: 44% 1fr;
+  align-items: center;
+  gap: clamp(12px, 2vw, 26px);
+  padding: 10px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  color: var(--ink);
+  text-decoration: none;
+}
+.runway-tool:hover, .runway-tool:focus-visible { border-color: var(--accent); }
+.runway-tool img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.runway-tool h3 { margin: 0 0 8px; font: 400 clamp(1.1rem, 2vw, 1.75rem)/1.2 Georgia, serif; }
+.runway-tool span { color: var(--accent); font-size: .875rem; }
+.runway-tool span svg { display: inline; vertical-align: middle; }
+@media (max-width: 700px) {
+  .runway-tool-grid { grid-template-columns: 1fr; }
+}
 .runway-intro h1, .runway-empty h2 {
   font-family: Georgia, "Times New Roman", serif;
   font-weight: 400;
@@ -61,6 +101,7 @@
 .runway-toolbar button { font-size: .8rem; color: var(--muted); }
 .runway-toolbar button:hover { color: var(--ink); }
 .runway-orbit {
+  touch-action: pan-y pinch-zoom;
   height: clamp(320px, 57svh, 690px); position: relative; isolation: isolate; overflow: hidden;
   background: radial-gradient(ellipse at 50% 66%, var(--light), transparent 68%);
 }
@@ -69,9 +110,15 @@
   border-radius: 50%; border: 1px solid var(--rule);
   background: radial-gradient(ellipse, var(--floor), transparent 72%);
 }
-.runway-pose { position: absolute; width: 28%; height: 85%; transform-origin: center bottom; pointer-events: none;
+.runway-pose { position: absolute; width: 28%; height: 85%; transform-origin: center bottom;
+  padding: 0; border: 0; background: transparent; cursor: pointer;
   transition: left .95s ease-in-out, bottom .95s ease-in-out, transform .95s ease-in-out, opacity .65s; }
 .runway-pose img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center bottom; }
+.runway-pose:disabled { pointer-events: none; }
+.runway-pose:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+@media (hover: hover) {
+  .runway-pose:enabled:hover img { filter: drop-shadow(0 1px 4px var(--floor)); }
+}
 .runway-pose::before { content: ""; position: absolute; z-index: -1; bottom: -1%; left: 17%; right: 17%; height: 4%;
   background: radial-gradient(ellipse, #1914104a, transparent 72%); }
 .runway-empty h2 { font-size: clamp(1.45rem, 2.5vw, 2.8rem); line-height: 1.1; margin-top: .25rem; }
@@ -92,6 +139,7 @@
   inherits: false;
   initial-value: 0deg;
 }
+
 .runway-pose {
   --depth: cos(var(--runway-angle));
   left: calc(50% + 46% * sin(var(--runway-angle)));

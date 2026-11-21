@@ -45,11 +45,29 @@ async function run() {
   await render("creator");
   assert.equal(document.querySelector("h1").textContent,"My Runway");
   assert.ok(document.querySelector('a[href="/creator/designs"]'));
+  assert.equal(document.querySelector('nav[aria-label="Showcase actions"] a[href="/creator/tools"]').textContent, "AI tools");
   assert.ok(document.querySelector('a[href="/creator/fashion-editor"]'));
   assert.ok(document.querySelector('a[href="/creator/wallet#subscription"]'));
   assert.equal(document.querySelector(".campaign-cover"),null);
   assert.equal(document.querySelectorAll(".runway-pose img").length,4);
   assert.ok([...document.querySelectorAll(".runway-pose img")].every(img=>img.src.includes("/images/runway/")));
+  const poses = document.querySelectorAll("button.runway-pose");
+  const orbit = document.querySelector(".runway-orbit");
+  await React.act(async () => poses[1].click());
+  assert.equal(poses[1].getAttribute("aria-pressed"), "true");
+  async function swipe(x, y) {
+    const start = { identifier: 1, clientX: 100, clientY: 100 };
+    await React.act(async () => {
+      orbit.dispatchEvent(new window.TouchEvent("touchstart", { bubbles: true, touches: [start] }));
+      orbit.dispatchEvent(new window.TouchEvent("touchend", { bubbles: true, changedTouches: [{ ...start, clientX: x, clientY: y }] }));
+    });
+  }
+  await swipe(105, 30);
+  assert.equal(poses[1].getAttribute("aria-pressed"), "true");
+  await swipe(40, 101);
+  assert.equal(poses[2].getAttribute("aria-pressed"), "true");
+  await swipe(160, 101);
+  assert.equal(poses[1].getAttribute("aria-pressed"), "true");
   assert.equal(reads.filter(url=>url.endsWith("/runway/photos")).length,0);
   personalLooks=[{id:"coat",title:"Coat",job_id:"saved",status:"completed",image_url:images[1]}];
   await React.act(async()=>document.dispatchEvent(new dom.window.Event("visibilitychange")));

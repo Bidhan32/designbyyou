@@ -13,6 +13,10 @@ const previewLooks = [
 ].map(([id,title]) => ({id,title,image_url:"/images/runway/"+id+".webp"}));
 
 const root = "/creators/runway";
+const featuredTools = [
+  { name: "Sketch to Image", slug: "sketch-to-image", image: "sketch-to-image", action: "Bring a sketch to life" },
+  { name: "Virtual Try-On", slug: "virtual-try-on", image: "virtual-tryon", action: "Try an outfit" },
+];
 const statusUrl = "/creators/ai/virtual-try-on/";
 export default function MyRunway() {
   const [revision,refresh]=useState(0);
@@ -21,6 +25,9 @@ export default function MyRunway() {
   const [manage,setManage]=useState(false);
   const [error,setError]=useState("");
   const [index,setIndex]=useState(0);
+  const [holdUntil,setHoldUntil]=useState(0);
+  const touchStart=useRef(null);
+  const suppressTap=useRef(false);
   const retry=useRef(false);
   useEffect(()=>{
     if(manage) return;
@@ -77,11 +84,32 @@ export default function MyRunway() {
   const ready=preview ? previewLooks : personal;
   useEffect(()=>{
     if(manage || ready.length<2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const timer=setInterval(()=>{if(document.visibilityState!=="hidden") setIndex(n=>n+1);},4500);
-    return ()=>clearInterval(timer);
-  },[manage,ready.length]);
+    const timer=setTimeout(()=>{
+      setHoldUntil(0);
+      if(document.visibilityState!=="hidden") setIndex(n=>n+1);
+    },Math.max(4500,holdUntil-Date.now()));
+    const resume=()=>{if(document.visibilityState==="visible") setHoldUntil(Date.now()+4500);};
+    document.addEventListener("visibilitychange",resume);
+    return ()=>{clearTimeout(timer);document.removeEventListener("visibilitychange",resume);};
+  },[manage,ready.length,index,holdUntil]);
   const total=ready.length;
   const active=total ? ((index%total)+total)%total : 0;
+  function rotateBy(steps) {
+    if(total<2) return;
+    setIndex(current=>current+steps);
+    setHoldUntil(Date.now()+8500);
+  }
+  function finishSwipe(event) {
+    const start=touchStart.current;
+    touchStart.current=null;
+    const end=event.changedTouches[0];
+    if(!start || !end || start.identifier!==end.identifier) return;
+    const dx=end.clientX-start.clientX;
+    const dy=end.clientY-start.clientY;
+    if(Math.abs(dx)<36 || Math.abs(dx)<1.4*Math.abs(dy)) return;
+    suppressTap.current=true;
+    rotateBy(dx<0 ? 1 : -1);
+  }
 
   return <section className="my-runway" aria-label="Weekly runway">
     <div className="runway-layout">
@@ -93,6 +121,7 @@ export default function MyRunway() {
         <nav aria-label="Showcase actions">
           <Link className="runway-primary" to="/creator/fashion-editor">Create your own <ArrowUpRight size={17}/></Link>
           <Link to="/creator/designs">Explore designs</Link>
+          <Link to="/creator/tools">AI tools</Link>
           <Link to="/creator/wallet#subscription">View subscription</Link>
         </nav>
       </header>
@@ -101,7 +130,13 @@ export default function MyRunway() {
           <button type="button" aria-expanded={manage} onClick={()=>setManage(!manage)}><Images size={16}/>{manage?"Close photos":"Manage photos"}</button>
         </div>
         {manage ? <FittingPhotos onSaved={()=>setManage(false)} onChange={()=>refresh(n=>n+1)}/> : <>
-          <div className="runway-orbit" role="group" aria-label={preview?"Sample model wearing four outfits":"Your rotating outfit collection"}>
+          <div className="runway-orbit" role="group" aria-label={preview?"Sample model wearing four outfits":"Your rotating outfit collection"}
+            onTouchStart={event=>{
+              suppressTap.current=false;
+              touchStart.current=event.touches.length===1 ? event.touches[0] : null;
+            }}
+            onTouchCancel={()=>{touchStart.current=null;}}
+            onTouchEnd={finishSwipe}>
             {ready.map((look,i)=>{
               const position=i-index;
               const slot=((position%total)+total)%total;
@@ -112,16 +147,37 @@ export default function MyRunway() {
               else angle=30*front+(slot-front)*(360-60*front)/(total-2*front);
               if(total===2 && slot===1) angle=65;
               const phase=angle+360*Math.floor(position/total);
-              return <div className="runway-pose" key={look.id} aria-hidden={i!==active}
+              const visible=angle<100 || angle>260;
+              return <button type="button" className="runway-pose" key={look.id}
+                disabled={!visible || total===1} aria-hidden={!visible} aria-pressed={i===active}
+                aria-label={`View ${look.title}`}
+                onClick={event=>{
+                  if(event.detail && suppressTap.current){suppressTap.current=false;return;}
+                  rotateBy(slot>total/2 ? slot-total : slot);
+                }}
                 style={{"--runway-angle":phase+"deg"}}>
                 <img src={look.image_url} decoding="async" alt={i===active?(preview?"Runway model wearing ":"You wearing ")+look.title:""} draggable={false}/>
-              </div>;
+              </button>;
             })}
           </div>
           {preview && looks.length>0 && !error && <p className="runway-status" role="status">Preparing your first personal outfit...</p>}
         </>}
         {error && (preview || manage) && <p className="runway-status" role="alert">{error} <button onClick={()=>{retry.current=true;refresh(n=>n+1);}}>Retry</button></p>}
       </div>
+      {!manage && <section className="runway-tools" aria-labelledby="runway-tools-title">
+        <h2 id="runway-tools-title">Make it <em>yours</em></h2>
+        <div className="runway-tool-grid">
+          {featuredTools.map(tool => (
+            <Link key={tool.slug} className="runway-tool" to={`/creator/tools/${tool.slug}`}>
+              <img src={`/images/creator-tools/mobile/${tool.image}.webp`} loading="lazy" decoding="async" alt="" />
+              <div>
+                <h3>{tool.name}</h3>
+                <span>{tool.action} <ArrowUpRight size={16} aria-hidden="true" /></span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>}
     </div>
   </section>;
 }
