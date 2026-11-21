@@ -1,5 +1,7 @@
 "use strict";
 
+import { useToolHandoff } from "../../components/toolHandoff";
+import ReferencePrompt from "../../components/ReferencePrompt";
 import ToolBookingAction from "../../components/ToolBookingAction";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
@@ -176,6 +178,8 @@ export default function CreatorTextToImage() {
   // Generator State
   // ------------------------------------------------------
 
+  const [reference, setReference] = useState(null);
+  useToolHandoff(setReference);
   const [prompt, setPrompt] = useState("");
 
   const [aspectRatio, setAspectRatio] = useState("3:4");
@@ -586,6 +590,7 @@ export default function CreatorTextToImage() {
   // Render
   // ======================================================
 
+  if (reference) return <ReferencePrompt file={reference} onClear={() => setReference(null)} />;
   return (
     <main className="min-h-screen bg-canvas px-4 py-8 text-ink dark:bg-surface sm:px-8">
       <div className="mx-auto max-w-6xl">

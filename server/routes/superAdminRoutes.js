@@ -79,6 +79,7 @@ router.use(protect);
  */
 
 router.use(authorize("superadmin"));
+router.use("/weekly-runway", require("./weeklyRunwayAdmin"));
 router.get("/activity", require("../services/adminActivity").list);
 const adminMfa = require("../services/adminMfa");
 router.post("/verify-authenticator", adminMfa.refresh);

@@ -1,3 +1,4 @@
+import { useToolHandoff } from "../../../components/toolHandoff";
 import ToolBookingAction from "../../../components/ToolBookingAction";
 import CreatorCreditBalance from "../../../components/CreatorCreditBalance";
 /*
@@ -4204,6 +4205,7 @@ function FashionEditor() {
     ],
   );
 
+
   const handleOpenDesignerBooking = useCallback(() => {
     setMobileMenuOpen(false);
     if (projectLoading || projectSaving || saveInFlightRef.current || showcaseSharing) return;
@@ -4987,11 +4989,8 @@ function FashionEditor() {
     updateSelectedImage,
   ]);
 
-  const handleImageFileChange = useCallback(
-    async (event) => {
-      const file = event.target.files?.[0] || null;
-
-      event.target.value = "";
+  const importImageFile = useCallback(
+    async (file) => {
 
       if (!file) {
         return;
@@ -5106,6 +5105,17 @@ function FashionEditor() {
     },
     [updateObject, setActiveTool, setUiState, showToast],
   );
+
+  useToolHandoff(file => {
+    imageInputModeRef.current = { mode: "place", objectId: null };
+    importImageFile(file);
+  }, !projectLoading);
+
+  function handleImageFileChange(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    importImageFile(file);
+  }
 
   const handleChooseClothingTemplate = useCallback(
     async (template) => {
@@ -13143,7 +13153,7 @@ function FashionEditor() {
                         </p>
 
                         <p className="mt-1 text-[10px] leading-4 text-muted">
-                          Choose one style and one garment. Occasions are
+                          Choose one outfit type and one garment. Occasions are
                           optional and may include more than one.
                         </p>
                       </div>
@@ -13151,7 +13161,7 @@ function FashionEditor() {
                       <div className="grid gap-3 sm:grid-cols-2">
                         <label className="block">
                           <span className="mb-2 block text-[10px] font-semibold text-muted">
-                            Style
+                            Outfit type
                           </span>
 
                           <select
@@ -13172,7 +13182,7 @@ function FashionEditor() {
                             <option value="">
                               {showcaseMetadataLoading
                                 ? "Loading styles…"
-                                : "Select style"}
+                                : "Select outfit type"}
                             </option>
 
                             {showcaseDiscovery.styles.map((style) => (

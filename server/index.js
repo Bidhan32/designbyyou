@@ -64,6 +64,7 @@ const creatorBackgroundRemoverRoutes = require("./routes/creatorBackgroundRemove
 const avatarRoutes = require("./routes/avatarRoutes");
 const showcaseHeroRoutes = require("./routes/showcaseHeroRoutes");
 const creatorCostumeExtractorRoutes = require("./routes/creatorCostumeExtractorRoutes");
+const { startModelWorker, stopModelWorker } = require("./services/ai/modelJobs");
 const creatorPatternExtractorRoutes = require("./routes/creatorPatternExtractorRoutes");
 /*=========================================================
 Application Configuration
@@ -378,6 +379,8 @@ app.use("/api/v1/marketplace", marketplaceRoutes);
 app.use("/api/v1/p2p-bookings", p2pBookingRoutes);
 
 app.use("/api/v1/virtual-tryon", virtualTryOnRoutes);
+app.use("/api/v1/creators/runway", require("./routes/creatorRunwayRoutes"));
+app.use("/api/v1/creator-tools/image-to-3d", require("./routes/creatorModelRoutes"));
 app.use("/api/v1/creator-tools", creatorBackgroundRemoverRoutes);
 app.use("/api/v1/ai-fashion", aiFashionRoutes);
 app.use(
@@ -617,6 +620,7 @@ function startServer() {
     printStartupMessage();
 
     try {
+      startModelWorker();
       startP2PBookingExpiryJob();
     } catch (error) {
       /*
@@ -643,7 +647,7 @@ Stop Background Jobs
 
 async function stopBackgroundJobs() {
   try {
-    await stopP2PBookingExpiryJob();
+    await Promise.all([stopModelWorker(), stopP2PBookingExpiryJob()]);
 
     console.log("P2P unpaid-booking expiry job stopped.");
   } catch (error) {

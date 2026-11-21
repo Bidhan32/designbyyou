@@ -98,6 +98,22 @@ const SHOWCASE_WEAR_CATEGORIES = new Set([
 ]);
 
 const SHOWCASE_STYLE_AESTHETICS = new Set([
+  "Summer Outfit",
+  "Winter Outfit",
+  "Beach / Resort",
+  "Travel Outfit",
+  "Cozy / Lounge",
+  "Grunge",
+  "Vintage / Retro",
+  "Minimalist",
+  "Ethnic / Traditional",
+  "Boho / Bohemian",
+  "Party / Night Out",
+  "Business Professional",
+  "Formal / Office",
+  "Athleisure",
+  "Casual",
+  // Also accept values from existing designer drafts.
   "Minimalist / Basics",
   "Streetwear",
   "Classic",
@@ -410,7 +426,7 @@ function validateShowcaseInput(input) {
     [input.sizeCategory, SHOWCASE_SIZE_CATEGORIES, "size category"],
     [input.audience, SHOWCASE_AUDIENCES, "audience"],
     [input.wearCategory, SHOWCASE_WEAR_CATEGORIES, "wear category"],
-    [input.styleAesthetic, SHOWCASE_STYLE_AESTHETICS, "style aesthetic"],
+    [input.styleAesthetic, SHOWCASE_STYLE_AESTHETICS, "outfit type"],
     [input.season, SHOWCASE_SEASONS, "season"],
   ];
 

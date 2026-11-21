@@ -51,11 +51,11 @@ exports.start = async (req, res) => {
     return error(res, 503, "TOOL_NOT_ENABLED", "Creator Virtual Try-On is not enabled on this server yet.");
   }
   const body = req.body || {};
-  if (Object.keys(body).some(key => !["category", "mode", "garment_photo_type", "request_key", "consent"].includes(key))) {
+  if (Object.keys(body).some(key => !["category", "mode", "garment_photo_type", "request_key", "consent", "action"].includes(key))) {
     return error(res, 400, "UNKNOWN_INPUT", "Unsupported Virtual Try-On setting.");
   }
-  if (body.consent !== "true") {
-    return error(res, 400, "CONSENT_REQUIRED", "Confirm permission to use the person photo and save its generated output.");
+  if (body.action !== "try_on" && body.consent !== "true") {
+    return error(res, 400, "ACTION_REQUIRED", "Select Generate try-on to submit your images.");
   }
   const category = body.category || "auto";
   const mode = body.mode || "balanced";
@@ -95,18 +95,20 @@ exports.start = async (req, res) => {
     } else {
       await client.query(`UPDATE public.creator_virtual_tryon_jobs SET status='failed', error_message='Submission could not be confirmed. Review provider usage before retrying.', updated_at=NOW()
         WHERE creator_id=$1 AND status='submitting' AND updated_at < NOW() - INTERVAL '3 minutes'`, [id]);
-      const active = await client.query(`SELECT COUNT(*)::int AS n FROM public.creator_virtual_tryon_jobs WHERE creator_id=$1 AND status IN ('submitting','processing','saving')`, [id]);
-      if (active.rows[0].n > 0) {
+      const active = await client.query(`SELECT id FROM public.creator_virtual_tryon_jobs WHERE creator_id=$1 AND status IN ('submitting','processing','saving') LIMIT 1`, [id]);
+      if (active.rowCount) {
         await client.query("ROLLBACK"); txOpen = false;
+        if (req.weeklyRunway) return res.status(202).json({active_job_id:active.rows[0].id});
         return error(res, 429, "ACTIVE_JOB_EXISTS", "Wait for your active Virtual Try-On to finish.");
       }
       const quota = await client.query(`SELECT COUNT(*)::int AS n FROM public.creator_virtual_tryon_jobs WHERE creator_id=$1 AND created_at >= NOW() - INTERVAL '24 hours'`, [id]);
-      if (quota.rows[0].n >= dailyLimit()) {
+      const limit = req.weeklyRunway ? Math.max(req.weeklyLineupSize, dailyLimit()) : dailyLimit();
+      if (quota.rows[0].n >= limit) {
         await client.query("ROLLBACK"); txOpen = false;
-        return error(res, 429, "DAILY_LIMIT_REACHED", `Your test limit is ${dailyLimit()} generations per rolling 24 hours.`);
+        return error(res, 429, "DAILY_LIMIT_REACHED", `Your test limit is ${limit} generations per rolling 24 hours.`);
       }
-      const inserted = await client.query(`INSERT INTO public.creator_virtual_tryon_jobs (creator_id,request_key,category,mode,garment_photo_type,provider,model_name)
-        VALUES ($1,$2,$3,$4,$5,'fal',$6) RETURNING ${FIELDS}`, [id, requestKey, category, mode, garmentPhotoType, tryOn.FAL_MODEL]);
+      const inserted = await client.query(`INSERT INTO public.creator_virtual_tryon_jobs (creator_id,request_key,category,mode,garment_photo_type,provider,model_name,weekly_runway)
+        VALUES ($1,$2,$3,$4,$5,'fal',$6,$7) RETURNING ${FIELDS}`, [id, requestKey, category, mode, garmentPhotoType, tryOn.FAL_MODEL,req.weeklyRunway === true]);
       job = inserted.rows[0];
     }
     await client.query("COMMIT"); txOpen = false;
@@ -192,7 +194,7 @@ async function checkResult(req, res, retrySave) {
     let stage = "image upload";
     try {
       const base64Output = Array.isArray(data.output) ? data.output[0] : null;
-      const publicId = await tryOn.savePrivateResult(base64Output, id, jobId);
+      const publicId = await tryOn.savePrivateResult(base64Output, id, jobId, job.weekly_runway);
       stage = "database update";
       const saved = await db.query(`UPDATE public.creator_virtual_tryon_jobs SET output_public_id=$1,status='completed',credits_used=$2,completed_at=NOW(),updated_at=NOW()
         WHERE id=$3 AND creator_id=$4 AND status='saving' RETURNING *`, [publicId, credits, jobId, id]);

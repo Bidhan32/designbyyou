@@ -1,3 +1,4 @@
+import { useToolHandoff } from "../../components/toolHandoff";
 import ToolBookingAction from "../../components/ToolBookingAction";
 import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 "use strict";
@@ -409,6 +410,13 @@ export default function CreatorPatternExtractor() {
   const blocking = busy || restoring || job?.status === "submitting" || job?.status === "submission_unknown";
   const canGenerate = Boolean(file && crop && cropPreview && !cropError && !blocking && (!job || job.status === "pending"));
   const selection = draftCrop || crop;
+
+  useToolHandoff(file => {
+    if (job) reset();
+    setFile(file);
+    setCrop(null);
+    setDraftCrop(null);
+  }, !restoring && !busy && !pendingAttempt && (!job || ["completed", "failed"].includes(job.status)));
 
   return (
     <main className="min-h-screen bg-canvas pb-20 text-ink dark:bg-surface">

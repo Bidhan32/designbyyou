@@ -102,6 +102,7 @@ const createHeroState = (data = {}) => {
 
   return {
     revision: data.revision,
+    campaign_looks: data.campaign_looks || [],
     mode: data.mode === "video" ? "video" : "slideshow",
 
     slideshow_images: paddedImages.slice(0, 5),
@@ -118,6 +119,7 @@ const createHeroState = (data = {}) => {
 };
 
 const normalizeHeroForComparison = (hero) => ({
+  campaign_looks: hero.campaign_looks,
   mode: hero.mode === "video" ? "video" : "slideshow",
 
   slideshow_images: Array.isArray(hero.slideshow_images)
@@ -471,6 +473,7 @@ const SystemSettings = () => {
     try {
       const response = await API.patch("/superadmin/showcase-hero", {
         revision: originalHero.revision,
+        campaign_looks: hero.campaign_looks.filter(look => [...cleanedHeroImages, hero.video_url].includes(look.media)),
         mode: hero.mode,
 
         slideshow_images: cleanedHeroImages,
@@ -1168,6 +1171,18 @@ const SystemSettings = () => {
             </div>
           )}
 
+          {(hero.mode === "video" ? [hero.video_url] : cleanedHeroImages).filter(Boolean).map((media, index) => {
+            const look = hero.campaign_looks.find(entry => entry.media === media) || {media,title:"",slug:"",garment:""};
+            return <fieldset key={media} className="my-4 grid gap-3 rounded-md border border-line p-4 sm:grid-cols-3">
+              <legend className="px-2 font-semibold">Featured look {index + 1}</legend>
+              {[["title","Campaign title"],["slug","Published design slug"],["garment","Garment photo URL for try-on"]].map(([field,label]) =>
+                <label key={field} className="text-sm">{label}<input disabled={savingHero} value={look[field]} maxLength={field === "title" ? 120 : field === "slug" ? 200 : 2048}
+                  className="mt-1 block w-full rounded-md border border-line bg-canvas p-2" onChange={e=>{
+                    const value=e.target.value;
+                    setHero(current=>({...current,campaign_looks:[...current.campaign_looks.filter(entry=>entry.media!==media),{...look,[field]:value}]}));
+                  }} /></label>)}
+            </fieldset>;
+          })}
           {/*===========================================
           Video Configuration
           ===========================================*/}

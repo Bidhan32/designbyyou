@@ -1,3 +1,4 @@
+import { useToolHandoff } from "../../components/toolHandoff";
 import ToolBookingAction from "../../components/ToolBookingAction";
 import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 "use strict";
@@ -75,15 +76,16 @@ function UploadField({ id, label, help, file, preview, disabled, onChange, input
   );
 }
 
-export default function CreatorVirtualTryOn({ initialGarment = null, embedded = false, bookingUrl }) {
+export default function CreatorVirtualTryOn({ initialGarment = null, embedded = false, campaign = false, bookingUrl }) {
   const [person, setPerson] = useState(null);
   const [garment, setGarment] = useState(initialGarment);
+  const [original, setOriginal] = useState(null);
+  const [split, setSplit] = useState(50);
   const [personUrl, setPersonUrl] = useState("");
   const [garmentUrl, setGarmentUrl] = useState("");
   const [category, setCategory] = useState("auto");
   const [mode, setMode] = useState("balanced");
   const [garmentPhotoType, setGarmentPhotoType] = useState("auto");
-  const [consent, setConsent] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [job, setJob] = useState(null);
   const [history, setHistory] = useState([]);
@@ -197,7 +199,6 @@ export default function CreatorVirtualTryOn({ initialGarment = null, embedded = 
     event.preventDefault();
     if (busy) return;
     if (!person || !garment) return setError("Upload both a person photo and a garment photo.");
-    if (!consent) return setError("Confirm that you have permission to use this photo and save the result.");
     setGenerating(true);
     setError(""); setProgressError("");
     if (!requestKey.current) requestKey.current = crypto.randomUUID();
@@ -208,12 +209,13 @@ export default function CreatorVirtualTryOn({ initialGarment = null, embedded = 
     form.append("mode", mode);
     form.append("garment_photo_type", garmentPhotoType);
     form.append("request_key", requestKey.current);
-    form.append("consent", "true");
+    form.append("action", "try_on");
     try {
       const response = await API.post(ENDPOINT, form);
       const created = response.data?.data;
       if (!created?.id) throw new Error("Generation response was incomplete.");
       requestKey.current = null;
+      if (campaign) setOriginal({ id: created.id, person });
       setJob(created);
       setHistory((prev) => [created, ...prev.filter((item) => item.id !== created.id)]);
       try { await refreshHistory(); } catch { /* Poll from returned job. */ }
@@ -227,9 +229,9 @@ export default function CreatorVirtualTryOn({ initialGarment = null, embedded = 
 
   const clearNew = () => {
     if (busy) return;
-    setJob(null); setPerson(null); setGarment(null);
+    setOriginal(null); setJob(null); setPerson(null); setGarment(campaign ? initialGarment : null);
     setCategory("auto"); setMode("balanced"); setGarmentPhotoType("auto");
-    setConsent(false); setError(""); setProgressError("");
+    setError(""); setProgressError("");
     requestKey.current = null;
     if (personInput.current) personInput.current.value = "";
     if (garmentInput.current) garmentInput.current.value = "";
@@ -278,8 +280,10 @@ export default function CreatorVirtualTryOn({ initialGarment = null, embedded = 
     }
   };
 
+  useToolHandoff(file => updateFile("garment", file));
+
   return (
-    <main className="min-h-screen bg-canvas px-4 py-8 text-ink dark:bg-surface sm:px-8">
+    <div className={campaign ? "showcase-fitting bg-canvas p-4 text-ink md:p-6" : "min-h-screen bg-canvas px-4 py-8 text-ink dark:bg-surface sm:px-8"}>
       <div className="mx-auto max-w-6xl">
         {!embedded && <Link to="/creator/tools" className="inline-flex items-center gap-2 text-xs font-semibold text-muted hover:text-action">
           <ArrowLeft size={16} /> Back to tools
@@ -288,10 +292,10 @@ export default function CreatorVirtualTryOn({ initialGarment = null, embedded = 
           <div className="rounded-md bg-subtle p-3 text-action"><Shirt size={27} /></div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-normal text-action">Creative tools</p>
-            <h1 className="mt-1 font-sans text-3xl sm:text-4xl">AI Virtual Try-On</h1>
+            <h1 className="mt-1 font-sans text-3xl sm:text-4xl">{campaign ? "Your fitting room" : "AI Virtual Try-On"}</h1>
             <CreatorCreditBalance refreshKey={[generating,retryingSave,job?.status].join()} costLabel="10 credits per image" />
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-              {embedded ? (initialGarment ? "Your garment is ready. Add a person photo to try it on." : "The design image could not be imported. Choose a garment photo below to continue.") : "Upload a person photo and a garment image to preview how the clothing may look when worn."}
+              {campaign && !initialGarment ? "Choose a garment and add your photo to start a private fitting." : embedded ? (initialGarment ? "Your garment is ready. Add a person photo to try it on." : "The design image could not be imported. Choose a garment photo below to continue.") : "Upload a person photo and a garment image to preview how the clothing may look when worn."}
               Results are AI visualizations, not an accurate prediction of physical fit.
             </p>
           </div>
@@ -321,15 +325,11 @@ export default function CreatorVirtualTryOn({ initialGarment = null, embedded = 
                 </select>
               </div>
             </div>
-            <label className="mt-6 flex items-start gap-3 text-xs leading-5 text-muted">
-              <input type="checkbox" className="mt-1 accent-action" checked={consent} disabled={busy} onChange={(e) => setConsent(e.target.checked)} />
-              <span>I own this photo or have the person's permission to send it to fal.ai for virtual try-on. I agree to save the generated result in my private Creator history. Original uploaded photos are not saved in DesignByYou history.</span>
-            </label>
             <p className="mt-3 text-xs text-muted">Testing limit: 5 generations per rolling 24 hours, unless configured differently on the backend.</p>
             {error && <p role="alert" className="mt-4 rounded-md bg-canvas p-3 text-sm text-action dark:bg-subtle">{error}</p>}
-            <button type="submit" disabled={busy || !person || !garment || !consent} className="mt-6 flex min-h-9 w-full items-center justify-center gap-2 rounded-md bg-subtle px-4 text-sm font-bold text-ink hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="submit" disabled={busy || !person || !garment} className="mt-6 flex min-h-9 w-full items-center justify-center gap-2 rounded-md bg-subtle px-4 text-sm font-bold text-ink hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-50">
               {busy ? <Loader2 size={18} className="animate-spin" /> : <WandSparkles size={18} />}
-              {generating ? "Submitting..." : activeJobId ? "Generation in progress" : "Generate Virtual Try-On"}
+              {generating ? "Submitting..." : activeJobId ? "Generation in progress" : campaign ? "Generate try-on (10 credits)" : "Generate Virtual Try-On"}
             </button>
           </form>
 
@@ -343,7 +343,13 @@ export default function CreatorVirtualTryOn({ initialGarment = null, embedded = 
             </div>
             <div className="mt-4 flex min-h-[370px] items-center justify-center overflow-hidden rounded-md bg-subtle dark:bg-surface">
               {job?.image_url ? (
-                <img src={job.image_url} alt="AI Virtual Try-On output" className="max-h-[570px] w-full object-contain" />
+                campaign && original?.id === job.id && original.person === person && personUrl ? <div className="w-full p-2">
+                  <div className="relative h-80 overflow-hidden">
+                    <img src={personUrl} alt="Original photo" className="absolute inset-0 h-full w-full object-contain"/>
+                    <img src={job.image_url} alt="Generated try-on" className="absolute inset-0 h-full w-full bg-subtle object-contain" style={{clipPath:"inset(0 "+(100-split)+"% 0 0)"}}/>
+                  </div>
+                  <label className="block p-2 text-sm">Compare original and try-on<input className="block w-full" type="range" min="0" max="100" value={split} onChange={e=>setSplit(Number(e.target.value))}/></label>
+                </div> : <img src={job.image_url} alt="AI Virtual Try-On output" className="max-h-[570px] w-full object-contain" />
               ) : isActive(job) ? (
                 <div className="px-5 text-center text-muted"><Loader2 size={32} className="mx-auto animate-spin text-action" /><p className="mt-3 text-sm">Preparing your Virtual Try-On...</p></div>
               ) : job?.status === "failed" ? (
@@ -364,7 +370,7 @@ export default function CreatorVirtualTryOn({ initialGarment = null, embedded = 
           </section>
         </div>
 
-        <section className="mt-9" aria-label="Virtual Try-On history">
+        {!campaign && <section className="mt-9" aria-label="Virtual Try-On history">
           <div className="flex items-center justify-between gap-3">
             <h2 className="font-sans text-2xl">Recent Try-Ons</h2>
             <button type="button" onClick={async () => { setHistoryLoading(true); try { await refreshHistory(); } catch (err) { setHistoryError(getMessage(err, "Could not refresh history.")); } finally { setHistoryLoading(false); } }} disabled={historyLoading} className="inline-flex items-center gap-2 rounded-md border border-line px-3 py-2 text-xs font-semibold disabled:opacity-50"><RefreshCw size={15} className={historyLoading ? "animate-spin" : ""} /> Refresh</button>
@@ -382,8 +388,8 @@ export default function CreatorVirtualTryOn({ initialGarment = null, embedded = 
                 </article>
               ))}
             </div>}
-        </section>
+        </section>}
       </div>
-    </main>
+    </div>
   );
 }

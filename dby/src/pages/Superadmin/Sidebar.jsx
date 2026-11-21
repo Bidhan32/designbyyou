@@ -20,6 +20,7 @@ const Sidebar = ({ closeSidebar }) => {
         { name: 'Overview', path: '/superadmin/dashboard', icon: <LayoutDashboard size={18} /> },
         { name: 'Designer approvals', path: '/superadmin/designer-approvals', icon: <ShieldCheck size={16} /> },
         { name: 'Finance', path: '/superadmin/finance', icon: <Wallet size={16} /> },
+        { name: 'Weekly runway', path: '/superadmin/weekly-runway', icon: <LayoutDashboard size={16} /> },
         { name: 'Activity', path: '/superadmin/activity', icon: <History size={16} /> },
         { name: 'User Directory', path: '/superadmin/users', icon: <Users size={18} /> },
         { name: 'System Settings', path: '/superadmin/settings', icon: <Settings size={18} /> },

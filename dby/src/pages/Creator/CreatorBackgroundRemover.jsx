@@ -1,3 +1,4 @@
+import { useToolHandoff } from "../../components/toolHandoff";
 import ToolBookingAction from "../../components/ToolBookingAction";
 import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 "use strict";
@@ -246,6 +247,8 @@ export default function CreatorBackgroundRemover() {
   const hasResult = Boolean(outputUrl);
   const dimensionLabel = (value) =>
     value ? `${value.width} × ${value.height}px` : "";
+
+  useToolHandoff(chooseFile);
 
   return (
     <main className="min-h-screen bg-canvas pb-24 text-ink">

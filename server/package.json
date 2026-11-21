@@ -25,6 +25,7 @@
     "db:migrate": "node scripts/database.cjs migrate",
     "test:auth": "node --test scripts/test-auth-safety.cjs",
     "test:auth:sandbox": "node scripts/auth-sandbox.cjs",
+    "test:3d:sandbox": "node --test scripts/test-image-to-3d.cjs",
     "test:booking:sandbox": "node scripts/editor-booking-sandbox.cjs"
   },
   "keywords": [],

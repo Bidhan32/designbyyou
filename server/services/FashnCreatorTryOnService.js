@@ -135,10 +135,16 @@ function decodeOutput(output) {
   return buffer;
 }
 
-async function savePrivateResult(outputDataUri, creatorId, jobId) {
+async function savePrivateResult(outputDataUri, creatorId, jobId, weekly = false) {
   const buffer = decodeOutput(outputDataUri);
   const jpeg = await sharp(buffer, { limitInputPixels: 32_000_000 })
     .rotate().jpeg({ quality: 90, mozjpeg: true }).toBuffer();
+  let image = jpeg;
+  if (weekly) {
+    const {removeBackground} = require("./FalBackgroundRemoverService");
+    const {dataUri} = await removeBackground("data:image/jpeg;base64," + jpeg.toString("base64"));
+    image = await sharp(Buffer.from(dataUri.split(",")[1],"base64")).webp({quality:90}).toBuffer();
+  }
   return new Promise((resolve, reject) => {
     const uploader = cloudinary.uploader.upload_stream({
       // The callback settles our promise. Disable the SDK's second rejection path.
@@ -146,9 +152,9 @@ async function savePrivateResult(outputDataUri, creatorId, jobId) {
       resource_type: "image",
       type: "authenticated",
       folder: "designbyyou_ai/creator_virtual_tryon",
-      public_id: `${creatorId}_${jobId}`,
+      public_id: `${creatorId}_${jobId}${weekly ? "_cutout" : ""}`,
       overwrite: false,
-      format: "jpg",
+      format: weekly ? "webp" : "jpg",
     }, (err, result) => {
       if (err || !result?.public_id) {
         const failure = new TryOnServiceError("Could not save the generated image securely.", 503, "STORAGE_FAILED");
@@ -159,7 +165,7 @@ async function savePrivateResult(outputDataUri, creatorId, jobId) {
       }
     });
     uploader.on("error", () => reject(new TryOnServiceError("Cloudinary upload stream failed.", 503, "STORAGE_FAILED")));
-    uploader.end(jpeg);
+    uploader.end(image);
   });
 }
 
@@ -172,8 +178,8 @@ function signedResultUrls(publicId) {
     expires_at: Math.floor(Date.now() / 1000) + 900,
   };
   return {
-    image_url: cloudinary.utils.private_download_url(publicId, "jpg", options),
-    download_url: cloudinary.utils.private_download_url(publicId, "jpg", { ...options, attachment: true }),
+    image_url: cloudinary.utils.private_download_url(publicId, publicId.endsWith("_cutout") ? "webp" : "jpg", options),
+    download_url: cloudinary.utils.private_download_url(publicId, publicId.endsWith("_cutout") ? "webp" : "jpg", { ...options, attachment: true }),
   };
 }
 

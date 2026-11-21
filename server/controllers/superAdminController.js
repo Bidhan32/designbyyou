@@ -1,5 +1,6 @@
 "use strict";
 
+const { isDeepStrictEqual } = require("node:util");
 const db = require("../config/db");
 const bcrypt = require("bcryptjs");
 const activity = require("../services/adminActivity");
@@ -486,6 +487,7 @@ const getShowcaseHeroRow = async () => {
             revision,
             mode,
             slideshow_images,
+            campaign_looks,
             video_url,
             video_poster_url,
             rotation_seconds,
@@ -3460,6 +3462,8 @@ exports.getPublicShowcaseHero = async (req, res) => {
 
         rotation_seconds: Number(settings.rotation_seconds || 6),
 
+        campaign_looks: enabled ? (settings.campaign_looks || []).filter(look =>
+          (mode === "video" ? [settings.video_url] : savedImages).includes(look.media)) : [],
         slideshow_images: enabled && mode === "slideshow" ? savedImages : [],
 
         video_url:
@@ -3656,7 +3660,20 @@ exports.updateShowcaseHeroSettings = async (req, res) => {
 
     const updatedBy = req.user?.id || req.user?.user_id || null;
 
+    const allowedMedia = [...slideshowImages, videoUrl].filter(Boolean);
+    const submitted = body.campaign_looks ?? current.campaign_looks ?? [];
+    if (!Array.isArray(submitted) || submitted.length > 6) return res.status(400).json({message:"Choose up to six campaign looks."});
+    const looks = [];
+    for (const look of submitted) {
+      if (!look || typeof look.media !== "string" || !allowedMedia.includes(look.media)) continue;
+      if (looks.some(entry => entry.media === look.media) ||
+          typeof look.garment !== "string" || look.garment.length > 2048 || !isAllowedHeroMediaUrl(look.garment) ||
+          typeof look.slug !== "string" || look.slug.length > 200 || /[/?#\\\\]/.test(look.slug) ||
+          typeof look.title !== "string" || look.title.length > 120) return res.status(400).json({message:"Check the campaign title, design slug and garment image URL."});
+      looks.push({media:look.media,title:look.title.trim(),slug:look.slug.trim(),garment:look.garment.trim()});
+    }
     const changes = [];
+    if (!isDeepStrictEqual(looks, current.campaign_looks || [])) changes.push("Campaign looks changed");
     if (current.mode !== mode) changes.push("Mode changed to " + mode);
     if (current.is_enabled !== isEnabled) changes.push(isEnabled ? "Banner enabled" : "Banner disabled");
     if (JSON.stringify(current.slideshow_images) !== JSON.stringify(slideshowImages)) {
@@ -3676,6 +3693,7 @@ exports.updateShowcaseHeroSettings = async (req, res) => {
           UPDATE showcase_hero_settings
 
           SET
+              campaign_looks = $9::jsonb,
               mode = $1,
 
               slideshow_images =
@@ -3706,6 +3724,7 @@ exports.updateShowcaseHeroSettings = async (req, res) => {
               id,
               revision,
               mode,
+              campaign_looks,
               slideshow_images,
               video_url,
               video_poster_url,
@@ -3730,6 +3749,7 @@ exports.updateShowcaseHeroSettings = async (req, res) => {
 
         updatedBy,
         body.revision,
+        JSON.stringify(looks),
       ],
     );
 

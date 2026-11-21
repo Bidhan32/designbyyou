@@ -1,3 +1,4 @@
+import { useToolHandoff } from "../../components/toolHandoff";
 import ToolBookingAction from "../../components/ToolBookingAction";
 import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 "use strict";
@@ -226,6 +227,8 @@ export default function CreatorSketchToImage() {
 
   const original = sketchPreview || validImageUrl(job?.source_url);
   const output = outputUrl(job);
+
+  useToolHandoff(chooseFile);
 
   return (
     <main className="min-h-screen bg-canvas px-4 py-8 text-ink dark:bg-surface sm:px-8">

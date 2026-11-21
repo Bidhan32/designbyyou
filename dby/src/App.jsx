@@ -107,6 +107,7 @@ const SuperAdminDashboard = lazy(() => import("./pages/Superadmin/SuperadminDash
 const UserManagement = lazy(() => import("./pages/Superadmin/UserManagement"));
 
 const DesignerApprovals = lazy(() => import("./pages/Superadmin/DesignerApprovals"));
+const WeeklyRunway = lazy(() => import("./pages/Superadmin/WeeklyRunway"));
 const AdminFinance = lazy(() => import("./pages/Superadmin/AdminFinance"));
 const AdminActivity = lazy(() => import("./pages/Superadmin/AuditLog"));
 
@@ -161,6 +162,7 @@ const CreatorUpload = lazy(() => import("./pages/Creator/CreatorUpload"));
 const CreatorRewards = lazy(() => import("./pages/Creator/CreatorRewards"));
 const CreatorWallet = lazy(() => import("./pages/Creator/CreatorWallet"));
 
+const DesignGallery = lazy(() => import("./pages/Creator/DesignGallery"));
 const CreatorShowcase = lazy(() => import("./pages/Creator/CreatorShowcase"));
 
 const CreatorShowcaseDetail = lazy(() => import("./pages/Creator/CreatorShowcaseDetail"));
@@ -169,6 +171,7 @@ const CreatorCreateBooking = lazy(() => import("./pages/Creator/CreatorCreateBoo
 
 const DesignerDirectory = lazy(() => import("./pages/Creator/DesignerDirectory"));
 
+const FittingPhotos = lazy(() => import("./pages/Creator/FittingPhotos"));
 const CreatorProfile = lazy(() => import("./pages/Creator/CreatorProfile"));
 
 const CreatorSettings = lazy(() => import("./pages/Creator/CreatorSettings"));
@@ -203,6 +206,7 @@ const CreatorCostumeExtractor = lazy(() => import("./pages/Creator/CreatorCostum
 const CreatorTextToImage = lazy(() => import("./pages/Creator/CreatorTextToImage"));
 const CreatorSketchToImage = lazy(() => import("./pages/Creator/CreatorSketchToImage"));
 const CreatorVirtualTryOn = lazy(() => import("./pages/Creator/CreatorVirtualTryOn"));
+const CreatorImageTo3D = lazy(() => import("./pages/Creator/CreatorImageTo3D"));
 const CreatorMultiViewGenerator = lazy(() => import("./pages/Creator/CreatorMultiViewGenerator"));
 const CreatorPatternExtractor = lazy(() => import("./pages/Creator/CreatorPatternExtractor"));
 
@@ -452,6 +456,7 @@ Normal admins, creators and designers cannot enter.
                   <Route path="dashboard" element={<SuperAdminDashboard />} />
 
                   <Route path="users" element={<UserManagement />} />
+                  <Route path="weekly-runway" element={<WeeklyRunway />} />
                   <Route path="finance" element={<AdminFinance />} />
                   <Route path="activity" element={<AdminActivity />} />
 
@@ -549,6 +554,7 @@ Normal admins, creators and designers cannot enter.
 
                   <Route path="upload" element={<DesignerUploadDesign />} />
 
+                  <Route path="designs" element={<DesignGallery audience="designer" />} />
                   <Route path="explore" element={<DesignerMarketplace />} />
 
                   <Route path="orders" element={<DesignerOrders />} />
@@ -669,9 +675,11 @@ Normal admins, creators and designers cannot enter.
                     element={<DesignerStudioProfile />}
                   />
 
+                  <Route path="designs" element={<DesignGallery audience="creator" />} />
                   <Route path="showcase" element={<CreatorShowcase />} />
 
                   <Route path="tools" element={<CreatorToolsPage />} />
+                  <Route path="tools/image-to-3d" element={<CreatorImageTo3D />} />
                   <Route
   path="tools/background-remover"
   element={<CreatorBackgroundRemover />}
@@ -719,6 +727,7 @@ Normal admins, creators and designers cannot enter.
                   <Route path="rewards" element={<CreatorRewards />} />
 
                   <Route path="profile" element={<CreatorProfile />} />
+                  <Route path="profile/fitting-photos" element={<FittingPhotos />} />
 
                   <Route path="settings" element={<CreatorSettings />} />
 

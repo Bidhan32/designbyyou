@@ -60,7 +60,7 @@ import React, {
 
 } from "react";
 
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import {
 
@@ -506,7 +506,10 @@ function ErrorScreen({ message, showcaseRoute, onRetry }) {
 
 export default function CreatorShowcaseDetail({ audience = "creator" }) {
   const isCreator = audience === "creator";
-  const showcaseRoute = isCreator ? "/creator/showcase" : "/designer/explore";
+  const { state: detailState } = useLocation();
+  const gallery = "/" + audience + "/designs";
+  const galleryReturn = detailState?.gallery === gallery && typeof detailState?.query === "string";
+  const showcaseRoute = galleryReturn ? gallery + detailState.query : isCreator ? "/creator/showcase" : "/designer/explore";
   const [retry, setRetry] = useState(0);
   const [shareFeedback, setShareFeedback] = useState("");
   const [failedImage, setFailedImage] = useState(null);
@@ -1148,7 +1151,7 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
           <Link
 
-            to={showcaseRoute}
+            to={showcaseRoute} state={galleryReturn ? { restore: detailState.restore } : undefined}
 
             className={`inline-flex min-w-0 items-center gap-2 text-xs font-semibold text-muted hover:text-action ${BUTTON_FOCUS}`}
 
@@ -1156,7 +1159,7 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
 
             <ArrowLeft size={16} className="shrink-0" />
 
-            <span className="truncate">Back to Showcase</span>
+            <span className="truncate">{galleryReturn ? "Back to Design Gallery" : "Back to Showcase"}</span>
 
           </Link>
 

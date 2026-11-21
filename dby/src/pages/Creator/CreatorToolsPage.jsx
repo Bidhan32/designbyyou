@@ -145,6 +145,18 @@ const PHOTOS = Object.freeze({
 // =========================================================
 
 const TOOLS = Object.freeze([
+  {
+    id: "image-to-3d",
+    title: "Image to 3D",
+    description: "Turn one garment photo into a model you can rotate, download or use in another tool.",
+    outcome: "Photo to 3D model",
+    categories: ["ai", "image"],
+    icon: Images,
+    image: PHOTOS.multiView,
+    imageAlt: "Garment shown from multiple angles",
+    path: "/creator/tools/image-to-3d",
+    available: true,
+  },
 
   // =======================================================
 

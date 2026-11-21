@@ -1,3 +1,4 @@
+import { useToolHandoff } from "../../components/toolHandoff";
 import ToolBookingAction from "../../components/ToolBookingAction";
 import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 "use strict";
@@ -1178,6 +1179,11 @@ export default function CreatorCostumeExtractor() {
   /* =========================================================
      Render
      ========================================================= */
+
+  useToolHandoff(file => {
+    if (job || attemptLocked) reset();
+    setFile(file);
+  }, !restoring && !busy && !unresolvedJobId && (!attemptLocked || Boolean(job)) && !job?.views?.some(view => BLOCK_RESET_STATES.has(view.status)));
 
   return (
     <main className="min-h-screen bg-canvas pb-20 text-ink dark:bg-surface">

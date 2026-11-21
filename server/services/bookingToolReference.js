@@ -3,6 +3,7 @@
 const sharp = require("sharp");
 
 const views = {
+  "Image to 3D": ["Result"],
   "Text to Image": ["Result"],
   "Sketch to Image": ["Result"],
   "Background Remover": ["Result"],

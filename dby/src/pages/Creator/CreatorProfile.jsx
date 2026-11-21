@@ -1507,6 +1507,7 @@ export default function CreatorProfile() {
                     </span>
                   )}
 
+                  <Link to="/creator/profile/fitting-photos" className="rounded-md border border-line px-3 py-2 text-xs">Private fitting photos</Link>
                   <Link to="/creator/wallet#subscription" className="inline-flex h-8 items-center rounded-md border border-line px-3 text-xs text-ink hover:bg-subtle">
                     Subscription · {humanize(subscriptionTier)}
                   </Link>

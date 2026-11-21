@@ -113,6 +113,7 @@ const PRIMARY_NAVIGATION = [
     icon: Compass,
   },
 
+  { path: "/designer/designs", label: "Design Gallery", laptopLabel: "Gallery", icon: FolderOpen },
   {
     path: "/designer/inventory",
     label: "Portfolio",
@@ -1352,6 +1353,7 @@ function DesignerNavbar({ user, logout }) {
                     icon={User}
                     label="Public Profile"
                   />
+                  <DropdownLink to="/designer/designs" icon={FolderOpen} label="Design Gallery" />
                   <DropdownLink to="/designer/projects" icon={FolderOpen} label="My Projects" />
 
                   {/* Upload */}

@@ -228,6 +228,7 @@ const CREATOR_NAVIGATION = [
     description: "Discover published creative and designer work.",
   },
 
+  { name: "Design Gallery", path: "/creator/designs", icon: FolderOpen, description: "Browse published designs." },
   {
     name: "Designers",
 
@@ -276,6 +277,7 @@ Account Navigation
 =========================================================*/
 
 const ACCOUNT_NAVIGATION = [
+  { name: "Design Gallery", path: "/creator/designs", icon: FolderOpen, description: "Browse published designs." },
   {
     name: "Profile",
 

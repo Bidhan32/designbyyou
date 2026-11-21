@@ -1,3 +1,4 @@
+import { useToolHandoff } from "../../components/toolHandoff";
 
 "use strict";
 
@@ -1018,6 +1019,8 @@ export default function CreatorUpload() {
       pickerRef.current.click();
     }
   }, [loading, success]);
+
+  useToolHandoff(file => appendFiles([file]));
 
   const handleFileChange = useCallback(
     async (event) => {
@@ -2259,7 +2262,7 @@ export default function CreatorUpload() {
                     <div className="grid gap-5 md:grid-cols-2">
                       <div>
                         <FieldLabel optional>
-                          Style
+                          Outfit type
                         </FieldLabel>
 
                         <SelectField
@@ -2275,7 +2278,7 @@ export default function CreatorUpload() {
                           }
                         >
                           <option value="">
-                            Select a style (optional)
+                            Select an outfit type (optional)
                           </option>
 
                           {discovery.styles.map(

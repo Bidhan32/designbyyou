@@ -1,3 +1,4 @@
+import ToolHandoffAction from "./ToolHandoffAction";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api/axios";
@@ -58,6 +59,7 @@ export default function ToolBookingAction({ tool, src, views, bookingUrl, bookin
     } finally { setBusy(false); }
   }
   return <div className="my-3 space-y-2 text-sm">
+    {user.role === "creator" && <ToolHandoffAction options={options} owner={user.id} />}
     {views && <fieldset><legend className="text-xs font-semibold">Views to share with the designer</legend>
       <div className="flex flex-wrap gap-3">{options.map(({ label }) => <label key={label}>
         <input type="checkbox" checked={!excluded.includes(label)} onChange={e => setExcluded(e.target.checked ? excluded.filter(v => v !== label) : [...excluded, label])} /> {label}

@@ -163,19 +163,25 @@ const WEAR_CATEGORIES = [
   "Occasion Wear",
 ];
 
-const STYLE_AESTHETICS = [
-  "Minimalist / Basics",
-  "Streetwear",
-  "Classic",
-  "Modern",
-  "Luxury",
-  "Vintage",
-  "Bohemian",
-  "Avant-Garde",
-  "Sporty",
+const OUTFIT_TYPES = [
+  "Summer Outfit",
+  "Winter Outfit",
+  "Beach / Resort",
+  "Travel Outfit",
+  "Cozy / Lounge",
+  "Grunge",
   "Preppy",
+  "Vintage / Retro",
   "Y2K",
-  "Sustainable / Organic",
+  "Minimalist",
+  "Ethnic / Traditional",
+  "Boho / Bohemian",
+  "Party / Night Out",
+  "Business Professional",
+  "Formal / Office",
+  "Athleisure",
+  "Streetwear",
+  "Casual"
 ];
 
 const SEASONS = [
@@ -200,7 +206,7 @@ const INITIAL_FORM_STATE = {
   materials: [],
   wear_category: "Casual Wear",
   style_aesthetic:
-    "Minimalist / Basics",
+    "Casual",
   season: "All Season",
   tags: "",
 };
@@ -1088,7 +1094,7 @@ export default function DesignerUploadDesign() {
         ],
         [
           form.style_aesthetic,
-          STYLE_AESTHETICS,
+          OUTFIT_TYPES,
           "style aesthetic",
         ],
         [
@@ -2075,13 +2081,13 @@ export default function DesignerUploadDesign() {
 
                   <SelectField
                     id="style-aesthetic"
-                    label="Style aesthetic"
+                    label="Outfit type"
                     icon={Palette}
                     value={
                       form.style_aesthetic
                     }
                     options={
-                      STYLE_AESTHETICS
+                      OUTFIT_TYPES
                     }
                     disabled={
                       loading ||

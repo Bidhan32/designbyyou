@@ -1011,7 +1011,7 @@ exports.getShowcase = async (req, res) => {
 
       query += `
 
-          AND EXISTS (
+          AND (EXISTS (
 
             SELECT 1
 
@@ -1043,8 +1043,12 @@ exports.getShowcase = async (req, res) => {
 
               )
 
-          )
-
+          ) OR EXISTS (
+            SELECT 1 FROM showcase_discovery_terms outfit
+            WHERE outfit.group_type = 'style' AND outfit.is_active
+              AND LOWER(outfit.slug) = LOWER($${termIndex})
+              AND LOWER(outfit.name) = LOWER(d.style_category)
+          ))
         `;
 
     }
