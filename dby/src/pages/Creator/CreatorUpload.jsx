@@ -67,6 +67,7 @@ const MAX_TAGS = 12;
 const MAX_CANVAS_STATE_BYTES = 2 * 1024 * 1024;
 
 const IMAGE_TYPES = new Set([
+  "image/avif",
   "image/jpeg",
   "image/png",
   "image/webp",
@@ -243,7 +244,7 @@ function validateFile(file) {
   }
 
   if (!IMAGE_TYPES.has(String(file.type || "").toLowerCase())) {
-    throw new Error("Only JPG, PNG and WEBP images are supported.");
+    throw new Error("Choose a JPG, JPEG, PNG, WebP or AVIF image.");
   }
 
   if (!Number.isFinite(file.size) || file.size < 1) {
@@ -259,7 +260,7 @@ async function validateSignature(file) {
   validateFile(file);
 
   const bytes = new Uint8Array(
-    await file.slice(0, 12).arrayBuffer()
+    await file.slice(0, 256).arrayBuffer()
   );
 
   const isJpeg =
@@ -279,7 +280,16 @@ async function validateSignature(file) {
     String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" &&
     String.fromCharCode(...bytes.slice(8, 12)) === "WEBP";
 
+  const brand = (offset) => String.fromCharCode(...bytes.subarray(offset, offset + 4));
+  let isAvif = false;
+  if (bytes.length >= 16 && brand(4) === "ftyp") {
+    const boxEnd = Math.min(bytes.length, new DataView(bytes.buffer).getUint32(0));
+    for (let offset = 8; offset + 4 <= boxEnd; offset += 4) {
+      if (offset !== 12 && ["avif", "avis"].includes(brand(offset))) isAvif = true;
+    }
+  }
   const valid =
+    (file.type === "image/avif" && isAvif) ||
     (file.type === "image/jpeg" && isJpeg) ||
     (file.type === "image/png" && isPng) ||
     (file.type === "image/webp" && isWebp);
@@ -298,7 +308,7 @@ async function validateSignature(file) {
 function isAllowedImageUrl(value) {
   const source = String(value || "").trim();
 
-  if (/^data:image\/(?:jpeg|png|webp);base64,/i.test(source)) {
+  if (/^data:image\/(?:jpeg|png|webp|avif);base64,/i.test(source)) {
     return true;
   }
 
@@ -336,8 +346,8 @@ async function convertStudioImageToFile(source) {
 
   if (source instanceof Blob) {
     const extension =
-      source.type === "image/webp"
-        ? "webp"
+      ["image/webp", "image/avif"].includes(source.type)
+        ? source.type.slice(6)
         : source.type === "image/jpeg"
           ? "jpg"
           : "png";
@@ -1719,7 +1729,7 @@ export default function CreatorUpload() {
               ref={pickerRef}
               type="file"
               multiple
-              accept="image/jpeg,image/png,image/webp"
+              accept=".jpg,.jpeg,.png,.webp,.avif,image/jpeg,image/png,image/webp,image/avif"
               onChange={handleFileChange}
               disabled={
                 loading ||
@@ -1776,7 +1786,7 @@ export default function CreatorUpload() {
 
                 <span className="mt-5 inline-flex items-center gap-2 rounded-md border border-line bg-surface px-4 py-2 text-xs font-semibold tracking-wider text-muted dark:bg-subtle">
                   <FileImage size={12} />
-                  JPG · PNG · WEBP · 5 MB each · Up to 6
+                  JPG/JPEG · PNG · WebP · AVIF · 5 MB each · Up to 6
                 </span>
               </button>
             ) : (

@@ -1625,7 +1625,7 @@ exports.updateEditorProject = async (req, res) => {
 =========================================================*/
 const MAX_CREATOR_GALLERY_IMAGES = 6;
 const CREATOR_GALLERY_IMAGE_BYTES = 5 * 1024 * 1024;
-const CREATOR_GALLERY_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
+const CREATOR_GALLERY_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
 
 async function cleanupCreatorGalleryCloudinaryFiles(files) {
   if (!Array.isArray(files) || files.length === 0) return;
@@ -2188,7 +2188,7 @@ exports.uploadCreatorStudioAsset = async (req, res) => {
 
       const previewSize = Number(uploadedPreview.size || 0);
 
-      if (!ALLOWED_PREVIEW_TYPES.has(previewMimeType)) {
+      if (!(galleryMode ? CREATOR_GALLERY_MIME : ALLOWED_PREVIEW_TYPES).has(previewMimeType)) {
         return sendError(
           res,
           400,

@@ -131,7 +131,7 @@ function sendUploadError(error, res, kind) {
         status: "error",
         code: "PREVIEW_UPLOAD_FAILED",
         message: gallery
-          ? "The gallery images could not be processed. Use JPG, PNG or WebP images and try again."
+          ? "The gallery images could not be processed. Use JPG, JPEG, PNG, WebP or AVIF images and try again."
           : "The preview image could not be processed. Use JPG, PNG or WebP and try again.",
       });
   }

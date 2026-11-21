@@ -130,7 +130,7 @@ function createUploadError(message, code) {
  * =========================================================
  */
 
-function imageFileFilter(req, file, callback) {
+function imageFileFilter(req, file, callback, allowAvif = false) {
   if (!file) {
     return callback(
       createUploadError("The uploaded image is invalid.", "INVALID_IMAGE_FILE"),
@@ -161,10 +161,10 @@ function imageFileFilter(req, file, callback) {
     .trim()
     .toLowerCase();
 
-  if (!ALLOWED_IMAGE_MIME_TYPES.has(mimeType)) {
+  if (!ALLOWED_IMAGE_MIME_TYPES.has(mimeType) && !(allowAvif && mimeType === "image/avif")) {
     return callback(
       createUploadError(
-        "Only JPG, PNG, and WEBP image files are allowed.",
+        allowAvif ? "Choose a JPG, JPEG, PNG, WebP or AVIF image." : "Only JPG, PNG, and WEBP image files are allowed.",
         "INVALID_IMAGE_TYPE",
       ),
     );
@@ -248,7 +248,7 @@ const previewStorage = new UploadStorage({
 
     resource_type: "image",
 
-    allowed_formats: ["jpg", "jpeg", "png", "webp"],
+    allowed_formats: ["jpg", "jpeg", "png", "webp", "avif"],
 
     overwrite: false,
 
@@ -440,7 +440,7 @@ const uploadCreatorGallery = multer({
 
   limits: creatorGalleryUploadLimits,
 
-  fileFilter: imageFileFilter,
+  fileFilter: (req, file, callback) => imageFileFilter(req, file, callback, true),
 });
 
 /* =========================================================
