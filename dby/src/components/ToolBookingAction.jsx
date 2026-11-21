@@ -8,14 +8,15 @@ async function preview(src) {
   image.crossOrigin = "anonymous";
   image.src = src;
   await image.decode();
-  for (const side of [1280, 960, 640, 400]) {
+  for (const side of [1280, 960, 640, 400, 256]) {
     const scale = Math.min(1, side / Math.max(image.naturalWidth, image.naturalHeight));
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
     canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
     canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
     const data = canvas.toDataURL("image/webp", 0.88);
-    if (data.startsWith("data:image/webp;") && data.length <= 380000) return data;
+    // Browsers without a WebP canvas encoder return PNG, including its transparency.
+    if (/^data:image\/(webp|png);base64,/.test(data) && data.length <= 380000) return data;
   }
   throw new Error("Preview unavailable");
 }
@@ -49,7 +50,11 @@ export default function ToolBookingAction({ tool, src, views, bookingUrl, bookin
         navigate(destination.pathname + destination.search);
       }
     } catch (err) {
-      setMessage(err.response?.data?.message || "Could not attach the result. Reopen the image and try again.");
+      const fallback = err.name === "QuotaExceededError"
+        ? "Your browser has run out of space to save this booking draft."
+        : bookingId ? "Could not save the reference to this booking. Please try again."
+          : "Could not prepare the image or save the booking draft in this browser. Please try again.";
+      setMessage(err.response?.data?.message || fallback);
     } finally { setBusy(false); }
   }
   return <div className="my-3 space-y-2 text-sm">

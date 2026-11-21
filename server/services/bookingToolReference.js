@@ -24,14 +24,19 @@ async function sanitizeReference(reference) {
     if (!views[reference.tool].includes(image?.label) || labels.has(image.label)) return false;
     labels.add(image.label);
     const src = image.src;
-    if (typeof src !== "string" || src.length > 380000 || !/^data:image\/webp;base64,[A-Za-z0-9+/]+={0,2}$/.test(src)) return false;
+    if (typeof src !== "string" || src.length > 380000) return false;
+    const match = /^data:image\/(webp|png);base64,([A-Za-z0-9+/]+={0,2})$/.exec(src);
+    if (!match) return false;
     try {
-      const bytes = Buffer.from(src.slice("data:image/webp;base64,".length), "base64");
-      if (bytes.length < 12 || bytes.toString("ascii", 0, 4) !== "RIFF" ||
-          bytes.toString("ascii", 8, 12) !== "WEBP" || bytes.readUInt32LE(4) !== bytes.length - 8) return false;
+      const [, format, payload] = match;
+      const bytes = Buffer.from(payload, "base64");
+      if (format === "webp" && (bytes.length < 12 || bytes.toString("ascii", 0, 4) !== "RIFF" ||
+          bytes.toString("ascii", 8, 12) !== "WEBP" || bytes.readUInt32LE(4) !== bytes.length - 8)) return false;
+      if (format === "png" && (bytes.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a" ||
+          bytes.subarray(-12).toString("hex") !== "0000000049454e44ae426082")) return false;
       const decoder = sharp(bytes, { limitInputPixels: 1280 * 1280, failOn: "warning" });
       const info = await decoder.metadata();
-      if (info.format !== "webp" || info.width > 1280 || info.height > 1280 || info.pages > 1) return false;
+      if (info.format !== format || info.width > 1280 || info.height > 1280 || info.pages > 1) return false;
       // Decode and re-encode so the stored preview contains only rendered pixels.
       const cleaned = await decoder.webp({ quality: 82 }).toBuffer();
       const data = "data:image/webp;base64," + cleaned.toString("base64");
