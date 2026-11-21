@@ -5,27 +5,50 @@ import API from "../../api/axios";
 import FittingPhotos from "./FittingPhotos";
 import "./MyRunway.css";
 
+const previewLooks = [
+  ["navy-tee", "a navy tee and sand trousers"],
+  ["denim-jacket", "an indigo denim jacket"],
+  ["green-dress", "a forest green midi dress"],
+  ["camel-coat", "a camel trench coat"],
+].map(([id,title]) => ({id,title,image_url:"/images/runway/"+id+".webp"}));
+
 const root = "/creators/runway";
 const statusUrl = "/creators/ai/virtual-try-on/";
 export default function MyRunway() {
   const [revision,refresh]=useState(0);
-  const [count,setCount]=useState(null);
+  const signedImages=useRef(new Map());
   const [looks,setLooks]=useState([]);
   const [manage,setManage]=useState(false);
   const [error,setError]=useState("");
   const [index,setIndex]=useState(0);
   const retry=useRef(false);
   useEffect(()=>{
+    if(manage) return;
     const controller=new AbortController();
     const config={signal:controller.signal,timeout:120000};
     let timer;
+    let busy=false;
     async function sync() {
+      if(document.visibilityState==="hidden" || busy) return;
+      clearTimeout(timer);
+      busy=true;
       try {
-        const [{data:photos},{data:lineup}]=await Promise.all([API.get(root+"/photos",config),API.get(root+"/weekly",config)]);
+        const {data:lineup}=await API.get(root+"/weekly",config);
         if(controller.signal.aborted) return;
-        setCount(photos.length);setLooks(lineup);setError("");
+        // Signed links last 15 minutes. Reuse them across polls to avoid downloading the same image again.
+        const now=Date.now();
+        const fresh=new Map();
+        setLooks(lineup.map(look=>{
+          if(!look.image_url) return look;
+          const previous=signedImages.current.get(look.job_id);
+          const entry=previous && previous.refreshAfter>now ? previous : {url:look.image_url,refreshAfter:now+600000};
+          fresh.set(look.job_id,entry);
+          return {...look,image_url:entry.url};
+        }));
+        signedImages.current=fresh;
+        setError("");
         let delay=60000;
-        if(!manage && photos.length>=3){
+        if(lineup.length){
           const pending=lineup.find(l=>l.job_id && !["completed","failed"].includes(l.status));
           const next=lineup.find(l=>!l.job_id) || lineup.find(l=>l.status==="failed");
           if(pending){
@@ -43,25 +66,28 @@ export default function MyRunway() {
         if(!controller.signal.aborted) timer=setTimeout(sync,delay);
       } catch(err){
         if(!controller.signal.aborted) setError(err.response?.data?.message || err.message || "Could not load your runway.");
-      }
+      } finally { busy=false; }
     }
+    document.addEventListener("visibilitychange",sync);
     sync();
-    return ()=>{controller.abort();clearTimeout(timer);};
+    return ()=>{controller.abort();clearTimeout(timer);document.removeEventListener("visibilitychange",sync);};
   },[revision,manage]);
-  const ready=looks.filter(l=>l.image_url);
+  const personal=looks.filter(l=>l.image_url);
+  const preview=personal.length===0;
+  const ready=preview ? previewLooks : personal;
   useEffect(()=>{
     if(manage || ready.length<2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const timer=setInterval(()=>setIndex(n=>n+1),4500);
+    const timer=setInterval(()=>{if(document.visibilityState!=="hidden") setIndex(n=>n+1);},4500);
     return ()=>clearInterval(timer);
   },[manage,ready.length]);
   const total=ready.length;
   const active=total ? ((index%total)+total)%total : 0;
-  const current=ready[active];
+
   return <section className="my-runway" aria-label="Weekly runway">
     <div className="runway-layout">
       <header className="runway-intro">
         <div>
-        <span className="runway-label">Designs of the week</span>
+        <span className="runway-label">{preview?"Runway preview":"Designs of the week"}</span>
         <h1>My <em>Runway</em></h1>
         </div>
         <nav aria-label="Showcase actions">
@@ -75,7 +101,7 @@ export default function MyRunway() {
           <button type="button" aria-expanded={manage} onClick={()=>setManage(!manage)}><Images size={16}/>{manage?"Close photos":"Manage photos"}</button>
         </div>
         {manage ? <FittingPhotos onSaved={()=>setManage(false)} onChange={()=>refresh(n=>n+1)}/> : <>
-          <div className="runway-orbit" role="group" aria-label="Rotating outfit collection">
+          <div className="runway-orbit" role="group" aria-label={preview?"Sample model wearing four outfits":"Your rotating outfit collection"}>
             {ready.map((look,i)=>{
               const position=i-index;
               const slot=((position%total)+total)%total;
@@ -88,18 +114,13 @@ export default function MyRunway() {
               const phase=angle+360*Math.floor(position/total);
               return <div className="runway-pose" key={look.id} aria-hidden={i!==active}
                 style={{"--runway-angle":phase+"deg"}}>
-                <img src={look.image_url} alt={i===active?"You wearing "+look.title:""} draggable={false}/>
+                <img src={look.image_url} decoding="async" alt={i===active?(preview?"Runway model wearing ":"You wearing ")+look.title:""} draggable={false}/>
               </div>;
             })}
-            {!current && <div className="runway-empty">
-              {count!==null && count<3 ? <><h2>Your first look starts here.</h2><p>Add three or four full-body photos to see yourself on the runway.</p>
-                <button className="runway-primary" onClick={()=>setManage(true)}>Add fitting photos <ArrowUpRight size={16}/></button></>
-                : <p role="status">{error?"Your runway is waiting.":count===null?"Opening your runway...":looks.length?"Preparing your first look...":"Waiting for the weekly collection."}</p>}
-            </div>}
           </div>
-          {!current && looks.length>total && !error && <p className="runway-status" role="status">{total} of {looks.length} outfits ready</p>}
+          {preview && looks.length>0 && !error && <p className="runway-status" role="status">Preparing your first personal outfit...</p>}
         </>}
-        {error && (!current || manage) && <p className="runway-status" role="alert">{error} <button onClick={()=>{retry.current=true;refresh(n=>n+1);}}>Retry</button></p>}
+        {error && (preview || manage) && <p className="runway-status" role="alert">{error} <button onClick={()=>{retry.current=true;refresh(n=>n+1);}}>Retry</button></p>}
       </div>
     </div>
   </section>;

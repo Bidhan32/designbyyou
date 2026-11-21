@@ -6,7 +6,7 @@ import garmentFile from "./garmentFile";
 import { buildBookingUrl, getOwnerName } from "./showcaseDesign";
 import "./ShowcaseCampaign.css";
 
-const MyRunway = lazy(() => import("./MyRunway"));
+import MyRunway from "./MyRunway";
 const Fitting = lazy(() => import("./CreatorVirtualTryOn"));
 const fabric = "/textures/Fabric080_2K-JPG_Color.jpg";
 
@@ -63,7 +63,7 @@ function FittingPanel({ look, onClose }) {
 }
 
 export default function CreatorShowcase({audience="creator"}) {
-  if (audience === "creator") return <main><Suspense fallback={<p role="status">Opening your runway...</p>}><MyRunway/></Suspense></main>;
+  if (audience === "creator") return <main><MyRunway/></main>;
   return <ShowcaseCampaign audience={audience}/>;
 }
 

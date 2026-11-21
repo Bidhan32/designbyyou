@@ -7,7 +7,7 @@ const { createRoot } = require("react-dom/client");
 const esbuild = require("esbuild");
 
 async function run() {
-  const dom = new JSDOM('<div id="root"></div>', { url: "http://localhost" });
+  const dom = new JSDOM('<div id="root"></div>', { url: "http://localhost", pretendToBeVisual:true });
   global.window = dom.window;
   global.document = dom.window.document;
   global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -16,9 +16,12 @@ async function run() {
   const images = ["https://images.example/silk.jpg", "https://images.example/coat.jpg"];
   const hero = { is_enabled: true, mode: "slideshow", slideshow_images: images,
     campaign_looks: [{ media: images[0], title: "Silk dress", garment: images[1] }] };
+  let personalLooks=[];
+  const reads=[];
   global.campaignApi = { defaults: { baseURL: "/api" }, async get(url) {
+    reads.push(url);
     if (url.endsWith("/runway/photos")) return {data: [{id:"pose",slot:1,url:"https://images.example/pose.webp"}]};
-    if (url.endsWith("/runway/weekly")) return {data:[]};
+    if (url.endsWith("/runway/weekly")) return {data:personalLooks};
     return { data: { data: url === "/showcase-hero" ? hero : [] } };
   }};
   const bundle = await esbuild.build({
@@ -45,6 +48,13 @@ async function run() {
   assert.ok(document.querySelector('a[href="/creator/fashion-editor"]'));
   assert.ok(document.querySelector('a[href="/creator/wallet#subscription"]'));
   assert.equal(document.querySelector(".campaign-cover"),null);
+  assert.equal(document.querySelectorAll(".runway-pose img").length,4);
+  assert.ok([...document.querySelectorAll(".runway-pose img")].every(img=>img.src.includes("/images/runway/")));
+  assert.equal(reads.filter(url=>url.endsWith("/runway/photos")).length,0);
+  personalLooks=[{id:"coat",title:"Coat",job_id:"saved",status:"completed",image_url:images[1]}];
+  await React.act(async()=>document.dispatchEvent(new dom.window.Event("visibilitychange")));
+  assert.equal(document.querySelector(".runway-pose img").alt,"You wearing Coat");
+  assert.equal(document.querySelectorAll(".runway-pose").length,1);
   const backgrounds = [];
   let saves = 0;
   global.campaignApi.post = async (url,form) => {
