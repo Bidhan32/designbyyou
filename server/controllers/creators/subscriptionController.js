@@ -264,7 +264,7 @@ function signupsEnabled() {
   return (process.env.CREATOR_SUBSCRIPTION_SIGNUPS_ENABLED ?? "true") === "true";
 }
 
-const signupAmountsInCents = Object.freeze({ monthly: 4000, quarterly: 10500, yearly: 29900, basic: 3000, pro: 6000 });
+const signupAmountsInCents = Object.freeze({ monthly: 4000, quarterly: 10500, yearly: 29900, basic: 5000, pro: 10000 });
 
 function membershipCheckoutPlans() {
   if (stripeMode() === null) return [];
@@ -1775,7 +1775,8 @@ exports.listMembershipPlans = async (_req, res, next) => {
   try {
     const { rows } = await db.query(`
       SELECT tier, version, monthly_price_usd_cents, monthly_ai_credits, booking_fee_usd_cents,
-             rewards_per_100_usd, alteration_limit, purchase_discount_percent
+             rewards_per_1000_usd, rewards_per_1000_usd / 10.0 AS rewards_per_100_usd,
+             alteration_limit, purchase_discount_percent
       FROM public.membership_plan_versions
       WHERE version = 1
       ORDER BY monthly_price_usd_cents NULLS LAST

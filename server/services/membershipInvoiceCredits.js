@@ -46,7 +46,7 @@ async function grantInvoiceCredits(client, invoice, owner, lines) {
     const subscription = parent?.subscription || line.subscription;
     if ((subscription?.id || subscription) !== owner.subscriptionId) throw new Error("Invoice line subscription mismatch.");
     const { start, end } = line.period || {};
-    if (line.currency !== "usd" || line.quantity !== 1 || line.amount !== (tier === "basic" ? 3000 : 6000) ||
+    if (line.currency !== "usd" || line.quantity !== 1 || line.amount !== (tier === "basic" ? 5000 : 10000) ||
         !Number.isSafeInteger(start) || !Number.isSafeInteger(end) || end <= start) {
       throw new Error("Membership invoice line does not match plan terms.");
     }

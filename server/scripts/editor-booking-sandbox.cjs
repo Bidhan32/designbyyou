@@ -37,7 +37,7 @@ async function fixture(role) {
     const creator = await fixture("creator"), designer = await fixture("designer"), outsider = await fixture("creator");
     process.env.STRIPE_SECRET_KEY = "sk_test_booking_fixture";
     process.env.CREATOR_SUBSCRIPTION_BASIC_TEST_PRICE_ID = "price_basic_fixture";
-    await isolated.pool.query("UPDATE users SET subscription_tier='monthly', subscription_status='active', stripe_subscription_price_id='price_basic_fixture', booking_reward_remainder=2000 WHERE id=$1",[creator.id]);
+    await isolated.pool.query("UPDATE users SET subscription_tier='monthly', subscription_status='active', stripe_subscription_price_id='price_basic_fixture', booking_reward_remainder=65000 WHERE id=$1",[creator.id]);
     const otherDesigner = await fixture("designer");
     const unverified = await fixture("designer");
     await isolated.pool.query("UPDATE users SET is_email_verified = false WHERE id = $1", [unverified.id]);
@@ -109,7 +109,7 @@ async function fixture(role) {
     console.log("PASS Concurrent autosave creation, version-safe updates, private project listing and reopening");
     expect(await api("/p2p-bookings/verify-escrow", creator.token, { bookingId: booking.id }), 400);
     const pi = intents.get(booking.stripe_payment_intent_id); pi.status = "succeeded"; pi.amount_received = pi.amount;
-    assert.equal(pi.amount, 9500);
+    assert.equal(pi.amount, 9400);
     expect(await api("/p2p-bookings/verify-escrow", outsider.token, { bookingId: booking.id }), 403);
     expect(await api("/p2p-bookings/verify-escrow", creator.token, { bookingId: booking.id }), 200);
     expect(await api("/p2p-bookings/verify-escrow", creator.token, { bookingId: booking.id }), 200);
@@ -167,8 +167,8 @@ async function fixture(role) {
     console.log('PASS Unpaid cancellation cancels the original payment intent');
 
     expect(await api(`/p2p-bookings/${unpaid.id}/payment`, creator.token), 409);
-    assert.equal(Number((await state()).creator_reward_points), 3);
-    assert.equal((await isolated.pool.query("SELECT booking_reward_remainder FROM users WHERE id=$1",[creator.id])).rows[0].booking_reward_remainder,500);
+    assert.equal(Number((await state()).creator_reward_points), 1);
+    assert.equal((await isolated.pool.query("SELECT booking_reward_remainder FROM users WHERE id=$1",[creator.id])).rows[0].booking_reward_remainder,12000);
     const paid = expect(await api('/p2p-bookings/create', creator.token, { ...body, client_request_id: crypto.randomUUID(), editor_project_id: undefined, editor_project_version: undefined }), 201).booking;
     const paidIntent = intents.get(paid.stripe_payment_intent_id); paidIntent.status = 'succeeded'; paidIntent.amount_received = paidIntent.amount;
     expect(await api('/p2p-bookings/verify-escrow', creator.token, { bookingId: paid.id }), 200);
@@ -197,7 +197,7 @@ async function fixture(role) {
     await isolated.pool.query("UPDATE users SET subscription_tier='monthly', subscription_status='active',stripe_subscription_price_id='price_pro_fixture' WHERE id=$1",[creator.id]);
     const booked = expect(await api("/p2p-bookings/create", creator.token, { ...designBooking, receiver_id: otherDesigner.id }), 201).booking;
     const checkout = expect(await api(`/p2p-bookings/${booked.id}/payment`, creator.token), 200);
-    assert.equal(checkout.payment.totalCharged,85);
+    assert.equal(checkout.payment.totalCharged,84);
     assert.equal(booked.membership_terms.alterations,3);
     assert.equal(checkout.booking.designer_id, otherDesigner.id);
     assert.equal(booked.design_id, designId);

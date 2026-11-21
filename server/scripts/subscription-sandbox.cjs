@@ -199,7 +199,7 @@ async function main() {
   async function checkProPeriod(renewal) {
     proSub = await stripe.subscriptions.retrieve(proSub.id);
     const invoice = await ensureInvoiceAttempt(proSub, true);
-    assert.equal(invoice.amount_paid, 6000);
+    assert.equal(invoice.amount_paid, 10000);
     assert.equal(invoice.currency, "usd");
     expect(await deliver("invoice.paid", invoice), 200);
     if (renewal) expect(await deliver("invoice.paid", invoice), 200);

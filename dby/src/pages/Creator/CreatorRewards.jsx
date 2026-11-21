@@ -31,7 +31,7 @@ export default function CreatorRewards() {
       <details className="rounded-md border border-line bg-surface p-3">
         <summary className="cursor-pointer text-sm font-semibold">Membership reward rates</summary>
         <table className="mt-3 w-full text-left text-sm">
-          <thead><tr><th scope="col">Plan</th><th scope="col" className="text-right">Points per $100</th></tr></thead>
+          <thead><tr><th scope="col">Plan</th><th scope="col" className="text-right">Points per $1,000</th></tr></thead>
           <tbody>{bookingRewardBands.map(band => <tr key={band.label} className="border-t border-line"><td className="py-1">{band.label}</td><td className="text-right font-mono">{band.points}</td></tr>)}</tbody>
         </table>
       </details>

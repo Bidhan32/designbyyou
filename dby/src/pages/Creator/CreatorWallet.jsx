@@ -508,8 +508,8 @@ const membershipCardDetails = {
       "1,500 AI credits each month",
       "10% of unused credits roll into the next month for AI tools",
       "Booking connection fee waived",
-      "5% off eligible booking design charges",
-      "3 reward points per $100 spent on eligible bookings",
+      "6% off eligible booking design charges",
+      "5 reward points per $1,000 spent on eligible bookings",
       "2 alterations per booking",
     ],
   },
@@ -519,8 +519,8 @@ const membershipCardDetails = {
       "4,500 AI credits each month",
       "10% of unused credits roll into the next month for AI tools",
       "Booking connection fee waived",
-      "15% off eligible booking design charges",
-      "5 reward points per $100 spent on eligible bookings",
+      "16% off eligible booking design charges",
+      "10 reward points per $1,000 spent on eligible bookings",
       "3 alterations per booking",
     ],
   },
@@ -2003,8 +2003,12 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
               )}
 
               {subscription && (
-                <div className="mb-3 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                  {[{ plan: "free", amount: 0, currency: "USD" }, ...(subscription.signups_enabled ? subscription.offers || [] : [])].map(offer => {
+                <div className="mb-3 grid gap-5 md:grid-cols-2 2xl:grid-cols-4">
+                  {[{ plan: "free", amount: 0, currency: "USD" },
+                    ...["basic","pro"].map(plan => subscription.offers?.find(offer => offer.plan === plan) ||
+                      { plan, amount: plan === "basic" ? 50 : 100, currency: "USD" }),
+                    ...(subscription.offers || []).filter(offer => !["basic","pro"].includes(offer.plan))
+                  ].map(offer => {
                     const details = membershipCardDetails[offer.plan];
                     return (
                     <article key={offer.plan} className={`flex flex-col rounded-xl border border-line border-t-4 bg-surface p-6 sm:p-8 ${offer.plan === "pro" ? "border-t-[#547566]" : offer.plan === "free" ? "border-t-slate-400" : "border-t-[#b0966e]"}`}>
@@ -2021,14 +2025,19 @@ function CreatorWalletCore({ stripe, elements, stripeElementsEnabled }) {
                       </div>
                       {offer.plan === "free" ? (
                         <p className="mt-auto py-3 text-center text-sm font-semibold text-muted">Included with a creator account</p>
-                      ) : <button type="button" disabled={Boolean(checkoutPlanLoading)} onClick={() => handleSubscribe(offer)}
+                      ) : <button type="button" disabled={Boolean(checkoutPlanLoading) || !offer.price_id || !subscription.signups_enabled} onClick={() => handleSubscribe(offer)}
                         aria-label={`Subscribe to the ${offer.plan} plan`}
                         className="mt-auto min-h-11 rounded-lg bg-action px-4 text-sm font-semibold text-on-action disabled:opacity-50">
-                        {checkoutPlanLoading === offer.plan ? "Opening checkout..." : "Subscribe"}
+                        {!offer.price_id || !subscription.signups_enabled ? "Signup unavailable" : checkoutPlanLoading === offer.plan ? "Opening checkout..." : "Subscribe"}
                       </button>}
                     </article>
                     );
                   })}
+                  <article className="rounded-xl border border-line bg-surface p-6 sm:p-8">
+                    <h3 className="text-xl font-semibold">Enterprise</h3>
+                    <p className="my-5 text-2xl font-semibold">Custom pricing</p>
+                    <p className="text-sm text-muted">Terms tailored to your team, including your own branding. Save 35% on the full design price of each eligible booking of $10,000 or more.</p>
+                  </article>
                   {subscription.signups_enabled && !subscription.offers?.length && <p className="p-3 text-sm">Subscription prices are unavailable. <button type="button" className="underline" onClick={() => fetchSubscription({ refresh: true })}>Retry</button></p>}
                 </div>
               )}

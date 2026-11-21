@@ -77,12 +77,12 @@ test("sandbox checkout offers Basic and Pro and rejects live or mispriced offers
     process.env[names[1]] = "price_pro";
     const s = setup();
     const template = await s.stripe.prices.retrieve("price_monthly");
-    s.stripe.prices.retrieve = async id => ({ ...template, id, livemode: false, unit_amount: id === "price_basic" ? 3000 : 6000 });
+    s.stripe.prices.retrieve = async id => ({ ...template, id, livemode: false, unit_amount: id === "price_basic" ? 5000 : 10000 });
     const res = response();
     await s.controller.getSubscriptionStatus({ user: { id: s.owner.id }, query: { offers: "1" } }, res);
-    assert.deepEqual(res.body.data.offers.map(o => [o.plan, o.amount]), [["basic", 30], ["pro", 60]]);
+    assert.deepEqual(res.body.data.offers.map(o => [o.plan, o.amount]), [["basic", 50], ["pro", 100]]);
     for (const plan of ["basic", "pro"]) assert.equal((await checkout(s, plan)).statusCode, 201);
-    s.stripe.prices.retrieve = async () => ({ ...template, id: "price_basic", livemode: true, unit_amount: 3000 });
+    s.stripe.prices.retrieve = async () => ({ ...template, id: "price_basic", livemode: true, unit_amount: 5000 });
     assert.equal((await checkout(s, "basic")).statusCode, 503);
     s.stripe.prices.retrieve = async () => ({ ...template, id: "price_basic", livemode: false, unit_amount: 4000 });
     assert.equal((await checkout(s, "basic")).statusCode, 503);
@@ -196,9 +196,9 @@ test("live monthly offers require matching live prices and key", async () => {
   try {
     const s = setup();
     const template = await s.stripe.prices.retrieve("price_monthly");
-    s.stripe.prices.retrieve = async id => ({ ...template, id, livemode:true, unit_amount:id === "price_live_basic" ? 3000 : 6000 });
+    s.stripe.prices.retrieve = async id => ({ ...template, id, livemode:true, unit_amount:id === "price_live_basic" ? 5000 : 10000 });
     for (const plan of ["basic","pro"]) assert.equal((await checkout(s,plan)).statusCode,201);
-    s.stripe.prices.retrieve = async id => ({ ...template,id,livemode:false,unit_amount:3000 });
+    s.stripe.prices.retrieve = async id => ({ ...template,id,livemode:false,unit_amount:5000 });
     assert.equal((await checkout(s,"basic")).statusCode,503);
   } finally {
     for (const [name,value] of Object.entries(previous)) {

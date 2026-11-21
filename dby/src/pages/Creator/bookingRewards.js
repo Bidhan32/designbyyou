@@ -1,7 +1,7 @@
 export const bookingRewardBands = [
-  { label: "Free", points: 1 },
-  { label: "Basic", points: 3 },
-  { label: "Pro", points: 5 },
+  { label: "Free", points: 10 },
+  { label: "Basic", points: 5 },
+  { label: "Pro", points: 10 },
   { label: "Enterprise", points: "Custom" },
 ];
 

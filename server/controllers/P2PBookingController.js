@@ -252,9 +252,11 @@ async function awardCreatorRewardForCompletedBooking(client, booking) {
   if (booking.membership_terms) {
     const { rows: [creator] } = await client.query(
       "SELECT booking_reward_remainder FROM users WHERE id=$1 FOR UPDATE", [booking.creator_id]);
-    const units = creator.booking_reward_remainder + serviceCents(booking) * booking.membership_terms.reward_rate;
-    rewardPoints = Math.floor(units / 10000);
-    remainder = units % 10000;
+    // Older bookings captured their rate per $100 at checkout.
+    const rate = booking.membership_terms.rewards_per_1000_usd ?? booking.membership_terms.reward_rate * 10;
+    const units = creator.booking_reward_remainder + serviceCents(booking) * rate;
+    rewardPoints = Math.floor(units / 100000);
+    remainder = units % 100000;
   } else {
     rewardPoints = calculateCreatorRewardPoints(booking.agreed_price);
   }

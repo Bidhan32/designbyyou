@@ -9,15 +9,18 @@ async function bookingTerms(db, creator, hasSubscription, baseCents) {
       WHERE e.user_id IS NOT NULL OR p.tier=$2
       ORDER BY (e.user_id IS NOT NULL) DESC, p.version DESC LIMIT 1`,
     [creator.id, standardTier || "free"]);
-  if (!plan || [plan.rewards_per_100_usd, plan.alteration_limit, plan.purchase_discount_percent].some(v => !Number.isInteger(v))) {
+  if (!plan || [plan.rewards_per_1000_usd, plan.alteration_limit, plan.purchase_discount_percent].some(v => !Number.isInteger(v))) {
     throw new Error("Booking membership terms are incomplete.");
   }
+  const discount = plan.tier === "enterprise"
+    ? (baseCents >= 1000000 ? 35 : 0)
+    : plan.purchase_discount_percent;
   return {
     tier: plan.tier, version: plan.version,
     fee_cents: hasSubscription && getPlanFromPriceId(creator.stripe_subscription_price_id) ? 0 : plan.booking_fee_usd_cents,
-    discount_percent: plan.purchase_discount_percent,
-    discount_cents: Math.round(baseCents * plan.purchase_discount_percent / 100),
-    reward_rate: plan.rewards_per_100_usd,
+    discount_percent: discount,
+    discount_cents: Math.round(baseCents * discount / 100),
+    rewards_per_1000_usd: plan.rewards_per_1000_usd,
     alterations: plan.alteration_limit,
   };
 }
