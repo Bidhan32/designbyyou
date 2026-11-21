@@ -2,6 +2,8 @@ import { Component, Suspense, useEffect, useRef, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { Bounds, OrbitControls, useGLTF } from "@react-three/drei";
 import { Link } from "react-router-dom";
+import { Box, ImagePlus, ArrowLeft } from "lucide-react";
+import "./CreatorUploadStudio.css";
 import API from "../../api/axios";
 import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 import ToolBookingAction from "../../components/ToolBookingAction";
@@ -13,7 +15,7 @@ const active = job => job && ["submitting", "processing", "saving"].includes(job
 class ViewerBoundary extends Component {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
-  render() { return this.state.failed ? <p className="p-4">The preview could not open. You can still download the GLB.</p> : this.props.children; }
+  render() { return this.state.failed ? <p className="p-4">The 3D preview could not open in this browser.</p> : this.props.children; }
 }
 
 function Model({ url, captureRef }) {
@@ -27,6 +29,20 @@ function Model({ url, captureRef }) {
     return () => { captureRef.current = null; };
   }, [gl, scene, camera, captureRef]);
   return <primitive object={model} />;
+}
+
+function ModelStage({modelUrl,captureRef}) {
+  return (
+    <ViewerBoundary>
+      <div className="model-canvas">
+        <Canvas frameloop="demand" dpr={[1, 1.5]} camera={{ position: [1, 0.7, 2.4] }} fallback={<p>3D preview requires WebGL.</p>}>
+          <ambientLight intensity={1.8} /><directionalLight position={[3,5,4]} intensity={2.5} />
+          <OrbitControls makeDefault />
+          <Suspense fallback={null}><Bounds fit clip observe margin={1.25}><Model url={modelUrl} captureRef={captureRef} /></Bounds></Suspense>
+        </Canvas>
+      </div>
+    </ViewerBoundary>
+  );
 }
 
 function ModelResult({ job }) {
@@ -53,16 +69,8 @@ function ModelResult({ job }) {
   const modelUrl = localUrl || job.model_url;
   if (!modelUrl) return <p role="status">{fileError ? <>Could not load your saved model. <button className="underline" onClick={() => { setFileError(false); setRetry(n => n + 1); }}>Retry download</button></> : "Opening your saved model…"}</p>;
   return <section className="space-y-3">
-    <h2 className="text-xl">3D preview</h2>
-    <ViewerBoundary>
-      <div className="h-96 overflow-hidden rounded-md border border-line bg-subtle">
-        <Canvas dpr={[1, 1.5]} camera={{ position: [1, 0.7, 2.4] }} fallback={<p>3D preview requires WebGL.</p>}>
-          <color attach="background" args={["#eceae6"]} /><ambientLight intensity={1.8} /><directionalLight position={[3,5,4]} intensity={2.5} />
-          <OrbitControls makeDefault />
-          <Suspense fallback={null}><Bounds fit clip observe margin={1.25}><Model url={modelUrl} captureRef={captureRef} /></Bounds></Suspense>
-        </Canvas>
-      </div>
-    </ViewerBoundary>
+
+    <ModelStage modelUrl={modelUrl} captureRef={captureRef}/>
     <p className="text-sm text-muted">Drag to rotate. Pinch or scroll to zoom.</p>
     <div className="flex flex-wrap gap-4">
       <button className="underline" onClick={() => {
@@ -79,6 +87,7 @@ function ModelResult({ job }) {
 }
 
 export default function CreatorImageTo3D() {
+  const exampleCapture=useRef(null);
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState("");
   const [jobs, setJobs] = useState([]);
@@ -144,22 +153,32 @@ export default function CreatorImageTo3D() {
     } finally { sending.current = false; setBusy(false); }
   }
   const selected = jobs.find(job => job.id === selectedId) || jobs[0];
-  return <main className="mx-auto max-w-5xl space-y-6 p-6 text-ink">
-    <Link to="/creator/tools" className="text-sm underline">Back to tools</Link>
-    <h1 className="font-serif text-3xl">Image to 3D</h1>
-    <p>Upload a clear view of one garment or object. The model estimates surfaces hidden in the photo.</p>
-    <form onSubmit={submit} className="space-y-4 rounded-md border border-line bg-surface p-5">
-      <label className="block">Source image<input className="mt-2 block" type="file" disabled={busy} accept=".jpg,.jpeg,.png,.webp,.avif" onChange={e => choose(e.target.files?.[0])} /></label>
-      {preview && <img src={preview} alt="Source for 3D generation" className="max-h-52" />}
-      <CreatorCreditBalance refreshKey={jobs[0]?.status} costLabel="10 credits per model · Up to 4 submissions per 24 hours" />
-      <button disabled={!ready || !file || busy || Boolean(running)} className="rounded-md bg-action px-4 py-2 text-on-action disabled:opacity-50">{busy ? "Submitting…" : "Generate 3D model"}</button>
-    </form>
-    {error && <p role="alert">{error} <button className="underline" onClick={() => setReload(n => n+1)}>Refresh model history</button></p>}
-    {jobs.length > 0 && <label className="block">Your models <select className="bg-surface p-2" value={selected.id} onChange={e => setSelectedId(e.target.value)}>
-      {jobs.map(job => <option key={job.id} value={job.id}>{new Date(job.created_at).toLocaleString()} · {job.status}</option>)}
-    </select></label>}
-    {selected?.status === "completed" && <ModelResult key={selected.id} job={selected} />}
-    {active(selected) && <p role="status">Your model is {selected.status}. You can return to this tool to check progress.</p>}
-    {selected?.status === "failed" && <p role="status">Model generation failed. The reserved credits were released.</p>}
+  return <main className="upload-studio model-studio">
+    <Link to="/creator/tools" className="studio-back"><ArrowLeft size={16}/> Creator tools</Link>
+    <header className="studio-heading"><h1>Image to <em>3D</em></h1>
+      <p>Build a rotatable model from one clear photo of a garment or object.</p></header>
+    <div className="model-workspace">
+      <form onSubmit={submit} className="studio-panel studio-form">
+        <div className="studio-panel-head"><h2>Source image</h2><ImagePlus size={19}/></div>
+        <label className="studio-picker">{preview ? <img className="source-preview" src={preview} alt="Selected source"/> : <ImagePlus size={28}/>}
+          <strong>{preview?"Change image":"Choose an image"}</strong><small>JPG, PNG, WebP or AVIF · up to 8 MB</small>
+          <input type="file" aria-label="Source image" disabled={busy} accept=".jpg,.jpeg,.png,.webp,.avif" onChange={e => choose(e.target.files?.[0])}/></label>
+        {file && <p className="studio-note">{file.name}</p>}
+        <p className="studio-note">Use a clear, unobstructed view. The model estimates surfaces hidden in the photo.</p>
+        <CreatorCreditBalance refreshKey={jobs[0]?.status} costLabel="10 credits per model · 4 submissions per 24 hours"/>
+        <button disabled={!ready || !file || busy || Boolean(running)} className="studio-submit"><Box size={17}/>{busy?"Submitting…":"Generate 3D model"}</button>
+        {error && <p role="alert">{error} <button type="button" className="underline" onClick={()=>setReload(n=>n+1)}>Refresh model history</button></p>}
+      </form>
+      <section className="studio-panel model-display">
+        <div className="studio-panel-head"><h2>{selected?"Model preview":"Example model"}</h2>
+          {jobs.length>0 && <select aria-label="Your models" value={selected.id} onChange={e=>setSelectedId(e.target.value)}>
+            {jobs.map(job=><option key={job.id} value={job.id}>{new Date(job.created_at).toLocaleString()} · {job.status}</option>)}</select>}</div>
+        {selected?.status==="completed" && <ModelResult key={selected.id} job={selected}/>}
+        {!selected && ready && <><ModelStage modelUrl="/models/garments/DBY_ButtonUpShirt_11Regions_BETA.glb" captureRef={exampleCapture}/><p className="studio-note">Sample shirt · Drag to rotate. Pinch or scroll to zoom.</p></>}
+        {!ready && !error && <p role="status">Loading your models…</p>}
+        {active(selected) && <div className="model-state" role="status"><Box size={36}/>Your model is {selected.status}. You can return here to check progress.</div>}
+        {selected?.status==="failed" && <p role="status">Model generation failed. The reserved credits were released.</p>}
+      </section>
+    </div>
   </main>;
 }

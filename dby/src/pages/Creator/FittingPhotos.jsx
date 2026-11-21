@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { ImagePlus, X } from "lucide-react";
+import "./CreatorUploadStudio.css";
 import API from "../../api/axios";
 import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 
@@ -90,25 +92,36 @@ export default function FittingPhotos({ onChange, onSaved }) {
     catch {setError("Could not remove the photo.");} finally {setBusy(false);}
   }
   const Container = onChange ? "section" : "main";
-  return <Container className="mx-auto max-w-3xl space-y-6 p-6 text-ink">
-    {!onChange && <Link to="/creator/profile" className="underline">Back to profile</Link>}
-    <h1 className="font-serif text-4xl">Private fitting photos</h1>
-    <p>Add three or four full-body photos. Background removal costs 10 credits per photo. Opening your runway automatically prepares one outfit per weekly design at 10 credits each.</p>
-    {error && <p role="alert">{error} {!photos && <button onClick={()=>{setError("");setAttempt(n=>n+1);}}>Retry</button>}</p>}
-    {photos && <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">{photos.map(p=><div key={p.id}>
-      <img src={p.url} alt={"Fitting photo "+p.slot} className="aspect-[3/4] w-full rounded-md bg-subtle object-contain"/>
-      <button disabled={busy} onClick={()=>remove(p.id)} className="underline">Remove photo {p.slot}</button>
-    </div>)}</div>}
-    {photos && photos.length<4 && <fieldset disabled={busy} className="space-y-4 rounded-md border border-line p-5">
-      <legend>Add fitting photos</legend>
-      <input type="file" multiple accept="image/png,image/jpeg,image/webp" aria-label="Choose fitting photos" onChange={choose}/>
-      {queue.length>0 && <p>{queue.map(item=>item.file.name).join(", ")}</p>}
-      <CreatorCreditBalance refreshKey={busy} costLabel="10 credits per background removal"/>
-      <button disabled={!queue.length || busy} className="rounded-md bg-action px-4 py-2 text-on-action disabled:opacity-50" onClick={save}>
-        {busy ? "Saving..." : queue.length ? `Save ${queue.length} ${queue.length===1?"photo":"photos"} (${queue.filter(item=>!item.image).length*10} credits)` : "Save photos"}
-      </button>
-    </fieldset>}
-    {progress && <p role="status">{progress}</p>}
-    {!onChange && <Link to="/creator/showcase" className="inline-block underline">Open My Runway</Link>}
+  const Heading=onChange ? "h2" : "h1";
+  return <Container className="upload-studio photo-studio">
+    {!onChange && <Link to="/creator/profile" className="studio-back">Back to profile</Link>}
+    <header className="studio-heading"><Heading>Private fitting <em>photos</em></Heading>
+      <p>Add three or four full-body photos to see yourself in the weekly collection.</p></header>
+    <div className="photo-workspace">
+      <figure className="pose-guide"><img src="/images/runway/navy-tee.webp" alt="Full-body example with head and shoes in frame"/>
+        <figcaption>Keep your full figure in frame</figcaption></figure>
+      <div className="studio-panel">
+        <div className="studio-panel-head"><h3>Your photos</h3>{photos && <span>{photos.length} / 4 saved</span>}</div>
+        {!photos && !error && <p role="status">Loading fitting photos…</p>}
+        {!!photos?.length && <div className="saved-poses">{photos.map(p=><div key={p.id}>
+          <img src={p.url} alt={"Fitting photo "+p.slot}/>
+          <button type="button" aria-label={"Remove photo "+p.slot} disabled={busy} onClick={()=>remove(p.id)}><X size={16}/></button>
+        </div>)}</div>}
+        {photos && photos.length<4 && <fieldset disabled={busy} className="studio-form">
+          <legend className="sr-only">Add fitting photos</legend>
+          <label className="studio-picker"><ImagePlus size={26}/><strong>{queue.length?"Change selection":"Choose fitting photos"}</strong><small>JPG, PNG or WebP · up to 12 MB each</small>
+            <input type="file" multiple accept="image/png,image/jpeg,image/webp" aria-label="Choose fitting photos" onChange={choose}/></label>
+          {!!queue.length && <ul className="studio-files">{queue.map(item=><li key={item.id}>{item.file.name}</li>)}</ul>}
+          <CreatorCreditBalance refreshKey={busy} costLabel="10 credits per photo for background removal"/>
+          <button disabled={!queue.length || busy} className="studio-submit bg-action" onClick={save}>
+            {busy ? "Saving..." : queue.length ? `Save ${queue.length} ${queue.length===1?"photo":"photos"} (${queue.filter(item=>!item.image).length*10} credits)` : "Save photos"}
+          </button>
+        </fieldset>}
+        <p className="studio-note">Your runway automatically prepares each weekly outfit for 10 credits.</p>
+        {error && <p role="alert">{error} {!photos && <button onClick={()=>{setError("");setAttempt(n=>n+1);}}>Retry</button>}</p>}
+        {progress && <p role="status">{progress}</p>}
+      </div>
+    </div>
+    {!onChange && <Link to="/creator/showcase" className="studio-back">Open My Runway</Link>}
   </Container>;
 }
