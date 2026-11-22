@@ -8,6 +8,24 @@ const cloud = require("cloudinary").v2;
 const { isolatedServer } = require("./support/isolated-app.cjs");
 const { sandboxDatabase } = require("./support/sandbox-database.cjs");
 
+test("a forbidden raw upload hands the generated GLB back for private storage", async t => {
+  const { storeModel } = require("../services/ai/modelStorage");
+  const bytes = Buffer.alloc(32);
+  bytes.write("glTF"); bytes.writeUInt32LE(2, 4); bytes.writeUInt32LE(bytes.length, 8);
+  const original = process.env.NODE_ENV;
+  process.env.NODE_ENV = "production";
+  t.after(() => { if (original === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = original; });
+  cloud.config({ cloud_name: "fixture", api_key: "fixture", api_secret: "fixture" });
+  let uploads = 0;
+  t.mock.method(global, "fetch", async (_url, options) => {
+    if (options.method !== "POST") return new Response(bytes);
+    uploads++;
+    return new Response("Forbidden", { status: 403 });
+  });
+  assert.deepEqual(await storeModel("https://fal.media/fixture.glb", "fixture.glb", randomUUID(), randomUUID()), bytes);
+  assert.equal(uploads, 1);
+});
+
 test("large GLBs keep geometry and aligned buffer views when an embedded texture is reduced", async () => {
   const { prepareModel } = require("../services/ai/modelStorage");
   const pixels = require("node:crypto").randomBytes(1800 * 1800 * 3);
@@ -48,7 +66,8 @@ test("3D handoff reserves once, stores privately, isolates owners and refunds fa
     for (const id of [owner, other]) await db.query("INSERT INTO users(id,role,full_name,email,password_hash) VALUES($1,'creator','Model test',$2,'fixture')", [id, id + "@example.invalid"]);
     process.env.FAL_KEY = "fixture";
     cloud.config({ cloud_name: "fixture", api_key: "fixture", api_secret: "fixture" });
-    let submissions = 0, saves = 0, failed = false, storageOffline = true;
+    let submissions = 0, saves = 0, failed = false, storageOffline = true, useDatabase = false;
+    const privateBytes = Buffer.from("glTF fixture");
     const auth = (req,res,next) => { req.user = { id: req.headers["x-owner"] || owner }; next(); };
     const pass = (req,res,next) => next();
     const app = express();
@@ -58,7 +77,7 @@ test("3D handoff reserves once, stores privately, isolates owners and refunds fa
         assert.ok(asset.startsWith("designbyyou_ai/models/" + owner + "/"));
         if (storageOffline) throw new Error("Injected temporary storage failure");
         saves++;
-        return asset;
+        return useDatabase ? privateBytes : asset;
       } },
       "middlewares/authMiddleware.js": { protect: auth, authorize: () => pass, requireVerifiedEmail: pass },
       "services/ai/falImageQueue.js": { submitImage: async (_model, input) => {
@@ -110,6 +129,18 @@ test("3D handoff reserves once, stores privately, isolates owners and refunds fa
     failed = true;
     assert.equal((await (await fetch(url + "/" + second.id)).json()).status, "failed");
     assert.equal(await balance(), 40);
+    failed = false;
+    useDatabase = true;
+    const third = await (await create(randomUUID())).json();
+    const recovered = await (await fetch(url + "/" + third.id)).json();
+    assert.equal(recovered.status, "completed");
+    assert.ok(recovered.file_path.endsWith(third.id + "/file"));
+    const privateFile = url + "/" + third.id + "/file";
+    assert.equal((await fetch(privateFile, {headers:{"x-owner":other}})).status, 404);
+    const response = await fetch(privateFile);
+    assert.equal(response.status, 200);
+    assert.deepEqual(Buffer.from(await response.arrayBuffer()), privateBytes);
+    assert.equal(await balance(), 30);
   } finally {
     if (server) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
     await require("node:fs/promises").rm(fixturePath, {force:true});

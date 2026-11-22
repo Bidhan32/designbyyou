@@ -2343,7 +2343,7 @@ export function createShapeTool(
 
                 drawFromCenter:
                     Boolean(
-                        context?.altKey
+                        context?.altKey || state.shape?.drawFromCenter
                     ),
 
                 documentData:

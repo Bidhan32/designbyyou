@@ -101,6 +101,12 @@ async function storeModel(url, publicId, owner, jobId) {
     method: "POST", body: form, redirect: "error", signal: AbortSignal.timeout(90000),
   });
   if (!upload.ok) {
+    // The model has already been generated. Pass its validated bytes to the
+    // job worker for private database storage when raw uploads are forbidden.
+    if (upload.status === 403 && owner && jobId) {
+      await upload.body?.cancel();
+      return file;
+    }
     const detail = await upload.json().catch(() => ({}));
     const reason = String(detail.error?.message || "");
     const category = /size|too large/i.test(reason) ? "SIZE" : /folder|permission|allowed/i.test(reason) ? "PERMISSION" : "UPLOAD";

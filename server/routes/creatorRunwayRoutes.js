@@ -3,7 +3,7 @@ const express = require("express");
 const multer = require("multer");
 const sharp = require("sharp");
 const cloud = require("cloudinary").v2;
-const { randomUUID } = require("node:crypto");
+
 const { rateLimit } = require("express-rate-limit");
 const db = require("../config/db");
 const { signedResultUrls } = require("../services/FashnCreatorTryOnService");
@@ -18,48 +18,110 @@ const asset = (owner,id) => "designbyyou_runway/"+owner+"/"+id;
 const photoUrl = (owner,id) => cloud.utils.private_download_url(asset(owner,id),"webp",{
   resource_type:"image",type:"authenticated",expires_at:Math.floor(Date.now()/1000)+900
 });
-const photos = async owner => (await db.query("SELECT id, slot FROM creator_runway_photos WHERE creator_id=$1 ORDER BY slot",[owner])).rows;
-router.get("/photos",async(req,res)=>res.json((await photos(req.user.id)).map(p=>({...p,url:photoUrl(req.user.id,p.id)}))));
+const {removeBackground} = require("../services/FalBackgroundRemoverService");
+const {balance, COST} = require("../services/textImageCredits");
+const slots = [1,2,3,4,5];
+const photoFields = "id, slot, thumbnail";
+const photos = async owner => (await db.query("SELECT "+photoFields+" FROM creator_runway_photos WHERE creator_id=$1 ORDER BY slot",[owner])).rows;
+const present = (owner,p) => ({id:p.id,slot:p.slot,url:p.thumbnail
+  ? "data:image/webp;base64,"+p.thumbnail.toString("base64") : photoUrl(owner,p.id)});
+router.get("/photos",async(req,res)=>res.json((await photos(req.user.id)).map(p=>present(req.user.id,p))));
+
+async function fittingFile(owner,id) {
+  const {rows:[row]} = await db.query("SELECT cutout FROM creator_runway_photos WHERE creator_id=$1 AND id=$2",[owner,id]);
+  if (!row) return null;
+  if (row.cutout) return row.cutout;
+  const response = await fetch(photoUrl(owner,id),{signal:AbortSignal.timeout(20000)});
+  if (!response.ok) throw new Error("Stored fitting photo unavailable");
+  return Buffer.from(await response.arrayBuffer());
+}
+
 router.get("/photos/:id/file",async(req,res)=>{
-  if (!uuid.test(req.params.id) || !(await photos(req.user.id)).some(p=>p.id===req.params.id)) return res.sendStatus(404);
-  const response = await fetch(photoUrl(req.user.id,req.params.id),{signal:AbortSignal.timeout(20000)});
-  if (!response.ok) return res.sendStatus(502);
-  res.type("image/webp").send(Buffer.from(await response.arrayBuffer()));
+  if (!uuid.test(req.params.id)) return res.sendStatus(404);
+  const file = await fittingFile(req.user.id,req.params.id);
+  if (!file) return res.sendStatus(404);
+  res.type("image/webp").send(file);
 });
-router.post("/photos",mutations,upload,async(req,res)=>{
-  if (!req.file) return res.status(400).json({message:"Choose a fitting photo."});
-  const owner=req.user.id, id=req.body.photo_id ?? randomUUID();
-  if (!uuid.test(id)) return res.status(400).json({message:"Invalid photo ID."});
-  const used=await photos(owner);
-  const saved=used.find(photo=>photo.id===id);
-  if (saved) return res.json({...saved,url:photoUrl(owner,id)});
-  const slot=[1,2,3,4].find(n=>!used.some(p=>p.slot===n));
-  if (!slot) return res.status(409).json({message:"Remove a fitting photo to make room."});
-  let buffer;
+
+const maxBytes = 12*1024*1024;
+const fail = (httpStatus,message) => Object.assign(new Error(message),{httpStatus});
+function readUpload(req,res,next) {
+  upload(req,res,err => err ? res.status(400).json({message:err.code==="LIMIT_FILE_SIZE"
+    ? "Choose a photo up to 12 MB." : "Choose one JPG, PNG or WebP photo per upload."}) : next());
+}
+
+async function preparePhoto(file, alreadyCutOut) {
+  let input;
   try {
-    buffer=await sharp(req.file.buffer,{limitInputPixels:32000000}).rotate().resize({width:1200,height:1600,fit:"inside",withoutEnlargement:true}).webp({quality:86}).toBuffer();
-  } catch { return res.status(400).json({message:"Choose a readable image."}); }
-  await cloud.uploader.upload("data:image/webp;base64,"+buffer.toString("base64"),{
-    public_id:asset(owner,id),type:"authenticated",resource_type:"image",overwrite:false
-  });
+    const source = sharp(file.buffer,{limitInputPixels:32000000,failOn:"warning"});
+    const metadata = await source.metadata();
+    if (!["jpeg","png","webp"].includes(metadata.format) || (metadata.pages || 1)>1) throw new Error();
+    input = await source.rotate().resize({width:1200,height:1600,fit:"inside",withoutEnlargement:true}).webp({quality:90}).toBuffer();
+  } catch { throw fail(400,"Choose a readable, single-frame JPG, PNG or WebP under 32 megapixels."); }
+  if (alreadyCutOut) return input;
+  const {dataUri} = await removeBackground("data:image/webp;base64,"+input.toString("base64"));
+  return sharp(Buffer.from(dataUri.slice(dataUri.indexOf(",")+1),"base64"),{limitInputPixels:32000000})
+    .resize({width:1200,height:1600,fit:"inside",withoutEnlargement:true}).webp({quality:86}).toBuffer();
+}
+
+async function savePhoto(req,res) {
+  const owner=req.user.id, id=req.body?.photo_id;
+  if (!req.file || !uuid.test(id)) return res.status(400).json({message:"Choose a photo and try saving again."});
+  const legacy=req.path==="/photos";
   try {
-    await db.query("INSERT INTO creator_runway_photos(id,creator_id,slot) VALUES($1,$2,$3)",[id,owner,slot]);
-  } catch(err) {
-    if(err.code==="23505"){
-      const saved=(await photos(owner)).find(photo=>photo.id===id);
-      if(saved) return res.json({...saved,url:photoUrl(owner,id)});
+    const used=await photos(owner);
+    const saved=used.find(p=>p.id===id);
+    if (saved) return res.json(present(owner,saved));
+    if (used.length>=slots.length) throw fail(409,"You have five fitting photos. Remove one to add another.");
+    if (legacy) {
+      // An older client has already paid for this cutout in the background remover.
+      const paid=await db.query("SELECT 1 FROM ai_image_reservations WHERE creator_id=$1 AND image_id=$2 AND tool='background_remover' AND status='completed'",[owner,id]);
+      if (!paid.rowCount) throw fail(409,"Refresh the page and choose your original photo again.");
+    } else {
+      if (req.file.size>maxBytes) throw fail(400,"Choose a photo up to 12 MB.");
+      if ((await balance(db,owner)).available<COST) throw fail(402,"You need 10 credits to save a fitting photo.");
     }
-    await cloud.uploader.destroy(asset(owner,id),{type:"authenticated"});
-    if(err.code==="23505") return res.status(409).json({message:"Your photo slots changed. Refresh and try saving again."});
-    throw err;
+    const cutout=await preparePhoto(req.file,legacy);
+    const thumbnail=await sharp(cutout).resize({width:180,height:240,fit:"inside",withoutEnlargement:true}).webp({quality:75}).toBuffer();
+    const client=await db.connect();
+    let result, created=false;
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT id FROM users WHERE id=$1 FOR UPDATE",[owner]);
+      const {rows}=await client.query("SELECT "+photoFields+" FROM creator_runway_photos WHERE creator_id=$1",[owner]);
+      result=rows.find(p=>p.id===id);
+      if (!result) {
+        const slot=slots.find(n=>!rows.some(p=>p.slot===n));
+        if (!slot) throw fail(409,"All five slots are full. Remove a photo and try again.");
+        await client.query("INSERT INTO creator_runway_photos(id,creator_id,slot,cutout,thumbnail) VALUES($1,$2,$3,$4,$5)",[id,owner,slot,cutout,thumbnail]);
+        if (!legacy) {
+          await client.query("SELECT reserve_ai_image($1,'runway_fitting',$2)",[owner,id]);
+          await client.query("UPDATE ai_image_reservations SET status='completed' WHERE creator_id=$1 AND tool='runway_fitting' AND image_id=$2",[owner,id]);
+        }
+        result={id,slot,thumbnail};
+        created=true;
+      }
+      await client.query("COMMIT");
+    } catch(err) { await client.query("ROLLBACK"); throw err; }
+    finally {client.release();}
+    return res.status(created?201:200).json(present(owner,result));
+  } catch(err) {
+    if (err.code==="DB402") return res.status(402).json({message:"You need 10 credits to save this fitting photo."});
+    if (err.httpStatus) return res.status(err.httpStatus).json({message:err.message});
+    console.error("[Runway fitting] Save failed",err.code || err.name);
+    return res.status(503).json({message:"We could not confirm that this photo was saved. Retry the same selection to check."});
   }
-  res.status(201).json({id,slot,url:photoUrl(owner,id)});
-});
+}
+router.post(["/photos","/photos/prepare"],mutations,readUpload,savePhoto);
+
 router.delete("/photos/:id",mutations,async(req,res)=>{
   const id=req.params.id,owner=req.user.id;
-  if(!uuid.test(id) || !(await photos(owner)).some(p=>p.id===id)) return res.sendStatus(404);
-  const result=await cloud.uploader.destroy(asset(owner,id),{type:"authenticated",invalidate:true});
+  const photo=uuid.test(id) && (await photos(owner)).find(p=>p.id===id);
+  if(!photo) return res.sendStatus(404);
+  if (!photo.thumbnail) {
+    const result=await cloud.uploader.destroy(asset(owner,id),{type:"authenticated",invalidate:true});
   if(!["ok","not found"].includes(result.result)) return res.sendStatus(502);
+  }
   await db.query("DELETE FROM creator_runway_photos WHERE id=$1 AND creator_id=$2",[id,owner]);
   res.sendStatus(204);
 });
@@ -74,7 +136,7 @@ const weeklyPairs = `WITH collection AS (
   SELECT id, row_number() OVER (ORDER BY slot) AS pos, count(*) OVER () AS total
   FROM creator_runway_photos WHERE creator_id=$1
 ) SELECT d.id,d.title,d.is_default,p.id AS photo_id,j.id AS job_id,j.status,j.output_public_id
-  FROM collection d JOIN poses p ON p.total>=3 AND p.pos=1+mod(d.slot-1,p.total)
+  FROM collection d JOIN poses p ON p.pos=1+mod(d.slot-1,p.total)
   LEFT JOIN creator_runway_looks l ON l.photo_id=p.id AND l.source='weekly' AND l.project_id=d.id::text AND l.version='1'
   LEFT JOIN creator_virtual_tryon_jobs j ON j.creator_id=$1 AND j.request_key=l.request_key`;
 router.get("/weekly",async(req,res)=>{
@@ -94,9 +156,9 @@ router.post("/weekly/:id",mutations,async(req,res)=>{
   const garment=pair.is_default ? await defaults.imageFor(pair.id) :
     (await db.query("SELECT image FROM runway_weekly_designs WHERE id=$1",[pair.id])).rows[0]?.image;
   if(!garment) return res.status(409).json({message:"The weekly collection changed."});
-  const picture=await fetch(photoUrl(owner,pair.photo_id),{signal:AbortSignal.timeout(20000)});
-  if(!picture.ok) return res.status(502).json({message:"Could not open the fitting photo."});
-  req.files={person_image:[{buffer:Buffer.from(await picture.arrayBuffer()),mimetype:"image/webp"}],
+  const picture=await fittingFile(owner,pair.photo_id);
+  if(!picture) return res.status(502).json({message:"Could not open the fitting photo."});
+  req.files={person_image:[{buffer:picture,mimetype:"image/webp"}],
     garment_image:[{buffer:garment,mimetype:"image/webp"}]};
   req.weeklyRunway=true;
   req.weeklyLineupSize=pair.is_default ? defaults.count : 6;

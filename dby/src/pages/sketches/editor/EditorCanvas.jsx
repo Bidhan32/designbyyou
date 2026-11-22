@@ -18,13 +18,14 @@ import React, {
   useState,
 } from "react";
 
-import { Group, Layer, Line, Rect, Stage } from "react-konva";
+import { Circle, Group, Layer, Line, Rect, Stage } from "react-konva";
 
 import LayerRenderer from "../layers/LayerRenderer";
 import ObjectRenderer from "../objects/ObjectRenderer";
 
 import { TEXT_EDIT_REQUEST_EVENT } from "../objects/TextObject";
 
+import { createPenTool, editablePaths, penTransform } from "../tools/PenTool";
 import PencilTool from "../tools/PencilTool";
 import SelectionTool from "../tools/SelectionTool";
 import EraserTool from "../tools/EraserTool";
@@ -622,6 +623,7 @@ function EditorCanvas(
     onViewportChange = null,
 
     onSaveRequested = null,
+    onToolShortcut = null,
 
     onTextEditStart = null,
 
@@ -705,6 +707,7 @@ function EditorCanvas(
 
   const symmetry = useFashionEditorStore((state) => state.symmetry);
 
+  const editingPenAnchors = useFashionEditorStore(state => state.activeTool === EDITOR_TOOLS.PEN && ["add", "delete"].includes(state.shape.penMode));
   const activeTool = useFashionEditorStore((state) => state.activeTool);
 
   const activeLayer = useFashionEditorStore(
@@ -725,7 +728,6 @@ function EditorCanvas(
     Store Actions
     =====================================================*/
 
-  const setActiveTool = useFashionEditorStore((state) => state.setActiveTool);
 
   const setViewport = useFashionEditorStore((state) => state.setViewport);
 
@@ -1031,6 +1033,7 @@ function EditorCanvas(
       },
     });
 
+    manager.register(createPenTool());
     manager.register(PencilTool);
 
     manager.register(SelectionTool);
@@ -1159,6 +1162,9 @@ function EditorCanvas(
   }, [activeTool]);
 
   useEffect(() => useFashionEditorStore.subscribe((state, previous) => {
+    if (state.activeTool === EDITOR_TOOLS.PEN && (state.shape.penMode !== previous.shape.penMode || state.activeLayerId !== previous.activeLayerId || state.document.id !== previous.document.id)) {
+      managerRef.current?.handleKeyDown({ key: "Escape" });
+    }
     if (state.activeTool !== previous.activeTool) updateTemporaryObject(null);
   }), [updateTemporaryObject]);
 
@@ -2098,7 +2104,7 @@ function EditorCanvas(
       if (key === "escape") {
         event.preventDefault();
 
-        if (activeTool === EDITOR_TOOLS.PATTERN_MASK) {
+        if (activeTool === EDITOR_TOOLS.PATTERN_MASK || activeTool === EDITOR_TOOLS.PEN) {
           managerRef.current?.handleKeyDown(event);
 
           updateTemporaryObject(null);
@@ -2147,99 +2153,8 @@ function EditorCanvas(
         return;
       }
 
-      if (key === "p" && !commandKey) {
+      if (!commandKey && !event.altKey && onToolShortcut?.(key)) {
         event.preventDefault();
-
-        setActiveTool(EDITOR_TOOLS.PENCIL);
-
-        return;
-      }
-
-      if (key === "b" && !commandKey) {
-        event.preventDefault();
-
-        setActiveTool(EDITOR_TOOLS.BRUSH);
-
-        return;
-      }
-
-      if (key === "l" && !commandKey) {
-        event.preventDefault();
-
-        setActiveTool(EDITOR_TOOLS.LINE);
-
-        return;
-      }
-
-      if (key === "s" && !commandKey) {
-        event.preventDefault();
-
-        setActiveTool(EDITOR_TOOLS.SHAPE);
-
-        return;
-      }
-
-      if (key === "f" && !commandKey) {
-        event.preventDefault();
-
-        setActiveTool(EDITOR_TOOLS.FILL);
-
-        return;
-      }
-
-      if (key === "t" && !commandKey) {
-        event.preventDefault();
-
-        setActiveTool(EDITOR_TOOLS.TEXT);
-
-        return;
-      }
-
-      if (key === "i" && !commandKey) {
-        event.preventDefault();
-
-        setActiveTool(EDITOR_TOOLS.IMAGE);
-
-        return;
-      }
-
-      if (key === "r" && !commandKey) {
-        event.preventDefault();
-
-        setActiveTool(EDITOR_TOOLS.PATTERN);
-
-        return;
-      }
-
-      if (key === "m" && !commandKey) {
-        event.preventDefault();
-
-        setActiveTool(EDITOR_TOOLS.PATTERN_MASK);
-
-        return;
-      }
-
-      if (key === "v" && !commandKey) {
-        event.preventDefault();
-
-        setActiveTool(EDITOR_TOOLS.SELECT);
-
-        return;
-      }
-
-      if (key === "e" && !commandKey) {
-        event.preventDefault();
-
-        setActiveTool(EDITOR_TOOLS.ERASER);
-
-        return;
-      }
-
-      if (key === "h" && !commandKey) {
-        event.preventDefault();
-
-        setActiveTool(EDITOR_TOOLS.PAN);
-
         return;
       }
 
@@ -2332,7 +2247,7 @@ function EditorCanvas(
     cutSelection,
     pasteClipboard,
     nudgeSelection,
-    setActiveTool,
+    onToolShortcut,
     setZoom,
     fitCurrentView,
     canvasHasKeyboardFocus,
@@ -2480,7 +2395,7 @@ function EditorCanvas(
       tabIndex={0}
       role="application"
       aria-label="Fashion design drawing canvas"
-      aria-keyshortcuts="V P B L S F T I R M E H Delete Control+Z Control+Y Control+S"
+      aria-keyshortcuts="V P N B L S C F T I R M E H Delete Control+Z Control+Y Control+S"
       data-active-tool={activeTool}
       data-symmetry-enabled={symmetry?.enabled ? "true" : "false"}
       data-symmetry-mode={symmetry?.mode || "vertical"}
@@ -2529,26 +2444,28 @@ function EditorCanvas(
               perfectDrawEnabled={false}
             />
 
-            {ui.showGrid && (
-              <DocumentGrid
+            <Group name="fashion-editor-document-guides" listening={false}>
+              {ui.showGrid && (
+                <DocumentGrid
+                  width={documentWidth}
+                  height={documentHeight}
+                  gridSize={ui.gridSize}
+                  zoom={zoom}
+                  color={gridColor}
+                />
+              )}
+
+              <Rect
+                x={0}
+                y={0}
                 width={documentWidth}
                 height={documentHeight}
-                gridSize={ui.gridSize}
-                zoom={zoom}
-                color={gridColor}
+                stroke="#94a3b8"
+                strokeWidth={borderWidth}
+                listening={false}
+                perfectDrawEnabled={false}
               />
-            )}
-
-            <Rect
-              x={0}
-              y={0}
-              width={documentWidth}
-              height={documentHeight}
-              stroke="#94a3b8"
-              strokeWidth={borderWidth}
-              listening={false}
-              perfectDrawEnabled={false}
-            />
+            </Group>
           </Group>
         </Layer>
 
@@ -2613,6 +2530,7 @@ function EditorCanvas(
               />
             ))}
 
+            {editingPenAnchors && <PenAnchors zoom={zoom} />}
             {temporaryObjects.map((object, index) => (
               <ObjectRenderer
                 key={object.id || `temporary-object-${index}`}
@@ -2661,3 +2579,14 @@ const ForwardedEditorCanvas = forwardRef(EditorCanvas);
 ForwardedEditorCanvas.displayName = "EditorCanvas";
 
 export default memo(ForwardedEditorCanvas);
+
+function PenAnchors({ zoom }) {
+  const layers = useFashionEditorStore(state => state.layers);
+  const objects = useFashionEditorStore(state => state.objects);
+  return editablePaths({ layers, objects }).map(object => {
+    const transform = penTransform(object);
+    return object.penNodes.map((anchor, i) => <Circle key={object.id + "-" + i}
+      {...transform.point(anchor)} radius={3 / zoom} fill="white" stroke="#5344ba"
+      strokeWidth={1.5 / zoom} listening={false} />);
+  });
+}

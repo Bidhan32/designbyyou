@@ -23,7 +23,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: {
 function present(row) {
   const job = { id: row.id, status: row.status, created_at: row.created_at };
   if (row.status === "completed") {
-    if (row.model_asset === "local:" + row.id) {
+    if (row.model_asset === "local:" + row.id || row.model_asset === "db:" + row.id) {
       job.file_path = "/creator-tools/image-to-3d/jobs/" + row.id + "/file";
       return job;
     }
@@ -89,7 +89,12 @@ router.get("/jobs", async (req,res) => {
 
 router.get("/jobs/:id/file", async (req,res) => {
   if (!uuid.test(req.params.id)) return res.sendStatus(404);
-  const { rows: [row] } = await db.query("SELECT model_asset FROM creator_model_jobs WHERE id=$1 AND creator_id=$2 AND status='completed'", [req.params.id, req.user.id]);
+  const { rows: [row] } = await db.query(`SELECT j.model_asset, f.glb FROM creator_model_jobs j
+    LEFT JOIN creator_model_files f ON f.job_id=j.id
+    WHERE j.id=$1 AND j.creator_id=$2 AND j.status='completed'`, [req.params.id, req.user.id]);
+  if (row?.model_asset === "db:" + req.params.id && row.glb) {
+    return res.type("model/gltf-binary").send(row.glb);
+  }
   if (row?.model_asset !== "local:" + req.params.id) return res.sendStatus(404);
   res.type("model/gltf-binary").sendFile(localModelPath(req.user.id, req.params.id), { dotfiles: "allow", cacheControl: false });
 });

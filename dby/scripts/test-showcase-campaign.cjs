@@ -73,22 +73,14 @@ async function run() {
   await React.act(async()=>document.dispatchEvent(new dom.window.Event("visibilitychange")));
   assert.equal(document.querySelector(".runway-pose img").alt,"You wearing Coat");
   assert.equal(document.querySelectorAll(".runway-pose").length,1);
-  const backgrounds = [];
-  let saves = 0;
+  const requests = [];
   global.campaignApi.post = async (url,form) => {
-    if (url.endsWith("/background-remove")) {
-      backgrounds.push(form.get("request_key"));
-      return {data:{data:{image:"data:image/png;base64,AAAA"}}};
-    }
-    saves++;
-    if (saves === 1) throw Object.assign(Error("legacy API"), {response:{status:400,data:{message:"Choose a cutout and confirm private storage."}}});
-    if (saves === 2) {
-      assert.equal(form.get("consent"), "true");
-      assert.equal(form.has("photo_id"), false);
-      return {data:{id:"legacy-photo",slot:2,url:images[0]}};
-    }
-    if (saves === 3) throw Error("storage unavailable");
-    return {data:{id:form.get("photo_id"),slot:saves,url:images[0]}};
+    assert.equal(url,"/creators/runway/photos/prepare");
+    assert.ok(form.get("image").size);
+    const id = form.get("photo_id");
+    requests.push(id);
+    if (requests.length === 2) throw Error("storage unavailable");
+    return {data:{id,slot:requests.length+1,url:images[0]}};
   };
   await React.act(async()=>document.querySelector('.runway-toolbar button').click());
   const picker = document.querySelector('input[type=file]');
@@ -98,10 +90,11 @@ async function run() {
   const save = document.querySelector(".my-runway fieldset button:last-of-type.bg-action");
   assert.match(save.textContent,/Save 2 photos \(20 credits\)/);
   await React.act(async()=>save.click());
-  assert.match(save.textContent,/Save 1 photo \(0 credits\)/);
+  assert.match(save.textContent,/Save 1 photo \(10 credits\)/);
   await React.act(async()=>save.click());
-  assert.equal(backgrounds.length,2,"Retrying storage reuses the processed image");
-  assert.equal(saves,4);
+  assert.equal(requests.length,3);
+  assert.notEqual(requests[0],requests[1]);
+  assert.equal(requests[1],requests[2],"A retry uses the same photo ID to prevent a duplicate charge");
   await render("designer");
   assert.ok(document.querySelector('a[href="/designer/designs"]'));
   assert.equal(document.querySelector(".campaign-actions button"), null);

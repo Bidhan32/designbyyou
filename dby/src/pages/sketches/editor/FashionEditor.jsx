@@ -19,7 +19,7 @@ import React, {
   useState,
 } from "react";
 
-import { MousePointer2, Pencil, Eraser, Hand, Paintbrush, Minus, Shapes, Shirt, PaintBucket, Type, Image as ImageIcon, Grid2X2, Scan, Undo2, Redo2, ArrowLeftRight, SlidersHorizontal, X } from "lucide-react";
+import { MousePointer2, PenTool as PenIcon, Pencil, Eraser, Hand, Paintbrush, Minus, Shapes, Shirt, PaintBucket, Type, Image as ImageIcon, Grid2X2, Scan, Undo2, Redo2, ArrowLeftRight, SlidersHorizontal, X } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import API from "/src/api/axios";
@@ -461,6 +461,7 @@ const TOOL_DEFINITIONS = Object.freeze([
     icon: Pencil,
     enabled: true,
   },
+  { id: EDITOR_TOOLS.PEN, label: "Pen", shortcut: "N", icon: PenIcon, enabled: true },
   {
     id: EDITOR_TOOLS.ERASER,
     label: "Eraser",
@@ -1124,6 +1125,50 @@ function createFileFromDataUrl(
   return file;
 }
 
+function resolveClothingTemplate(image) {
+  if (!image) {
+    return null;
+  }
+
+  const metadata =
+    image.metadata &&
+    typeof image.metadata === "object"
+      ? image.metadata
+      : {};
+
+  const explicitTemplateId = String(metadata.clothingTemplateId || "").trim();
+
+  if (explicitTemplateId) {
+    const explicitTemplate =
+      CLOTHING_TEMPLATES.find(
+        (template) => template.id === explicitTemplateId,
+      ) || null;
+
+    if (explicitTemplate) {
+      return explicitTemplate;
+    }
+  }
+
+  const fileName = String(
+    image.fileName || metadata.originalFileName || "",
+  )
+    .trim()
+    .toLowerCase();
+
+  if (!fileName) {
+    return null;
+  }
+
+  return (
+    CLOTHING_TEMPLATES.find(
+      (template) =>
+        String(template.fileName || "")
+          .trim()
+          .toLowerCase() === fileName,
+    ) || null
+  );
+}
+
 function getFirstChild(node) {
   const children = node?.getChildren?.();
 
@@ -1311,6 +1356,25 @@ function ToolButton({ tool, active, onClick }) {
       </span>
     </button>
   );
+}
+
+function PenControls() {
+  const shape = useFashionEditorStore(state => state.shape);
+  const setShape = useFashionEditorStore(state => state.setShapeSettings);
+  const mode = shape.penMode || "freeform";
+  const hints = { freeform: "Drag to draw a path.", curvature: "Tap to place anchors. Tap the last anchor again or press Enter to finish.",
+    add: "Tap a pen path to insert an anchor. Drag an existing anchor to reshape it.", delete: "Tap an anchor to remove it. Each path needs two anchors." };
+  return <div className="flex flex-wrap items-center gap-2 text-xs">
+    <select aria-label="Pen mode" className="h-9 rounded-md border border-line bg-surface px-2 text-ink"
+      value={mode} onChange={e => setShape({ penMode: e.target.value })}>
+      <option value="freeform">Freeform Pen</option><option value="curvature">Curvature Pen</option>
+      <option value="add">Add Anchor Point</option><option value="delete">Delete Anchor Point</option>
+    </select>
+    {(mode === "freeform" || mode === "curvature") && <label>Width <input type="number" min="0.25" max="200" step="0.25"
+      className="w-16 rounded border border-line bg-surface px-1" value={shape.strokeWidth}
+      onChange={e => setShape({ strokeWidth: Math.max(0.25, Number(e.target.value)) })} /> px</label>}
+    <span className="text-muted">{hints[mode]}</span>
+  </div>;
 }
 
 function PanelSection({ title, children, action = null }) {
@@ -1961,6 +2025,8 @@ function FashionEditor() {
 
   const brush = useFashionEditorStore((state) => state.brush);
 
+  const fill = useFashionEditorStore(state => state.fill);
+  const setFillSettings = useFashionEditorStore(state => state.setFillSettings);
   const shape = useFashionEditorStore((state) => state.shape);
 
   const storedTextSettings = useFashionEditorStore((state) => state.text);
@@ -2177,6 +2243,7 @@ function FashionEditor() {
 
   const [aiFashionPreviewOpen, setAiFashionPreviewOpen] = useState(false);
 
+  const [aiReference, setAiReference] = useState("canvas");
   const [aiPreviewInstructions, setAiPreviewInstructions] = useState("");
   const [aiFashionResult, setAiFashionResult] = useState(null);
 
@@ -2349,49 +2416,9 @@ function FashionEditor() {
   =========================================================
   */
 
-  const selectedClothingTemplate = useMemo(() => {
-    if (!selectedImageObject) {
-      return null;
-    }
-
-    const metadata =
-      selectedImageObject.metadata &&
-      typeof selectedImageObject.metadata === "object"
-        ? selectedImageObject.metadata
-        : {};
-
-    const explicitTemplateId = String(metadata.clothingTemplateId || "").trim();
-
-    if (explicitTemplateId) {
-      const explicitTemplate =
-        CLOTHING_TEMPLATES.find(
-          (template) => template.id === explicitTemplateId,
-        ) || null;
-
-      if (explicitTemplate) {
-        return explicitTemplate;
-      }
-    }
-
-    const fileName = String(
-      selectedImageObject.fileName || metadata.originalFileName || "",
-    )
-      .trim()
-      .toLowerCase();
-
-    if (!fileName) {
-      return null;
-    }
-
-    return (
-      CLOTHING_TEMPLATES.find(
-        (template) =>
-          String(template.fileName || "")
-            .trim()
-            .toLowerCase() === fileName,
-      ) || null
-    );
-  }, [selectedImageObject]);
+  const selectedClothingTemplate = useMemo(
+    () => resolveClothingTemplate(selectedImageObject), [selectedImageObject],
+  );
 
   const selectedClothingColourRegions = useMemo(
     () =>
@@ -3574,11 +3601,14 @@ function FashionEditor() {
           }
         : null;
 
+      const guides = backgroundGroup?.findOne(".fashion-editor-document-guides");
+      const guidesWereVisible = guides?.visible();
       const interactionWasVisible = interactionLayer?.visible?.() ?? true;
 
       const transformerWasVisible = transformer?.visible?.() ?? false;
 
       try {
+        guides?.visible(false);
         interactionLayer?.visible(false);
 
         transformer?.visible(false);
@@ -3622,6 +3652,7 @@ function FashionEditor() {
           artworkGroup?.setAttrs(originalArtworkTransform);
         }
 
+        guides?.visible(guidesWereVisible);
         interactionLayer?.visible(interactionWasVisible);
 
         transformer?.visible(transformerWasVisible);
@@ -4254,27 +4285,13 @@ function FashionEditor() {
     setAiFashionError("");
 
     try {
-      /*
-      =====================================================
-      AI input selection
-
-      When an editable clothing template is selected, do not
-      send the whole editor page. Regenerate the garment's
-      own clean SVG from its current colours + region artwork,
-      rasterize that board to PNG, and send it as the strict
-      AI reference. This keeps front + back together in one
-      paid generation while removing unrelated canvas space.
-
-      Freehand sketches, drawings and ordinary images continue
-      to use the clean stage capture fallback.
-      =====================================================
-      */
+      // Garment-only uses the template board. Full sketch includes visible drawing layers.
 
       let imageDataUrl = "";
 
       let inputMode = "canvas";
 
-      if (selectedClothingTemplate) {
+      if (aiReference === "garment" && selectedClothingTemplate) {
         const cleanClothingSource = createClothingTemplatePreview(
           selectedClothingTemplate,
           selectedClothingColours,
@@ -4397,6 +4414,7 @@ function FashionEditor() {
   }, [
     aiFashionGenerating,
     aiPreviewInstructions,
+    aiReference,
     objectCount,
     documentData.width,
     documentData.height,
@@ -4486,9 +4504,10 @@ function FashionEditor() {
 
   const handleOpenAiFashionPreview = useCallback(() => {
     setMobileMenuOpen(false);
+    setAiReference(selectedClothingTemplate && objectCount === 1 ? "garment" : "canvas");
     setAiFashionPreviewOpen(true);
 
-  }, []);
+  }, [selectedClothingTemplate, objectCount]);
 
   /*=====================================================
     Layer Helpers
@@ -4555,15 +4574,11 @@ function FashionEditor() {
         return;
       }
 
-      setShapeSettings({
-        fill: colour,
-
-        fillType: "solid",
-      });
+      setFillSettings({ color: colour, fillType: "solid" });
 
       setPrimaryColor(colour);
     },
-    [setShapeSettings, setPrimaryColor],
+    [setFillSettings, setPrimaryColor],
   );
 
   const updateTextSettings = useCallback(
@@ -5849,8 +5864,7 @@ function FashionEditor() {
         const layer = liveState.layers.find((item) => item.id === liveObject?.layerId);
         if (!liveObject || liveObject.locked || liveObject.visible === false ||
             !layer || layer.locked || layer.visible === false ||
-            (liveObject.metadata?.clothingTemplateId &&
-             liveObject.metadata.clothingTemplateId !== templateId)) return false;
+            resolveClothingTemplate(liveObject)?.id !== templateId) return false;
 
         const metadata = liveObject.metadata || {};
         const existingLayers = metadata.clothingArtworkLayers || {};
@@ -6004,7 +6018,7 @@ function FashionEditor() {
       if (!liveObject || liveObject.type !== OBJECT_TYPES.IMAGE ||
           liveObject.locked || liveObject.visible === false ||
           !liveLayer || liveLayer.locked || liveLayer.visible === false ||
-          liveObject.metadata?.clothingTemplateId !== templateId) return false;
+          resolveClothingTemplate(liveObject)?.id !== templateId) return false;
       const metadata = liveObject.metadata || {};
       const oldLayers = metadata.clothingArtworkLayers &&
         typeof metadata.clothingArtworkLayers === "object" &&
@@ -6123,7 +6137,7 @@ function FashionEditor() {
         const layer = state.layers.find((item) => item.id === liveObject?.layerId);
         if (!liveObject || liveObject.locked || liveObject.visible === false ||
             !layer || layer.locked || layer.visible === false ||
-            liveObject.metadata?.clothingTemplateId !== templateId) return false;
+            resolveClothingTemplate(liveObject)?.id !== templateId) return false;
         const metadata = liveObject.metadata || {};
         const oldLayers = metadata.clothingArtworkLayers || {};
         const oldArtwork = normaliseClothingTemplateArtwork(
@@ -7421,6 +7435,13 @@ function FashionEditor() {
     }
   }, [setActiveTool]);
 
+  const handleToolShortcut = useCallback((key) => {
+    const tool = TOOL_DEFINITIONS.find(item => item.enabled && item.shortcut.toLowerCase() === key);
+    if (!tool) return false;
+    handleEditorToolSelection(tool.id);
+    return true;
+  }, [handleEditorToolSelection]);
+
   const closeGarmentLibrary = useCallback(() => {
     setGarmentLibraryOpen(false);
   }, []);
@@ -7668,6 +7689,7 @@ function FashionEditor() {
           <>
 
 
+            {activeTool === EDITOR_TOOLS.PEN && <PanelSection title="Pen"><PenControls /></PanelSection>}
             {activeTool === EDITOR_TOOLS.PENCIL && (
               <PanelSection title="Pencil">
                 <div className="space-y-5">
@@ -8223,7 +8245,8 @@ function FashionEditor() {
 
                   <div className="rounded-md border border-line bg-surface p-3">
                     <p className="text-xs font-semibold text-ink">
-                      Drawing shortcuts
+                      <label className="flex items-center gap-2"><input type="checkbox" checked={!!shape?.drawFromCenter}
+                        onChange={e => setShapeSettings({ drawFromCenter: e.target.checked })} /> Draw from center</label>
                     </p>
 
                     <p className="mt-1 text-[10px] leading-relaxed text-muted">
@@ -8354,7 +8377,8 @@ function FashionEditor() {
 
                   <div className="rounded-md border border-line bg-surface p-3">
                     <p className="text-xs font-semibold text-ink">
-                      Angle snapping
+                      <label className="flex items-center gap-2"><input type="checkbox" checked={!!shape?.snapLineAngle}
+                        onChange={e => setShapeSettings({ snapLineAngle: e.target.checked })} /> Snap to 15°</label>
                     </p>
 
                     <p className="mt-1 text-[10px] leading-relaxed text-muted">
@@ -8376,7 +8400,7 @@ function FashionEditor() {
 
                     <input
                       type="color"
-                      value={shape?.fill || colours.primary}
+                      value={fill.color}
                       onChange={(event) => {
                         handleFillColourChange(event.target.value);
                       }}
@@ -8386,13 +8410,13 @@ function FashionEditor() {
 
                   <SliderField
                     label="Fill opacity"
-                    value={Math.round(numberOr(shape?.fillOpacity, 1) * 100)}
+                    value={Math.round(numberOr(fill.opacity, 1) * 100)}
                     minimum={0}
                     maximum={100}
                     suffix="%"
                     onChange={(value) => {
-                      setShapeSettings({
-                        fillOpacity: value / 100,
+                      setFillSettings({
+                        opacity: value / 100,
                       });
                     }}
                   />
@@ -8413,8 +8437,8 @@ function FashionEditor() {
                           }}
                           className={[
                             "aspect-square min-h-7 rounded-md border-2 transition hover:scale-110",
-                            (shape?.fill || colours.primary) === colour
-                              ? "border-line"
+                            (fill.color) === colour
+                              ? "border-action"
                               : "border-line",
                           ].join(" ")}
                           style={{
@@ -11984,8 +12008,10 @@ function FashionEditor() {
           </>
         )}
 
+        {activeTool === EDITOR_TOOLS.PEN && <PenControls />}
         {activeTool === EDITOR_TOOLS.SHAPE && (
           <>
+            <label className="flex shrink-0 items-center gap-1 text-xs"><input type="checkbox" checked={!!shape?.drawFromCenter} onChange={e => setShapeSettings({ drawFromCenter: e.target.checked })} /> From center</label>
             <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
               Shape
               <select
@@ -12095,6 +12121,7 @@ function FashionEditor() {
 
         {activeTool === EDITOR_TOOLS.LINE && (
           <>
+            <label className="flex shrink-0 items-center gap-1 text-xs"><input type="checkbox" checked={!!shape?.snapLineAngle} onChange={e => setShapeSettings({ snapLineAngle: e.target.checked })} /> Snap to 15°</label>
             <label className="flex shrink-0 items-center gap-2 text-xs text-muted">
               Width
               <input
@@ -12194,7 +12221,7 @@ function FashionEditor() {
               Colour
               <input
                 type="color"
-                value={shape?.fill || colours.primary}
+                value={fill.color}
                 onChange={(event) => {
                   handleFillColourChange(event.target.value);
                 }}
@@ -12209,16 +12236,16 @@ function FashionEditor() {
                 min="0"
                 max="1"
                 step="0.01"
-                value={numberOr(shape?.fillOpacity, 1)}
+                value={numberOr(fill.opacity, 1)}
                 onChange={(event) => {
-                  setShapeSettings({
-                    fillOpacity: Number(event.target.value),
+                  setFillSettings({
+                    opacity: Number(event.target.value),
                   });
                 }}
                 className="w-24 accent-action sm:w-28"
               />
               <span className="min-w-10 font-semibold text-ink">
-                {Math.round(numberOr(shape?.fillOpacity, 1) * 100)}%
+                {Math.round(numberOr(fill.opacity, 1) * 100)}%
               </span>
             </label>
 
@@ -12749,6 +12776,7 @@ function FashionEditor() {
               className="h-full w-full"
               minimumHeight={0}
               onPointerPositionChange={setPointerInformation}
+              onToolShortcut={handleToolShortcut}
               onSaveRequested={handleSaveProject}
               onError={(error) => {
                 console.error(error);
@@ -13463,9 +13491,14 @@ function FashionEditor() {
                   </h2>
                 </div>
 
-                <p className="mt-1 text-[11px] text-muted">
-                  {selectedClothingTemplate ? "Reference: selected garment." : "Reference: current canvas."}
-                </p>
+                {selectedClothingTemplate && <label className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted">
+                  Preview reference
+                  <select className="rounded border border-line bg-surface p-1 text-ink" value={aiReference}
+                    disabled={aiFashionGenerating} onChange={event => setAiReference(event.target.value)}>
+                    <option value="canvas">Full sketch with visible layers</option>
+                    <option value="garment">Selected garment only</option>
+                  </select>
+                </label>}
               </div>
 
               <button

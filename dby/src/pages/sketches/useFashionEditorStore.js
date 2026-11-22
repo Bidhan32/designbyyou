@@ -25,6 +25,7 @@ Editor Tools
 export const EDITOR_TOOLS = Object.freeze({
     SELECT: "select",
 
+    PEN: "pen",
     PENCIL: "pencil",
     BRUSH: "brush",
     ERASER: "eraser",

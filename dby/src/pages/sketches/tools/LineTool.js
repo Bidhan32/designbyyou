@@ -1889,7 +1889,7 @@ export function createLineTool(
                 session.startPoint,
                 session.rawEndPoint,
                 state,
-                angleSnapping,
+                angleSnapping || state.shape?.snapLineAngle,
                 angleIncrement,
                 session.symmetry,
                 symmetrySnapThreshold
@@ -2297,7 +2297,7 @@ export function createLineTool(
                     currentSession.rawEndPoint,
                     state,
                     Boolean(
-                        context.shiftKey ||
+                        context.shiftKey || state.shape?.snapLineAngle ||
                         currentSession.angleSnapped
                     ),
                     angleIncrement,

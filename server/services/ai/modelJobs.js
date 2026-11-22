@@ -39,7 +39,16 @@ async function synchronize(row) {
           await db.query("UPDATE creator_model_jobs SET next_check=now()+interval '1 minute', updated_at=now()-interval '3 minutes' WHERE id=$1 AND status='saving' AND updated_at=$2", [row.id, lease]);
           throw Object.assign(new Error("Model storage will retry"), { code: error.code || "MODEL_STORAGE_RETRY" });
         }
-        await db.query("UPDATE creator_model_jobs SET model_asset=$2,status='completed',updated_at=now() WHERE id=$1 AND status='saving' AND updated_at=$3", [row.id,storedAsset,lease]);
+        if (Buffer.isBuffer(storedAsset)) {
+          // Publish the file and settle credits together, only for the current lease.
+          await db.query(`WITH completed AS (
+            UPDATE creator_model_jobs SET model_asset='db:' || id::text,status='completed',updated_at=now()
+            WHERE id=$1 AND status='saving' AND updated_at=$2 RETURNING id
+          ) INSERT INTO creator_model_files(job_id, glb) SELECT id,$3 FROM completed`,
+          [row.id, lease, storedAsset]);
+        } else {
+          await db.query("UPDATE creator_model_jobs SET model_asset=$2,status='completed',updated_at=now() WHERE id=$1 AND status='saving' AND updated_at=$3", [row.id,storedAsset,lease]);
+        }
       }
     }
   } catch (err) {

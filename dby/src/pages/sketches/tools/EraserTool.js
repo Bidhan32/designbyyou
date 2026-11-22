@@ -823,6 +823,7 @@ function fragmentUpdate(object, points) {
 
   return {
     renderMode: resolveRenderMode(object),
+    ...(object.penNodes ? { penNodes: points.map(({ x, y }) => ({ x, y })) } : {}),
 
     points,
 
