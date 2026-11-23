@@ -63,6 +63,11 @@ function Probe() { location = useLocation(); return null; }
   assert.equal(params.get('design_id'), fixture.design_id);
   assert.equal(params.get('designer_id'), fixture.designer_id);
   assert.equal(params.get('design_title'), fixture.title);
+  const picker = [...document.querySelectorAll('details')].find(el => el.querySelector('summary')?.textContent === 'Open in AI Tools');
+  assert.ok(picker);
+  const tools = [...picker.querySelectorAll('option')].map(option => option.value);
+  assert.ok(tools.includes('image-to-3d') && tools.includes('virtual-try-on'));
+  assert.ok(!tools.includes('fashion-editor') && !tools.includes('upload'));
   await click(button('Open in Fashion Editor'));
   assert.equal(location.pathname, '/creator/fashion-editor/123');
   assert.equal(calls.find(call => call[0] === 'post')[1], `/creators/showcase/${fixture.design_id}/open-in-editor`);
@@ -70,6 +75,7 @@ function Probe() { location = useLocation(); return null; }
   assert.match(document.body.textContent, /Interactive garment preview/);
   assert.ok(!button('Open in Fashion Editor'));
   assert.ok(!button('Virtual try-on'));
+  assert.doesNotMatch(document.body.textContent, /Open in AI Tools/);
   assert.ok(!document.querySelector('a[href*="bookings/new"]'));
   assert.ok(document.querySelector('a[href="/designer/explore"]'));
   await mount('creator', { owner_role: 'creator', designer_id: null, preview_3d: null });

@@ -115,6 +115,8 @@ import { getGarment3DConfig } from "../sketches/templates/GarmentTemplateRegistr
 
 // Load WebGL only when the user opens a 3D preview.
 
+import ToolHandoffAction from "../../components/ToolHandoffAction";
+import { useAuth } from "../../context/AuthContext.helpers.js";
 import ToolBookingAction from "../../components/ToolBookingAction";
 import TryOnButton from "./TryOnButton";
 
@@ -505,6 +507,7 @@ function ErrorScreen({ message, showcaseRoute, onRetry }) {
 ========================================================= */
 
 export default function CreatorShowcaseDetail({ audience = "creator" }) {
+  const { user } = useAuth();
   const isCreator = audience === "creator";
   const { state: detailState } = useLocation();
   const gallery = "/" + audience + "/designs";
@@ -1572,7 +1575,7 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
                 <span>{completedBookings} completed bookings</span>
                 {item.city && <span className="inline-flex items-center gap-1"><MapPin size={13} />{item.city}</span>}
               </div>}
-              {(bookingUrl || canOpenInEditor) && <div className="mt-5 space-y-3 border-t border-line pt-5">
+              {(bookingUrl || canOpenInEditor || (isCreator && currentImage)) && <div className="mt-5 space-y-3 border-t border-line pt-5">
                 {bookingUrl && <div className="hidden space-y-2 lg:block">
                   <Link to={bookingUrl} className={GOLD_BUTTON}>Book this designer<ArrowRight size={16} /></Link>
                   <p className="text-xs leading-5 text-muted">This design will be included with your booking request.</p>
@@ -1585,6 +1588,8 @@ export default function CreatorShowcaseDetail({ audience = "creator" }) {
                   </button>
                   <p className="text-xs leading-5 text-muted">Continue in your private workspace. Other creators’ published designs stay unchanged.</p>
                 </>}
+                {isCreator && currentImage && <ToolHandoffAction key={currentImage.url} aiOnly owner={user?.id}
+                  options={[{ label: "Selected gallery image", src: currentImage.url }]} />}
                 {editorError && <p role="alert" className="rounded-md bg-canvas p-3 text-sm text-action dark:bg-subtle">{editorError}</p>}
               </div>}
               {designerOwned && item.designer_bio && <details className="mt-5 border-t border-line pt-4">

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { destinations, prepareHandoff, toolPath } from "./toolHandoff";
 
-export default function ToolHandoffAction({ options, owner }) {
+export default function ToolHandoffAction({ options, owner, aiOnly = false }) {
   const navigate = useNavigate();
   const [view, setView] = useState("");
   const [destination, setDestination] = useState("");
@@ -20,14 +20,14 @@ export default function ToolHandoffAction({ options, owner }) {
     } finally { setBusy(false); }
   }
   return <details className="rounded-md border border-line p-3">
-    <summary className="cursor-pointer font-semibold">Use in another tool</summary>
+    <summary className="cursor-pointer font-semibold">{aiOnly ? "Open in AI Tools" : "Use in another tool"}</summary>
     <div className="mt-3 flex flex-wrap items-center gap-2">
       {options.length > 1 && <select aria-label="Result to use" className="bg-surface p-2" value={selected.label} onChange={e => setView(e.target.value)}>
         {options.map(v => <option key={v.label}>{v.label}</option>)}
       </select>}
       <select aria-label="Destination tool" className="bg-surface p-2" value={destination} onChange={e => setDestination(e.target.value)}>
         <option value="">Choose a tool</option>
-        {Object.entries(destinations).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+        {Object.entries(destinations).filter(([key]) => !aiOnly || toolPath(key).startsWith("/creator/tools/")).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
       </select>
       <button type="button" className="rounded-md border border-line px-3 py-2" disabled={busy || !destination} onClick={open}>{busy ? "Preparing image…" : "Open tool"}</button>
     </div>
