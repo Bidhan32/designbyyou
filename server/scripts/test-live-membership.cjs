@@ -37,7 +37,9 @@ test("live invoice fixtures grant Basic and Pro once, carry unused credits, and 
   const unknown = await bookingTerms(db, { id:creatorId, stripe_subscription_price_id:"price_unrecognized" }, true, 10000);
   assert.equal(unknown.fee_cents,500);
   assert.equal(unknown.tier,"free");
-  assert.equal(unknown.rewards_per_1000_usd,10);
+  assert.equal(unknown.rewards_per_1000_usd,0);
+  const free = await bookingTerms(db, { id:creatorId }, false, 100000);
+  assert.equal(free.rewards_per_1000_usd,0);
   for (const [tier,discount,rate] of [["basic",6,5],["pro",16,10]]) {
     const plan = await bookingTerms(db,{id:creatorId,stripe_subscription_price_id:"price_live_"+tier},true,100000);
     assert.equal(plan.discount_percent,discount);

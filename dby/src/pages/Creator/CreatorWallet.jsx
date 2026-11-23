@@ -498,7 +498,7 @@ const membershipCardDetails = {
       "50 AI credits each month",
       "$5 connection fee per booking",
       "Standard booking prices (0% discount)",
-      "1 reward point per $100 spent on eligible bookings",
+      "No booking reward points",
       "1 alteration per booking",
     ],
   },
