@@ -98,3 +98,12 @@ test("zero-credit runway fitting supports uploads, retries and weekly looks whil
     await sandbox.dispose();
   }
 });
+
+test("runway cutouts keep the full figure while removing transparent margins", async()=>{
+  const frame=require("../services/frameRunwayCutout");
+  const subject=await sharp({create:{width:24,height:110,channels:4,background:"red"}}).png().toBuffer();
+  const padded=await sharp({create:{width:320,height:400,channels:4,background:{r:0,g:0,b:0,alpha:0.01}}})
+    .composite([{input:subject,left:35,top:232}]).png().toBuffer();
+  const {width,height,hasAlpha}=await sharp(await frame(padded)).metadata();
+  assert.deepEqual([width,height,hasAlpha],[28,114,true]);
+});

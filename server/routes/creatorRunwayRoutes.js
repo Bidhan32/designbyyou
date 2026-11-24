@@ -18,6 +18,7 @@ const asset = (owner,id) => "designbyyou_runway/"+owner+"/"+id;
 const photoUrl = (owner,id) => cloud.utils.private_download_url(asset(owner,id),"webp",{
   resource_type:"image",type:"authenticated",expires_at:Math.floor(Date.now()/1000)+900
 });
+const frameRunwayCutout = require("../services/frameRunwayCutout");
 const {removeBackground} = require("../services/FalBackgroundRemoverService");
 const slots = [1,2,3,4,5];
 const photoFields = "id, slot, thumbnail";
@@ -128,7 +129,17 @@ const weeklyPairs = `WITH collection AS (
   LEFT JOIN creator_virtual_tryon_jobs j ON j.creator_id=$1 AND j.request_key=l.request_key`;
 router.get("/weekly",async(req,res)=>{
   const {rows}=await db.query(weeklyPairs+" ORDER BY d.slot",[req.user.id,defaults.metadata]);
-  res.json(rows.map(({output_public_id,...row})=>({...row,image_url:signedResultUrls(output_public_id).image_url})));
+  res.json(rows.map(({output_public_id,...row})=>({...row,needs_framing:Boolean(output_public_id && !output_public_id.endsWith("_framed_cutout")),image_url:signedResultUrls(output_public_id).image_url})));
+});
+// Existing outfits can be reframed without sending another generation to the AI provider.
+router.get("/weekly/:id/preview",async(req,res)=>{
+  if(!uuid.test(req.params.id)) return res.sendStatus(404);
+  const {rows:[job]}=await db.query("SELECT output_public_id FROM creator_virtual_tryon_jobs WHERE id=$1 AND creator_id=$2 AND weekly_runway AND status='completed'",[req.params.id,req.user.id]);
+  if(!job?.output_public_id) return res.sendStatus(404);
+  const response=await fetch(signedResultUrls(job.output_public_id).image_url,{signal:AbortSignal.timeout(20000)});
+  if(!response.ok) return res.sendStatus(502);
+  const image=await frameRunwayCutout(Buffer.from(await response.arrayBuffer()));
+  res.vary("Authorization").set("Cache-Control","private, max-age=86400").type("webp").send(image);
 });
 router.post("/weekly/:id",mutations,async(req,res)=>{
   if(!uuid.test(req.params.id)) return res.sendStatus(404);
@@ -145,7 +156,7 @@ router.post("/weekly/:id",mutations,async(req,res)=>{
   if(!garment) return res.status(409).json({message:"The weekly collection changed."});
   const picture=await fittingFile(owner,pair.photo_id);
   if(!picture) return res.status(502).json({message:"Could not open the fitting photo."});
-  req.files={person_image:[{buffer:picture,mimetype:"image/webp"}],
+  req.files={person_image:[{buffer:await frameRunwayCutout(picture),mimetype:"image/webp"}],
     garment_image:[{buffer:garment,mimetype:"image/webp"}]};
   req.weeklyRunway=true;
   req.weeklyLineupSize=pair.is_default ? defaults.count : 6;

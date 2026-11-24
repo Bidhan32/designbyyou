@@ -114,6 +114,7 @@
   padding: 0; border: 0; background: transparent; cursor: pointer;
   transition: left .95s ease-in-out, bottom .95s ease-in-out, transform .95s ease-in-out, opacity .65s; }
 .runway-pose img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center bottom; }
+.runway-pose[aria-hidden="true"] { opacity: 0; }
 .runway-pose:disabled { pointer-events: none; }
 .runway-pose:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 @media (hover: hover) {
@@ -131,7 +132,8 @@
   .runway-intro nav { gap: 0 18px; }
   .runway-intro a { font-size: .86rem; }
   .runway-theatre { padding: 0; }
-  .runway-orbit { height: clamp(250px, 75vw, 465px); }
+  .runway-orbit { height: clamp(260px, 85vw, 440px); }
+  .runway-pose { width: 47%; height: 84%; }
 }
 @media (prefers-reduced-motion: reduce) { .runway-pose { transition: none; } }
 @property --runway-angle {

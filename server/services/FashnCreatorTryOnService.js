@@ -143,7 +143,7 @@ async function savePrivateResult(outputDataUri, creatorId, jobId, weekly = false
   if (weekly) {
     const {removeBackground} = require("./FalBackgroundRemoverService");
     const {dataUri} = await removeBackground("data:image/jpeg;base64," + jpeg.toString("base64"));
-    image = await sharp(Buffer.from(dataUri.split(",")[1],"base64")).webp({quality:90}).toBuffer();
+    image = await require("./frameRunwayCutout")(Buffer.from(dataUri.split(",")[1],"base64"));
   }
   return new Promise((resolve, reject) => {
     const uploader = cloudinary.uploader.upload_stream({
@@ -152,7 +152,7 @@ async function savePrivateResult(outputDataUri, creatorId, jobId, weekly = false
       resource_type: "image",
       type: "authenticated",
       folder: "designbyyou_ai/creator_virtual_tryon",
-      public_id: `${creatorId}_${jobId}${weekly ? "_cutout" : ""}`,
+      public_id: `${creatorId}_${jobId}${weekly ? "_framed_cutout" : ""}`,
       overwrite: false,
       format: weekly ? "webp" : "jpg",
     }, (err, result) => {

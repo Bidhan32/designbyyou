@@ -18,6 +18,24 @@ const featuredTools = [
   { name: "Virtual Try-On", slug: "virtual-try-on", image: "virtual-tryon", action: "Try an outfit" },
 ];
 const statusUrl = "/creators/ai/virtual-try-on/";
+function RunwayImage({look,alt,visible}) {
+  const [preview,setPreview]=useState(null);
+  const jobId=look.needs_framing ? look.job_id : null;
+  const [requested,setRequested]=useState(null);
+  useEffect(()=>{if(visible && jobId)setRequested(jobId);},[visible,jobId]);
+  useEffect(()=>{
+    if(!jobId || requested!==jobId)return;
+    const controller=new AbortController();
+    let url;
+    API.get(root+"/weekly/"+jobId+"/preview",{responseType:"blob",signal:controller.signal}).then(({data})=>{
+      if(controller.signal.aborted)return;
+      url=URL.createObjectURL(data);
+      setPreview({jobId,url});
+    }).catch(()=>{}); // The original signed image remains available if reframing fails.
+    return ()=>{controller.abort();if(url)URL.revokeObjectURL(url);};
+  },[jobId,requested]);
+  return <img src={preview && preview.jobId===jobId ? preview.url : look.image_url} decoding="async" alt={alt} draggable={false}/>;
+}
 export default function MyRunway() {
   const [revision,refresh]=useState(0);
   const signedImages=useRef(new Map());
@@ -79,6 +97,13 @@ export default function MyRunway() {
     sync();
     return ()=>{controller.abort();clearTimeout(timer);document.removeEventListener("visibilitychange",sync);};
   },[revision,manage]);
+  const [compact,setCompact]=useState(()=>window.matchMedia("(max-width: 760px)").matches);
+  useEffect(()=>{
+    const media=window.matchMedia("(max-width: 760px)");
+    const update=()=>setCompact(media.matches);
+    media.addEventListener("change",update);
+    return ()=>media.removeEventListener("change",update);
+  },[]);
   const personal=looks.filter(l=>l.image_url);
   const preview=personal.length===0;
   const ready=preview ? previewLooks : personal;
@@ -140,14 +165,15 @@ export default function MyRunway() {
             {ready.map((look,i)=>{
               const position=i-index;
               const slot=((position%total)+total)%total;
-              const front=Math.min(2,Math.floor((total-1)/2));
+              const front=Math.min(compact?1:2,Math.floor((total-1)/2));
+              const step=compact?48:30;
               let angle;
-              if(slot<=front) angle=30*slot;
-              else if(slot>=total-front) angle=360-30*(total-slot);
-              else angle=30*front+(slot-front)*(360-60*front)/(total-2*front);
-              if(total===2 && slot===1) angle=65;
+              if(slot<=front) angle=step*slot;
+              else if(slot>=total-front) angle=360-step*(total-slot);
+              else angle=step*front+(slot-front)*(360-2*step*front)/(total-2*front);
+              if(total===2 && slot===1) angle=compact?48:65;
               const phase=angle+360*Math.floor(position/total);
-              const visible=angle<100 || angle>260;
+              const visible=compact ? Math.min(slot,total-slot)<=1 : angle<100 || angle>260;
               return <button type="button" className="runway-pose" key={look.id}
                 disabled={!visible || total===1} aria-hidden={!visible} aria-pressed={i===active}
                 aria-label={`View ${look.title}`}
@@ -156,13 +182,13 @@ export default function MyRunway() {
                   rotateBy(slot>total/2 ? slot-total : slot);
                 }}
                 style={{"--runway-angle":phase+"deg"}}>
-                <img src={look.image_url} decoding="async" alt={i===active?(preview?"Runway model wearing ":"You wearing ")+look.title:""} draggable={false}/>
+                <RunwayImage look={look} visible={visible} alt={i===active?(preview?"Runway model wearing ":"You wearing ")+look.title:""}/>
               </button>;
             })}
           </div>
           {preview && looks.length>0 && !error && <p className="runway-status" role="status">Preparing your first personal outfit...</p>}
         </>}
-        {error && (preview || manage) && <p className="runway-status" role="alert">{error} <button onClick={()=>{retry.current=true;refresh(n=>n+1);}}>Retry</button></p>}
+        {error && <p className="runway-status" role="alert">{error} <button onClick={()=>{retry.current=true;refresh(n=>n+1);}}>Retry</button></p>}
       </div>
       {!manage && <section className="runway-tools" aria-labelledby="runway-tools-title">
         <h2 id="runway-tools-title">Make it <em>yours</em></h2>
