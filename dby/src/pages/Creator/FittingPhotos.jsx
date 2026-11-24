@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { ImagePlus, X } from "lucide-react";
 import "./CreatorUploadStudio.css";
 import API from "../../api/axios";
-import CreatorCreditBalance from "../../components/CreatorCreditBalance";
 
 const endpoint = "/creators/runway/photos";
 export default function FittingPhotos({ onChange, onSaved }) {
@@ -105,12 +104,11 @@ export default function FittingPhotos({ onChange, onSaved }) {
           <label className="studio-picker"><ImagePlus size={26}/><strong>{photos.length+queue.length>=5?"All five slots selected":queue.length?"Add more photos":"Choose fitting photos"}</strong><small>JPG, PNG or WebP, up to 12 MB each</small>
             <input type="file" disabled={photos.length+queue.length>=5} multiple accept="image/png,image/jpeg,image/webp" aria-label="Choose fitting photos" onChange={choose}/></label>
           {!!queue.length && <ul className="studio-files">{queue.map(item=><li key={item.id}>{item.file.name} <button type="button" aria-label={"Remove "+item.file.name+" from selection"} onClick={()=>setQueue(prev=>prev.filter(p=>p.id!==item.id))}>Remove</button>{item.error && <p role="alert">{item.error}</p>}</li>)}</ul>}
-          <CreatorCreditBalance refreshKey={busy} costLabel="10 credits per successfully saved photo"/>
           <button disabled={!queue.length || busy} className="studio-submit bg-action" onClick={save}>
-            {busy ? "Saving..." : queue.length ? `Save ${queue.length} ${queue.length===1?"photo":"photos"} (${queue.length*10} credits)` : "Save photos"}
+            {busy ? "Saving..." : queue.length ? `Save ${queue.length} ${queue.length===1?"photo":"photos"}` : "Save photos"}
           </button>
         </fieldset>}
-        <p className="studio-note">Your runway automatically prepares each weekly outfit for 10 credits.</p>
+        <p className="studio-note">Runway fitting is free. Uploads, background removal, and weekly outfit try-ons use zero AI credits.</p>
         {error && <p role="alert">{error} {!photos && <button onClick={()=>{setError("");setAttempt(n=>n+1);}}>Retry</button>}</p>}
         {progress && <p role="status">{progress}</p>}
       </div>

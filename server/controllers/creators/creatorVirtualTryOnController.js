@@ -168,7 +168,8 @@ async function checkResult(req, res, retrySave) {
     if (job.status !== "processing" && !retrying) {
       return res.json({ status: "success", data: safeJob(job) });
     }
-    const { data, credits } = await tryOn.getPrediction(job.provider_prediction_id, job.provider);
+    const { data, credits: providerCredits } = await tryOn.getPrediction(job.provider_prediction_id, job.provider);
+    const credits = job.weekly_runway ? 0 : providerCredits;
     if (retrying && data.status !== "completed") {
       return error(res, 409, "RESULT_UNAVAILABLE", "The provider no longer has a completed result available to save.");
     }

@@ -7,7 +7,7 @@ const sharp = require("sharp");
 const { isolatedServer } = require("./support/isolated-app.cjs");
 const { sandboxDatabase } = require("./support/sandbox-database.cjs");
 
-test("runway charges only for saved cutouts, reuses retries, and fits one to five photos", async () => {
+test("zero-credit runway fitting supports uploads, retries and weekly looks while standalone try-on stays paid", async t => {
   require("dotenv").config({quiet:true});
   const sandbox = await sandboxDatabase();
   const db = sandbox.pool, owner = randomUUID();
@@ -18,13 +18,25 @@ test("runway charges only for saved cutouts, reuses retries, and fits one to fiv
     let rejected = false;
     const pass = (_req,_res,next)=>next();
     const app = express();
-    app.use(isolatedServer({db,overrides:{
-      "middlewares/authMiddleware.js":{protect:(req,res,next)=>{req.user={id:owner};next();},authorize:()=>pass,requireVerifiedEmail:pass},
+    const keys=["CREATOR_TRYON_ENABLED","FAL_KEY"];
+    const previous=keys.map(key=>process.env[key]);
+    t.after(()=>keys.forEach((key,i)=>{if(previous[i]===undefined)delete process.env[key];else process.env[key]=previous[i];}));
+    process.env.CREATOR_TRYON_ENABLED="true";
+    process.env.FAL_KEY="test-fixture";
+    const loader=isolatedServer({db,overrides:{
+      "services/FashnCreatorTryOnService.js":{
+        FAL_MODEL:"fal-ai/fashn/tryon/v1.6",prepareImage:async()=>image,startPrediction:async()=>randomUUID(),
+        getPrediction:async()=>({data:{status:"completed",output:["fixture"]},credits:10}),
+        savePrivateResult:async()=>"fixture",signedResultUrls:()=>({image_url:null})
+      },
+      "middlewares/authMiddleware.js":{protect:(req,res,next)=>{req.user={id:owner,role:"creator"};next();},authorize:()=>pass,requireVerifiedEmail:pass},
       "services/FalBackgroundRemoverService.js":{removeBackground:async()=>{
         if(rejected) throw Object.assign(new Error("Image could not be processed."),{httpStatus:422});
         return {dataUri:"data:image/png;base64,"+image.toString("base64")};
       }}
-    }}).load("routes/creatorRunwayRoutes.js"));
+    }});
+    app.use(loader.load("routes/creatorRunwayRoutes.js"));
+    app.get("/job/:jobId",(req,res)=>{req.user={id:owner,role:"creator"};return loader.load("controllers/creators/creatorVirtualTryOnController.js").status(req,res);});
     server=app.listen(0,"127.0.0.1"); await once(server,"listening");
     const root="http://127.0.0.1:"+server.address().port;
     const balance=async()=>Number((await db.query("SELECT available FROM ai_image_balance($1,false)",[owner])).rows[0].available);
@@ -33,34 +45,52 @@ test("runway charges only for saved cutouts, reuses retries, and fits one to fiv
       form.append("photo_id",id); form.append("image",new Blob([bytes],{type:"image/png"}),"photo.png");
       return fetch(root+"/photos/prepare",{method:"POST",body:form});
     }
+    await balance();
+    await db.query("UPDATE free_ai_credit_months SET allocated=allowance WHERE user_id=$1",[owner]);
     const start=await balance();
+    assert.equal(start,0);
     assert.equal((await save(randomUUID(),Buffer.from("broken"))).status,400);
     rejected=true;
     assert.equal((await save()).status,422);
     rejected=false;
     assert.equal(await balance(),start);
-    // Fail the transaction after the photo INSERT and credit reservation.
+    // A failed photo write must leave the saved list empty.
     await db.query(`CREATE FUNCTION reject_fitting() RETURNS trigger LANGUAGE plpgsql AS $$
       BEGIN RAISE EXCEPTION 'injected settlement failure'; END $$;
-      CREATE TRIGGER reject_fitting BEFORE UPDATE ON ai_image_reservations FOR EACH ROW
-      WHEN (NEW.tool='runway_fitting') EXECUTE FUNCTION reject_fitting()`);
+      CREATE TRIGGER reject_fitting BEFORE INSERT ON creator_runway_photos FOR EACH ROW
+      EXECUTE FUNCTION reject_fitting()`);
     assert.equal((await save()).status,503);
     assert.equal(await balance(),start);
     assert.deepEqual(await (await fetch(root+"/photos")).json(),[]);
-    await db.query("DROP TRIGGER reject_fitting ON ai_image_reservations");
+    await db.query("DROP TRIGGER reject_fitting ON creator_runway_photos");
     const id=randomUUID();
     const retry=await Promise.all([save(id),save(id)]);
     assert.deepEqual(retry.map(r=>r.status).sort(),[200,201]);
-    assert.equal(await balance(),start-10);
+    assert.equal(await balance(),start);
+    const insertJob=weekly=>db.query("INSERT INTO creator_virtual_tryon_jobs(creator_id,request_key,weekly_runway) VALUES ($1,$2,$3) RETURNING id",[owner,randomUUID(),weekly]);
+    const {rows:[job]}=await insertJob(true);
+    for(const status of ["processing","failed","saving","completed"]){
+      await db.query("UPDATE creator_virtual_tryon_jobs SET status=$2 WHERE id=$1",[job.id,status]);
+    }
+    assert.equal((await db.query("SELECT 1 FROM ai_image_reservations WHERE creator_id=$1",[owner])).rowCount,0);
+    await assert.rejects(insertJob(false),{code:"DB402"});
     const lineup=await (await fetch(root+"/weekly")).json();
     assert.equal(lineup.length,10);
+    const generate=()=>fetch(root+"/weekly/"+lineup[0].id,{method:"POST"});
+    const first=await generate();
+    assert.equal(first.status,202);
+    const generated=(await first.json()).data;
+    const completed=await (await fetch(root+"/job/"+generated.id)).json();
+    assert.equal(completed.data.status,"completed");
+    assert.equal(Number(completed.data.credits_used),0);
+    assert.equal((await (await generate()).json()).reused,true);
     assert.ok(lineup.every(look=>look.photo_id===id));
     assert.equal((await fetch(root+"/photos/"+id+"/file")).status,200);
     for(let i=0;i<3;i++) assert.equal((await save()).status,201);
     const last=await Promise.all([save(),save()]);
     assert.deepEqual(last.map(r=>r.status).sort(),[201,409]);
     assert.equal((await save()).status,409);
-    assert.equal(await balance(),start-50);
+    assert.equal(await balance(),start);
     assert.equal((await (await fetch(root+"/photos")).json()).length,5);
     assert.equal(new Set((await (await fetch(root+"/weekly")).json()).map(l=>l.photo_id)).size,5);
   } finally {

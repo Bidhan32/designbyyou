@@ -19,7 +19,6 @@ const photoUrl = (owner,id) => cloud.utils.private_download_url(asset(owner,id),
   resource_type:"image",type:"authenticated",expires_at:Math.floor(Date.now()/1000)+900
 });
 const {removeBackground} = require("../services/FalBackgroundRemoverService");
-const {balance, COST} = require("../services/textImageCredits");
 const slots = [1,2,3,4,5];
 const photoFields = "id, slot, thumbnail";
 const photos = async owner => (await db.query("SELECT "+photoFields+" FROM creator_runway_photos WHERE creator_id=$1 ORDER BY slot",[owner])).rows;
@@ -73,14 +72,7 @@ async function savePhoto(req,res) {
     const saved=used.find(p=>p.id===id);
     if (saved) return res.json(present(owner,saved));
     if (used.length>=slots.length) throw fail(409,"You have five fitting photos. Remove one to add another.");
-    if (legacy) {
-      // An older client has already paid for this cutout in the background remover.
-      const paid=await db.query("SELECT 1 FROM ai_image_reservations WHERE creator_id=$1 AND image_id=$2 AND tool='background_remover' AND status='completed'",[owner,id]);
-      if (!paid.rowCount) throw fail(409,"Refresh the page and choose your original photo again.");
-    } else {
-      if (req.file.size>maxBytes) throw fail(400,"Choose a photo up to 12 MB.");
-      if ((await balance(db,owner)).available<COST) throw fail(402,"You need 10 credits to save a fitting photo.");
-    }
+    if (!legacy && req.file.size>maxBytes) throw fail(400,"Choose a photo up to 12 MB.");
     const cutout=await preparePhoto(req.file,legacy);
     const thumbnail=await sharp(cutout).resize({width:180,height:240,fit:"inside",withoutEnlargement:true}).webp({quality:75}).toBuffer();
     const client=await db.connect();
@@ -94,10 +86,6 @@ async function savePhoto(req,res) {
         const slot=slots.find(n=>!rows.some(p=>p.slot===n));
         if (!slot) throw fail(409,"All five slots are full. Remove a photo and try again.");
         await client.query("INSERT INTO creator_runway_photos(id,creator_id,slot,cutout,thumbnail) VALUES($1,$2,$3,$4,$5)",[id,owner,slot,cutout,thumbnail]);
-        if (!legacy) {
-          await client.query("SELECT reserve_ai_image($1,'runway_fitting',$2)",[owner,id]);
-          await client.query("UPDATE ai_image_reservations SET status='completed' WHERE creator_id=$1 AND tool='runway_fitting' AND image_id=$2",[owner,id]);
-        }
         result={id,slot,thumbnail};
         created=true;
       }
@@ -106,7 +94,6 @@ async function savePhoto(req,res) {
     finally {client.release();}
     return res.status(created?201:200).json(present(owner,result));
   } catch(err) {
-    if (err.code==="DB402") return res.status(402).json({message:"You need 10 credits to save this fitting photo."});
     if (err.httpStatus) return res.status(err.httpStatus).json({message:err.message});
     console.error("[Runway fitting] Save failed",err.code || err.name);
     return res.status(503).json({message:"We could not confirm that this photo was saved. Retry the same selection to check."});
