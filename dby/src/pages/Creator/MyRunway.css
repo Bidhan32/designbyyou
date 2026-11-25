@@ -152,3 +152,40 @@
   transition: --runway-angle .95s cubic-bezier(.45,0,.25,1);
 }
 @media (prefers-reduced-motion: reduce) { .runway-pose { transition: none; } }
+
+.runway-theatre[data-manage="false"] {
+  --stage-top: #ede7dd;
+  --stage-bottom: #e3dace;
+  --stage-edge: #bcafa1;
+  --platform-rim: #b8a99a;
+  --contact-shadow: #35251555;
+  margin-top: clamp(12px, 1.5vw, 24px);
+  border: 1px solid var(--rule);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--stage-top);
+  padding: 0;
+}
+.dark .runway-theatre[data-manage="false"] {
+  --stage-top: #262629;
+  --stage-bottom: #222123;
+  --stage-edge: #535058;
+  --platform-rim: #413c40;
+  --contact-shadow: #050405bc;
+}
+.runway-theatre[data-manage="false"] .runway-toolbar {
+  padding: 6px clamp(12px, 2vw, 26px) 0;
+}
+.runway-orbit {
+  background: radial-gradient(ellipse at 50% 52%, var(--light) 0%, transparent 69%),
+              linear-gradient(var(--stage-top) 0% 57%, var(--stage-bottom));
+}
+.runway-orbit::before {
+  bottom: 6%; height: 20%;
+  border-color: var(--stage-edge);
+  background: radial-gradient(ellipse at 50% 35%, var(--light), var(--floor) 78%);
+  box-shadow: 0 3px 0 var(--platform-rim), 0 12px 22px -12px var(--contact-shadow);
+}
+.runway-pose::before { left: 24%; right: 24%; background: radial-gradient(ellipse, var(--contact-shadow), transparent 71%); }
+.runway-preparing { margin: 0; padding: 8px 16px 12px; color: var(--muted); font-size: .85rem; text-align: center; }
+.runway-status { padding-inline: 12px; }

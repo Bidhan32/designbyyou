@@ -17,29 +17,30 @@ const featuredTools = [
   { name: "Sketch to Image", slug: "sketch-to-image", image: "sketch-to-image", action: "Bring a sketch to life" },
   { name: "Virtual Try-On", slug: "virtual-try-on", image: "virtual-tryon", action: "Try an outfit" },
 ];
-const statusUrl = "/creators/ai/virtual-try-on/";
+
 function RunwayImage({look,alt,visible}) {
   const [preview,setPreview]=useState(null);
-  const jobId=look.needs_framing ? look.job_id : null;
+  const path=look.pose ? root+"/photos/"+look.id+"/file?frame=1" : look.needs_framing ? root+"/weekly/"+look.job_id+"/preview" : null;
   const [requested,setRequested]=useState(null);
-  useEffect(()=>{if(visible && jobId)setRequested(jobId);},[visible,jobId]);
+  useEffect(()=>{if(visible && path)setRequested(path);},[visible,path]);
   useEffect(()=>{
-    if(!jobId || requested!==jobId)return;
+    if(!path || requested!==path)return;
     const controller=new AbortController();
     let url;
-    API.get(root+"/weekly/"+jobId+"/preview",{responseType:"blob",signal:controller.signal}).then(({data})=>{
+    API.get(path,{responseType:"blob",signal:controller.signal}).then(({data})=>{
       if(controller.signal.aborted)return;
       url=URL.createObjectURL(data);
-      setPreview({jobId,url});
-    }).catch(()=>{}); // The original signed image remains available if reframing fails.
+      setPreview({path,url});
+    }).catch(()=>{});
     return ()=>{controller.abort();if(url)URL.revokeObjectURL(url);};
-  },[jobId,requested]);
-  return <img src={preview && preview.jobId===jobId ? preview.url : look.image_url} decoding="async" alt={alt} draggable={false}/>;
+  },[path,requested]);
+  return <img src={preview && preview.path===path ? preview.url : look.image_url} decoding="async" alt={alt} draggable={false}/>;
 }
 export default function MyRunway() {
   const [revision,refresh]=useState(0);
   const signedImages=useRef(new Map());
-  const [looks,setLooks]=useState([]);
+  const [looks,setLooks]=useState(null);
+  const [poses,setPoses]=useState([]);
   const [manage,setManage]=useState(false);
   const [error,setError]=useState("");
   const [index,setIndex]=useState(0);
@@ -53,6 +54,7 @@ export default function MyRunway() {
     const config={signal:controller.signal,timeout:120000};
     let timer;
     let busy=false;
+    let loadedPoses=false;
     async function sync() {
       if(document.visibilityState==="hidden" || busy) return;
       clearTimeout(timer);
@@ -72,22 +74,25 @@ export default function MyRunway() {
         }));
         signedImages.current=fresh;
         setError("");
-        let delay=60000;
-        if(lineup.length){
-          const pending=lineup.find(l=>l.job_id && !["completed","failed"].includes(l.status));
-          const next=lineup.find(l=>!l.job_id) || lineup.find(l=>l.status==="failed");
-          if(pending){
-            await API.get(statusUrl+pending.job_id,config);
-            delay=3500;
-          } else if(next){
-            if(next.status==="failed" && !retry.current) throw new Error("An outfit could not be prepared.");
-            const retryFailed=retry.current;
-            retry.current=false;
-            const {data}=await API.post(root+"/weekly/"+next.id,{retry:retryFailed},config);
-            if(data.active_job_id) await API.get(statusUrl+data.active_job_id,config);
-            delay=2500;
-          }
+        const finished=lineup.filter(look=>look.image_url);
+        if(lineup.length && !finished.length && !loadedPoses){
+          const {data}=await API.get(root+"/photos",config);
+          if(controller.signal.aborted)return;
+          setPoses(data.map(photo=>({id:photo.id,title:"Fitting photo "+photo.slot,image_url:photo.url,pose:true})));
+          loadedPoses=true;
         }
+        const failed=lineup.find(look=>look.status==="failed");
+        const retryFailed=retry.current;
+        retry.current=false;
+        if(failed && retryFailed){
+          await API.post(root+"/weekly/"+failed.id,{retry:true},config);
+        }else if(failed){
+          setError("An outfit could not be prepared.");
+        }else{
+          const delayed=lineup.find(look=>look.process_error);
+          if(delayed)setError(delayed.process_error);
+        }
+        const delay=lineup.some(look=>!look.image_url && look.status!=="failed")?4000:60000;
         if(!controller.signal.aborted) timer=setTimeout(sync,delay);
       } catch(err){
         if(!controller.signal.aborted) setError(err.response?.data?.message || err.message || "Could not load your runway.");
@@ -104,9 +109,9 @@ export default function MyRunway() {
     media.addEventListener("change",update);
     return ()=>media.removeEventListener("change",update);
   },[]);
-  const personal=looks.filter(l=>l.image_url);
-  const preview=personal.length===0;
-  const ready=preview ? previewLooks : personal;
+  const personal=(looks || []).filter(l=>l.image_url);
+  const preview=looks?.length===0;
+  const ready=preview ? previewLooks : personal.length ? personal : poses.filter(p=>looks?.some(l=>l.photo_id===p.id));
   useEffect(()=>{
     if(manage || ready.length<2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const timer=setTimeout(()=>{
@@ -150,9 +155,9 @@ export default function MyRunway() {
           <Link to="/creator/wallet#subscription">View subscription</Link>
         </nav>
       </header>
-      <div className="runway-theatre">
+      <div className="runway-theatre" data-manage={manage}>
         <div className="runway-toolbar">
-          <button type="button" aria-expanded={manage} onClick={()=>setManage(!manage)}><Images size={16}/>{manage?"Close photos":"Manage photos"}</button>
+          <button type="button" aria-expanded={manage} onClick={()=>setManage(!manage)}><Images size={16}/>{manage?"Close photos":preview?"Add fitting photos":"Manage photos"}</button>
         </div>
         {manage ? <FittingPhotos onSaved={()=>setManage(false)} onChange={()=>refresh(n=>n+1)}/> : <>
           <div className="runway-orbit" role="group" aria-label={preview?"Sample model wearing four outfits":"Your rotating outfit collection"}
@@ -182,11 +187,12 @@ export default function MyRunway() {
                   rotateBy(slot>total/2 ? slot-total : slot);
                 }}
                 style={{"--runway-angle":phase+"deg"}}>
-                <RunwayImage look={look} visible={visible} alt={i===active?(preview?"Runway model wearing ":"You wearing ")+look.title:""}/>
+                <RunwayImage look={look} visible={visible} alt={i===active && look.pose?look.title:i===active?(preview?"Runway model wearing ":"You wearing ")+look.title:""}/>
               </button>;
             })}
           </div>
-          {preview && looks.length>0 && !error && <p className="runway-status" role="status">Preparing your first personal outfit...</p>}
+          {!error && (!looks || personal.length<looks.length) &&
+            <p className="runway-preparing" role="status">{!looks?"Loading your runway…":personal.length?`${personal.length} of ${looks.length} outfits ready`:"Your fitting photos · Preparing your outfits"}</p>}
         </>}
         {error && <p className="runway-status" role="alert">{error} <button onClick={()=>{retry.current=true;refresh(n=>n+1);}}>Retry</button></p>}
       </div>

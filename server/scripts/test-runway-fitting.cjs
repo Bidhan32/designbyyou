@@ -74,16 +74,22 @@ test("zero-credit runway fitting supports uploads, retries and weekly looks whil
     }
     assert.equal((await db.query("SELECT 1 FROM ai_image_reservations WHERE creator_id=$1",[owner])).rowCount,0);
     await assert.rejects(insertJob(false),{code:"DB402"});
-    const lineup=await (await fetch(root+"/weekly")).json();
-    assert.equal(lineup.length,10);
-    const generate=()=>fetch(root+"/weekly/"+lineup[0].id,{method:"POST"});
-    const first=await generate();
-    assert.equal(first.status,202);
-    const generated=(await first.json()).data;
+    // Process a saved upload with no browser polling or generation requests.
+    const queued=await db.query("SELECT request_key FROM creator_runway_looks WHERE photo_id=$1 AND process_after IS NOT NULL",[id]);
+    assert.equal(queued.rowCount,10);
+    const worker=loader.load("services/runwayWorker.js");
+    await worker.processNext();
+    const {rows:[generated]}=await db.query("SELECT id,request_key FROM creator_virtual_tryon_jobs WHERE creator_id=$1 AND status='processing'",[owner]);
+    assert.ok(generated);
+    await db.query("UPDATE creator_runway_looks SET process_after=now() WHERE request_key=$1",[generated.request_key]);
+    await worker.processNext();
     const completed=await (await fetch(root+"/job/"+generated.id)).json();
     assert.equal(completed.data.status,"completed");
     assert.equal(Number(completed.data.credits_used),0);
-    assert.equal((await (await generate()).json()).reused,true);
+    const lineup=await (await fetch(root+"/weekly")).json();
+    assert.equal(lineup.length,10);
+    const done=lineup.find(look=>look.job_id===generated.id);
+    assert.equal((await (await fetch(root+"/weekly/"+done.id,{method:"POST"})).json()).reused,true);
     assert.ok(lineup.every(look=>look.photo_id===id));
     assert.equal((await fetch(root+"/photos/"+id+"/file")).status,200);
     for(let i=0;i<3;i++) assert.equal((await save()).status,201);

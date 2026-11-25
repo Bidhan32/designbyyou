@@ -64,6 +64,7 @@ const creatorBackgroundRemoverRoutes = require("./routes/creatorBackgroundRemove
 const avatarRoutes = require("./routes/avatarRoutes");
 const showcaseHeroRoutes = require("./routes/showcaseHeroRoutes");
 const creatorCostumeExtractorRoutes = require("./routes/creatorCostumeExtractorRoutes");
+const { startRunwayWorker, stopRunwayWorker } = require("./services/runwayWorker");
 const { startModelWorker, stopModelWorker } = require("./services/ai/modelJobs");
 const creatorPatternExtractorRoutes = require("./routes/creatorPatternExtractorRoutes");
 /*=========================================================
@@ -621,6 +622,7 @@ function startServer() {
 
     try {
       startModelWorker();
+      startRunwayWorker();
       startP2PBookingExpiryJob();
     } catch (error) {
       /*
@@ -647,7 +649,7 @@ Stop Background Jobs
 
 async function stopBackgroundJobs() {
   try {
-    await Promise.all([stopModelWorker(), stopP2PBookingExpiryJob()]);
+    await Promise.all([stopRunwayWorker(), stopModelWorker(), stopP2PBookingExpiryJob()]);
 
     console.log("P2P unpaid-booking expiry job stopped.");
   } catch (error) {

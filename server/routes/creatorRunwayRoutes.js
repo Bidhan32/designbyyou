@@ -40,7 +40,7 @@ router.get("/photos/:id/file",async(req,res)=>{
   if (!uuid.test(req.params.id)) return res.sendStatus(404);
   const file = await fittingFile(req.user.id,req.params.id);
   if (!file) return res.sendStatus(404);
-  res.type("image/webp").send(file);
+  res.type("image/webp").send(req.query.frame==="1" ? await frameRunwayCutout(file) : file);
 });
 
 const maxBytes = 12*1024*1024;
@@ -87,6 +87,7 @@ async function savePhoto(req,res) {
         const slot=slots.find(n=>!rows.some(p=>p.slot===n));
         if (!slot) throw fail(409,"All five slots are full. Remove a photo and try again.");
         await client.query("INSERT INTO creator_runway_photos(id,creator_id,slot,cutout,thumbnail) VALUES($1,$2,$3,$4,$5)",[id,owner,slot,cutout,thumbnail]);
+        await queueLineup(client,owner);
         result={id,slot,thumbnail};
         created=true;
       }
@@ -123,12 +124,20 @@ const weeklyPairs = `WITH collection AS (
 ), poses AS (
   SELECT id, row_number() OVER (ORDER BY slot) AS pos, count(*) OVER () AS total
   FROM creator_runway_photos WHERE creator_id=$1
-) SELECT d.id,d.title,d.is_default,p.id AS photo_id,j.id AS job_id,j.status,j.output_public_id
+) SELECT d.id,d.title,d.is_default,p.id AS photo_id,j.id AS job_id,j.status,j.output_public_id,l.process_error
   FROM collection d JOIN poses p ON p.pos=1+mod(d.slot-1,p.total)
   LEFT JOIN creator_runway_looks l ON l.photo_id=p.id AND l.source='weekly' AND l.project_id=d.id::text AND l.version='1'
   LEFT JOIN creator_virtual_tryon_jobs j ON j.creator_id=$1 AND j.request_key=l.request_key`;
+async function queueLineup(client,owner){
+  await client.query(`INSERT INTO creator_runway_looks AS l(photo_id,source,project_id,version,process_after)
+    SELECT photo_id,'weekly',id::text,'1',now() FROM (${weeklyPairs}) pairs
+    WHERE status IS NULL OR status IN ('submitting','processing','saving')
+    ON CONFLICT(photo_id,source,project_id,version) DO UPDATE SET process_after=now()
+    WHERE l.process_after IS NULL`,[owner,defaults.metadata]);
+}
 router.get("/weekly",async(req,res)=>{
   const {rows}=await db.query(weeklyPairs+" ORDER BY d.slot",[req.user.id,defaults.metadata]);
+  if(rows.some(row=>!row.job_id || !["completed","failed"].includes(row.status)))await queueLineup(db,req.user.id);
   res.json(rows.map(({output_public_id,...row})=>({...row,needs_framing:Boolean(output_public_id && !output_public_id.endsWith("_framed_cutout")),image_url:signedResultUrls(output_public_id).image_url})));
 });
 // Existing outfits can be reframed without sending another generation to the AI provider.
@@ -141,26 +150,28 @@ router.get("/weekly/:id/preview",async(req,res)=>{
   const image=await frameRunwayCutout(Buffer.from(await response.arrayBuffer()));
   res.vary("Authorization").set("Cache-Control","private, max-age=86400").type("webp").send(image);
 });
-router.post("/weekly/:id",mutations,async(req,res)=>{
+async function startWeekly(req,res){
   if(!uuid.test(req.params.id)) return res.sendStatus(404);
   const owner=req.user.id;
   const {rows}=await db.query(weeklyPairs+" WHERE d.id=$3",[owner,defaults.metadata,req.params.id]);
   const pair=rows[0];
-  if(!pair) return res.status(409).json({message:"The lineup changed. Refresh your runway."});
+  if(!pair || (req.expectedPhoto && req.expectedPhoto!==pair.photo_id)) return res.status(409).json({message:"The lineup changed. Refresh your runway."});
   const {rows:keys}=await db.query(`INSERT INTO creator_runway_looks AS l(photo_id,source,project_id,version)
     VALUES ($1,'weekly',$2,'1') ON CONFLICT(photo_id,source,project_id,version) DO UPDATE
-    SET request_key=CASE WHEN $3::boolean AND EXISTS(SELECT 1 FROM creator_virtual_tryon_jobs WHERE creator_id=$4 AND request_key=l.request_key AND status='failed')
+    SET process_after=coalesce(l.process_after,now()),request_key=CASE WHEN $3::boolean AND EXISTS(SELECT 1 FROM creator_virtual_tryon_jobs WHERE creator_id=$4 AND request_key=l.request_key AND status='failed')
       THEN gen_random_uuid() ELSE l.request_key END RETURNING request_key`,[pair.photo_id,pair.id,req.body?.retry===true,owner]);
   const garment=pair.is_default ? await defaults.imageFor(pair.id) :
     (await db.query("SELECT image FROM runway_weekly_designs WHERE id=$1",[pair.id])).rows[0]?.image;
   if(!garment) return res.status(409).json({message:"The weekly collection changed."});
   const picture=await fittingFile(owner,pair.photo_id);
   if(!picture) return res.status(502).json({message:"Could not open the fitting photo."});
-  req.files={person_image:[{buffer:await frameRunwayCutout(picture),mimetype:"image/webp"}],
+  req.files={person_image:[{buffer:await sharp(await frameRunwayCutout(picture)).resize(768,1024,{fit:"contain",background:{r:255,g:255,b:255,alpha:0}}).webp().toBuffer(),mimetype:"image/webp"}],
     garment_image:[{buffer:garment,mimetype:"image/webp"}]};
   req.weeklyRunway=true;
   req.weeklyLineupSize=pair.is_default ? defaults.count : 6;
   req.body={action:"try_on",request_key:keys[0].request_key};
   return require("../controllers/creators/creatorVirtualTryOnController").start(req,res);
-});
+}
+router.post("/weekly/:id",mutations,startWeekly);
 module.exports=router;
+module.exports.startWeekly=startWeekly;
