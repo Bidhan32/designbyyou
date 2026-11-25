@@ -19,7 +19,7 @@ const photoUrl = (owner,id) => cloud.utils.private_download_url(asset(owner,id),
   resource_type:"image",type:"authenticated",expires_at:Math.floor(Date.now()/1000)+900
 });
 const frameRunwayCutout = require("../services/frameRunwayCutout");
-const {removeBackground} = require("../services/FalBackgroundRemoverService");
+const {removeRunwayBackground} = require("../services/FashnCreatorTryOnService");
 const slots = [1,2,3,4,5];
 const photoFields = "id, slot, thumbnail";
 const photos = async owner => (await db.query("SELECT "+photoFields+" FROM creator_runway_photos WHERE creator_id=$1 ORDER BY slot",[owner])).rows;
@@ -59,7 +59,7 @@ async function preparePhoto(file, alreadyCutOut) {
     input = await source.rotate().resize({width:1200,height:1600,fit:"inside",withoutEnlargement:true}).webp({quality:90}).toBuffer();
   } catch { throw fail(400,"Choose a readable, single-frame JPG, PNG or WebP under 32 megapixels."); }
   if (alreadyCutOut) return input;
-  const {dataUri} = await removeBackground("data:image/webp;base64,"+input.toString("base64"));
+  const {dataUri} = await removeRunwayBackground("data:image/webp;base64,"+input.toString("base64"));
   return sharp(Buffer.from(dataUri.slice(dataUri.indexOf(",")+1),"base64"),{limitInputPixels:32000000})
     .resize({width:1200,height:1600,fit:"inside",withoutEnlargement:true}).webp({quality:86}).toBuffer();
 }
@@ -124,7 +124,9 @@ const weeklyPairs = `WITH collection AS (
 ), poses AS (
   SELECT id, row_number() OVER (ORDER BY slot) AS pos, count(*) OVER () AS total
   FROM creator_runway_photos WHERE creator_id=$1
-) SELECT d.id,d.title,d.is_default,p.id AS photo_id,j.id AS job_id,j.status,j.output_public_id,l.process_error
+) SELECT d.id,d.title,d.is_default,p.id AS photo_id,j.id AS job_id,j.status,j.output_public_id,
+    CASE WHEN j.status='failed' AND j.error_message='Runway fitting is temporarily unavailable. No AI credits are required.'
+      THEN j.error_message ELSE l.process_error END AS process_error
   FROM collection d JOIN poses p ON p.pos=1+mod(d.slot-1,p.total)
   LEFT JOIN creator_runway_looks l ON l.photo_id=p.id AND l.source='weekly' AND l.project_id=d.id::text AND l.version='1'
   LEFT JOIN creator_virtual_tryon_jobs j ON j.creator_id=$1 AND j.request_key=l.request_key`;

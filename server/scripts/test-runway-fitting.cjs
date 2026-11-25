@@ -26,14 +26,15 @@ test("zero-credit runway fitting supports uploads, retries and weekly looks whil
     const loader=isolatedServer({db,overrides:{
       "services/FashnCreatorTryOnService.js":{
         FAL_MODEL:"fal-ai/fashn/tryon/v1.6",prepareImage:async()=>image,startPrediction:async()=>randomUUID(),
+        startRunwayPrediction:async()=>({provider:"fashn",model:"tryon-v1.6",id:randomUUID()}),
+        removeRunwayBackground:async()=>{
+          if(rejected) throw Object.assign(new Error("Image could not be processed."),{httpStatus:422});
+          return {dataUri:"data:image/png;base64,"+image.toString("base64")};
+        },
         getPrediction:async()=>({data:{status:"completed",output:["fixture"]},credits:10}),
         savePrivateResult:async()=>"fixture",signedResultUrls:()=>({image_url:null})
       },
       "middlewares/authMiddleware.js":{protect:(req,res,next)=>{req.user={id:owner,role:"creator"};next();},authorize:()=>pass,requireVerifiedEmail:pass},
-      "services/FalBackgroundRemoverService.js":{removeBackground:async()=>{
-        if(rejected) throw Object.assign(new Error("Image could not be processed."),{httpStatus:422});
-        return {dataUri:"data:image/png;base64,"+image.toString("base64")};
-      }}
     }});
     app.use(loader.load("routes/creatorRunwayRoutes.js"));
     app.get("/job/:jobId",(req,res)=>{req.user={id:owner,role:"creator"};return loader.load("controllers/creators/creatorVirtualTryOnController.js").status(req,res);});
@@ -79,8 +80,9 @@ test("zero-credit runway fitting supports uploads, retries and weekly looks whil
     assert.equal(queued.rowCount,10);
     const worker=loader.load("services/runwayWorker.js");
     await worker.processNext();
-    const {rows:[generated]}=await db.query("SELECT id,request_key FROM creator_virtual_tryon_jobs WHERE creator_id=$1 AND status='processing'",[owner]);
+    const {rows:[generated]}=await db.query("SELECT id,request_key,provider FROM creator_virtual_tryon_jobs WHERE creator_id=$1 AND status='processing'",[owner]);
     assert.ok(generated);
+    assert.equal(generated.provider,"fashn");
     await db.query("UPDATE creator_runway_looks SET process_after=now() WHERE request_key=$1",[generated.request_key]);
     await worker.processNext();
     const completed=await (await fetch(root+"/job/"+generated.id)).json();
@@ -112,4 +114,36 @@ test("runway cutouts keep the full figure while removing transparent margins", a
     .composite([{input:subject,left:35,top:232}]).png().toBuffer();
   const {width,height,hasAlpha}=await sharp(await frame(padded)).metadata();
   assert.deepEqual([width,height,hasAlpha],[28,114,true]);
+});
+
+test("runway switches providers on access denial for try-on and background removal", async t => {
+  const service = require("../services/FashnCreatorTryOnService");
+  const original = { FAL_KEY: process.env.FAL_KEY, FASHN_API_KEY: process.env.FASHN_API_KEY };
+  t.after(() => {
+    for (const [key,value] of Object.entries(original)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  });
+  process.env.FAL_KEY = process.env.FASHN_API_KEY = "test-fixture";
+  const id = randomUUID();
+  const png = await sharp({create:{width:8,height:8,channels:4,background:"red"}}).png().toBuffer();
+  const image = "data:image/png;base64," + png.toString("base64");
+  const models = [];
+  let falStatus = 403;
+  t.mock.method(global, "fetch", async (url, options) => {
+    if (["queue.fal.run","fal.run"].includes(new URL(url).hostname)) return new Response(null,{status:falStatus});
+    if (url === "https://api.fashn.ai/v1/run") {
+      models.push(JSON.parse(options.body).model_name);
+      return Response.json({id});
+    }
+    assert.equal(url,"https://api.fashn.ai/v1/status/"+id);
+    return Response.json({status:"completed",output:[png.toString("base64")]});
+  });
+  const input = {personDataUri:image,garmentDataUri:image,category:"auto",mode:"balanced",garmentPhotoType:"auto"};
+  assert.deepEqual(await service.startRunwayPrediction(input),{id,provider:"fashn",model:"tryon-v1.6"});
+  assert.equal((await service.removeRunwayBackground(image)).dataUri,image);
+  falStatus = 500;
+  await assert.rejects(service.startRunwayPrediction(input),{status:500});
+  assert.deepEqual(models,["tryon-v1.6","background-remove"]);
 });

@@ -48,6 +48,11 @@ async function fetchJson(path, options = {}, maxBytes = 30 * 1024 * 1024) {
     throw new TryOnServiceError("FASHN did not respond in time.", 503, "PROVIDER_UNREACHABLE");
   }
   const advertised = Number(response.headers.get("content-length") || 0);
+  if ([401, 402, 403].includes(response.status)) {
+    await response.body?.cancel();
+    console.warn("[FASHN] Access denied", { status: response.status });
+    throw new TryOnServiceError("The fitting provider is temporarily unavailable.", 503, "PROVIDER_ACCESS_DENIED");
+  }
   if (advertised > maxBytes) throw new TryOnServiceError("FASHN response is too large.");
   if (!response.body) throw new TryOnServiceError("FASHN returned an empty response.");
   const reader = response.body.getReader();
@@ -105,6 +110,49 @@ async function startPrediction({ personDataUri, garmentDataUri, category, mode, 
   return falTryOn.startPrediction({ personImage: personDataUri, garmentImage: garmentDataUri, category, mode, garmentPhotoType });
 }
 
+async function startRunwayPrediction(input) {
+  if (process.env.FAL_KEY?.trim()) {
+    try {
+      return {provider:"fal",model:falTryOn.FAL_MODEL,id:await startPrediction(input)};
+    } catch (err) {
+      // Only switch on a definite access rejection. A timeout may already have started a job.
+      if (![401,402,403].includes(err.status)) throw err;
+      console.warn("[Runway] fal denied try-on submission",{status:err.status});
+      if (!process.env.FASHN_API_KEY?.trim()) throw new TryOnServiceError("Runway provider access is unavailable.",503,"PROVIDER_ACCESS_DENIED");
+    }
+  }
+  const {data}=await fetchJson("/run",{method:"POST",body:{model_name:"tryon-v1.6",inputs:{
+    model_image:input.personDataUri,garment_image:input.garmentDataUri,category:input.category,
+    garment_photo_type:input.garmentPhotoType,mode:input.mode,return_base64:true,output_format:"jpeg"
+  }}});
+  if(typeof data?.id!=="string" || !/^[a-zA-Z0-9-]{8,150}$/.test(data.id))throw new TryOnServiceError("Invalid runway prediction ID.");
+  return {provider:"fashn",model:"tryon-v1.6",id:data.id};
+}
+
+async function removeRunwayBackground(image) {
+  const {removeBackground}=require("./FalBackgroundRemoverService");
+  try {
+    return await removeBackground(image);
+  } catch(err) {
+    if (!["PROVIDER_AUTH_ERROR","NOT_CONFIGURED"].includes(err.code) || !process.env.FASHN_API_KEY?.trim()) throw err;
+  }
+  const {data}=await fetchJson("/run",{method:"POST",body:{model_name:"background-remove",inputs:{image,return_base64:true}}});
+  if(typeof data?.id!=="string" || !/^[a-zA-Z0-9-]{8,150}$/.test(data.id))throw new TryOnServiceError("Invalid background removal ID.");
+  const deadline=Date.now()+75000;
+  while(Date.now()<deadline){
+    await new Promise(resolve=>setTimeout(resolve,1500));
+    const result=await getPrediction(data.id,"fashn");
+    if(result.data.status==="failed")throw new TryOnServiceError("Runway background removal failed.");
+    if(result.data.status==="completed"){
+      const png = decodeOutput(result.data.output?.[0]);
+      if (!png.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))) {
+        throw new TryOnServiceError("Invalid background removal result.");
+      }
+      return { dataUri: "data:image/png;base64," + png.toString("base64") };
+    }
+  }
+  throw new TryOnServiceError("Runway background removal timed out.",504);
+}
 async function getPrediction(predictionId, provider) {
   if (typeof predictionId !== "string" || !/^[a-zA-Z0-9-]{8,150}$/.test(predictionId)) {
     throw new TryOnServiceError("Invalid prediction ID.", 400);
@@ -141,8 +189,7 @@ async function savePrivateResult(outputDataUri, creatorId, jobId, weekly = false
     .rotate().jpeg({ quality: 90, mozjpeg: true }).toBuffer();
   let image = jpeg;
   if (weekly) {
-    const {removeBackground} = require("./FalBackgroundRemoverService");
-    const {dataUri} = await removeBackground("data:image/jpeg;base64," + jpeg.toString("base64"));
+    const {dataUri} = await removeRunwayBackground("data:image/jpeg;base64," + jpeg.toString("base64"));
     image = await require("./frameRunwayCutout")(Buffer.from(dataUri.split(",")[1],"base64"));
   }
   return new Promise((resolve, reject) => {
@@ -198,6 +245,7 @@ module.exports = {
   TryOnServiceError,
   prepareImage,
   startPrediction,
+  startRunwayPrediction, removeRunwayBackground,
   getPrediction,
   savePrivateResult,
   signedResultUrls,

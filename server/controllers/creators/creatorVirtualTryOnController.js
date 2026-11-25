@@ -67,7 +67,10 @@ exports.start = async (req, res) => {
   if (typeof requestKey !== "string" || !UUID.test(requestKey)) {
     return error(res, 400, "INVALID_REQUEST_KEY", "request_key must be a valid UUID.");
   }
-  if (!process.env.FAL_KEY?.trim()) return error(res, 503, "PROVIDER_NOT_CONFIGURED", "Creator Try-On is temporarily unavailable.");
+  const weekly = req.weeklyRunway === true;
+  if (!process.env.FAL_KEY?.trim() && !(weekly && process.env.FASHN_API_KEY?.trim())) {
+    return error(res, 503, "PROVIDER_NOT_CONFIGURED", "Creator Try-On is temporarily unavailable.");
+  }
   const personFile = req.files?.person_image?.[0];
   const garmentFile = req.files?.garment_image?.[0];
   if (!personFile || !garmentFile) {
@@ -101,7 +104,9 @@ exports.start = async (req, res) => {
         if (req.weeklyRunway) return res.status(202).json({active_job_id:active.rows[0].id});
         return error(res, 429, "ACTIVE_JOB_EXISTS", "Wait for your active Virtual Try-On to finish.");
       }
-      const quota = await client.query(`SELECT COUNT(*)::int AS n FROM public.creator_virtual_tryon_jobs WHERE creator_id=$1 AND created_at >= NOW() - INTERVAL '24 hours'`, [id]);
+      const quota = await client.query(`SELECT COUNT(*)::int AS n FROM public.creator_virtual_tryon_jobs
+        WHERE creator_id=$1 AND weekly_runway=$2 AND (NOT weekly_runway OR status<>'failed')
+          AND created_at >= NOW() - INTERVAL '24 hours'`, [id, weekly]);
       const limit = req.weeklyRunway ? Math.max(req.weeklyLineupSize, dailyLimit()) : dailyLimit();
       if (quota.rows[0].n >= limit) {
         await client.query("ROLLBACK"); txOpen = false;
@@ -121,14 +126,19 @@ exports.start = async (req, res) => {
   if (reused) return res.status(200).json({ status: "success", reused: true, data: safeJob(job) });
 
   try {
-    const predictionId = await tryOn.startPrediction({ personDataUri, garmentDataUri, category, mode, garmentPhotoType });
-    const result = await db.query(`UPDATE public.creator_virtual_tryon_jobs SET provider_prediction_id=$1,status='processing',updated_at=NOW()
-      WHERE id=$2 AND creator_id=$3 RETURNING ${FIELDS}`, [predictionId, job.id, id]);
+    const input = { personDataUri, garmentDataUri, category, mode, garmentPhotoType };
+    const prediction = weekly ? await tryOn.startRunwayPrediction(input)
+      : { provider: "fal", model: tryOn.FAL_MODEL, id: await tryOn.startPrediction(input) };
+    const result = await db.query(`UPDATE public.creator_virtual_tryon_jobs SET provider_prediction_id=$1,provider=$4,model_name=$5,status='processing',updated_at=NOW()
+      WHERE id=$2 AND creator_id=$3 RETURNING ${FIELDS}`, [prediction.id, job.id, id, prediction.provider, prediction.model]);
     return res.status(202).json({ status: "success", data: safeJob(result.rows[0]) });
   } catch (err) {
     console.error("[CreatorTryOn] Submission failed:", { code: err.code, status: err.status });
-    await db.query(`UPDATE public.creator_virtual_tryon_jobs SET status='failed',error_message='Submission could not be confirmed. Check provider usage before retrying.',updated_at=NOW()
-      WHERE id=$1 AND creator_id=$2 AND status='submitting'`, [job.id, id]).catch(() => {});
+    const denied = weekly && err.code === "PROVIDER_ACCESS_DENIED";
+    const message = denied ? "Runway fitting is temporarily unavailable. No AI credits are required." : "Submission could not be confirmed. Check provider usage before retrying.";
+    await db.query(`UPDATE public.creator_virtual_tryon_jobs SET status='failed',error_message=$3,updated_at=NOW()
+      WHERE id=$1 AND creator_id=$2 AND status='submitting'`, [job.id, id, message]).catch(() => {});
+    if (denied) return error(res, 503, err.code, message);
     return error(res, err.status === 429 ? 429 : 502, "TRYON_SUBMISSION_FAILED", "Virtual Try-On could not be started. Check server logs.");
   }
 };
