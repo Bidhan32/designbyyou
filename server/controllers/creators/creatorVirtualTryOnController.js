@@ -68,7 +68,7 @@ exports.start = async (req, res) => {
     return error(res, 400, "INVALID_REQUEST_KEY", "request_key must be a valid UUID.");
   }
   const weekly = req.weeklyRunway === true;
-  if (!process.env.FAL_KEY?.trim() && !(weekly && process.env.FASHN_API_KEY?.trim())) {
+  if (!process.env.FAL_KEY?.trim()) {
     return error(res, 503, "PROVIDER_NOT_CONFIGURED", "Creator Try-On is temporarily unavailable.");
   }
   const personFile = req.files?.person_image?.[0];

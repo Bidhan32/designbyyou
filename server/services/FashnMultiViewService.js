@@ -221,6 +221,7 @@ function viewPrompt({ view, subjectType, keepBackground, instruction }) {
 }
 
 async function startView({ renderModel, sourceBuffer, contextBuffer, view, subjectType, keepBackground, instruction, generationMode, seed }) {
+  if (renderModel !== FAL_MODEL) throw new MultiViewError("Start a new multi-view set to generate with fal.", 409);
   if (!["front", "side", "back"].includes(view) ||
     (view === "front" && subjectType !== "garment")) {
     throw new MultiViewError("Invalid view for this generation type.", 400);
@@ -229,27 +230,11 @@ async function startView({ renderModel, sourceBuffer, contextBuffer, view, subje
   const context = contextBuffer && (subjectType === "model" || view === "front")
     ? toDataUri(contextBuffer) : null;
   const prompt = viewPrompt({ view, subjectType, keepBackground, instruction });
-  if (renderModel === FAL_MODEL) {
-    return submitImage(FAL_MODEL, {
-      image_urls: context ? [image, context] : [image],
-      prompt, seed, num_images: 1, output_format: "jpeg", sync_mode: true,
-      num_inference_steps: STEPS[generationMode], enable_safety_checker: true,
-    });
-  }
-  if (renderModel !== "fashn/edit") throw new MultiViewError("Unknown multi-view model.");
-  const inputs = {
-    image, prompt,
-    resolution: "1k", generation_mode: generationMode,
-    seed, num_images: 1, output_format: "jpeg", return_base64: true,
-  };
-  // Additional context is only used when creating the normalized front;
-  // a model photo fed into subsequent edits could reintroduce the person.
-  if (context) inputs.image_context = context;
-  const { data } = await fashnJson("/run", { method: "POST", body: { model_name: "edit", inputs } });
-  if (typeof data?.id !== "string" || !/^[a-zA-Z0-9-]{8,150}$/.test(data.id)) {
-    throw new MultiViewError("FASHN did not return a prediction ID.");
-  }
-  return data.id;
+  return submitImage(FAL_MODEL, {
+    image_urls: context ? [image, context] : [image],
+    prompt, seed, num_images: 1, output_format: "jpeg", sync_mode: true,
+    num_inference_steps: STEPS[generationMode], enable_safety_checker: true,
+  });
 }
 
 // Fetch only a known, authenticated asset created inside this Creator's job.

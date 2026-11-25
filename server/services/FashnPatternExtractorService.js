@@ -144,43 +144,25 @@ async function requestFashn(endpoint, options = {}) {
 }
 
 async function startPatternExtraction({imageDataUri, mode, instructions, renderModel}) {
+  if (renderModel !== FAL_MODEL) throw providerError("Start a new pattern extraction to generate with fal.", "LEGACY_JOB", 409);
   assertProviderConfigured(renderModel);
   checkDataUri(imageDataUri);
   const config = checkMode(mode);
   const prompt = buildPatternPrompt(mode, instructions);
-  if (renderModel === FAL_MODEL) {
-    try {
-      const predictionId = await submitImage(FAL_MODEL, {
-        image_urls: [imageDataUri], prompt, seed: config.seed,
-        ...(mode === "seamless" ? {image_size: {width: 1024, height: 1024}} : {}),
-        num_images: 1, output_format: "png", sync_mode: true, enable_safety_checker: true,
-      });
-      return {predictionId};
-    } catch (error) {
-      if ([400, 401, 402, 403, 413, 422, 429].includes(error.status)) {
-        const status = [401, 402, 403].includes(error.status) ? 503 : error.status;
-        throw providerError("The AI provider declined the pattern request.", "PATTERN_REQUEST_REJECTED", status);
-      }
-      throw providerError("Submission could not be confirmed. Check job status.", "PATTERN_SUBMISSION_UNCONFIRMED", 503);
+  try {
+    const predictionId = await submitImage(FAL_MODEL, {
+      image_urls: [imageDataUri], prompt, seed: config.seed,
+      ...(mode === "seamless" ? {image_size: {width: 1024, height: 1024}} : {}),
+      num_images: 1, output_format: "png", sync_mode: true, enable_safety_checker: true,
+    });
+    return {predictionId};
+  } catch (error) {
+    if ([400, 401, 402, 403, 413, 422, 429].includes(error.status)) {
+      const status = [401, 402, 403].includes(error.status) ? 503 : error.status;
+      throw providerError("The AI provider declined the pattern request.", "PATTERN_REQUEST_REJECTED", status);
     }
+    throw providerError("Submission could not be confirmed. Check job status.", "PATTERN_SUBMISSION_UNCONFIRMED", 503);
   }
-  const response = await requestFashn("/run", {
-    method: "POST",
-    body: JSON.stringify({
-      model_name: MODEL,
-      inputs: {
-        image: imageDataUri,
-        prompt,
-        seed: config.seed,
-        num_images: 1,
-        generation_mode: "fast",
-        resolution: "1k",
-        output_format: "png",
-        return_base64: true,
-      },
-    }),
-  });
-  return {predictionId: checkPredictionId(response?.id)};
 }
 
 async function getPatternStatus(predictionId, renderModel) {

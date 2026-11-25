@@ -359,88 +359,29 @@ async function startCostumeView({
   view,
   renderModel,
 }) {
+  if (renderModel !== FAL_MODEL) throw serviceError("Start a new costume extraction to generate with fal.", "LEGACY_JOB", 409);
   const selectedView = validateView(view);
 
   validateImageDataUri(imageDataUri);
 
   const config = VIEW_CONFIG[selectedView];
-  if (renderModel === FAL_MODEL) {
-    try {
-      const predictionId = await submitImage(FAL_MODEL, {
-        image_urls: [imageDataUri],
-        prompt: buildCostumePrompt(selectedView),
-        seed: config.seed,
-        num_images: 1,
-        output_format: OUTPUT_FORMAT,
-        sync_mode: true,
-        enable_safety_checker: true,
-      });
-      return { predictionId };
-    } catch (error) {
-      if (error.status === 429) throw serviceError("Generation service is busy.", "PROVIDER_RATE_LIMITED", 429);
-      if ([401, 402, 403].includes(error.status)) throw serviceError("Generation service is unavailable.", "PROVIDER_ACCESS_FAILED", 503);
-      if ([400, 413, 422].includes(error.status)) throw serviceError("The provider could not process this image.", "PROVIDER_REJECTED_IMAGE", 422);
-      throw serviceError("Submission could not be confirmed. Check the job status.", "SUBMISSION_RECORD_UNCERTAIN", 503);
-    }
-  }
-  if (renderModel !== "fashn/edit") throw serviceError("Unknown costume rendering model.");
-
-  const payload = {
-    model_name: MODEL_NAME,
-
-    inputs: {
-      image: imageDataUri,
-
-      prompt: buildCostumePrompt(
-        selectedView
-      ),
-
+  try {
+    const predictionId = await submitImage(FAL_MODEL, {
+      image_urls: [imageDataUri],
+      prompt: buildCostumePrompt(selectedView),
       seed: config.seed,
-
       num_images: 1,
-
-      generation_mode: GENERATION_MODE,
-
-      resolution: OUTPUT_RESOLUTION,
-
       output_format: OUTPUT_FORMAT,
-
-      return_base64: true,
-    },
-  };
-
-  const response = await requestFashn(
-    `${API_BASE}/run`,
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }
-  );
-
-  const predictionId = response?.id;
-
-  if (
-    typeof predictionId !== "string" ||
-    !/^[A-Za-z0-9_-]{8,128}$/.test(
-      predictionId
-    )
-  ) {
-    throw serviceError(
-      "The AI provider did not return a valid generation reference.",
-      "FASHN_INVALID_PREDICTION",
-      502
-    );
+      sync_mode: true,
+      enable_safety_checker: true,
+    });
+    return { predictionId };
+  } catch (error) {
+    if (error.status === 429) throw serviceError("Generation service is busy.", "PROVIDER_RATE_LIMITED", 429);
+    if ([401, 402, 403].includes(error.status)) throw serviceError("Generation service is unavailable.", "PROVIDER_ACCESS_FAILED", 503);
+    if ([400, 413, 422].includes(error.status)) throw serviceError("The provider could not process this image.", "PROVIDER_REJECTED_IMAGE", 422);
+    throw serviceError("Submission could not be confirmed. Check the job status.", "SUBMISSION_RECORD_UNCERTAIN", 503);
   }
-
-  return {
-    predictionId,
-    view: selectedView,
-    label: config.label,
-    status: "submitted",
-    provider: "fashn",
-    model: MODEL_NAME,
-    outputFormat: OUTPUT_FORMAT,
-  };
 }
 
 /*

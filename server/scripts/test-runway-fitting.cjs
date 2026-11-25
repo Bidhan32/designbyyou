@@ -26,7 +26,7 @@ test("zero-credit runway fitting supports uploads, retries and weekly looks whil
     const loader=isolatedServer({db,overrides:{
       "services/FashnCreatorTryOnService.js":{
         FAL_MODEL:"fal-ai/fashn/tryon/v1.6",prepareImage:async()=>image,startPrediction:async()=>randomUUID(),
-        startRunwayPrediction:async()=>({provider:"fashn",model:"tryon-v1.6",id:randomUUID()}),
+        startRunwayPrediction:async()=>({provider:"fal",model:"fal-ai/fashn/tryon/v1.6",id:randomUUID()}),
         removeRunwayBackground:async()=>{
           if(rejected) throw Object.assign(new Error("Image could not be processed."),{httpStatus:422});
           return {dataUri:"data:image/png;base64,"+image.toString("base64")};
@@ -82,7 +82,7 @@ test("zero-credit runway fitting supports uploads, retries and weekly looks whil
     await worker.processNext();
     const {rows:[generated]}=await db.query("SELECT id,request_key,provider FROM creator_virtual_tryon_jobs WHERE creator_id=$1 AND status='processing'",[owner]);
     assert.ok(generated);
-    assert.equal(generated.provider,"fashn");
+    assert.equal(generated.provider,"fal");
     await db.query("UPDATE creator_runway_looks SET process_after=now() WHERE request_key=$1",[generated.request_key]);
     await worker.processNext();
     const completed=await (await fetch(root+"/job/"+generated.id)).json();
@@ -116,7 +116,7 @@ test("runway cutouts keep the full figure while removing transparent margins", a
   assert.deepEqual([width,height,hasAlpha],[28,114,true]);
 });
 
-test("runway switches providers on access denial for try-on and background removal", async t => {
+test("runway uses only fal on access denial for try-on and background removal", async t => {
   const service = require("../services/FashnCreatorTryOnService");
   const original = { FAL_KEY: process.env.FAL_KEY, FASHN_API_KEY: process.env.FASHN_API_KEY };
   t.after(() => {
@@ -126,24 +126,12 @@ test("runway switches providers on access denial for try-on and background remov
     }
   });
   process.env.FAL_KEY = process.env.FASHN_API_KEY = "test-fixture";
-  const id = randomUUID();
-  const png = await sharp({create:{width:8,height:8,channels:4,background:"red"}}).png().toBuffer();
-  const image = "data:image/png;base64," + png.toString("base64");
-  const models = [];
-  let falStatus = 403;
-  t.mock.method(global, "fetch", async (url, options) => {
-    if (["queue.fal.run","fal.run"].includes(new URL(url).hostname)) return new Response(null,{status:falStatus});
-    if (url === "https://api.fashn.ai/v1/run") {
-      models.push(JSON.parse(options.body).model_name);
-      return Response.json({id});
-    }
-    assert.equal(url,"https://api.fashn.ai/v1/status/"+id);
-    return Response.json({status:"completed",output:[png.toString("base64")]});
+  const hosts = [];
+  t.mock.method(global, "fetch", async url => {
+    hosts.push(new URL(url).hostname);
+    return new Response(null, { status: 403 });
   });
-  const input = {personDataUri:image,garmentDataUri:image,category:"auto",mode:"balanced",garmentPhotoType:"auto"};
-  assert.deepEqual(await service.startRunwayPrediction(input),{id,provider:"fashn",model:"tryon-v1.6"});
-  assert.equal((await service.removeRunwayBackground(image)).dataUri,image);
-  falStatus = 500;
-  await assert.rejects(service.startRunwayPrediction(input),{status:500});
-  assert.deepEqual(models,["tryon-v1.6","background-remove"]);
+  await assert.rejects(service.startRunwayPrediction({}), { code: "PROVIDER_ACCESS_DENIED" });
+  await assert.rejects(service.removeRunwayBackground("fixture"), { code: "PROVIDER_AUTH_ERROR" });
+  assert.deepEqual(hosts, ["queue.fal.run", "fal.run"]);
 });
