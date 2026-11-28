@@ -122,7 +122,6 @@ async function startRunwayPrediction(input) {
   }
 }
 
-const { removeBackground: removeRunwayBackground } = require("./FalBackgroundRemoverService");
 
 async function getPrediction(predictionId, provider) {
   if (typeof predictionId !== "string" || !/^[a-zA-Z0-9-]{8,150}$/.test(predictionId)) {
@@ -158,11 +157,6 @@ async function savePrivateResult(outputDataUri, creatorId, jobId, weekly = false
   const buffer = decodeOutput(outputDataUri);
   const jpeg = await sharp(buffer, { limitInputPixels: 32_000_000 })
     .rotate().jpeg({ quality: 90, mozjpeg: true }).toBuffer();
-  let image = jpeg;
-  if (weekly) {
-    const {dataUri} = await removeRunwayBackground("data:image/jpeg;base64," + jpeg.toString("base64"));
-    image = await require("./frameRunwayCutout")(Buffer.from(dataUri.split(",")[1],"base64"));
-  }
   return new Promise((resolve, reject) => {
     const uploader = cloudinary.uploader.upload_stream({
       // The callback settles our promise. Disable the SDK's second rejection path.
@@ -170,9 +164,9 @@ async function savePrivateResult(outputDataUri, creatorId, jobId, weekly = false
       resource_type: "image",
       type: "authenticated",
       folder: "designbyyou_ai/creator_virtual_tryon",
-      public_id: `${creatorId}_${jobId}${weekly ? "_framed_cutout" : ""}`,
+      public_id: `${creatorId}_${jobId}${weekly ? "_fitting" : ""}`,
       overwrite: false,
-      format: weekly ? "webp" : "jpg",
+      format: "jpg",
     }, (err, result) => {
       if (err || !result?.public_id) {
         const failure = new TryOnServiceError("Could not save the generated image securely.", 503, "STORAGE_FAILED");
@@ -183,7 +177,7 @@ async function savePrivateResult(outputDataUri, creatorId, jobId, weekly = false
       }
     });
     uploader.on("error", () => reject(new TryOnServiceError("Cloudinary upload stream failed.", 503, "STORAGE_FAILED")));
-    uploader.end(image);
+    uploader.end(jpeg);
   });
 }
 
@@ -216,7 +210,7 @@ module.exports = {
   TryOnServiceError,
   prepareImage,
   startPrediction,
-  startRunwayPrediction, removeRunwayBackground,
+  startRunwayPrediction,
   getPrediction,
   savePrivateResult,
   signedResultUrls,

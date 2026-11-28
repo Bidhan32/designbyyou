@@ -33,4 +33,4 @@ async function previews() {
     return {...design,is_default:true,preview:"data:image/webp;base64," + thumbnail.toString("base64")};
   }));
 }
-module.exports = {metadata,imageFor,previews,count:designs.length};
+module.exports = {has:id=>designs.some(d=>d.id===id),metadata,imageFor,previews,count:designs.length};

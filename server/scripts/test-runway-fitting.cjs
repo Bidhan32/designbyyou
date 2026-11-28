@@ -14,8 +14,8 @@ test("zero-credit runway fitting supports uploads, retries and weekly looks whil
   let server;
   try {
     await db.query("INSERT INTO users(id,role,full_name,email,password_hash) VALUES($1,'creator','Runway test',$2,'fixture')",[owner,owner+"@example.invalid"]);
-    const image = await sharp({create:{width:40,height:80,channels:4,background:"red"}}).png().toBuffer();
-    let rejected = false;
+    const image = await sharp({create:{width:160,height:280,channels:4,background:"red"}}).png().toBuffer();
+    let submissions = 0;
     const pass = (_req,_res,next)=>next();
     const app = express();
     const keys=["CREATOR_TRYON_ENABLED","FAL_KEY"];
@@ -26,11 +26,7 @@ test("zero-credit runway fitting supports uploads, retries and weekly looks whil
     const loader=isolatedServer({db,overrides:{
       "services/FashnCreatorTryOnService.js":{
         FAL_MODEL:"fal-ai/fashn/tryon/v1.6",prepareImage:async()=>image,startPrediction:async()=>randomUUID(),
-        startRunwayPrediction:async()=>({provider:"fal",model:"fal-ai/fashn/tryon/v1.6",id:randomUUID()}),
-        removeRunwayBackground:async()=>{
-          if(rejected) throw Object.assign(new Error("Image could not be processed."),{httpStatus:422});
-          return {dataUri:"data:image/png;base64,"+image.toString("base64")};
-        },
+        startRunwayPrediction:async()=>{submissions++;return {provider:"fal",model:"fal-ai/fashn/tryon/v1.6",id:randomUUID()};},
         getPrediction:async()=>({data:{status:"completed",output:["fixture"]},credits:10}),
         savePrivateResult:async()=>"fixture",signedResultUrls:()=>({image_url:null})
       },
@@ -51,9 +47,31 @@ test("zero-credit runway fitting supports uploads, retries and weekly looks whil
     const start=await balance();
     assert.equal(start,0);
     assert.equal((await save(randomUUID(),Buffer.from("broken"))).status,400);
-    rejected=true;
-    assert.equal((await save()).status,422);
-    rejected=false;
+    assert.deepEqual(await (await fetch(root+"/weekly")).json(),[]);
+    const other=randomUUID();
+    await db.query("INSERT INTO users(id,role,full_name,email,password_hash) VALUES($1,'creator','Other creator',$2,'fixture')",[other,other+"@example.invalid"]);
+    const foreign=await db.query("INSERT INTO creator_runway_garments(creator_id,slot,digest,title,image,thumbnail) VALUES($1,1,'fixture','Private shirt',$2,$2) RETURNING id",[other,image]);
+    const otherId=foreign.rows[0].id;
+    assert.deepEqual(await (await fetch(root+"/weekly")).json(),[]);
+    assert.equal((await fetch(root+"/garments/"+otherId)).status,404);
+    assert.equal((await fetch(root+"/garments/"+otherId,{method:"DELETE"})).status,404);
+    assert.equal((await fetch(root+"/weekly/"+otherId,{method:"POST"})).status,404);
+    async function uploadGarments(startIndex,count){
+      const form=new FormData();
+      for(let i=startIndex;i<startIndex+count;i++){
+        const bytes=await sharp({create:{width:160,height:180,channels:3,background:{r:i,g:100,b:130}}}).png().toBuffer();
+        form.append("garments",new Blob([bytes],{type:"image/png"}),"shirt-"+i+".png");
+      }
+      return fetch(root+"/garments",{method:"POST",body:form});
+    }
+    assert.equal((await uploadGarments(0,1)).status,200);
+    assert.equal((await uploadGarments(0,1)).status,200);
+    assert.equal((await (await fetch(root+"/weekly")).json()).length,1);
+    assert.equal((await uploadGarments(1,9)).status,200);
+    assert.equal((await uploadGarments(10,1)).status,409);
+    const rack=await (await fetch(root+"/weekly")).json();
+    assert.equal(rack.length,10);
+    assert.equal((await fetch(root+"/garments/"+rack[0].id)).status,200);
     assert.equal(await balance(),start);
     // A failed photo write must leave the saved list empty.
     await db.query(`CREATE FUNCTION reject_fitting() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -75,11 +93,14 @@ test("zero-credit runway fitting supports uploads, retries and weekly looks whil
     }
     assert.equal((await db.query("SELECT 1 FROM ai_image_reservations WHERE creator_id=$1",[owner])).rowCount,0);
     await assert.rejects(insertJob(false),{code:"DB402"});
-    // Process a saved upload with no browser polling or generation requests.
+    // Browsing and uploading leave the worker idle until a garment is requested.
     const queued=await db.query("SELECT request_key FROM creator_runway_looks WHERE photo_id=$1 AND process_after IS NOT NULL",[id]);
-    assert.equal(queued.rowCount,10);
+    assert.equal(queued.rowCount,0);
     const worker=loader.load("services/runwayWorker.js");
     await worker.processNext();
+    assert.equal(submissions,0);
+    assert.equal((await fetch(root+"/weekly/"+rack[0].id,{method:"POST"})).status,202);
+    assert.equal(submissions,1);
     const {rows:[generated]}=await db.query("SELECT id,request_key,provider FROM creator_virtual_tryon_jobs WHERE creator_id=$1 AND status='processing'",[owner]);
     assert.ok(generated);
     assert.equal(generated.provider,"fal");
@@ -92,6 +113,7 @@ test("zero-credit runway fitting supports uploads, retries and weekly looks whil
     assert.equal(lineup.length,10);
     const done=lineup.find(look=>look.job_id===generated.id);
     assert.equal((await (await fetch(root+"/weekly/"+done.id,{method:"POST"})).json()).reused,true);
+    assert.equal(submissions,1);
     assert.ok(lineup.every(look=>look.photo_id===id));
     assert.equal((await fetch(root+"/photos/"+id+"/file")).status,200);
     for(let i=0;i<3;i++) assert.equal((await save()).status,201);
@@ -100,7 +122,10 @@ test("zero-credit runway fitting supports uploads, retries and weekly looks whil
     assert.equal((await save()).status,409);
     assert.equal(await balance(),start);
     assert.equal((await (await fetch(root+"/photos")).json()).length,5);
-    assert.equal(new Set((await (await fetch(root+"/weekly")).json()).map(l=>l.photo_id)).size,5);
+    assert.equal(new Set((await (await fetch(root+"/weekly")).json()).map(l=>l.photo_id)).size,1);
+    assert.equal((await fetch(root+"/garments/"+rack[0].id,{method:"DELETE"})).status,204);
+    assert.equal((await fetch(root+"/garments/"+rack[0].id)).status,404);
+    assert.equal((await uploadGarments(10,1)).status,200);
   } finally {
     if(server){server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
     await sandbox.dispose();
@@ -116,7 +141,7 @@ test("runway cutouts keep the full figure while removing transparent margins", a
   assert.deepEqual([width,height,hasAlpha],[28,114,true]);
 });
 
-test("runway uses only fal on access denial for try-on and background removal", async t => {
+test("runway uses only fal on try-on access denial", async t => {
   const service = require("../services/FashnCreatorTryOnService");
   const original = { FAL_KEY: process.env.FAL_KEY, FASHN_API_KEY: process.env.FASHN_API_KEY };
   t.after(() => {
@@ -132,6 +157,5 @@ test("runway uses only fal on access denial for try-on and background removal", 
     return new Response(null, { status: 403 });
   });
   await assert.rejects(service.startRunwayPrediction({}), { code: "PROVIDER_ACCESS_DENIED" });
-  await assert.rejects(service.removeRunwayBackground("fixture"), { code: "PROVIDER_AUTH_ERROR" });
-  assert.deepEqual(hosts, ["queue.fal.run", "fal.run"]);
+  assert.deepEqual(hosts, ["queue.fal.run"]);
 });
